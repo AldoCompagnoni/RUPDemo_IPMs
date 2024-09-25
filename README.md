@@ -1,2 +1,2 @@
-# kansas_quadrats
-Analysis of Kansas quadrat data for the RUPDemo project
+# RUPDemo IPM building project
+Building of IPMs, each directory refers to a different dataset

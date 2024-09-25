@@ -1,24 +1,40 @@
-# IPM for kansas bocu
+# IPM for alder 2007 & chu 2016; kansas; bocu
 
 # Niklas Neisse
 # 2024.09.23
 
-# 
+# reading in, explore, and cleaning the data
+  # setting up the vital rate data-frames for the year specific 
 
+# Setting the stage ------------------------------------------------------------
+# Remove all objects in the global environment
+rm(list = ls()) 
+# Set seed for reproducibility
+set.seed(100) 
 rm( list = ls() )
 options( stringsAsFactors = F )
-library( tidyverse )
-library( ggplot2 )
-library( patchwork )
-library(skimr)
+# Set working directory
+setwd("C:/code/RUPDemo_IPMs")
+
+# Packages ---------------------------------------------------------------------
+
+# Define CRAN packages
+.cran_packages <- c('tidyverse','patchwork','skimr') 
+# Check if CRAN packages are installed
+.inst <- .cran_packages %in% installed.packages() 
+if(any(!.inst)) {
+  # Install missing CRAN packages
+  install.packages(.cran_packages[!.inst]) 
+}
+# Load required packages
+sapply(.cran_packages, require, character.only = TRUE) 
 
 
 # Data -------------------------------------------------------------------------
-
 ## 
 # x and y are locations within the quadrat
 # area refers to the individual in cm2
-bocu_buf5_dorm1 <- read_csv("data/BOCU_buf5_dorm1.csv")
+bocu_buf5_dorm1 <- read_csv("data/bocu/BOCU_buf5_dorm1.csv")
 skim(bocu_buf5_dorm1)
 # Dormancy: mean_sd =  0.11_0.31 -> few individuals go into dormancy
   # 1 = dormancy; for unknown time (1 census?)

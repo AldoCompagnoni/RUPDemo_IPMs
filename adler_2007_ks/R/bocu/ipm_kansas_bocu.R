@@ -3,16 +3,16 @@
 # Niklas Neisse
 # 2024.09.30
 
-# reading in, explore, and cleaning the data
-  # setting up the vital rate data-frames for the year specific 
+# reading in, and cleaning the data
+ # exploring the overall-years rates
+ # setting up the vital rate data-frames for the year specific 
 
 # Setting the stage ------------------------------------------------------------
 # Remove all objects in the global environment
 rm(list = ls()) 
 # Set seed for reproducibility
-set.seed(100) 
-rm( list = ls() )
-options( stringsAsFactors = F )
+set.seed(100)
+options(stringsAsFactors = F)
 # Set working directory
 setwd("C:/code/RUPDemo_IPMs")
 
@@ -62,7 +62,7 @@ inv_plot_per_year <- df %>%
   geom_point(aes(x = year, y = quad))
 inv_plot_per_year
 
-ggsave("adler_2007_ks/results/bocu/inventory_quadrat_per_year.png",  
+ggsave("adler_2007_ks/results/bocu/overall_inventory_quadrat_per_year.png",  
        plot = inv_plot_per_year,
        width = 6, height = 4, dpi = 150)
 
@@ -117,7 +117,7 @@ recr_df <-
 recr_df <- 
   left_join(cover_df, recr_df)
 
-write.csv(df,   "adler_2007_ks/data/bocu/data_df.csv")
+write.csv(df,      "adler_2007_ks/data/bocu/data_df.csv")
 write.csv(surv_df, "adler_2007_ks/data/bocu/survival_df.csv")
 write.csv(grow_df, "adler_2007_ks/data/bocu/growth_df.csv")
 write.csv(recr_df, "adler_2007_ks/data/bocu/recruitment_df.csv")
@@ -140,7 +140,7 @@ hist_t1 <-
 
 hist_sizes_log <- hist_t0 + hist_t1
 
-ggsave('adler_2007_ks/results/bocu/hist_sizes_log.png', plot = hist_sizes_log, 
+ggsave('adler_2007_ks/results/bocu/overall_hist_sizes_log.png', plot = hist_sizes_log, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 ## Survival
@@ -188,7 +188,7 @@ surv_overall <-
   labs( x = expression( 'log(size)'[t0] ),
         y = expression( 'Survival to time t1' ) )
 
-ggsave('adler_2007_ks/results/bocu/surv_overall.png', plot = surv_overall, 
+ggsave('adler_2007_ks/results/bocu/overall_surv.png', plot = surv_overall, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 ## Growth
@@ -204,7 +204,7 @@ gr_overall <-
   labs( x = expression( 'log( size )'[t0] ),
         y = expression( 'log( size )'[t1] ) )
 
-ggsave('adler_2007_ks/results/bocu/gr_overall.png', plot = gr_overall, 
+ggsave('adler_2007_ks/results/bocu/overall_gr.png', plot = gr_overall, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 ## Recruitment
@@ -215,7 +215,7 @@ rec_overall <-
   labs(x = expression('Total parent plant area'[t0]),
        y = expression('Number of recruits'[t1]))
 
-ggsave('adler_2007_ks/results/bocu/rec_overall.png', plot = rec_overall, 
+ggsave('adler_2007_ks/results/bocu/overall_rec.png', plot = rec_overall, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 
@@ -240,7 +240,7 @@ grow_pred <-
               color = "red", lwd = 2)
 
 grow_overall_pred <- grow_line + grow_pred + plot_layout()
-ggsave('adler_2007_ks/results/bocu/grow_overall_pred.png', plot = grow_overall_pred, 
+ggsave('adler_2007_ks/results/bocu/overall_grow_pred.png', plot = grow_overall_pred, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 x         <- fitted(gr_mod_mean)
@@ -278,7 +278,7 @@ surv_bin <-
 
 surv_overall_pred <- surv_line + surv_bin + plot_layout()
 
-ggsave('adler_2007_ks/results/bocu/surv_overall_pred.png', plot = surv_overall_pred, 
+ggsave('adler_2007_ks/results/bocu/overall_surv_pred.png', plot = surv_overall_pred, 
        width = 8, height = 3, units = "in", dpi = 150) 
 
 ## Recruitment

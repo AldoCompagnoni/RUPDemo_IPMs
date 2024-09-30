@@ -33,10 +33,9 @@ sapply(.cran_packages, require, character.only = TRUE)
 # Data -------------------------------------------------------------------------
 ## 
 
-df <- read_csv("adler_2007_ks/data/KS_grasses_all.csv")
-df %>% 
-  filter(!grepl("^[0-9]", Site))
+df <- read_csv("adler_2007_ks/data/KS_grasses_all.csv") %>% 
+  filter(Site == 'KS')
 
-write.csv(df, "adler_2007_ks/data/ks_grasses")
+write.csv(df, "adler_2007_ks/data/ks_grasses.csv", row.names = F)
 
 

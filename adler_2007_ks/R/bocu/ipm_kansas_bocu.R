@@ -31,8 +31,8 @@ sapply(.cran_packages, require, character.only = TRUE)
 
 
 # Data -------------------------------------------------------------------------
-## Bouteloua curtipendula (bocu) data frame
-df <- read_csv("adler_2007_ks/data/ks_grasses.csv") %>%  
+## Bouteloua  curtipendula (bocu) data frame
+df <- read.csv("adler_2007_ks/data/ks_grasses.csv") %>%  
   filter(Species == "Bouteloua curtipendula") %>%
   select(-c(geometry, Suspect, nearEdge, Species, Site)) %>% 
   mutate(across(c(Quad), as.factor)) %>% 
@@ -140,7 +140,8 @@ hist_t1 <-
 
 hist_sizes_log <- hist_t0 + hist_t1
 
-ggsave('adler_2007_ks/results/bocu/overall_hist_sizes_log.png', plot = hist_sizes_log, 
+ggsave('adler_2007_ks/results/bocu/overall_hist_sizes_log.png', 
+       plot = hist_sizes_log, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 ## Survival

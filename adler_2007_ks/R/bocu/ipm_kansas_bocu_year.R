@@ -112,8 +112,7 @@ df_binned_prop_year <- function( ii, df_in, n_bins, siz_var, rsp_var, years ){
 surv_yrs       <- data.frame(year = surv_df$year %>% unique %>% sort)
 surv_bin_yrs   <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15, 
                           logsize_t0, survives, surv_yrs)
-
-surv_bin_yrs <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
+surv_bin_yrs   <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
 
 surv_yr_pan_df <- 
   bind_rows(surv_bin_yrs) %>% 
@@ -127,7 +126,7 @@ survival <-
   geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +
   scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
   # split in panels
-  facet_wrap(.~ transition, nrow = 4) +
+  facet_wrap(.~ transition, ncol = 4) +
   theme_bw() +
   theme(axis.text = element_text(size = 8), title = element_text(size = 10),
         strip.text.y = element_text(size = 5, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
@@ -137,8 +136,9 @@ survival <-
   labs(x = expression('log(size)'[t0]),
        y = expression('Survival to time t1'))
 
-ggsave("adler_2007_ks/results/bocu/years_survival.png", plot = survival,
-       width = 6, height = 4, dpi = 150)
+ggsave("adler_2007_ks/results/bocu/years_survival.png", 
+       plot = survival,
+       width = 4, height = 9, dpi = 150)
 
 
 ## Growth
@@ -152,7 +152,7 @@ growth <-
   ggplot(data  = grow_yr_pan_df, aes(x = logsize_t0, y = logsize_t1)) +
   geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') +
   # split in panels
-  facet_wrap(.~ transition, nrow = 4) +
+  facet_wrap(.~ transition, ncol = 4) +
   theme_bw() +
   theme(axis.text    = element_text(size = 8),
         title        = element_text(size = 10),
@@ -163,8 +163,9 @@ growth <-
   labs(x = expression('log(size)'[t0]),
        y = expression('log(size)'[t1]))
 
-ggsave("adler_2007_ks/results/bocu/years_growth.png", plot = growth,
-       width = 6, height = 4, dpi = 150)
+ggsave("adler_2007_ks/results/bocu/years_growth.png", 
+       plot = growth,
+       width = 4, height = 9, dpi = 150)
 
 
 ## Recruits
@@ -186,7 +187,7 @@ recruits <-
   filter(n_adults != max(repr_yr$n_adults)) %>% 
   ggplot(aes(x = n_adults, y = nr_quad ) ) +
   geom_point(alpha = 1, pch = 16, size = 1, color = 'red') +
-  facet_wrap(.~ year, nrow = 4) +
+  facet_wrap(.~ year, ncol = 4) +
   theme_bw() +
   theme(axis.text    = element_text(size = 8),
         title        = element_text(size = 10),
@@ -197,27 +198,32 @@ recruits <-
   labs(x = expression('Number of adults '[ t0]),
        y = expression('Number of recruits '[ t1]))
 
-ggsave("adler_2007_ks/results/bocu/years_recruits.png", plot = recruits,
-       width = 6, height = 4, dpi = 150)
+ggsave("adler_2007_ks/results/bocu/years_recruits.png", 
+       plot = recruits,
+       width = 4, height = 9, dpi = 150)
 
 ## Recruitment size
-rec_size <- df %>% subset(recruit == 1)
+rec_size          <- df %>% subset(recruit == 1)
 rec_size$year_fac <- as.factor(rec_size$year)
 
 recruitment_size <- 
   rec_size %>% ggplot(aes(x = logsize_t0)) +
   geom_histogram() +
-  facet_wrap(year_fac ~ ., scales = "free_y", nrow = 4) +
+  facet_wrap(year_fac ~ ., scales = "free_y", 
+             ncol = 4) +
   labs(x = expression('log(size)'[t0]),
        y = "Frequency")
-ggsave("adler_2007_ks/results/bocu/years_recruitment_size.png", plot = recruitment_size,
-       width = 6, height = 4, dpi = 150)
+
+ggsave("adler_2007_ks/results/bocu/years_recruitment_size.png", 
+       plot = recruitment_size,
+       width = 4, height = 9, dpi = 150)
 
 
 # Fitting vital rate models with the random effect of year ---------------------
-## Survival
-su_mod_yr <- glmer(survives ~ logsize_t0 + (logsize_t0 | year), 
-                   data = surv_df, family = binomial)
+
+# Survival
+su_mod_yr   <- glmer(survives ~ logsize_t0 + (logsize_t0 | year), 
+                     data = surv_df, family = binomial)
 su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
                      data = surv_df, family = binomial)
 su_mod_yr_3 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + (logsize_t0 | year), 
@@ -227,7 +233,7 @@ s_mods <- c(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
 AICtab(s_mods, weights = T)
   # model2 -- incl. quadratic term -- has the lowest AIC, with weight 0.65
 
-ranef_su  <- data.frame(coef(su_mod_yr )[1])
+ranef_su    <- data.frame(coef(su_mod_yr )[1])
 ranef_su_2  <- data.frame(coef(su_mod_yr_2)[1])
 ranef_su_3  <- data.frame(coef(su_mod_yr_3)[1])
 
@@ -244,26 +250,33 @@ surv_yr_plots_2 <- function(i){
                       max(surv_temp$logsize_t0, na.rm = T), length.out = 100)
   pred_temp    <- boot::inv.logit(ranef_su_2[i,1] + ranef_su_2[i,2] * x_temp + ranef_su_2[i,3] * x_temp^2) 
   pred_temp_df <- data.frame(logsize_t0 = x_temp, survives = pred_temp)
-  temp_plot <- surv_temp %>% ggplot() +
-    geom_point(aes(x = logsize_t0, y = survives)) +
+  temp_plot <- surv_temp %>% 
+    ggplot() +
+    geom_point(aes(x = logsize_t0, y = survives),
+               size = 0.5 ) +
     geom_line(data = pred_temp_df, aes(x = logsize_t0, y= survives),
                color = 'green', lwd = 1) +
     labs(title = paste0(years_v[i]),
          x = expression('log(size)'[t0]),
-         y = expression('Survival probability '[ t1]))
+         y = expression('Survival probability '[ t1])) +
+    theme_bw() +
+    theme( text = element_text( size = 5) )
+    
+  
   if(i %in% c(setdiff(1:length(years_v), seq(1,length(years_v), by = 4)))){
     temp_plot <- temp_plot + theme(axis.title.y = element_blank())
   }
   return(temp_plot)
 }
 surv_yrs_2   <- lapply(1:length(surv_bin_yrs), surv_yr_plots_2)
-surv_years_2 <- wrap_plots(surv_yrs_2) + plot_layout(nrow = 4)
+surv_years_2 <- wrap_plots(surv_yrs_2) + plot_layout(ncol = 4)
 
-ggsave("adler_2007_ks/results/bocu/years_surv_logsize2.png", plot = surv_years_2,
-       width = 6, height = 4, dpi = 150)
+ggsave("adler_2007_ks/results/bocu/years_surv_logsize2.png", 
+       plot = surv_years_2,
+       width = 4, height = 9, dpi = 150)
 
 
-## Growth
+# Growth
 gr_mod_yr   <- lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), data = grow_df)
 gr_mod_yr_2 <- lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), data = grow_df)
 gr_mod_yr_3 <- lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + (logsize_t0 | year), data = grow_df)
@@ -285,32 +298,39 @@ grow_yr_plots <- function(i){
     temp_plot <- grow_df %>% 
     filter(year == i) %>% 
     ggplot() +
-    geom_point( aes(x = logsize_t0, y = logsize_t1)) +
+    geom_point( aes(x = logsize_t0, y = logsize_t1),
+                size = 0.5) +
       geom_function( fun = temp_f,
                      color = "blue",
                      lwd   = 1 ) +
     labs(title = paste0(i),
          x = expression('log(size) '[ t0]),
-         y = expression('log(size) '[ t1]))
-  if(i %in% c(c(setdiff(1:length(unique(grow_df$year)), seq(1,length(unique(grow_df$year)), by = 4))))){
-    temp_plot <- temp_plot + theme(axis.title.y = element_blank())
+         y = expression('log(size) '[ t1])) +
+      theme_bw() +
+      theme( text = element_text( size = 5) )
+    
+  if(i %in% c(c(setdiff(1:length(unique(grow_df$year)), 
+                        seq(1,length(unique(grow_df$year)), 
+                            by = 4)))) ){
+    temp_plot <- temp_plot + 
+      theme(axis.title.y = element_blank())
   }
   return(temp_plot)
 }
 
 grow_yrs   <- lapply(sort(unique(grow_df$year)), grow_yr_plots)
-grow_years <- wrap_plots(grow_yrs) + plot_layout(nrow = 4)
+grow_years <- wrap_plots(grow_yrs) + plot_layout(ncol = 4)
 
-ggsave("adler_2007_ks/results/bocu/years_growth_logsize3.png", plot = grow_years,
-       width = 6, height = 4, dpi = 150)
+ggsave("adler_2007_ks/results/bocu/years_growth_logsize3.png", 
+       plot = grow_years,
+       width = 4, height = 9, dpi = 150)
 
-x <- fitted(gr_mod_yr_3)
-y <- resid( gr_mod_yr_3)^2
-
+x      <- fitted(gr_mod_yr_3)
+y      <- resid( gr_mod_yr_3)^2
 gr_var <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))
 
 
-## Recruitment model
+# Recruitment model
 recr_nona_nr_quad <- recr_df %>% filter(!is.na(nr_quad))
 
 rec_mod <- glmer.nb(nr_quad ~ (1 | year), data = recr_nona_nr_quad)
@@ -349,14 +369,17 @@ recruitment <-
   geom_abline(aes(intercept = 0, slope = 1),
                color = "red", lwd = 2, alpha = 0.5) +
   labs(x = "Observed per capita recruitment",
-       y = "Predicted per capita recruitment")
+       y = "Predicted per capita recruitment") +
+  theme_bw()
 
-ggsave("adler_2007_ks/results/bocu/years_recruitment.png", plot = recruitment,
+ggsave("adler_2007_ks/results/bocu/years_recruitment.png", 
+       plot = recruitment,
        width = 6, height = 4, dpi = 150)
 
 
 # Exporting parameter estimates ------------------------------------------------
-## Survival
+
+# Survival
 su_yr_r <- data.frame(coefficient = paste0("year_", rownames(coef(su_mod_yr_2)$year)), 
                       value       = coef(su_mod_yr_2)$year[,"(Intercept)"])
 su_la_r <- data.frame(coefficient = paste0("logsize_t0", rownames(coef(su_mod_yr_2)$year)), 
@@ -365,7 +388,9 @@ su_la_r <- data.frame(coefficient = paste0("logsize_t0", rownames(coef(su_mod_yr
 surv_out_yr <- Reduce(function(...) rbind(...), list(su_la_r, su_yr_r)) %>%
   mutate(coefficient = as.character( coefficient ))
 
-write.csv(surv_out_yr, "adler_2007_ks/data/bocu/2.surv_pars.csv", row.names = F)
+write.csv(surv_out_yr, 
+          "adler_2007_ks/data/bocu/2.surv_pars.csv", 
+          row.names = F)
 
 
 ## Growth
@@ -382,7 +407,9 @@ la3_re  <- data.frame(coefficient = paste0( "logsize_t0_2", rownames(coef(gr_mod
 grow_out_yr <- Reduce(function(...) rbind(...), list(var_fe, la_re, la3_re, year_re)) %>%
   mutate(coefficient = as.character(coefficient))
 
-write.csv(grow_out_yr, "adler_2007_ks/data/bocu/2.grow_pars.csv", row.names = F)
+write.csv(grow_out_yr, 
+          "adler_2007_ks/data/bocu/2.grow_pars.csv", 
+          row.names = F)
  
 
 ## Recruitment
@@ -396,7 +423,9 @@ rc_sz <- data.frame(coefficient = c("rec_siz", "rec_sd"),
 recr_out_yr <- Reduce(function(...) rbind(...), list(rc_pc, rc_sz)) %>%
   mutate(coefficient = as.character(coefficient))
 
-write.csv(recr_out_yr, "adler_2007_ks/data/bocu/2.recr_pars.csv", row.names = F)
+write.csv(recr_out_yr, 
+          "adler_2007_ks/data/bocu/2.recr_pars.csv", 
+          row.names = F)
 
 
 ## df constant parameters, fixed effects estimates, and mean parameter estimates
@@ -436,7 +465,9 @@ rownames(pars_cons) <- 1:nrow(pars_cons)
 
 pars_cons_wide <- as.list(pivot_wider(pars_cons, names_from = "coefficient", values_from = "value"))
 
-write.csv(pars_cons_wide, "adler_2007_ks/data/bocu/2.pars_cons.csv", row.names = F)
+write.csv(pars_cons_wide, 
+          "adler_2007_ks/data/bocu/2.pars_cons.csv", 
+          row.names = F)
 
 
 ## df varying parameters
@@ -457,11 +488,17 @@ grow_b3 <- data.frame(coefficient = paste0("grow_b3_", rownames(coef(gr_mod_yr_3
 fecu_b0 <- data.frame(coefficient = paste0("fecu_b0_", repr_pc_yr$year),
                       value =       repr_pc_yr$repr_percapita)
 
-pars_var <- Reduce(function(...) rbind(...), list(su_b0, su_b1, su_b2, grow_b0, grow_b1, grow_b2, grow_b3, fecu_b0))
+pars_var <- Reduce(function(...) rbind(...), 
+                   list(su_b0, su_b1, su_b2, grow_b0, 
+                        grow_b1, grow_b2, grow_b3, fecu_b0))
 
-pars_var_wide <- as.list(pivot_wider(pars_var, names_from = "coefficient", values_from = "value"))
+pars_var_wide <- as.list(pivot_wider(pars_var, 
+                                     names_from = "coefficient", 
+                                     values_from = "value") )
 
-write.csv(pars_var_wide, "adler_2007_ks/data/bocu/2.pars_var.csv", row.names = F)
+write.csv(pars_var_wide, 
+          "adler_2007_ks/data/bocu/2.pars_var.csv", 
+          row.names = F)
 
 
 # Building the year-specific IPMs from scratch ---------------------------------
@@ -652,7 +689,7 @@ pop_counts <- left_join(pop_counts_t0,
 #   filter(year >= min(year)+2)
 
 
-lam_mean_yr <- mean(pop_counts$lambda, na.rm = T)
+lam_mean_yr    <- mean(pop_counts$lambda, na.rm = T)
 lam_mean_count <- mean(pop_counts$obs_pgr, na.rm = T)
 
 lam_mean_geom <- exp(mean(log(pop_counts$obs_pgr), na.rm = T))

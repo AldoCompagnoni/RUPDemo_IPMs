@@ -18,7 +18,7 @@ setwd("C:/code/RUPDemo_IPMs")
 
 # Packages ---------------------------------------------------------------------
 # Define CRAN packages
-.cran_packages <- c("tidyverse","patchwork","skimr","lme4","bbmle") 
+.cran_packages <- c("tidyverse","patchwork","skimr","lme4","bbmle","ipmr", "readxl") 
 # Check if CRAN packages are installed
 .inst <- .cran_packages %in% installed.packages() 
 if(any(!.inst)) {
@@ -200,7 +200,7 @@ surv_yr_plots_2 <- function(i){
   surv_temp    <- as.data.frame(surv_bin_yrs[[i]])
   x_temp       <- seq(min(surv_temp$logsize_t0, na.rm = T), 
                       max(surv_temp$logsize_t0, na.rm = T), length.out = 100)
-  pred_temp    <- boot::inv.logit(ranef_su_2[i,1] + ranef_su_2[i,2] * x_temp) 
+  pred_temp    <- boot::inv.logit(ranef_su_2[i,1] + ranef_su_2[i,2] * x_temp + ranef_su_2[i,3] * x_temp^2) 
   pred_temp_df <- data.frame(logsize_t0 = x_temp, survives = pred_temp)
   temp_plot <- surv_temp %>% ggplot() +
     geom_point(aes(x = logsize_t0, y = survives)) +
@@ -235,13 +235,18 @@ ranef_gr_2 <- data.frame(coef(gr_mod_yr_2)[1])
 ranef_gr_3 <- data.frame(coef(gr_mod_yr_3)[1])
 
 grow_yr_plots <- function(i){
-  temp_plot <- grow_df %>% 
+    temp_f <- function( x ) 
+      ranef_gr_3[which(rownames( ranef_gr_3 ) == i ),1] + 
+      ranef_gr_3[which(rownames( ranef_gr_3 ) == i ),2] * x + 
+      ranef_gr_3[which(rownames( ranef_gr_3 ) == i ),3] * x^2 +
+      ranef_gr_3[which(rownames( ranef_gr_3 ) == i ),4] * x^3 
+    temp_plot <- grow_df %>% 
     filter(year == i) %>% 
     ggplot() +
     geom_point( aes(x = logsize_t0, y = logsize_t1)) +
-    geom_abline(aes(intercept = ranef_gr[which(rownames(ranef_gr_3) == i),1],
-                    slope     = ranef_gr[which(rownames(ranef_gr_3) == i),2]),
-                 color = "blue", lwd = 1) +
+      geom_function( fun = temp_f,
+                     color = "blue",
+                     lwd   = 1 ) +
     labs(title = paste0(i),
          x = expression('log(size) '[ t0]),
          y = expression('log(size) '[ t1]))
@@ -426,7 +431,7 @@ grow_sd <- function(x, pars) {
 
 # Growth from size x to size y
 gxy <- function(x, y, pars) {
-  return(dnorm(y, mean = pars$grow_b0 + pars$grow_b1*x + pars$grow_b2*x^2 + pars$grow_b2*x^3,
+  return(dnorm(y, mean = pars$grow_b0 + pars$grow_b1*x + pars$grow_b2*x^2 + pars$grow_b3*x^3,
                   sd   = grow_sd(x, pars)))
 }
 
@@ -533,7 +538,17 @@ prep_pars <- function(i) {
 }
 
 pars_yr <- lapply(1:length(bogr_yr), prep_pars)
-pars_yr <- pars_yr[-c(1,2)]
+
+# Identify which years contain parameters with numeric(0)
+contains_numeric0 <- sapply(pars_yr, function(regular_list) {
+  any(sapply(regular_list, function(sublist) {
+    identical(sublist, numeric(0))
+  }))
+})
+which_contains_numeric0 <- which(contains_numeric0)
+# Exclude these years
+pars_yr <- pars_yr[-which_contains_numeric0]
+
 
 calc_lambda <- function(i) {
   lam <- Re(eigen(kernel(pars_yr[[i]])$k_yx)$value[1])
@@ -588,67 +603,152 @@ pop_counts <- left_join(pop_counts_t0,
   summarise(n_t0 = sum(n_t0),
             n_t1 = sum(n_t1)) %>% 
   ungroup %>% 
-  mutate( obs_pgr = n_t1 / n_t0 ) %>% 
-  mutate( lambda = lambdas_yr %>% unlist ) %>% 
-  filter(year >= min(year)+2)
+  mutate(obs_pgr = n_t1 / n_t0) %>% 
+  mutate(lambda = lambdas_yr %>% unlist) 
+# %>%
+#   # removing the first two years
+#   filter(year >= min(year)+2)
 
 
-lam_mean_yr <- mean( pop_counts$lambda, na.rm = T )
-lam_mean_count <- mean( pop_counts$obs_pgr, na.rm = T )
+lam_mean_yr <- mean(pop_counts$lambda, na.rm = T)
+lam_mean_count <- mean(pop_counts$obs_pgr, na.rm = T)
 
-lam_mean_geom <- exp( mean( log( pop_counts$obs_pgr ), na.rm = T ) )
+lam_mean_geom <- exp(mean(log(pop_counts$obs_pgr), na.rm = T))
 lam_mean_geom
 
-lam_mean_overall <- sum( pop_counts$n_t1 ) / sum( pop_counts$n_t0 )
+lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
 lam_mean_overall
 
 
-# # projecting a population vector for each year using the year-specific models, 
-#  # and compare the projected population to the observed population
-# count_indivs_by_size <- function( size_vector, 
-#                                   lower_size, 
-#                                   upper_size, 
-#                                   matrix_size ){
-#   
-#   size_vector %>% 
-#     cut( breaks = seq( lower_size - 0.00001, 
-#                        upper_size + 0.00001, 
-#                        length.out = matrix_size + 1 ) ) %>% 
-#     table %>% 
-#     as.vector 
-#   
-# }
-# 
-# yr_pop_vec <- function( i ) {
-#   vec_temp <- surv_df %>% filter( year == i ) %>% select( logsize_t0 ) %>% unlist( )
-#   min_sz   <- pars_mean$L
-#   max_sz   <- pars_mean$U
-#   pop_vec <- count_indivs_by_size( vec_temp, min_sz, max_sz, 200 )
-#   
-#   return( pop_vec )
-# }
-# 
-# year_pop <- lapply(years_v[-c(1,2)], yr_pop_vec )
-# 
-# proj_pop <- function( i ) {
-#   sum( all_mat[,,i] %*% year_pop[[i]] )
-# }
-# 
-# projected_pop_ns  <- sapply( 1:(length(years_v)-2), proj_pop )
-# 
-# pop_counts_update <- pop_counts %>% 
-#   mutate( proj_n_t1 = projected_pop_ns ) %>% 
-#   mutate( proj_pgr  = proj_n_t1/n_t0 ) 
-# # png( 'results/Bou_gra_yr/obs_proj_lambdas.png', width = 6, height = 4, units = "in", res = 150 )
-# 
-# ggplot( pop_counts_update ) +
-#   geom_point( aes( x = lambda,
-#                    y = obs_pgr ),
-#               color = 'brown' ) +
-#   geom_point( aes( x = proj_pgr,
-#                    y = obs_pgr ),
-#               color = 'red' ) +
-#   geom_abline( aes(intercept = 0,
-#                    slope     = 1) ) +
-#   labs( x = "Modeled lambda",
-#         y = "Observed population growth rate" )
+# projecting a population vector for each year using the year-specific models,
+ # and compare the projected population to the observed population
+count_indivs_by_size <- function(size_vector,
+                                 lower_size,
+                                 upper_size,
+                                 matrix_size){
+
+  size_vector %>%
+    cut(breaks = seq(lower_size - 0.00001,
+                     upper_size + 0.00001,
+                     length.out = matrix_size + 1)) %>%
+    table %>%
+    as.vector
+
+}
+
+yr_pop_vec <- function(i) {
+  vec_temp <- surv_df %>% filter(year == i) %>% select(logsize_t0) %>% unlist()
+  min_sz   <- pars_mean$L
+  max_sz   <- pars_mean$U
+  pop_vec <- count_indivs_by_size(vec_temp, min_sz, max_sz, 200)
+
+  return( pop_vec )
+}
+
+year_pop <- lapply(years_v[-c(1,2)], yr_pop_vec )
+
+proj_pop <- function( i ) {
+  sum( all_mat[,,i] %*% year_pop[[i]] )
+}
+
+projected_pop_ns  <- sapply( 1:(length(years_v)-2), proj_pop )
+
+pop_counts_update <- 
+  pop_counts %>%
+  mutate(proj_n_t1 = projected_pop_ns) %>%
+  mutate(proj_pgr  = proj_n_t1/n_t0)
+
+ggplot(pop_counts_update) +
+  geom_point( aes(x = lambda,   y = obs_pgr), color = 'brown') +
+  geom_point( aes(x = proj_pgr, y = obs_pgr), color = 'red') +
+  geom_abline(aes(intercept = 0, slope = 1)) +
+  labs(x = "Modeled lambda",
+       y = "Observed population growth rate")
+
+
+# Building the year-specific IPMs with ipmr ------------------------------------
+# all of our varying and constant parameters into a single list
+all_pars <- c(pars_cons_wide, pars_var_wide)
+write.csv(all_pars, "adler_2007_ks/data/bocu/all_pars.csv", row.names = F)
+
+# proto-IPM with '_yr' suffix
+proto_ipm_yr <- init_ipm( sim_gen   = "simple",
+                          di_dd     = "di",
+                          det_stoch = "det" ) %>% 
+  
+  define_kernel(
+    name             = "P_yr",
+    family           = "CC",
+    formula          = s_yr * g_yr,
+    s_yr             = plogis( surv_b0_yr + surv_b1_yr * size_1 + 
+                                 surv_b2_yr * size_1^2 ), 
+    g_yr             = dnorm( size_2, mu_g_yr, grow_sig ),
+    mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
+                        grow_b2_yr * size_1^2  + grow_b3_yr * size_1^3,
+    grow_sig         = sqrt( a * exp( b * size_1 ) ),
+    data_list        = all_pars,
+    states           = list( c( 'size' ) ),
+    
+    # these next two lines are new
+    # the first tells ipmr that we are using parameter sets
+    uses_par_sets    = TRUE,
+    # the second defines the values the yr suffix can assume
+    par_set_indices  = list( yr = years_v[-c(1,2)] ),
+    evict_cor        = TRUE,
+    evict_fun        = truncated_distributions( fun    = 'norm',
+                                                target = 'g_yr' )
+  ) %>% 
+  
+  define_kernel(
+    name             = 'F_yr',
+    family           = 'CC',
+    formula          = fecu_b0_yr * r_d,
+    r_d              = dnorm( size_2, recr_sz, recr_sd ),
+    data_list        = all_pars,
+    states           = list( c( 'size' ) ),
+    uses_par_sets    = TRUE,
+    par_set_indices  = list( yr = years_v[-c(1,2)] ),
+    evict_cor        = TRUE,
+    evict_fun        = truncated_distributions( "norm", "r_d" )
+  ) %>% 
+  
+  define_impl(
+    make_impl_args_list(
+      kernel_names = c( "P_yr", "F_yr" ),
+      int_rule     = rep( "midpoint", 2 ),
+      state_start  = rep( "size", 2 ),
+      state_end    = rep( "size", 2 )
+    )
+  ) %>% 
+  
+  define_domains(
+    size = c(all_pars$L,
+             all_pars$U,
+             all_pars$mat_siz
+    )
+  ) %>% 
+  
+  # We also append the suffix in define_pop_state(). This will create a deterministic
+  # simulation for every "year"
+  define_pop_state(
+    n_size_yr = rep( 1 / 200, 200 )
+  )
+
+
+# Make a dataframe
+ipmr_yr <- make_ipm( proto_ipm = proto_ipm_yr,
+                     iterations = 200 )
+lam_mean_ipmr <- lambda( ipmr_yr )
+
+lam_out <- data.frame( coefficient = names( lam_mean_ipmr ), 
+                       value = lam_mean_ipmr )
+
+rownames( lam_out ) <- 1:(length(years_v)-2)
+
+lam_out_wide <- as.list(pivot_wider(lam_out, names_from = "coefficient", 
+                                    values_from = "value"))
+
+write.csv("adler_2007_ks/data/bocu/lambdas_yr.csv", lam_out_wide, 
+          row.names = F)
+
+

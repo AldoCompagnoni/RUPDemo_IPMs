@@ -12,8 +12,6 @@ rm(list = ls())
 # Set seed for reproducibility
 set.seed(100)
 options(stringsAsFactors = F)
-# Set working directory
-setwd("C:/code/RUPDemo_IPMs")
 
 
 # Packages ---------------------------------------------------------------------
@@ -36,7 +34,7 @@ options( stringsAsFactors = F )
 grow_df <- read.csv("adler_2007_ks/data/bocu/growth_df.csv")
 surv_df <- read.csv("adler_2007_ks/data/bocu/survival_df.csv")
 recr_df <- read.csv("adler_2007_ks/data/bocu/recruitment_df.csv")
-df <- read.csv(     "adler_2007_ks/data/bocu/data_df.csv")
+df      <- read.csv("adler_2007_ks/data/bocu/data_df.csv")
 
 df_long <- 
   pivot_longer(df, cols = c(logsize_t0, logsize_t1 ), 

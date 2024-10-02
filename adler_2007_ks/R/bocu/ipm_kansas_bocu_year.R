@@ -18,7 +18,7 @@ setwd("C:/code/RUPDemo_IPMs")
 
 # Packages ---------------------------------------------------------------------
 # Define CRAN packages
-.cran_packages <- c("tidyverse","patchwork","skimr","lme4","bbmle","ipmr") 
+.cran_packages <- c("tidyverse","patchwork","skimr","lme4","bbmle","ipmr", "readxl") 
 # Check if CRAN packages are installed
 .inst <- .cran_packages %in% installed.packages() 
 if(any(!.inst)) {
@@ -734,6 +734,21 @@ proto_ipm_yr <- init_ipm( sim_gen   = "simple",
     n_size_yr = rep( 1 / 200, 200 )
   )
 
+
+# Make a dataframe
 ipmr_yr <- make_ipm( proto_ipm = proto_ipm_yr,
                      iterations = 200 )
 lam_mean_ipmr <- lambda( ipmr_yr )
+
+lam_out <- data.frame( coefficient = names( lam_mean_ipmr ), 
+                       value = lam_mean_ipmr )
+
+rownames( lam_out ) <- 1:(length(years_v)-2)
+
+lam_out_wide <- as.list(pivot_wider(lam_out, names_from = "coefficient", 
+                                    values_from = "value"))
+
+write.csv("adler_2007_ks/data/bocu/lambdas_yr.csv", lam_out_wide, 
+          row.names = F)
+
+

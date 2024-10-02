@@ -31,8 +31,8 @@ sapply(.cran_packages, require, character.only = TRUE)
 
 
 # Data -------------------------------------------------------------------------
-## Bouteloua curtipendula (bocu) data frame
-df <- read_csv("adler_2007_ks/data/ks_grasses.csv") %>%  
+## Bouteloua  curtipendula (bocu) data frame
+df <- read.csv("adler_2007_ks/data/ks_grasses.csv") %>%  
   filter(Species == "Bouteloua curtipendula") %>%
   select(-c(geometry, Suspect, nearEdge, Species, Site)) %>% 
   mutate(across(c(Quad), as.factor)) %>% 
@@ -140,7 +140,8 @@ hist_t1 <-
 
 hist_sizes_log <- hist_t0 + hist_t1
 
-ggsave('adler_2007_ks/results/bocu/overall_hist_sizes_log.png', plot = hist_sizes_log, 
+ggsave('adler_2007_ks/results/bocu/overall_hist_sizes_log.png', 
+       plot = hist_sizes_log, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 ## Survival
@@ -163,32 +164,57 @@ binned_prop <- function(lwr_x, upr_x, response){
 # source( 'C:/Users/tn75utid/Desktop/R_templates/plot_binned_prop.R' )
 # plot_binned_prop(df, 10, logsize, survives)
 
+# function removes NAs, and provides standard errors, 
+source('plot_binned_prop.R')
 
-y_binned <- Map(binned_prop, lwr, upr, 'prob') %>% unlist
-x_binned <- mid
-y_n_size <- Map(binned_prop, lwr, upr, 'n_size') %>% unlist
+# y_binned <- Map(binned_prop, lwr, upr, 'prob') %>% unlist
+# x_binned <- mid
+# y_n_size <- Map(binned_prop, lwr, upr, 'n_size') %>% unlist
+# 
+# surv_binned <- data.frame(xx  = x_binned, 
+#                           yy  = y_binned,
+#                           nn  = y_n_size) %>% 
+#   setNames(c('logsize_t0', 'survives', 'n_size'))
+# 
+# 
+# surv_overall <- 
+#   ggplot(data  = surv_binned, aes(x = logsize_t0, y = survives)) +
+#   geom_point(alpha = 1,
+#              pch   = 16,
+#              size  = 1,
+#              color = 'red' ) +
+#   scale_y_continuous( breaks = c( 0.1, 0.5, 0.9 ) ) +
+#   ylim( 0, 1 ) +
+#   theme_bw( ) +
+#   theme( axis.text = element_text( size = 8 ),
+#          title     = element_text( size = 10 ) ) +
+#   labs( x = expression( 'log(size)'[t0] ),
+#         y = expression( 'Survival to time t1' ) )
 
-surv_binned <- data.frame(xx  = x_binned, 
-                          yy  = y_binned,
-                          nn  = y_n_size) %>% 
-  setNames(c('logsize_t0', 'survives', 'n_size'))
-
-
-surv_overall <- 
-  ggplot(data  = surv_binned, aes(x = logsize_t0, y = survives)) +
-  geom_point(alpha = 1,
+surv_overall <- ggplot(data  = plot_binned_prop(df, 10, 
+                                                logsize_t0, survives) 
+                       ) +
+  geom_point(aes(x = x_binned, 
+                 y = y_binned ),
+             alpha = 1,
              pch   = 16,
-             size  = 1,
              color = 'red' ) +
+  geom_errorbar( aes(x = x_binned, 
+                     ymin = lwr,
+                     ymax = upr),
+                 size = 0.5,
+                 width = 0.5) +
   scale_y_continuous( breaks = c( 0.1, 0.5, 0.9 ) ) +
-  
+  ylim( 0, 1 ) +
   theme_bw( ) +
   theme( axis.text = element_text( size = 8 ),
          title     = element_text( size = 10 ) ) +
   labs( x = expression( 'log(size)'[t0] ),
         y = expression( 'Survival to time t1' ) )
 
-ggsave('adler_2007_ks/results/bocu/overall_surv.png', plot = surv_overall, 
+
+ggsave('adler_2007_ks/results/bocu/overall_surv.png', 
+       plot = surv_overall, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 ## Growth
@@ -221,7 +247,8 @@ ggsave('adler_2007_ks/results/bocu/overall_rec.png', plot = rec_overall,
 
 
 # Fitting vital rate models for the mean IPM -----------------------------------
-## Growth
+
+# Growth
 gr_mod_mean <- lm(logsize_t1 ~ logsize_t0, data = grow_df)
 
 grow_df$pred <- predict( gr_mod_mean, type = "response" )
@@ -240,7 +267,8 @@ grow_pred <-
               color = "red", lwd = 2)
 
 grow_overall_pred <- grow_line + grow_pred + plot_layout()
-ggsave('adler_2007_ks/results/bocu/overall_grow_pred.png', plot = grow_overall_pred, 
+ggsave('adler_2007_ks/results/bocu/overall_grow_pred.png', 
+       plot = grow_overall_pred, 
        width = 8, height = 3, units = "in", dpi = 150)
 
 x         <- fitted(gr_mod_mean)
@@ -248,8 +276,7 @@ y         <- resid(gr_mod_mean)^2
 gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))
 
 
-## Survival
-
+# Survival
 su_mod_mean   <- glm(survives ~ logsize_t0, 
                      data = surv_df, family = "binomial" )
 su_mod_mean_2 <- glm(survives ~ logsize_t0 + logsize_t0_2, 
@@ -272,13 +299,19 @@ surv_line <-
 
 surv_bin <- 
   ggplot() +
-  geom_point(data = surv_binned, aes(x = logsize_t0, y = survives)) +
+  geom_point(data =  plot_binned_prop(df, 10, logsize_t0, survives), 
+             aes(x = x_binned, y = y_binned) ) +
+  geom_errorbar(data =  plot_binned_prop(df, 10, logsize_t0, survives), 
+             aes(x = x_binned, 
+                 ymin = lwr,
+                 ymax = upr) ) +
   geom_line(data = surv_pred_df, aes(x = logsize_t0, y = survives),
             color = 'red', lwd   = 2)
 
 surv_overall_pred <- surv_line + surv_bin + plot_layout()
 
-ggsave('adler_2007_ks/results/bocu/overall_surv_pred.png', plot = surv_overall_pred, 
+ggsave('adler_2007_ks/results/bocu/overall_surv_pred.png', 
+       plot = surv_overall_pred, 
        width = 8, height = 3, units = "in", dpi = 150) 
 
 ## Recruitment

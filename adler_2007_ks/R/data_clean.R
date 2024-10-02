@@ -13,8 +13,6 @@ rm(list = ls())
 set.seed(100) 
 rm( list = ls() )
 options( stringsAsFactors = F )
-# Set working directory
-setwd("C:/code/RUPDemo_IPMs")
 
 # Packages ---------------------------------------------------------------------
 
@@ -34,7 +32,7 @@ sapply(.cran_packages, require, character.only = TRUE)
 ## 
 
 df <- read_csv("adler_2007_ks/data/KS_grasses_all.csv") %>% 
-  filter(Site == 'KS')
+        filter(Site == 'KS')
 
 write.csv(df, "adler_2007_ks/data/ks_grasses.csv", row.names = F)
 

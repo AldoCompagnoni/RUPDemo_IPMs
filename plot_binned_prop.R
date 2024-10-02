@@ -63,12 +63,12 @@ plot_binned_prop <- function(df, n_bins, siz_var, rsp_var){
   y_se_lwr <- Map(binned_prop, lwr, upr, 'se', '2.5 %') %>% unlist
   y_se_upr <- Map(binned_prop, lwr, upr, 'se', '97.5 %') %>% unlist
   
-  data.frame(x_binned, y_binned,
+  data.frame(x_binned, 
+             y_binned,
              n_s  = y_n_size,
              lwr  = y_se_lwr,
-             upr  = y_se_upr,
-             xlab = size_var,
-             ylab = resp_var ) %>% 
-    mutate( n_prob = y_n_size/sum(y_n_size) )
+             upr  = y_se_upr ) %>% 
+    mutate( n_prob = y_n_size/sum(y_n_size) ) %>% 
+    setNames( c(size_var, resp_var, 'n_s', 'lwr', 'upr', 'n_prob') )
   
 }

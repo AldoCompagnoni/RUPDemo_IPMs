@@ -13,8 +13,6 @@ rm(list = ls())
 # Set seed for reproducibility
 set.seed(100)
 options(stringsAsFactors = F)
-# Set working directory
-setwd("C:/code/RUPDemo_IPMs")
 
 # Packages ---------------------------------------------------------------------
 
@@ -59,7 +57,8 @@ inv_plot_per_year <- df %>%
   # pivot_wider(names_from = year, values_from = nr_ind) %>% 
 # ploting year against quadrat
   ggplot() + 
-  geom_point(aes(x = year, y = quad))
+  geom_point(aes(x = year, y = quad)) +
+  theme_bw()
 inv_plot_per_year
 
 ggsave("adler_2007_ks/results/bocu/overall_inventory_quadrat_per_year.png",  
@@ -194,12 +193,12 @@ source('plot_binned_prop.R')
 surv_overall <- ggplot(data  = plot_binned_prop(df, 10, 
                                                 logsize_t0, survives) 
                        ) +
-  geom_point(aes(x = x_binned, 
-                 y = y_binned ),
+  geom_point(aes(x = logsize_t0, 
+                 y = survives ),
              alpha = 1,
              pch   = 16,
              color = 'red' ) +
-  geom_errorbar( aes(x = x_binned, 
+  geom_errorbar( aes(x = logsize_t0, 
                      ymin = lwr,
                      ymax = upr),
                  size = 0.5,
@@ -215,7 +214,7 @@ surv_overall <- ggplot(data  = plot_binned_prop(df, 10,
 
 ggsave('adler_2007_ks/results/bocu/overall_surv.png', 
        plot = surv_overall, 
-       width = 8, height = 3, units = "in", dpi = 150)
+       width = 4, height = 3, units = "in", dpi = 150)
 
 ## Growth
 gr_overall <-
@@ -230,8 +229,9 @@ gr_overall <-
   labs( x = expression( 'log( size )'[t0] ),
         y = expression( 'log( size )'[t1] ) )
 
-ggsave('adler_2007_ks/results/bocu/overall_gr.png', plot = gr_overall, 
-       width = 8, height = 3, units = "in", dpi = 150)
+ggsave('adler_2007_ks/results/bocu/overall_gr.png', 
+       plot = gr_overall, 
+       width = 4, height = 3, units = "in", dpi = 150)
 
 ## Recruitment
 rec_overall <- 
@@ -241,8 +241,9 @@ rec_overall <-
   labs(x = expression('Total parent plant area'[t0]),
        y = expression('Number of recruits'[t1]))
 
-ggsave('adler_2007_ks/results/bocu/overall_rec.png', plot = rec_overall, 
-       width = 8, height = 3, units = "in", dpi = 150)
+ggsave('adler_2007_ks/results/bocu/overall_rec.png', 
+       plot = rec_overall, 
+       width = 4, height = 3, units = "in", dpi = 150)
 
 
 
@@ -258,18 +259,20 @@ grow_line <-
   geom_point() +
   geom_abline(aes(intercept = coef(gr_mod_mean)[1],
                   slope     = coef(gr_mod_mean)[2]),
-               color= 'red', lwd = 2)
+               color= 'red', lwd = 2) +
+  theme_bw()
 
 grow_pred <- 
   ggplot(grow_df, aes(x = pred, y = logsize_t1)) +
   geom_point() +
   geom_abline(aes(intercept = 0, slope = 1), 
-              color = "red", lwd = 2)
+              color = "red", lwd = 2) + 
+  theme_bw()
 
-grow_overall_pred <- grow_line + grow_pred + plot_layout()
+grow_overall_pred <- grow_line + grow_pred + plot_layout() 
 ggsave('adler_2007_ks/results/bocu/overall_grow_pred.png', 
        plot = grow_overall_pred, 
-       width = 8, height = 3, units = "in", dpi = 150)
+       width = 8, height = 4, units = "in", dpi = 150)
 
 x         <- fitted(gr_mod_mean)
 y         <- resid(gr_mod_mean)^2
@@ -295,18 +298,21 @@ surv_line <-
   geom_jitter(data = surv_df, aes(x = logsize_t0, y = survives),
               alpha = 0.25, width = 0, height = 0.25) +
   geom_line(data = surv_pred_df, aes(x = logsize_t0, y = survives),
-            color = 'red', lwd   = 2 )
+            color = 'red', lwd   = 2 ) +
+  theme_bw()
 
 surv_bin <- 
   ggplot() +
   geom_point(data =  plot_binned_prop(df, 10, logsize_t0, survives), 
-             aes(x = x_binned, y = y_binned) ) +
+             aes(x = logsize_t0, 
+                 y = survives) ) +
   geom_errorbar(data =  plot_binned_prop(df, 10, logsize_t0, survives), 
-             aes(x = x_binned, 
+             aes(x = logsize_t0, 
                  ymin = lwr,
                  ymax = upr) ) +
   geom_line(data = surv_pred_df, aes(x = logsize_t0, y = survives),
-            color = 'red', lwd   = 2)
+            color = 'red', lwd   = 2) +
+  theme_bw()
 
 surv_overall_pred <- surv_line + surv_bin + plot_layout()
 

@@ -29,10 +29,11 @@ sapply(.cran_packages, require, character.only = TRUE)
 
 
 # Data -------------------------------------------------------------------------
+
 # Define the species variable
 species <- "Bouteloua gracilis"
-sp_abb <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
-                                      collapse = "")))
+sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
+                                       collapse = "")))
 ## Species data frame
 df <- read.csv("adler_2007_ks/data/ks_grasses.csv") %>%  
   filter(Species == species) %>%
@@ -52,6 +53,7 @@ skim(df)
 
 
 # Data exploration -------------------------------------------------------------
+
 ## Quadrat inventory
 # grouping by quard, year and counting the individuals
 inv_plot_per_year <- df %>% 
@@ -126,6 +128,7 @@ write.csv(grow_df, paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
 write.csv(recr_df, paste0("adler_2007_ks/data/", sp_abb, "/recruitment_df.csv"))
 
 # Plotting the data --------------------------------------------------------
+
 ## sizes at log scale 
 hist_t0 <- 
   ggplot(df, aes(x = logsize_t0)) +
@@ -218,7 +221,7 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_rec.png"),
 # Fitting vital rate models for the mean IPM -----------------------------------
 
 # Growth
-gr_mod_mean <- lm(logsize_t1 ~ logsize_t0, data = grow_df)
+gr_mod_mean  <- lm(logsize_t1 ~ logsize_t0, data = grow_df)
 grow_df$pred <- predict( gr_mod_mean, type = "response" )
 
 grow_line <- 
@@ -237,6 +240,7 @@ grow_pred <-
   theme_bw()
 
 grow_overall_pred <- grow_line + grow_pred + plot_layout() 
+
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_grow_pred.png"), 
        plot = grow_overall_pred, 
        width = 8, height = 4, units = "in", dpi = 150)
@@ -262,22 +266,27 @@ surv_pred_df <- data.frame(logsize_t0 = surv_x, survives = surv_pred)
 
 surv_line <- 
   ggplot() +
-  geom_jitter(data = surv_df, aes(x = logsize_t0, y = survives),
+  geom_jitter(data = surv_df, aes(x = logsize_t0, 
+                                  y = survives),
               alpha = 0.25, width = 0, height = 0.25) +
-  geom_line(data = surv_pred_df, aes(x = logsize_t0, y = survives),
+  geom_line(data = surv_pred_df, aes(x = logsize_t0, 
+                                     y = survives),
             color = 'red', lwd   = 2 ) +
   theme_bw()
 
 surv_bin <- 
   ggplot() +
-  geom_point(data =  plot_binned_prop(df, 10, logsize_t0, survives), 
+  geom_point(data =  plot_binned_prop(df, 10, 
+                                      logsize_t0, survives), 
              aes(x = logsize_t0, 
                  y = survives) ) +
-  geom_errorbar(data =  plot_binned_prop(df, 10, logsize_t0, survives), 
+  geom_errorbar(data =  plot_binned_prop(df, 10, 
+                                         logsize_t0, survives), 
                 aes(x = logsize_t0, 
                     ymin = lwr,
                     ymax = upr) ) +
-  geom_line(data = surv_pred_df, aes(x = logsize_t0, y = survives),
+  geom_line(data = surv_pred_df, aes(x = logsize_t0, 
+                                     y = survives),
             color = 'red', lwd   = 2) +
   theme_bw()
 

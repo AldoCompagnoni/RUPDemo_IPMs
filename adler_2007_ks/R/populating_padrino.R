@@ -16,7 +16,7 @@ options(stringsAsFactors = F)
 
 # Packages ---------------------------------------------------------------------
 # Define CRAN packages
-.cran_packages <- c("tidyverse","ipmr","readxl", "writexl") 
+.cran_packages <- c("tidyverse","ipmr","readxl", "writexl", "remotes") 
 # Check if CRAN packages are installed
 .inst <- .cran_packages %in% installed.packages() 
 if(any(!.inst)) {
@@ -26,8 +26,19 @@ if(any(!.inst)) {
 # Load required packages
 sapply(.cran_packages, require, character.only = TRUE) 
 
+
+if(!requireNamespace("remotes")) {
+  install.packages("remotes")
+}
+
+# remotes::install_github("padrinoDB/pdbDigitUtils",force = TRUE)
+# library( pdbDigitUtils )
+
+
 rm( list = ls() )
 options( stringsAsFactors = F )
+
+
 
 
 # Data -------------------------------------------------------------------------
@@ -207,13 +218,24 @@ pdb$ParSetIndices[1,] <- c( "nnnnn1",
                             "" )
 
 # Test targets
-pdb$TestTargets[1:13,1] <- "nnnnn1"
-pdb$TestTargets[1:13,2] <- names(lam_mean_ipmr)
-pdb$TestTargets[1:13,3] <- as.numeric(lam_mean_ipmr)
-pdb$TestTargets[1:13,4] <- 3
+pdb$TestTargets[1:nrow(lam_mean_ipmr),1] <- "nnnnn1"
+pdb$TestTargets[1:nrow(lam_mean_ipmr),2] <- 1:nrow(lam_mean_ipmr)
+pdb$TestTargets[1:nrow(lam_mean_ipmr),3] <- as.numeric(lam_mean_ipmr$value)
+pdb$TestTargets[1:nrow(lam_mean_ipmr),4] <- 3
 
 pdb$TestTargets$target_value <- as.numeric( pdb$TestTargets$target_value )
 pdb$TestTargets$precision <- as.numeric( pdb$TestTargets$precision )
 
 
 write_xlsx( pdb, "adler_2007_ks/data/bocu/bou_cur_yr_pdb.xlsx" )
+
+
+pdb_test       <- read_pdb("adler_2007_ks/data/bocu/bou_cur_yr_pdb.xlsx")
+pdb_test_proto <- pdb_make_proto_ipm( pdb_test, det_stoch = "det")
+print( pdb_test_proto$nnnnn1)
+# bg_ipm_pdb <- make_ipm(pdb_test_proto$nnnnn1)
+ # Objekt 'surv_b0_1932' nicht gefunden
+  # I think there might be a problem with the years here!
+# bg_ipm_pdb
+# lambda(bg_ipm_pdb)
+# test_model(pdb_test, id = "nnnnn1")

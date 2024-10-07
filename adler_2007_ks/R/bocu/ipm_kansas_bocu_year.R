@@ -817,16 +817,18 @@ proto_ipm_yr <- init_ipm( sim_gen   = "simple",
 # Make a dataframe
 ipmr_yr <- make_ipm( proto_ipm = proto_ipm_yr,
                      iterations = 200 )
-lam_mean_ipmr <- lambda( ipmr_yr )
 
+lam_mean_ipmr <- lambda( ipmr_yr )
 lam_out <- data.frame( coefficient = names( lam_mean_ipmr ), 
                        value = lam_mean_ipmr )
-
 rownames( lam_out ) <- 1:(length(years_v)-2)
+write.csv(lam_out, "adler_2007_ks/data/bocu/lambdas_yr_vec.csv", 
+          row.names = F)
+
+
 
 lam_out_wide <- as.list(pivot_wider(lam_out, names_from = "coefficient", 
                                     values_from = "value"))
-
 write.csv(lam_out_wide, "adler_2007_ks/data/bocu/lambdas_yr.csv", 
           row.names = F)
 

@@ -33,7 +33,7 @@ options( stringsAsFactors = F )
 # Data -------------------------------------------------------------------------
 # Define the species variable
 species <- "Bouteloua gracilis"
-sp_abb <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
+sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
                                       collapse = "")))
 grow_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
 surv_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/survival_df.csv"))
@@ -73,42 +73,42 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_hist_logsizes_years.png"
 # UNQUOTED name of size variable, 
 # UNQUOTED name of response variable
 
-df_binned_prop_year <- function( ii, df_in, n_bins, siz_var, rsp_var, years ){
+df_binned_prop_year <- function(ii, df_in, n_bins, siz_var, rsp_var, years){
   
   # make sub-selection of data
-  df   <- subset( df_in, year == years$year[ii] )
+  df   <- subset(df_in, year == years$year[ii])
   
-  if( nrow( df ) == 0 ) return( NULL )
+  if(nrow(df) == 0) return(NULL)
   
-  size_var <- deparse( substitute( siz_var ) )
-  resp_var <- deparse( substitute( rsp_var ) )
+  size_var <- deparse(substitute(siz_var))
+  resp_var <- deparse(substitute(rsp_var))
   
   # binned survival probabilities
-  h    <- ( max(df[,size_var], na.rm = T ) - min( df[,size_var], na.rm = T ) ) / n_bins
-  lwr  <- min( df[,size_var], na.rm = T ) + ( h * c( 0:( n_bins - 1 ) ) )
+  h    <- (max(df[,size_var], na.rm = T) - min(df[,size_var], na.rm = T)) / n_bins
+  lwr  <-  min(df[,size_var], na.rm = T) + (h * c(0:(n_bins - 1)))
   upr  <- lwr + h
-  mid  <- lwr + ( 1/2 * h )
+  mid  <- lwr + (1/2 * h)
   
-  binned_prop <- function( lwr_x, upr_x, response ){
+  binned_prop <- function(lwr_x, upr_x, response){
     
-    id  <- which( df[,size_var] > lwr_x & df[,size_var] < upr_x ) 
+    id  <- which(df[,size_var] > lwr_x & df[,size_var] < upr_x) 
     tmp <- df[id,]
     
-    if( response == 'prob' ){   return( sum(  tmp[,resp_var], na.rm = T ) / nrow( tmp ) ) }
-    if( response == 'n_size' ){ return( nrow( tmp ) ) }
+    if(response == 'prob'){   return(sum (tmp[,resp_var], na.rm = T)/nrow(tmp))}
+    if(response == 'n_size'){ return(nrow(tmp))}
     
   }
   
-  y_binned <- Map( binned_prop, lwr, upr, 'prob' ) %>% unlist
+  y_binned <- Map(binned_prop, lwr, upr, 'prob') %>% unlist
   x_binned <- mid
-  y_n_size <- Map( binned_prop, lwr, upr, 'n_size' ) %>% unlist
+  y_n_size <- Map(binned_prop, lwr, upr, 'n_size') %>% unlist
   
   # output data frame
-  data.frame( xx  = x_binned, 
-              yy  = y_binned,
-              nn  = y_n_size ) %>% 
-    setNames( c( size_var, resp_var, 'n_size' ) ) %>% 
-    mutate( year      = years$year[ii] ) %>% 
+  data.frame(xx  = x_binned, 
+             yy  = y_binned,
+             nn  = y_n_size) %>% 
+    setNames(c( size_var, resp_var, 'n_size')) %>% 
+    mutate(year  = years$year[ii]) %>% 
     drop_na()
   
 }
@@ -289,7 +289,7 @@ surv_years <- wrap_plots(surv_yrs) + plot_layout(ncol = 4)
 
 ggsave(paste0("adler_2007_ks/results/", sp_abb, 
               "/years_surv_logsize", su_mod_yr_bestfit_index, ".png"), 
-       plot = surv_years,
+       plot  = surv_years,
        width = 4, height = 9, dpi = 150)
 
 
@@ -427,7 +427,7 @@ write.csv(surv_out_yr,
 
 
 ## Growth
-var_fe  <- data.frame(coefficient = names( coef(gr_var)), value = coef(gr_var))
+var_fe  <- data.frame(coefficient = names(coef(gr_var)), value = coef(gr_var))
 year_re <- data.frame(coefficient = paste0("year_",rownames(coef(gr_mod_yr_bestfit)$year)), 
                       value       = coef(gr_mod_yr_bestfit)$year[,"(Intercept)"])
 
@@ -470,7 +470,7 @@ constants <- data.frame(coefficient = c("recr_sz",
                                         "U",
                                         "mat_siz"),
                         value = c(mean(rec_size$logsize_t0),
-                                  sd(rec_size$logsize_t0),
+                                  sd(  rec_size$logsize_t0),
                                   as.numeric(coef(gr_var)[1]),
                                   as.numeric(coef(gr_var)[2]),
                                   grow_df$logsize_t0 %>% min,
@@ -520,14 +520,14 @@ grow_b2 <- data.frame(coefficient = paste0("grow_b2_", rownames(coef(gr_mod_yr_b
                       value       = coef(gr_mod_yr_bestfit)$year[,"logsize_t0_2"])
 
 fecu_b0 <- data.frame(coefficient = paste0("fecu_b0_", repr_pc_yr$year),
-                      value =       repr_pc_yr$repr_percapita)
+                      value       = repr_pc_yr$repr_percapita)
 
 pars_var <- Reduce(function(...) rbind(...), 
                    list(su_b0, su_b1, su_b2, grow_b0, 
                         grow_b1, grow_b2, fecu_b0))
 
 pars_var_wide <- as.list(pivot_wider(pars_var, 
-                                     names_from = "coefficient", 
+                                     names_from  = "coefficient", 
                                      values_from = "value") )
 
 write.csv(pars_var_wide, 
@@ -573,15 +573,15 @@ fy <- function(y, pars, h){
 # Kernel
 kernel <- function(pars) {
   
-  n   <- pars$mat_siz
-  L   <- pars$L
-  U   <- pars$U
-  h   <- (U - L) / n
-  b   <- L + c(0:n) * h
-  y   <- 0.5 * (b[1:n] + b[2:( n + 1 )])
+  n      <- pars$mat_siz
+  L      <- pars$L
+  U      <- pars$U
+  h      <- (U - L) / n
+  b      <- L + c(0:n) * h
+  y      <- 0.5 * (b[1:n] + b[2:( n + 1 )])
   
-  Fmat        <- matrix(0, n, n)
-  Fmat[]      <- matrix(fy(y, pars, h), n, n)
+  Fmat   <- matrix(0, n, n)
+  Fmat[] <- matrix(fy(y, pars, h), n, n)
   
   Smat   <- c()
   Smat   <- sx(y, pars)
@@ -607,7 +607,7 @@ kernel <- function(pars) {
               Fmat    = Fmat,
               Tmat    = Tmat,
               Gmat    = Gmat,
-              meshpts = y ) )
+              meshpts = y))
   
 }
 
@@ -754,16 +754,16 @@ yr_pop_vec <- function(i) {
   max_sz   <- pars_mean$U
   pop_vec <- count_indivs_by_size(vec_temp, min_sz, max_sz, 200)
   
-  return( pop_vec )
+  return(pop_vec)
 }
 
-year_pop <- lapply(years_v, yr_pop_vec )
+year_pop <- lapply(years_v, yr_pop_vec)
 
-proj_pop <- function( i ) {
-  sum( all_mat[,,i] %*% year_pop[[i]] )
+proj_pop <- function(i) {
+  sum(all_mat[,,i] %*% year_pop[[i]])
 }
 
-projected_pop_ns  <- sapply( 1:(length(years_v)), proj_pop )
+projected_pop_ns  <- sapply(1:(length(years_v)), proj_pop)
 
 pop_counts_update <- 
   pop_counts %>%
@@ -786,52 +786,52 @@ write.csv(all_pars,
                  row.names = F)
 
 # proto-IPM with '_yr' suffix
-proto_ipm_yr <- init_ipm( sim_gen   = "simple",
-                          di_dd     = "di",
-                          det_stoch = "det" ) %>% 
+proto_ipm_yr <- init_ipm(sim_gen   = "simple",
+                         di_dd     = "di",
+                         det_stoch = "det") %>% 
   
   define_kernel(
     name             = "P_yr",
     family           = "CC",
     formula          = s_yr * g_yr,
-    s_yr             = plogis( surv_b0_yr + surv_b1_yr * size_1 + 
-                                 surv_b2_yr * size_1^2 ), 
-    g_yr             = dnorm( size_2, mu_g_yr, grow_sig ),
+    s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1 + 
+                               surv_b2_yr * size_1^2), 
+    g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
       grow_b2_yr * size_1^2 ,
-    grow_sig         = sqrt( a * exp( b * size_1 ) ),
+    grow_sig         = sqrt(a * exp(b * size_1)),
     data_list        = all_pars,
-    states           = list( c( 'size' ) ),
+    states           = list(c('size')),
     
     # these next two lines are new
     # the first tells ipmr that we are using parameter sets
     uses_par_sets    = TRUE,
     # the second defines the values the yr suffix can assume
-    par_set_indices  = list( yr = years_v ),
+    par_set_indices  = list(yr = years_v),
     evict_cor        = TRUE,
-    evict_fun        = truncated_distributions( fun    = 'norm',
-                                                target = 'g_yr' )
+    evict_fun        = truncated_distributions(fun    = 'norm',
+                                               target = 'g_yr')
   ) %>% 
   
   define_kernel(
     name             = 'F_yr',
     family           = 'CC',
     formula          = fecu_b0_yr * r_d,
-    r_d              = dnorm( size_2, recr_sz, recr_sd ),
+    r_d              = dnorm(size_2, recr_sz, recr_sd),
     data_list        = all_pars,
-    states           = list( c( 'size' ) ),
+    states           = list(c('size')),
     uses_par_sets    = TRUE,
-    par_set_indices  = list( yr = years_v),
+    par_set_indices  = list(yr = years_v),
     evict_cor        = TRUE,
-    evict_fun        = truncated_distributions( "norm", "r_d" )
+    evict_fun        = truncated_distributions("norm", "r_d")
   ) %>% 
   
   define_impl(
     make_impl_args_list(
-      kernel_names = c( "P_yr", "F_yr" ),
-      int_rule     = rep( "midpoint", 2 ),
-      state_start  = rep( "size", 2 ),
-      state_end    = rep( "size", 2 )
+      kernel_names = c(  "P_yr", "F_yr"),
+      int_rule     = rep("midpoint", 2),
+      state_start  = rep("size", 2),
+      state_end    = rep("size", 2)
     )
   ) %>% 
   
@@ -845,26 +845,23 @@ proto_ipm_yr <- init_ipm( sim_gen   = "simple",
   # We also append the suffix in define_pop_state(). This will create a deterministic
   # simulation for every "year"
   define_pop_state(
-    n_size_yr = rep( 1 / 200, 200 )
+    n_size_yr = rep(1 / 200, 200)
   )
 
 
 # Make a dataframe
-ipmr_yr <- make_ipm( proto_ipm = proto_ipm_yr,
-                     iterations = 200 )
-
-lam_mean_ipmr <- lambda( ipmr_yr )
-lam_out <- data.frame( coefficient = names( lam_mean_ipmr ), 
-                       value = lam_mean_ipmr )
-rownames( lam_out ) <- 1:(length(years_v))
+ipmr_yr       <- make_ipm(proto_ipm  = proto_ipm_yr,
+                          iterations = 200)
+lam_mean_ipmr <- lambda(ipmr_yr)
+lam_out       <- data.frame(coefficient = names(lam_mean_ipmr), 
+                            value       = lam_mean_ipmr)
+rownames( lam_out) <- 1:(length(years_v))
 write.csv(lam_out, 
           paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr_vec.csv"), 
           row.names = F)
 
-
-
-lam_out_wide <- as.list(pivot_wider(lam_out, names_from = "coefficient", 
-                                    values_from = "value"))
+lam_out_wide  <- as.list(pivot_wider(lam_out, names_from = "coefficient", 
+                                     values_from         = "value"))
 write.csv(lam_out_wide, 
-          paste0("adler_2007_ks/data/", sp_abb, "lambdas_yr.csv"), 
+          paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr.csv"), 
           row.names = F)

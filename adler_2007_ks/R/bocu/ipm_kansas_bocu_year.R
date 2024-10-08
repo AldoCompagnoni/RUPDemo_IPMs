@@ -492,6 +492,11 @@ pars_var <- Reduce(function(...) rbind(...),
                    list(su_b0, su_b1, su_b2, grow_b0, 
                         grow_b1, grow_b2, grow_b3, fecu_b0))
 
+# exclude the year of 32
+ # but maybe it would be better to exclude it from the models already
+pars_var <- pars_var %>%
+  filter(!grepl("_32", coefficient))
+
 pars_var_wide <- as.list(pivot_wider(pars_var, 
                                      names_from = "coefficient", 
                                      values_from = "value") )

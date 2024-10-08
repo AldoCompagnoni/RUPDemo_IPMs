@@ -204,7 +204,7 @@ pdb$ParameterValues[nrow(pdb$ParameterValues)+3,] <-
      "size",
      "recr_sz",
      all_pars$recr_sz)
-pdb$ParameterValues[nrow(pdb$ParameterValues)+3,] <- 
+pdb$ParameterValues[nrow(pdb$ParameterValues)+4,] <- 
   c(ipm_id,
      "Fecundity",
      "size",

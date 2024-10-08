@@ -145,72 +145,72 @@ pdb$VitalRateExpr[3,] <- c( "nnnnn1",
                             "Substituted",
                             "P_yr" )
 
-pdb$VitalRateExpr[4,] <- c( "nnnnn1",
-                            "Growth",
-                            "sd_g = sqrt( a * exp( b * size_1 ) )",
-                            "Evaluated",
-                            "P_yr" )
+pdb$VitalRateExpr[4,] <- c("nnnnn1",
+                           "Growth",
+                           "sd_g = sqrt( a * exp( b * size_1 ) )",
+                           "Evaluated",
+                           "P_yr")
 
-pdb$VitalRateExpr[5,] <- c( "nnnnn1",
-                            "Fecundity",
-                            "fy_yr = fecu_b0_yr * r_d",
-                            "Evaluated",
-                            "F_yr" )
+pdb$VitalRateExpr[5,] <- c("nnnnn1",
+                           "Fecundity",
+                           "fy_yr = fecu_b0_yr * r_d",
+                           "Evaluated",
+                           "F_yr")
 
-pdb$VitalRateExpr[6,] <- c( "nnnnn1",
-                            "Fecundity",
-                            "r_d = Norm( recr_sz, recr_sd )",
-                            "Substituted",
-                            "F_yr" )
+pdb$VitalRateExpr[6,] <- c("nnnnn1",
+                           "Fecundity",
+                           "r_d = Norm( recr_sz, recr_sd )",
+                           "Substituted",
+                           "F_yr")
 
 
 # Parameter Values
-for( i in 1:( length( pars_var_wide ) ) ) {
+for(i in 1:(length(pars_var_wide))) {
   pdb$ParameterValues[i,1] <- "nnnnn1"
   pdb$ParameterValues[i,3] <- "size"
-  pdb$ParameterValues[i,4] <- names( pars_var_wide )[i]
-  pdb$ParameterValues[i,5] <- as.numeric( pars_var_wide[i] )
+  pdb$ParameterValues[i,4] <- names(     pars_var_wide)[i]
+  pdb$ParameterValues[i,5] <- as.numeric(pars_var_wide [i])
   
-  if( grepl( "surv", names( pars_var_wide )[i] ) ){
+  if(grepl("surv", names(pars_var_wide)[i])){
     pdb$ParameterValues[i,2] <- "Survival"
   } else {
-    if( grepl( "grow", names( pars_var_wide )[i] ) ){
+    if(grepl("grow", names( pars_var_wide)[i])){
       pdb$ParameterValues[i,2] <- "Growth"
     } else { pdb$ParameterValues[i,2] <- "Fecundity" }
   }
 }
 
-pdb$ParameterValues[79,] <- c( "nnnnn1",
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c("nnnnn1",
                                "Growth",
                                "size",
                                "a",
-                               all_pars$a )
-pdb$ParameterValues[80,] <- c( "nnnnn1",
+                               all_pars$a)
+pdb$ParameterValues[nrow(pdb$ParameterValues)+2,] <- c("nnnnn1",
                                "Growth",
                                "size",
                                "b",
-                               all_pars$b )                               
-pdb$ParameterValues[81,] <- c( "nnnnn1",
+                               all_pars$b)                               
+pdb$ParameterValues[nrow(pdb$ParameterValues)+3,] <- c("nnnnn1",
                                "Fecundity",
                                "size",
                                "recr_sz",
-                               all_pars$recr_sz )
-pdb$ParameterValues[82,] <- c( "nnnnn1",
+                               all_pars$recr_sz)
+pdb$ParameterValues[nrow(pdb$ParameterValues)+4,] <- c("nnnnn1",
                                "Fecundity",
                                "size",
                                "recr_sd",
-                               all_pars$recr_sd )
+                               all_pars$recr_sd)
 
 pdb$ParameterValues$parameter_value <- as.numeric( pdb$ParameterValues$parameter_value )
 
 
 # Environmental variables
-pdb$ParSetIndices[1,] <- c( "nnnnn1",
-                            "year",
-                            "yr",
-                            "1932:1971",
-                            "P_yr; F_yr",
-                            "" )
+pdb$ParSetIndices[1,] <- c("nnnnn1",
+                           "year",
+                           "yr",
+                           "34:71",
+                           "P_yr; F_yr",
+                           "")
 
 # Test targets
 pdb$TestTargets[1:nrow(lam_mean_ipmr),1] <- "nnnnn1"
@@ -218,19 +218,18 @@ pdb$TestTargets[1:nrow(lam_mean_ipmr),2] <- 1:nrow(lam_mean_ipmr)
 pdb$TestTargets[1:nrow(lam_mean_ipmr),3] <- as.numeric(lam_mean_ipmr$value)
 pdb$TestTargets[1:nrow(lam_mean_ipmr),4] <- 3
 
-pdb$TestTargets$target_value <- as.numeric( pdb$TestTargets$target_value )
-pdb$TestTargets$precision <- as.numeric( pdb$TestTargets$precision )
+pdb$TestTargets$target_value <- as.numeric(pdb$TestTargets$target_value)
+pdb$TestTargets$precision    <- as.numeric(pdb$TestTargets$precision)
 
-
-write_xlsx( pdb, "adler_2007_ks/data/bocu/bou_cur_yr_pdb.xlsx" )
-
+write_xlsx(pdb, "adler_2007_ks/data/bocu/bou_cur_yr_pdb.xlsx")
 
 pdb_test       <- read_pdb("adler_2007_ks/data/bocu/bou_cur_yr_pdb.xlsx")
+pdb_test$ParameterValues
 pdb_test_proto <- pdb_make_proto_ipm( pdb_test, det_stoch = "det")
-print( pdb_test_proto$nnnnn1)
-# bg_ipm_pdb <- make_ipm(pdb_test_proto$nnnnn1)
+print(pdb_test_proto$nnnnn1)
+bg_ipm_pdb <- make_ipm(pdb_test_proto$nnnnn1)
  # Objekt 'surv_b0_1932' nicht gefunden
   # I think there might be a problem with the years here!
-# bg_ipm_pdb
-# lambda(bg_ipm_pdb)
-# test_model(pdb_test, id = "nnnnn1")
+bg_ipm_pdb
+lambda(bg_ipm_pdb)
+test_model(pdb_test, id = "nnnnn1")

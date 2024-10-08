@@ -26,13 +26,8 @@ if(any(!.inst)) {
 # Load required packages
 sapply(.cran_packages, require, character.only = TRUE) 
 
-
-if(!requireNamespace("remotes")) {
-  install.packages("remotes")
-}
-
 # remotes::install_github("padrinoDB/pdbDigitUtils",force = TRUE)
-# library( pdbDigitUtils )
+library(pdbDigitUtils)
 
 
 rm( list = ls() )

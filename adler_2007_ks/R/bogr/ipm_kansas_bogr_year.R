@@ -16,7 +16,13 @@ options(stringsAsFactors = F)
 
 # Packages ---------------------------------------------------------------------
 # Define CRAN packages
-.cran_packages <- c("tidyverse","patchwork","skimr","lme4","bbmle","ipmr", "readxl") 
+.cran_packages <- c("tidyverse",
+                    "patchwork",
+                    "skimr",
+                    "lme4",
+                    "bbmle",
+                    "ipmr", 
+                    "readxl") 
 # Check if CRAN packages are installed
 .inst <- .cran_packages %in% installed.packages() 
 if(any(!.inst)) {
@@ -31,6 +37,7 @@ options( stringsAsFactors = F )
 
 
 # Data -------------------------------------------------------------------------
+
 # Define the species variable
 species <- "Bouteloua gracilis"
 sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
@@ -202,7 +209,9 @@ recruits <-
   labs(x = expression('Number of adults '[ t0]),
        y = expression('Number of recruits '[ t1]))
 
-ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_recruits.png"), 
+ggsave(paste0("adler_2007_ks/results/", 
+              sp_abb, 
+              "/years_recruits.png"), 
        plot = recruits,
        width = 4, height = 9, dpi = 150)
 
@@ -275,12 +284,37 @@ surv_yr_plots <- function(i) {
     ggplot() +
     geom_point(aes(x = logsize_t0, y = survives), size = 0.5) +
     geom_line(data = pred_temp_df, aes(x = logsize_t0, y = survives), color = 'green', lwd = 1) +
-    labs(title = paste0(years_v[i]),
+    labs(title = paste0('19',years_v[i]),
          x = expression('log(size)'[t0]),
          y = expression('Survival probability '[t1])) +
     theme_bw() +
-    theme(text = element_text(size = 5))
-  
+    theme(text         = element_text(size = 5),
+          axis.title.y = element_text(  margin = margin(t = 0, 
+                                                        r = 0, 
+                                                        b = 0, 
+                                                        l = 0) ),
+          axis.title.x = element_text(  margin = margin(t = 0, 
+                                                        r = 0, 
+                                                        b = 0, 
+                                                        l = 0) ),
+          axis.text.x = element_text(  margin  = margin(t = 1, 
+                                                        r = 0, 
+                                                        b = 0, 
+                                                        l = 0) ),
+          axis.text.y = element_text(  margin  = margin(t = 0, 
+                                                        r = 1, 
+                                                        b = 0, 
+                                                        l = 0) ),
+          plot.title  = element_text( margin = margin(t = 2, 
+                                                      r = 0, 
+                                                      b = 1, 
+                                                      l = 0),
+                                      hjust  = 0.5 ),
+          plot.margin = margin(t = 0,  
+                               r = 0,  
+                               b = 0,  
+                               l = 5) )  
+    
   return(temp_plot)
 }
 
@@ -308,6 +342,7 @@ gr_mod_yr_bestfit <- g_mods[[gr_mod_yr_bestfit_index]]
 ranef_gr <- data.frame(coef(gr_mod_yr_bestfit)[1])
 
 grow_yr_plots <- function(i){
+  
   temp_f <- function(x) {
     linear_predictor <- ranef_gr[which(rownames(ranef_gr) == i), 1]
      if (ncol(ranef_gr) >= 2) {
@@ -329,22 +364,75 @@ grow_yr_plots <- function(i){
     filter(year == i) %>% 
     ggplot() +
     geom_point( aes(x = logsize_t0, y = logsize_t1),
-                size = 0.5) +
+                size = 0.5,
+                alpha = 0.5 ) +
     geom_function( fun = temp_f,
                    color = "blue",
                    lwd   = 1 ) +
-    labs(title = paste0(i),
+    geom_abline( intercept = 0,
+                 slope     = 1,
+                 color     = 'red',
+                 lty       = 2 ) +
+    # geom_point( aes(x = logsize_t0, y = logsize_t1),
+    #             size = 0.5) +
+    labs(title = paste0('19',i),
          x = expression('log(size) '[ t0]),
          y = expression('log(size) '[ t1])) +
     theme_bw() +
-    theme( text = element_text( size = 5) )
+    theme( text         = element_text( size = 5),
+           axis.title.y = element_text(  margin = margin(t = 0, 
+                                                         r = 0, 
+                                                         b = 0, 
+                                                         l = 0) ),
+           axis.title.x = element_text(  margin = margin(t = 0, 
+                                                         r = 0, 
+                                                         b = 0, 
+                                                         l = 0) ),
+           axis.text.x = element_text(  margin  = margin(t = 1, 
+                                                         r = 0, 
+                                                         b = 0, 
+                                                         l = 0) ),
+           axis.text.y = element_text(  margin  = margin(t = 0, 
+                                                         r = 1, 
+                                                         b = 0, 
+                                                         l = 0) ),
+           plot.title  = element_text( margin = margin(t = 2, 
+                                                       r = 0, 
+                                                       b = 1, 
+                                                       l = 0),
+                                       hjust  = 0.5 ),
+           plot.margin = margin(t = 0,  
+                                r = 2,  
+                                b = 0,  
+                                l = 0) )
   
-  if(i %in% c(c(setdiff(1:length(unique(grow_df$year)), 
-                        seq(1,length(unique(grow_df$year)), 
-                            by = 4)))) ){
-    temp_plot <- temp_plot + 
-      theme(axis.title.y = element_blank())
-  }
+  # if(i %in% c(c(setdiff(1:length(unique(grow_df$year)), 
+  #                       seq(1,length(unique(grow_df$year)), 
+  #                           by = 4)))) ){
+  #   temp_plot <- temp_plot + 
+  #     theme(axis.title.y = element_blank(),
+  #           axis.title.x = element_text(  margin = margin(t = 0, 
+  #                                                         r = 0, 
+  #                                                         b = 0, 
+  #                                                         l = 0) ),
+  #           axis.text.x = element_text(  margin  = margin(t = 1, 
+  #                                                         r = 0, 
+  #                                                         b = 0, 
+  #                                                         l = 0) ),
+  #           axis.text.y = element_text(  margin  = margin(t = 0, 
+  #                                                         r = 1, 
+  #                                                         b = 0, 
+  #                                                         l = 0) ),
+  #           plot.title  = element_text( margin = margin(t = 2, 
+  #                                                       r = 0, 
+  #                                                       b = 1, 
+  #                                                       l = 0),
+  #                                       hjust  = 0.5 ),
+  #           plot.margin = margin(t = 0,  
+  #                                r = 0,  
+  #                                b = 0,  
+  #                                l = 0) )
+  # }
   return(temp_plot)
 }
 

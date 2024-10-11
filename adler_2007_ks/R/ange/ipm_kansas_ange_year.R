@@ -102,7 +102,6 @@ survival <-
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_survival.png"), 
        plot = survival,
        width = 4, height = 9, dpi = 150)
-# the year 33 does not have representative data!
 
 ## Growth
 grow_yr_pan_df <- 
@@ -132,7 +131,6 @@ growth <-
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_growth.png"), 
        plot = growth,
        width = 4, height = 9, dpi = 150)
-# the year 33 does not have representative data!
 
 ## Recruits
 indiv_qd <- surv_df %>%
@@ -168,7 +166,6 @@ recruits <-
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_recruits.png"), 
        plot = recruits,
        width = 4, height = 9, dpi = 150)
-# the year 33 does not have representative data!
 
 ## Recruitment size
 rec_size          <- df %>% subset(recruit == 1)
@@ -185,7 +182,6 @@ recruitment_size <-
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_recruitment_size.png"), 
        plot = recruitment_size,
        width = 4, height = 9, dpi = 150)
-# the year 33 does not have representative data!
 
 
 # Removing year with too few data ----------------------------------------------

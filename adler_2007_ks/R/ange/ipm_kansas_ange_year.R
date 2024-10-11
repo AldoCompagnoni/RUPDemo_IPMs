@@ -564,7 +564,8 @@ grow_sd <- function(x, pars) {
 
 # Growth from size x to size y
 gxy <- function(x, y, pars) {
-  return(dnorm(y, mean = pars$grow_b0 + pars$grow_b1*x + pars$grow_b2*x^2,
+  return(dnorm(y, mean = pars$grow_b0 + pars$grow_b1*x + 
+                 pars$grow_b2*x^2 + pars$grow_b3*x^3,
                sd   = grow_sd(x, pars)))
 }
 
@@ -573,7 +574,8 @@ inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 
 # Survival of x-sized individual to time t1
 sx <- function(x, pars) {
-  return(inv_logit(pars$surv_b0 + pars$surv_b1*x + pars$surv_b2*x^2 + pars$surv_b3*x^3))
+  return(inv_logit(pars$surv_b0 + pars$surv_b1*x + 
+                     pars$surv_b2*x^2 + pars$surv_b3*x^3))
 }
 
 # Transition of x-sized individual to y-sized individual at time t1
@@ -658,6 +660,7 @@ prep_pars <- function(i) {
                     grow_b0 = extr_value_list(pars_var_wide, paste("grow_b0", yr_now, sep = "_" )),
                     grow_b1 = extr_value_list(pars_var_wide, paste("grow_b1", yr_now, sep = "_" )),
                     grow_b2 = extr_value_list(pars_var_wide, paste("grow_b2", yr_now, sep = "_" )),
+                    grow_b3 = extr_value_list(pars_var_wide, paste("grow_b3", yr_now, sep = "_" )),
                     a       = extr_value_list(pars_cons_wide, "a"),
                     b       = extr_value_list(pars_cons_wide, "b"),
                     fecu_b0 = extr_value_list(pars_var_wide, paste("fecu_b0", yr_now, sep = "_" )),
@@ -679,7 +682,8 @@ contains_numeric0 <- sapply(pars_yr, function(regular_list) {
 })
 which_contains_numeric0 <- which(contains_numeric0)
 # Exclude these years
-# pars_yr <- pars_yr[-which_contains_numeric0]
+pars_yr <- pars_yr[-which_contains_numeric0]
+years_v <- years_v[-which_contains_numeric0]
 
 
 calc_lambda <- function(i) {
@@ -687,7 +691,7 @@ calc_lambda <- function(i) {
   return(lam)
 }
 
-lambdas_yr <- lapply(1:(length(years_v)), calc_lambda)
+lambdas_yr <- lapply(1:(length(pars_yr)), calc_lambda)
 names(lambdas_yr) <- years_v
 
 
@@ -826,7 +830,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
                                 surv_b3_yr * size_1^3), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
-      grow_b2_yr * size_1^2 ,
+      grow_b2_yr * size_1^2 + grow_b3_yr * size_1^3,
     grow_sig         = sqrt(a * exp(b * size_1)),
     data_list        = all_pars,
     states           = list(c('size')),

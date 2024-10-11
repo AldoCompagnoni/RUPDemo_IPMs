@@ -61,7 +61,7 @@ pdb$Metadata[1,] <- c( # 1 ID
   "Plantae", "Herbaceous", "Monocot", "angio", 
   
   # Publication information
-  "Chu; Tyburczy; Laurenroth",
+  "Adler; Tyburczy; Laurenroth",
   "Ecology", "2007", "10.1890/0012-9658(2007)88[2673%3ALMQFKP]2.0.CO%3B2", "Adler", 
   "peter.adler@usu.edu (2024)", NA, 
   "Adler, P. B., Tyburczy, W. R., & Lauenroth, W. K. (2007). LONG‐TERM MAPPED QUADRATS FROM KANSAS PRAIRIE DEMOGRAPHIC INFORMATION FOR HERBACEOUS PLANTS: Ecological Archives E088‐161. Ecology, 88(10), 2673-2673.",

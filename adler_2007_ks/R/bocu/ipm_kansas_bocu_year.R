@@ -236,6 +236,7 @@ AICtab(s_mods, weights = T)
 ranef_su    <- data.frame(coef(su_mod_yr )[1])
 ranef_su_2  <- data.frame(coef(su_mod_yr_2)[1])
 ranef_su_3  <- data.frame(coef(su_mod_yr_3)[1])
+ranef_su    <- ranef_su_2
 
 years_v  <- c(surv_bin_yrs[[1]][1,'year']:surv_bin_yrs[[length(surv_bin_yrs)]][1,'year'])
 
@@ -244,31 +245,48 @@ for (ii in 1:length(surv_bin_yrs)) {
   v[ii] <- surv_bin_yrs[[ii]][1,'year']
 }
 
-surv_yr_plots_2 <- function(i){
+surv_yr_plots <- function(i) {
   surv_temp    <- as.data.frame(surv_bin_yrs[[i]])
-  x_temp       <- seq(min(surv_temp$logsize_t0, na.rm = T), 
-                      max(surv_temp$logsize_t0, na.rm = T), length.out = 100)
-  pred_temp    <- boot::inv.logit(ranef_su_2[i,1] + ranef_su_2[i,2] * x_temp + ranef_su_2[i,3] * x_temp^2) 
+  x_temp       <- seq(min(surv_temp$logsize_t0, na.rm = TRUE), 
+                      max(surv_temp$logsize_t0, na.rm = TRUE), length.out = 100)
+  linear_predictor <- ranef_su[i, 1] 
+  if (ncol(ranef_su) >= 2) {
+    linear_predictor <- linear_predictor + ranef_su[i, 2] * x_temp}
+  if (ncol(ranef_su) >= 3) {
+    linear_predictor <- linear_predictor + ranef_su[i, 3] * x_temp^2}
+  if (ncol(ranef_su) >= 4) {
+    linear_predictor <- linear_predictor + ranef_su[i, 4] * x_temp^3}
+  pred_temp <- boot::inv.logit(linear_predictor)
+  if (ncol(ranef_su) == 2) {line_color <- 'red'
+  } else if (ncol(ranef_su) == 3) {line_color <- 'green'
+  } else if (ncol(ranef_su) == 4) {line_color <- 'blue'
+  } else {line_color <- 'black'  # Default color if there are more than 4 columns
+  }  
   pred_temp_df <- data.frame(logsize_t0 = x_temp, survives = pred_temp)
   temp_plot <- surv_temp %>% 
     ggplot() +
-    geom_point(aes(x = logsize_t0, y = survives),
-               size = 0.5 ) +
-    geom_line(data = pred_temp_df, aes(x = logsize_t0, y= survives),
-               color = 'green', lwd = 1) +
-    labs(title = paste0(years_v[i]),
+    geom_point(aes(x = logsize_t0, y = survives), size = 0.5) +
+    geom_line(data = pred_temp_df, aes(x = logsize_t0, y = survives), color = 'green', lwd = 1) +
+    labs(title = paste0('19',years_v[i]),
          x = expression('log(size)'[t0]),
-         y = expression('Survival probability '[ t1])) +
+         y = expression('Survival probability '[t1])) +
     theme_bw() +
-    theme( text = element_text( size = 5) )
-    
+    theme(text         = element_text(size = 5),
+          axis.title.y = element_text(
+            margin = margin(t = 0, r = 0, b = 0, l = 0)),
+          axis.title.x = element_text(  
+            margin = margin(t = 0, r = 0, b = 0, l = 0)),
+          axis.text.x  = element_text(
+            margin  = margin(t = 1, r = 0, b = 0, l = 0)),
+          axis.text.y  = element_text(
+            margin  = margin(t = 0, r = 1, b = 0, l = 0)),
+          plot.title   = element_text(
+            margin  = margin(t = 2, r = 0, b = 1, l = 0), hjust  = 0.5),
+          plot.margin  = margin(t = 0, r = 0, b = 0, l = 5))  
   
-  if(i %in% c(setdiff(1:length(years_v), seq(1,length(years_v), by = 4)))){
-    temp_plot <- temp_plot + theme(axis.title.y = element_blank())
-  }
   return(temp_plot)
 }
-surv_yrs_2   <- lapply(1:length(surv_bin_yrs), surv_yr_plots_2)
+surv_yrs_2   <- lapply(1:length(surv_bin_yrs), surv_yr_plots)
 surv_years_2 <- wrap_plots(surv_yrs_2) + plot_layout(ncol = 4)
 
 ggsave("adler_2007_ks/results/bocu/years_surv_logsize2.png", 
@@ -288,33 +306,49 @@ AICtab( g_mods, weights = T )
 ranef_gr   <- data.frame(coef(gr_mod_yr  )[1])
 ranef_gr_2 <- data.frame(coef(gr_mod_yr_2)[1])
 ranef_gr_3 <- data.frame(coef(gr_mod_yr_3)[1])
+ranef_gr   <- ranef_gr_3
 
 grow_yr_plots <- function(i){
-    temp_f <- function( x ) 
-      ranef_gr_3[which(rownames( ranef_gr_3 ) == i ),1] + 
-      ranef_gr_3[which(rownames( ranef_gr_3 ) == i ),2] * x + 
-      ranef_gr_3[which(rownames( ranef_gr_3 ) == i ),3] * x^2 +
-      ranef_gr_3[which(rownames( ranef_gr_3 ) == i ),4] * x^3 
-    temp_plot <- grow_df %>% 
+  
+  temp_f <- function(x) {
+    linear_predictor <- ranef_gr[which(rownames(ranef_gr) == i), 1]
+    if (ncol(ranef_gr) >= 2) {
+      linear_predictor <- linear_predictor + 
+        ranef_gr[which(rownames(ranef_gr) == i), 2] * x}
+    if (ncol(ranef_gr) >= 3) {
+      linear_predictor <- linear_predictor + 
+        ranef_gr[which(rownames(ranef_gr) == i), 3] * x^2}
+    if (ncol(ranef_gr) >= 4) {
+      linear_predictor <- linear_predictor + 
+        ranef_gr[which(rownames(ranef_gr) == i), 4] * x^3}
+    return(linear_predictor)
+  }
+  if (ncol(ranef_gr) == 2) {line_color <- 'red' } 
+  else if (ncol(ranef_gr) == 3) {line_color <- 'green'} 
+  else if (ncol(ranef_gr) == 4) {line_color <- 'blue'} 
+  else {line_color <- 'black'}
+  temp_plot <- grow_df %>% 
     filter(year == i) %>% 
     ggplot() +
-    geom_point( aes(x = logsize_t0, y = logsize_t1),
-                size = 0.5) +
-      geom_function( fun = temp_f,
-                     color = "blue",
-                     lwd   = 1 ) +
-    labs(title = paste0(i),
+    geom_point(aes(x = logsize_t0, y = logsize_t1), size = 0.5, alpha = 0.5) +
+    geom_function(fun = temp_f, color = "blue", lwd = 1) +
+    geom_abline(intercept = 0, slope = 1, color = 'red', lty = 2) +
+    labs(title = paste0('19',i),
          x = expression('log(size) '[ t0]),
          y = expression('log(size) '[ t1])) +
-      theme_bw() +
-      theme( text = element_text( size = 5) )
-    
-  if(i %in% c(c(setdiff(1:length(unique(grow_df$year)), 
-                        seq(1,length(unique(grow_df$year)), 
-                            by = 4)))) ){
-    temp_plot <- temp_plot + 
-      theme(axis.title.y = element_blank())
-  }
+    theme_bw() +
+    theme(text         = element_text(size = 5),
+          axis.title.y = element_text(
+            margin = margin(t = 0, r = 0, b = 0, l = 0)),
+          axis.title.x = element_text(
+            margin = margin(t = 0, r = 0, b = 0, l = 0)),
+          axis.text.x  = element_text( 
+            margin = margin(t = 1, r = 0, b = 0, l = 0)),
+          axis.text.y  = element_text( 
+            margin = margin(t = 0, r = 1, b = 0, l = 0)),
+          plot.title   = element_text( 
+            margin = margin(t = 2, r = 0, b = 1, l = 0), hjust  = 0.5 ), 
+          plot.margin  = margin(t = 0, r = 2, b = 0, l = 0))
   return(temp_plot)
 }
 

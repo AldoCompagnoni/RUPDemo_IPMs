@@ -270,14 +270,10 @@ surv_yr_plots <- function(i) {
     if (ncol(ranef_su) >= 4) {
       linear_predictor <- linear_predictor + ranef_su[i, 4] * x_temp^3}
   pred_temp <- boot::inv.logit(linear_predictor)
-  if (ncol(ranef_su) == 2) {
-    line_color <- 'red'
-  } else if (ncol(ranef_su) == 3) {
-    line_color <- 'green'
-  } else if (ncol(ranef_su) == 4) {
-    line_color <- 'blue'
-  } else {
-    line_color <- 'black'  # Default color if there are more than 4 columns
+  if (ncol(ranef_su) == 2) {line_color <- 'red'
+  } else if (ncol(ranef_su) == 3) {line_color <- 'green'
+  } else if (ncol(ranef_su) == 4) {line_color <- 'blue'
+  } else {line_color <- 'black'  # Default color if there are more than 4 columns
   }  
   pred_temp_df <- data.frame(logsize_t0 = x_temp, survives = pred_temp)
   temp_plot <- surv_temp %>% 
@@ -289,31 +285,17 @@ surv_yr_plots <- function(i) {
          y = expression('Survival probability '[t1])) +
     theme_bw() +
     theme(text         = element_text(size = 5),
-          axis.title.y = element_text(  margin = margin(t = 0, 
-                                                        r = 0, 
-                                                        b = 0, 
-                                                        l = 0) ),
-          axis.title.x = element_text(  margin = margin(t = 0, 
-                                                        r = 0, 
-                                                        b = 0, 
-                                                        l = 0) ),
-          axis.text.x = element_text(  margin  = margin(t = 1, 
-                                                        r = 0, 
-                                                        b = 0, 
-                                                        l = 0) ),
-          axis.text.y = element_text(  margin  = margin(t = 0, 
-                                                        r = 1, 
-                                                        b = 0, 
-                                                        l = 0) ),
-          plot.title  = element_text( margin = margin(t = 2, 
-                                                      r = 0, 
-                                                      b = 1, 
-                                                      l = 0),
-                                      hjust  = 0.5 ),
-          plot.margin = margin(t = 0,  
-                               r = 0,  
-                               b = 0,  
-                               l = 5) )  
+          axis.title.y = element_text(
+            margin = margin(t = 0, r = 0, b = 0, l = 0)),
+          axis.title.x = element_text(  
+            margin = margin(t = 0, r = 0, b = 0, l = 0)),
+          axis.text.x  = element_text(
+            margin  = margin(t = 1, r = 0, b = 0, l = 0)),
+          axis.text.y  = element_text(
+            margin  = margin(t = 0, r = 1, b = 0, l = 0)),
+          plot.title   = element_text(
+            margin  = margin(t = 2, r = 0, b = 1, l = 0), hjust  = 0.5),
+          plot.margin  = margin(t = 0, r = 0, b = 0, l = 5))  
     
   return(temp_plot)
 }
@@ -363,76 +345,25 @@ grow_yr_plots <- function(i){
   temp_plot <- grow_df %>% 
     filter(year == i) %>% 
     ggplot() +
-    geom_point( aes(x = logsize_t0, y = logsize_t1),
-                size = 0.5,
-                alpha = 0.5 ) +
-    geom_function( fun = temp_f,
-                   color = "blue",
-                   lwd   = 1 ) +
-    geom_abline( intercept = 0,
-                 slope     = 1,
-                 color     = 'red',
-                 lty       = 2 ) +
-    # geom_point( aes(x = logsize_t0, y = logsize_t1),
-    #             size = 0.5) +
+    geom_point(aes(x = logsize_t0, y = logsize_t1), size = 0.5, alpha = 0.5) +
+    geom_function(fun = temp_f, color = "blue", lwd = 1) +
+    geom_abline(intercept = 0, slope = 1, color = 'red', lty = 2) +
     labs(title = paste0('19',i),
          x = expression('log(size) '[ t0]),
          y = expression('log(size) '[ t1])) +
     theme_bw() +
-    theme( text         = element_text( size = 5),
-           axis.title.y = element_text(  margin = margin(t = 0, 
-                                                         r = 0, 
-                                                         b = 0, 
-                                                         l = 0) ),
-           axis.title.x = element_text(  margin = margin(t = 0, 
-                                                         r = 0, 
-                                                         b = 0, 
-                                                         l = 0) ),
-           axis.text.x = element_text(  margin  = margin(t = 1, 
-                                                         r = 0, 
-                                                         b = 0, 
-                                                         l = 0) ),
-           axis.text.y = element_text(  margin  = margin(t = 0, 
-                                                         r = 1, 
-                                                         b = 0, 
-                                                         l = 0) ),
-           plot.title  = element_text( margin = margin(t = 2, 
-                                                       r = 0, 
-                                                       b = 1, 
-                                                       l = 0),
-                                       hjust  = 0.5 ),
-           plot.margin = margin(t = 0,  
-                                r = 2,  
-                                b = 0,  
-                                l = 0) )
-  
-  # if(i %in% c(c(setdiff(1:length(unique(grow_df$year)), 
-  #                       seq(1,length(unique(grow_df$year)), 
-  #                           by = 4)))) ){
-  #   temp_plot <- temp_plot + 
-  #     theme(axis.title.y = element_blank(),
-  #           axis.title.x = element_text(  margin = margin(t = 0, 
-  #                                                         r = 0, 
-  #                                                         b = 0, 
-  #                                                         l = 0) ),
-  #           axis.text.x = element_text(  margin  = margin(t = 1, 
-  #                                                         r = 0, 
-  #                                                         b = 0, 
-  #                                                         l = 0) ),
-  #           axis.text.y = element_text(  margin  = margin(t = 0, 
-  #                                                         r = 1, 
-  #                                                         b = 0, 
-  #                                                         l = 0) ),
-  #           plot.title  = element_text( margin = margin(t = 2, 
-  #                                                       r = 0, 
-  #                                                       b = 1, 
-  #                                                       l = 0),
-  #                                       hjust  = 0.5 ),
-  #           plot.margin = margin(t = 0,  
-  #                                r = 0,  
-  #                                b = 0,  
-  #                                l = 0) )
-  # }
+    theme(text         = element_text(size = 5),
+          axis.title.y = element_text(
+            margin = margin(t = 0, r = 0, b = 0, l = 0)),
+          axis.title.x = element_text(
+            margin = margin(t = 0, r = 0, b = 0, l = 0)),
+          axis.text.x  = element_text( 
+            margin = margin(t = 1, r = 0, b = 0, l = 0)),
+          axis.text.y  = element_text( 
+            margin = margin(t = 0, r = 1, b = 0, l = 0)),
+          plot.title   = element_text( 
+            margin = margin(t = 2, r = 0, b = 1, l = 0), hjust  = 0.5 ), 
+          plot.margin  = margin(t = 0, r = 2, b = 0, l = 0))
   return(temp_plot)
 }
 

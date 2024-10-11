@@ -67,14 +67,14 @@ pdb$Metadata[1,] <- c(
   "Plantae", "Herbaceous", "Monocot", "angio", 
   
   # Publication information
-  "Chu; Tyburczy; Laurenroth",
+  "Adler; Tyburczy; Laurenroth",
   "Ecology", "2007", "10.1890/0012-9658(2007)88[2673%3ALMQFKP]2.0.CO%3B2", "Adler", 
   "peter.adler@usu.edu (2024)", NA, 
   "Adler, P. B., Tyburczy, W. R., & Lauenroth, W. K. (2007). LONG‐TERM MAPPED QUADRATS FROM KANSAS PRAIRIE DEMOGRAPHIC INFORMATION FOR HERBACEOUS PLANTS: Ecological Archives E088‐161. Ecology, 88(10), 2673-2673.",
   "https://figshare.com/collections/LONG-TERM_MAPPED_QUADRATS_FROM_KANSAS_PRAIRIE_DEMOGRAPHIC_INFORMATION_FOR_HERBACEOUS_PLANTS/3299993",
   
   # Data collection information
-  40, 1934, 6, 1971, 6, 1, NA, NA, 
+  40, 1932, 6, 1971, 6, 1, NA, NA, 
   "38.8", "-99.3", "462", "USA",
   "n_america", "TGS",
   
@@ -239,8 +239,6 @@ pdb_test       <- read_pdb(paste0("adler_2007_ks/data/", sp_abb, "/bou_gra_yr_pd
 pdb_test_proto <- pdb_make_proto_ipm(pdb_test, det_stoch = "det")
 print(pdb_test_proto$nnnnn2)
 bg_ipm_pdb     <- make_ipm(pdb_test_proto$nnnnn2)
- # Objekt 'surv_b0_1934' nicht gefunden
-
 
 bg_ipm_pdb
 lambda(bg_ipm_pdb)

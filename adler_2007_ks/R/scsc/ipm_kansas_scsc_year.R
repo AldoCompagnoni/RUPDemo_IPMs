@@ -1,4 +1,4 @@
-# IPM for kansas bocu year specific
+# IPM for kansas Schizachyrium scoparium year specific
 
 # Niklas Neisse
 # 2024.10.11

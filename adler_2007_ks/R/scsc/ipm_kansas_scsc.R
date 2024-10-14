@@ -1,4 +1,4 @@
-# IPM for alder 2007 & chu 2016; kansas; Buchloe dactyloides
+# IPM for alder 2007 & chu 2016; kansas; Schizachyrium scoparium
 
 # Niklas Neisse
 # 2024.10.07

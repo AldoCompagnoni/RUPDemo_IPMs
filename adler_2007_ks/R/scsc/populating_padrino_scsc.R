@@ -241,3 +241,7 @@ bg_ipm_pdb     <- make_ipm(pdb_test_proto[[ipm_id]])
 bg_ipm_pdb
 lambda(bg_ipm_pdb)
 test_model(pdb_test, id = ipm_id)
+
+plot(lambda(bg_ipm_pdb) ~ c(33:71))
+
+     

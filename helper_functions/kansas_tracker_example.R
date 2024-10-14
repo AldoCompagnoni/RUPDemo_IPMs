@@ -97,7 +97,7 @@ rds_full <- lapply( rds_l, function(x) readRDS(
 
 # Save the output file so that it doesn't need to be recreated ever again
 # saveRDS(rds_full,file="KS_polygons_full.rds")
-# dat <- readRDS(file="KS_polygons_full.rds")
+dat <- readRDS(file="KS_polygons_full.rds")
 
 # Subset to the species of interest
 dat_3grasses <- dat[dat$SCI_NAME %in% grasses$species,] %>% 

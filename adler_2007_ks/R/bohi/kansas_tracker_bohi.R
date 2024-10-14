@@ -23,6 +23,10 @@ sp_list %>% dplyr::arrange( desc(count) ) %>% head(20)
 target_spec     <- sp_list %>% 
                     dplyr::arrange( desc(count) ) %>% 
                     .[c(10),]
+# Define the species variable
+species <- 'Bouteloua hirsuta'
+sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
+                                       collapse = "")))
 
 # Read in quad inventory to use as 'inv' list in plantTracker
 quad_inv        <- read.csv(paste0(dat_dir,"quadrat_inventory.csv"),
@@ -51,6 +55,10 @@ datTrackSpp <- trackSpp(dat_target_spec,
                         aggByGenet = TRUE,
                         flagSuspects = TRUE)
 
+# create folder
+if (!dir.exists(paste0("adler_2007_ks/data/", sp_abb))) {
+  dir.create(paste0("adler_2007_ks/data/", sp_abb))}
+# save data
 datTrackSpp %>% 
   as.data.frame %>% 
   dplyr::select( Site, Quad, Species, trackID,

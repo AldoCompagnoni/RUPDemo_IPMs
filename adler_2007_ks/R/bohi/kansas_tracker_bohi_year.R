@@ -1,4 +1,4 @@
-# IPM for kansas Schizachyrium scoparium year specific
+# IPM for kansas Bouteloua hirsuta year specific
 
 # Niklas Neisse
 # 2024.10.11
@@ -16,24 +16,23 @@ options(stringsAsFactors = F)
 
 # Packages ---------------------------------------------------------------------
 # Define CRAN packages
-cran_packages <- c("tidyverse","patchwork","skimr","lme4","bbmle","ipmr", "readxl") 
-# # Check if CRAN packages are installed
-# .inst <- .cran_packages %in% installed.packages() 
-# if(any(!.inst)) {
-#   # Install missing CRAN packages
-#   install.packages(.cran_packages[!.inst]) 
-# }
-# # Load required packages
-sapply(cran_packages, require, character.only = TRUE) 
-# 
-# rm( list = ls() )
-# options( stringsAsFactors = F )
+.cran_packages <- c("tidyverse","patchwork","skimr","lme4","bbmle","ipmr", "readxl") 
+# Check if CRAN packages are installed
+.inst <- .cran_packages %in% installed.packages() 
+if(any(!.inst)) {
+  # Install missing CRAN packages
+  install.packages(.cran_packages[!.inst]) 
+}
+# Load required packages
+sapply(.cran_packages, require, character.only = TRUE) 
 
+rm( list = ls() )
+options( stringsAsFactors = F )
 
 
 # Data -------------------------------------------------------------------------
 # Define the species variable
-species <- "Schizachyrium scoparium"
+species <- "Bouteloua hirsuta"
 sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
                                        collapse = "")))
 grow_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
@@ -864,7 +863,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
                                 surv_b2_yr * size_1^2), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
-                                grow_b2_yr * size_1^2,
+      grow_b2_yr * size_1^2,
     
     # # Dynamically build s_yr based on num_surv_params
     # s_yr = plogis(

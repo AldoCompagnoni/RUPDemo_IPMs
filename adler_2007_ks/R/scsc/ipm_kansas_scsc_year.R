@@ -702,7 +702,10 @@ prep_pars <- function(i, num_surv_params = 2, num_grow_params = 2) {
   return(pars_year)
 }
 
-pars_yr <- lapply(1:length(years_v), prep_pars)
+pars_yr <- lapply(1:length(years_v), 
+                  num_surv_params = su_mod_yr_bestfit_index, 
+                  num_grow_params = gr_mod_yr_bestfit_index, 
+                  prep_pars)
 
 # Identify which years contain parameters with numeric(0)
 contains_numeric0 <- sapply(pars_yr, function(regular_list) {
@@ -710,6 +713,7 @@ contains_numeric0 <- sapply(pars_yr, function(regular_list) {
     identical(sublist, numeric(0))
   }))
 })
+
 which_contains_numeric0 <- which(contains_numeric0)
 # Exclude these years
 pars_yr <- pars_yr[-which_contains_numeric0]

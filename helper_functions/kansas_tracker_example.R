@@ -2,11 +2,10 @@
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 
-dir     <- 'C:/Users/ac22qawo/Downloads/3528368/'
+dir     <- 'C:/code/RUPDemo_IPMs/adler_2007_ks/data/'
 dat_dir <- dir
 shp_dir <- paste0(dir, "arcexport/")
 
-setwd(dat_dir)
 
 # quote a series of bare names
 quote_bare <- function( ... ){
@@ -18,19 +17,17 @@ quote_bare <- function( ... ){
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list         <- read.csv("species_list.csv") 
+sp_list         <- read.csv(paste0(dat_dir,"species_list.csv")) 
+sp_list %>% dplyr::arrange( desc(count) ) %>% head(20)
 grasses         <- sp_list %>% 
-                    dplyr::arrange( desc(count) ) %>% 
-                    .[1:3,]
-grasses         <- sp_list %>% 
-                    dplyr::arrange( desc(count) ) %>% 
-                    .[c(5,8),]
+  dplyr::arrange( desc(count) ) %>% 
+  .[c(10),]
 # grasses         <- subset(sp_list, growthForm=="grass" & longevity=="P" & cover>100 & species!="Carex spp.")
 
 # Read in quad inventory to use as 'inv' list in plantTracker
-quad_inv        <- read.csv("quadrat_inventory.csv",
+quad_inv        <- read.csv(paste0(dat_dir,"quadrat_inventory.csv"),
                             sep=',') %>% 
-                      dplyr::select(-year)
+  dplyr::select(-year)
 quadInv_list    <- as.list(quad_inv)
 quadInv_list    <- lapply(X = quadInv_list, 
                           FUN = function(x) x[is.na(x) == FALSE])
@@ -49,7 +46,7 @@ for(i in 1:length(quadNames)){
   quadNow      <- quadNames[i]
   # quad/year name combination
   quadYears    <- paste0(shp_dir,quadNow,"/") %>% 
-                    list.files( pattern = ".e00$" ) 
+    list.files( pattern = ".e00$" ) 
   
   # loop over each year  
   for(j in 1:length(quadYears)){
@@ -58,7 +55,7 @@ for(i in 1:length(quadNames)){
     shapeNow      <- sf::st_read( dsn   = paste0(shp_dir,quadNow,"/",
                                                  quad_yr_name ),
                                   layer = 'PAL' ) %>% 
-                        dplyr::select( SCI_NAME, geometry)
+      dplyr::select( SCI_NAME, geometry)
     shapeNow$Site <- "KS"
     shapeNow$Quad <- quadNow
     shapeNow$Year <- quad_yr_name %>% 
@@ -78,7 +75,7 @@ for(i in 1:length(quadNames)){
       
     }
   }
-
+  
   # 
   dat$Year <- as.numeric(dat$Year)
   
@@ -121,8 +118,8 @@ for(i in 1:length(quadNames)){
 
 # Subset to the species of interest
 dat_3grasses <- dat[dat$SCI_NAME %in% grasses$species,] %>% 
-                  setNames( quote_bare(Species, Site, Quad, 
-                                       Year, geometry) )
+  setNames( quote_bare(Species, Site, Quad, 
+                       Year, geometry) )
 # dat_3grasses$Type <- rep('polygon',93640 )
 
 

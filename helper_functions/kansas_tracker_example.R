@@ -2,10 +2,9 @@
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 
-dir     <- 'C:/code/RUPDemo_IPMs/adler_2007_ks/data/'
+dir     <- 'adler_2007_ks/data/quadrat_data/'
 dat_dir <- dir
 shp_dir <- paste0(dir, "arcexport/")
-
 
 # quote a series of bare names
 quote_bare <- function( ... ){
@@ -20,14 +19,13 @@ quote_bare <- function( ... ){
 sp_list         <- read.csv(paste0(dat_dir,"species_list.csv")) 
 sp_list %>% dplyr::arrange( desc(count) ) %>% head(20)
 grasses         <- sp_list %>% 
-  dplyr::arrange( desc(count) ) %>% 
-  .[c(10),]
-# grasses         <- subset(sp_list, growthForm=="grass" & longevity=="P" & cover>100 & species!="Carex spp.")
+                    dplyr::arrange( desc(count) ) %>% 
+                    .[c(10),]
 
 # Read in quad inventory to use as 'inv' list in plantTracker
 quad_inv        <- read.csv(paste0(dat_dir,"quadrat_inventory.csv"),
                             sep=',') %>% 
-  dplyr::select(-year)
+                    dplyr::select(-year)
 quadInv_list    <- as.list(quad_inv)
 quadInv_list    <- lapply(X = quadInv_list, 
                           FUN = function(x) x[is.na(x) == FALSE])
@@ -64,7 +62,7 @@ for(i in 1:length(quadNames)){
       unlist
     
     # start final data frame
-    if(j == 1) {
+    if(i == 1 & j == 1) {
       
       dat <- shapeNow
       
@@ -76,44 +74,29 @@ for(i in 1:length(quadNames)){
     }
   }
   
-  # 
+  # convert year data to numeric
   dat$Year <- as.numeric(dat$Year)
   
-  # Subset to the species of interest
-  dat_3grasses <- dat[dat$SCI_NAME %in% grasses$species,]
-  names(dat_3grasses) <- quote_bare(Species, Site, Quad, Year, geometry )
-  
-  # Check the inv and dat arguments
-  checkDat(dat_3grasses, 
-           inv_ks[quadNow], 
-           species  = "Species", 
-           site     = "Site", 
-           quad     = "Quad", 
-           year     = "Year", 
-           geometry = "geometry")
-  
-  
-  # Now the data are ready for the trackSpp function
-  datTrackSpp <- trackSpp(dat_3grasses,
-                          inv_ks[quadNow], 
-                          dorm=1,
-                          buff=0.05,
-                          clonal=TRUE,
-                          buffGenet = 0.05,
-                          aggByGenet = TRUE,
-                          flagSuspects = TRUE)
-  
+  # save data from every plot to not waste time in case an error occurs
   saveRDS(datTrackSpp,
-          file= paste0("KS_grasses_",quadNow,".rds") )
+          file= paste0('adler_2007_ks/data/quadrat_data/',
+                       "KS_grasses_",quadNow,".rds") )
   
+  # remove plot-specific data (already stored)
   rm(dat)
-  rm(dat_3grasses)
   
 }
 
+rds_l    <- list.files( 'adler_2007_ks/data/quadrat_data' ) %>% 
+              grep('.rds',.,value=T)
+
+rds_full <- lapply( rds_l, function(x) readRDS( 
+                            paste0( 'adler_2007_ks/data/quadrat_data',x) ) 
+                    ) %>% 
+              bind_rows
 
 # Save the output file so that it doesn't need to be recreated ever again
-# saveRDS(dat,file="KS_polygons_full.rds")
+# saveRDS(rds_full,file="KS_polygons_full.rds")
 # dat <- readRDS(file="KS_polygons_full.rds")
 
 # Subset to the species of interest

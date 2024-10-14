@@ -50,7 +50,6 @@ df_long <-
 size_labs        <- c("at time t0", "at time t1")
 names(size_labs) <- c("logsize", "logsize_t1")
 
-
 hist_logsizes_years <-
   df_long %>% 
   ggplot(aes(x = size_value)) +
@@ -524,7 +523,8 @@ write.csv(pars_cons_wide,
 create_coef_df <- function(model, prefix) {
   coef_matrix <- coef(model)$year
   lapply(0:(ncol(coef_matrix) - 1), function(i) {
-    column_name <- if (i == 0) "(Intercept)" else paste0("logsize_t0", ifelse(i == 1, "", paste0("_", i)))
+    column_name <- if (i == 0) "(Intercept)" 
+    else paste0("logsize_t0", ifelse(i == 1, "", paste0("_", i)))
     data.frame(coefficient = paste0(prefix, i, "_", rownames(coef_matrix)),
                value = coef_matrix[, column_name])
   })
@@ -558,19 +558,31 @@ grow_sd <- function(x, pars) {
 }
 
 # Growth from size x to size y
-gxy <- function(x, y, pars) {
-  return(dnorm(y, mean = pars$grow_b0 + pars$grow_b1*x + 
-                 pars$grow_b2*x^2 + pars$grow_b3*x^3,
-               sd   = grow_sd(x, pars)))
+gxy <- function(x, y, pars, num_params = gr_mod_yr_bestfit_index) {
+  mean_value <- 0
+  for (i in 0:num_params) {
+    param_name <- paste0("grow_b", i)
+    if (!is.null(pars[[param_name]])) {
+      mean_value <- mean_value + pars[[param_name]] * x^i
+    }
+  }
+  sd_value <- grow_sd(x, pars)
+  return(dnorm(y, mean = mean_value, sd = sd_value))
 }
 
 # Inverse logit
 inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 
 # Survival of x-sized individual to time t1
-sx <- function(x, pars) {
-  return(inv_logit(pars$surv_b0 + pars$surv_b1*x + 
-                     pars$surv_b2*x^2 + pars$surv_b3*x^3))
+sx <- function(x, pars, num_params = su_mod_yr_bestfit_index) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_params) {
+    param_name <- paste0("surv_b", i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
 }
 
 # Transition of x-sized individual to y-sized individual at time t1
@@ -646,24 +658,47 @@ extr_value_list <- function(x, field) {
   return(as.numeric(x[paste0(field)] %>% unlist()))
 }
 
-prep_pars <- function(i) {
-  yr_now    <- years_v[i]
-  pars_year <- list(surv_b0 = extr_value_list(pars_var_wide, paste("surv_b0", yr_now, sep = "_" )),
-                    surv_b1 = extr_value_list(pars_var_wide, paste("surv_b1", yr_now, sep = "_" )),
-                    surv_b2 = extr_value_list(pars_var_wide, paste("surv_b2", yr_now, sep = "_" )),
-                    surv_b3 = extr_value_list(pars_var_wide, paste("surv_b3", yr_now, sep = "_" )),
-                    grow_b0 = extr_value_list(pars_var_wide, paste("grow_b0", yr_now, sep = "_" )),
-                    grow_b1 = extr_value_list(pars_var_wide, paste("grow_b1", yr_now, sep = "_" )),
-                    grow_b2 = extr_value_list(pars_var_wide, paste("grow_b2", yr_now, sep = "_" )),
-                    grow_b3 = extr_value_list(pars_var_wide, paste("grow_b3", yr_now, sep = "_" )),
-                    a       = extr_value_list(pars_cons_wide, "a"),
-                    b       = extr_value_list(pars_cons_wide, "b"),
-                    fecu_b0 = extr_value_list(pars_var_wide, paste("fecu_b0", yr_now, sep = "_" )),
-                    recr_sz = extr_value_list(pars_cons_wide, "recr_sz"),
-                    recr_sd = extr_value_list(pars_cons_wide, "recr_sd"),
-                    L       = extr_value_list(pars_cons_wide, "L"),
-                    U       = extr_value_list(pars_cons_wide, "U"),
-                    mat_siz = 200)
+prep_pars <- function(i, num_surv_params = 2, num_grow_params = 2) {
+  yr_now <- years_v[i]
+  
+  # Initialize the parameters list with the required order
+  pars_year <- list(
+    surv_b0  = extr_value_list(pars_var_wide, paste("surv_b0", yr_now, sep = "_")),
+    surv_b1  = extr_value_list(pars_var_wide, paste("surv_b1", yr_now, sep = "_")),
+    grow_b0  = extr_value_list(pars_var_wide, paste("grow_b0", yr_now, sep = "_")),
+    grow_b1  = extr_value_list(pars_var_wide, paste("grow_b1", yr_now, sep = "_")),
+    a        = extr_value_list(pars_cons_wide, "a"),
+    b        = extr_value_list(pars_cons_wide, "b"),
+    fecu_b0  = extr_value_list(pars_var_wide, paste("fecu_b0", yr_now, sep = "_")),
+    recr_sz   = extr_value_list(pars_cons_wide, "recr_sz"),
+    recr_sd   = extr_value_list(pars_cons_wide, "recr_sd"),
+    L        = extr_value_list(pars_cons_wide, "L"),
+    U        = extr_value_list(pars_cons_wide, "U"),
+    mat_siz  = 200
+  )
+  
+  # Dynamically add survival parameters based on num_surv_params
+  for (j in 2:num_surv_params) {
+    param_name <- paste0("surv_b", j)
+    value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = "_"))
+    if (!is.null(value)) {
+      # Insert after surv_b1
+      pars_year <- append(pars_year, setNames(list(value), param_name), after = 2)
+    }
+  }
+  
+  # Dynamically add growth parameters based on num_grow_params
+  for (j in 2:num_grow_params) {
+    param_name <- paste0("grow_b", j)
+    value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = "_"))
+    if (!is.null(value)) {
+      # Insert immediately after grow_b1
+      pos <- which(names(pars_year) == "grow_b1") + 1
+      pars_year <- append(pars_year, setNames(list(value), param_name), after = pos - 1)
+    }
+  }
+  
+  # Return the list with the dynamic parameters included
   return(pars_year)
 }
 
@@ -821,11 +856,26 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     family           = "CC",
     formula          = s_yr * g_yr,
     s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1 + 
-                                surv_b2_yr * size_1^2 + 
-                                surv_b3_yr * size_1^3), 
+                                surv_b2_yr * size_1^2), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
-      grow_b2_yr * size_1^2 + grow_b3_yr * size_1^3,
+                                grow_b2_yr * size_1^2,
+    
+    # # Dynamically build s_yr based on num_surv_params
+    # s_yr = plogis(
+    #   surv_b0_yr + 
+    #     surv_b1_yr * size_1 + 
+    #     if (num_surv_params >= 2) surv_b2_yr * size_1^2 else 0 + 
+    #     if (num_surv_params == 3) surv_b3_yr * size_1^3 else 0
+    # ), 
+    # 
+    # # Dynamically build mu_g_yr based on num_grow_params
+    # mu_g_yr = grow_b0_yr + 
+    #   grow_b1_yr * size_1 + 
+    #   if (num_grow_params >= 2) grow_b2_yr * size_1^2 else 0 + 
+    #   if (num_grow_params == 3) grow_b3_yr * size_1^3 else 0,
+    # 
+    
     grow_sig         = sqrt(a * exp(b * size_1)),
     data_list        = all_pars,
     states           = list(c('size')),
@@ -892,3 +942,4 @@ lam_out_wide  <- as.list(pivot_wider(lam_out, names_from = "coefficient",
 write.csv(lam_out_wide, 
           paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr.csv"), 
           row.names = F)
+

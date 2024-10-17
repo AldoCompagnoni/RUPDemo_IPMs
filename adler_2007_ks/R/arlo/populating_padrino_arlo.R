@@ -214,7 +214,7 @@ pdb$ParameterValues$parameter_value <- as.numeric(pdb$ParameterValues$parameter_
 pdb$ParSetIndices[1,] <- c(ipm_id,
                            "year",
                            "yr",
-                           "c(47:56, 60:71)",
+                           "c(48:56, 61:71)",
                            "P_yr; F_yr",
                            "")
 
@@ -228,9 +228,12 @@ pdb$TestTargets$target_value <- as.numeric(pdb$TestTargets$target_value)
 pdb$TestTargets$precision    <- as.numeric(pdb$TestTargets$precision)
 
 
-write_xlsx(pdb, paste0("adler_2007_ks/data/", sp_abb, "/buc_dac_yr_pdb.xlsx"))
+write_xlsx(pdb, 
+           paste0("adler_2007_ks/data/", sp_abb, "/", sp_abb, "_yr_pdb.xlsx"))
 
-pdb_test       <- read_pdb(paste0("adler_2007_ks/data/", sp_abb, "/buc_dac_yr_pdb.xlsx"))
+pdb_test       <- read_pdb(
+  paste0("adler_2007_ks/data/", sp_abb, "/", sp_abb, "_yr_pdb.xlsx"))
+
 pdb_test_proto <- pdb_make_proto_ipm(pdb_test, det_stoch = "det")
 print(pdb_test_proto[[ipm_id]])
 bg_ipm_pdb     <- make_ipm(pdb_test_proto[[ipm_id]])
@@ -239,4 +242,4 @@ bg_ipm_pdb
 lambda(bg_ipm_pdb)
 test_model(pdb_test, id = ipm_id)
 
-plot(lambda(bg_ipm_pdb) ~ c(47:56, 60:71))
+plot(lambda(bg_ipm_pdb) ~ c(48:56, 61:71))

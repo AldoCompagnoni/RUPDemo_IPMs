@@ -221,9 +221,9 @@ pdb$TestTargets[1:nrow(lam_mean_ipmr),4] <- 3
 pdb$TestTargets$target_value <- as.numeric(pdb$TestTargets$target_value)
 pdb$TestTargets$precision    <- as.numeric(pdb$TestTargets$precision)
 
-write_xlsx(pdb, "adler_2007_ks/data/bocu/bou_cur_yr_pdb.xlsx")
+write_xlsx(pdb, "adler_2007_ks/data/bocu/bocu_yr_pdb.xlsx")
 
-pdb_test       <- read_pdb("adler_2007_ks/data/bocu/bou_cur_yr_pdb.xlsx")
+pdb_test       <- read_pdb("adler_2007_ks/data/bocu/bocu_yr_pdb.xlsx")
 pdb_test$ParameterValues
 pdb_test_proto <- pdb_make_proto_ipm( pdb_test, det_stoch = "det")
 print(pdb_test_proto$nnnnn1)

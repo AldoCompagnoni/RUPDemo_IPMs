@@ -216,7 +216,8 @@ su_mod_yr_bestfit_index <- which.min(AICtab(s_mods, weights = T, sort = F)$dAIC)
 su_mod_yr_bestfit <- s_mods[[su_mod_yr_bestfit_index]]
 ranef_su <- data.frame(coef(su_mod_yr_bestfit)[1])
 
-years_v  <- c(surv_bin_yrs[[1]][1,'year']:surv_bin_yrs[[length(surv_bin_yrs)]][1,'year'])
+years_v  <- c(surv_bin_yrs[[1]][1,'year']:
+                surv_bin_yrs[[length(surv_bin_yrs)]][1,'year'])
 
 v <- rep(NA,length(surv_bin_yrs))
 for (ii in 1:length(surv_bin_yrs)) {
@@ -238,13 +239,14 @@ surv_yr_plots <- function(i) {
   if (ncol(ranef_su) == 2) {line_color <- 'red'
   } else if (ncol(ranef_su) == 3) {line_color <- 'green'
   } else if (ncol(ranef_su) == 4) {line_color <- 'blue'
-  } else {line_color <- 'black'  # Default color if there are more than 4 columns
+  } else {line_color <- 'black'  # Default color 
   }  
   pred_temp_df <- data.frame(logsize_t0 = x_temp, survives = pred_temp)
   temp_plot <- surv_temp %>% 
     ggplot() +
     geom_point(aes(x = logsize_t0, y = survives), size = 0.5) +
-    geom_line(data = pred_temp_df, aes(x = logsize_t0, y = survives), color = line_color, lwd = 1) +
+    geom_line(data = pred_temp_df, aes(x = logsize_t0, y = survives), 
+              color = line_color, lwd = 1) +
     labs(title = paste0('19',years_v[i]),
          x = expression('log(size)'[t0]),
          y = expression('Survival probability '[t1])) +
@@ -275,10 +277,17 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb,
 
 
 # Growth
-gr_mod_yr   <- lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), data = grow_df)
-gr_mod_yr_2 <- lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), data = grow_df)
+gr_mod_yr   <- 
+  lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), 
+                    data = grow_df)
+gr_mod_yr_2 <- 
+  lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
+                    data = grow_df)
 # Model failed to converge with max|grad| = 0.0297295
-gr_mod_yr_3 <- lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + (logsize_t0 | year), data = grow_df)
+gr_mod_yr_3 <- 
+  lmer(logsize_t1 ~ 
+         logsize_t0 + logsize_t0_2 + logsize_t0_3 + (logsize_t0 | year), 
+       data = grow_df)
 
 g_mods <- c(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 AICtab(g_mods, weights = T)

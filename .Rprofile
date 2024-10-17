@@ -1,4 +1,4 @@
-source("renv/activate.R")
+# source("renv/activate.R")
 
 # Ensure renv is installed
 if( !"renv" %in% installed.packages() ){

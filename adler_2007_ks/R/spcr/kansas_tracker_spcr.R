@@ -77,3 +77,4 @@ datTrackSpp %>%
                  nearEdge, Suspect) %>% 
   write.csv(paste0('adler_2007_ks/data/', sp_abb, '/ks_', sp_abb, '.csv'), 
             row.names = F )
+

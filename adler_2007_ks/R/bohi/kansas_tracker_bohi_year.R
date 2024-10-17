@@ -215,7 +215,8 @@ su_mod_yr_bestfit_index <- which.min(AICtab(s_mods, weights = T, sort = F)$dAIC)
 su_mod_yr_bestfit <- s_mods[[su_mod_yr_bestfit_index]]
 ranef_su <- data.frame(coef(su_mod_yr_bestfit)[1])
 
-years_v  <- c(surv_bin_yrs[[1]][1,'year']:surv_bin_yrs[[length(surv_bin_yrs)]][1,'year'])
+years_v  <- c(surv_bin_yrs[[1]][1,'year']:
+                surv_bin_yrs[[length(surv_bin_yrs)]][1,'year'])
 
 v <- rep(NA,length(surv_bin_yrs))
 for (ii in 1:length(surv_bin_yrs)) {
@@ -237,13 +238,14 @@ surv_yr_plots <- function(i) {
   if (ncol(ranef_su) == 2) {line_color <- 'red'
   } else if (ncol(ranef_su) == 3) {line_color <- 'green'
   } else if (ncol(ranef_su) == 4) {line_color <- 'blue'
-  } else {line_color <- 'black'  # Default color if there are more than 4 columns
+  } else {line_color <- 'black'  # Default color 
   }  
   pred_temp_df <- data.frame(logsize_t0 = x_temp, survives = pred_temp)
   temp_plot <- surv_temp %>% 
     ggplot() +
     geom_point(aes(x = logsize_t0, y = survives), size = 0.5) +
-    geom_line(data = pred_temp_df, aes(x = logsize_t0, y = survives), color = line_color, lwd = 1) +
+    geom_line(data = pred_temp_df, 
+              aes(x = logsize_t0, y = survives), color = line_color, lwd = 1) +
     labs(title = paste0('19',years_v[i]),
          x = expression('log(size)'[t0]),
          y = expression('Survival probability '[t1])) +
@@ -274,10 +276,17 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb,
 
 
 # Growth
-gr_mod_yr   <- lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), data = grow_df)
-gr_mod_yr_2 <- lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), data = grow_df)
+gr_mod_yr   <- 
+  lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), 
+       data = grow_df)
+gr_mod_yr_2 <- 
+  lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
+       data = grow_df)
 # Model failed to converge with max|grad| = 0.0297295
-gr_mod_yr_3 <- lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + (logsize_t0 | year), data = grow_df)
+gr_mod_yr_3 <- 
+  lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
+         logsize_t0_3 + (logsize_t0 | year), 
+       data = grow_df)
 
 g_mods <- c(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 AICtab(g_mods, weights = T)
@@ -658,15 +667,13 @@ extr_value_list <- function(x, field) {
   return(as.numeric(x[paste0(field)] %>% unlist()))
 }
 
-prep_pars <- function(i, num_surv_params = 2, num_grow_params = 2) {
+prep_pars <- function(i, num_surv_params, num_grow_params) {
   yr_now <- years_v[i]
   
   # Initialize the parameters list with the required order
   pars_year <- list(
     surv_b0  = extr_value_list(pars_var_wide, paste("surv_b0", yr_now, sep = "_")),
-    surv_b1  = extr_value_list(pars_var_wide, paste("surv_b1", yr_now, sep = "_")),
     grow_b0  = extr_value_list(pars_var_wide, paste("grow_b0", yr_now, sep = "_")),
-    grow_b1  = extr_value_list(pars_var_wide, paste("grow_b1", yr_now, sep = "_")),
     a        = extr_value_list(pars_cons_wide, "a"),
     b        = extr_value_list(pars_cons_wide, "b"),
     fecu_b0  = extr_value_list(pars_var_wide, paste("fecu_b0", yr_now, sep = "_")),
@@ -678,22 +685,22 @@ prep_pars <- function(i, num_surv_params = 2, num_grow_params = 2) {
   )
   
   # Dynamically add survival parameters based on num_surv_params
-  for (j in 2:num_surv_params) {
+  for (j in 1:num_surv_params) {
     param_name <- paste0("surv_b", j)
     value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = "_"))
     if (!is.null(value)) {
-      # Insert after surv_b1
-      pars_year <- append(pars_year, setNames(list(value), param_name), after = 2)
+      # Insert after surv_b0
+      pars_year <- append(pars_year, setNames(list(value), param_name), after = 1)
     }
   }
   
   # Dynamically add growth parameters based on num_grow_params
-  for (j in 2:num_grow_params) {
+  for (j in num_grow_params:1) {
     param_name <- paste0("grow_b", j)
     value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = "_"))
     if (!is.null(value)) {
       # Insert immediately after grow_b1
-      pos <- which(names(pars_year) == "grow_b1") + 1
+      pos <- which(names(pars_year) == "grow_b0") + 1
       pars_year <- append(pars_year, setNames(list(value), param_name), after = pos - 1)
     }
   }
@@ -715,7 +722,7 @@ contains_numeric0 <- sapply(pars_yr, function(regular_list) {
 })
 
 which_contains_numeric0 <- which(contains_numeric0)
-# Exclude these years
+# Exclude these years ####
 pars_yr <- pars_yr[-which_contains_numeric0]
 years_v <- years_v[-which_contains_numeric0]
 
@@ -773,12 +780,11 @@ pop_counts <- left_join(pop_counts_t0,
   summarise(n_t0 = sum(n_t0),
             n_t1 = sum(n_t1)) %>% 
   ungroup %>% 
-  mutate(obs_pgr = n_t1 / n_t0) %>% 
-  mutate(lambda = lambdas_yr %>% unlist) 
-# %>%
-#   # removing the first two years
-#   filter(year >= min(year)+2)
-
+  mutate(obs_pgr = n_t1 / n_t0) %>%
+  full_join(data.frame(year = as.numeric(names(lambdas_yr)),
+                       lambda = unlist(lambdas_yr)), 
+            by = 'year') %>% 
+  drop_na
 
 lam_mean_yr    <- mean(pop_counts$lambda, na.rm = T)
 lam_mean_count <- mean(pop_counts$obs_pgr, na.rm = T)
@@ -789,6 +795,8 @@ lam_mean_geom
 lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
 lam_mean_overall
 
+# changing the year according to 
+years_v <- pop_counts$year
 
 # projecting a population vector for each year using the year-specific models,
 # and compare the projected population to the observed population
@@ -859,8 +867,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     name             = "P_yr",
     family           = "CC",
     formula          = s_yr * g_yr,
-    s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1 + 
-                                surv_b2_yr * size_1^2), 
+    s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
       grow_b2_yr * size_1^2,
@@ -946,4 +953,3 @@ lam_out_wide  <- as.list(pivot_wider(lam_out, names_from = "coefficient",
 write.csv(lam_out_wide, 
           paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr.csv"), 
           row.names = F)
-

@@ -16,7 +16,8 @@ options(stringsAsFactors = F)
 
 # Packages ---------------------------------------------------------------------
 # Define CRAN packages
-.cran_packages <- c("tidyverse","patchwork","skimr","lme4","bbmle","ipmr", "readxl") 
+.cran_packages <- 
+  c("tidyverse","patchwork","skimr","lme4","bbmle","ipmr", "readxl") 
 # Check if CRAN packages are installed
 .inst <- .cran_packages %in% installed.packages() 
 if(any(!.inst)) {
@@ -33,12 +34,17 @@ options( stringsAsFactors = F )
 # Data -------------------------------------------------------------------------
 # Define the species variable
 species <- "Bouteloua hirsuta"
-sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
-                                       collapse = "")))
-grow_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
-surv_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/survival_df.csv"))
-recr_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/recruitment_df.csv"))
-df      <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/data_df.csv"))
+sp_abb  <- 
+  tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
+                              collapse = "")))
+grow_df <- 
+  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
+surv_df <- 
+  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/survival_df.csv"))
+recr_df <- 
+  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/recruitment_df.csv"))
+df      <- 
+  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/data_df.csv"))
 
 df_long <- 
   pivot_longer(df, cols = c(logsize_t0, logsize_t1 ), 
@@ -62,7 +68,8 @@ hist_logsizes_years <-
   theme_bw() +
   theme(axis.text.y = element_text(size = 5))
 
-ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_hist_logsizes_years.png"),  
+ggsave(
+  paste0("adler_2007_ks/results/", sp_abb, "/years_hist_logsizes_years.png"),  
        plot = hist_logsizes_years,
        width = 6, height = 12, dpi = 150)
 
@@ -91,8 +98,10 @@ survival <-
   facet_wrap(.~ transition, ncol = 4) +
   theme_bw() +
   theme(axis.text = element_text(size = 8), title = element_text(size = 10),
-        strip.text.y = element_text(size = 5, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
-        strip.text.x = element_text(size = 5, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.y = element_text(size = 5, 
+                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.x = element_text(size = 5, 
+                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit( '0.5', unit = 'mm' ),
         panel.spacing         = unit( '0.5', unit = 'mm' )) +
   labs(x = expression('log(size)'[t0]),
@@ -120,8 +129,10 @@ growth <-
   theme_bw() +
   theme(axis.text    = element_text(size = 8),
         title        = element_text(size = 10),
-        strip.text.y = element_text(size = 8, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
-        strip.text.x = element_text(size = 8, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.y = element_text(size = 8, 
+                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.x = element_text(size = 8, 
+                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit('0.5', unit = 'mm'),
         panel.spacing         = unit('0.5', unit = 'mm')) +
   labs(x = expression('log(size) '[t0]),
@@ -155,8 +166,10 @@ recruits <-
   theme(axis.text    = element_text(size = 8),
         axis.text.x = element_text(angle = 45, hjust = 1),
         title        = element_text(size = 10),
-        strip.text.y = element_text(size = 8, margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
-        strip.text.x = element_text(size = 8, margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.y = element_text(size = 8, 
+                                    margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.x = element_text(size = 8, 
+                                    margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit('0.5', unit = 'mm'),
         panel.spacing         = unit('0.5', unit = 'mm')) +
   labs(x = expression('Number of adults '[ t0]),

@@ -67,7 +67,9 @@ datTrackSpp <- trackSpp(dat_target_spec,
 
 # create folder
 if (!dir.exists(paste0("adler_2007_ks/data/", sp_abb))) {
-  dir.create(paste0("adler_2007_ks/data/", sp_abb))}
+  dir.create(paste0("adler_2007_ks/data/", sp_abb))
+}
+
 # save data
 datTrackSpp %>% 
   as.data.frame %>% 

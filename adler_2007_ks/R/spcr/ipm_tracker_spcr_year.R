@@ -202,17 +202,17 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_recruitment_size.png"),
 
 
 # Removing year with too few data ----------------------------------------------
-# 
-# years_re <- c(32:46, 58, 59)
-# df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
-# surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
-# grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
-# recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% years_re))
-# surv_yrs     <- data.frame(year = surv_df$year %>% unique %>% sort)
-# surv_bin_yrs <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
-#                          logsize_t0, survives, surv_yrs)
-# surv_bin_yrs <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
-# 
+
+years_re <- c(51:max(df$year))
+df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
+surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
+grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
+recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% years_re))
+surv_yrs     <- data.frame(year = surv_df$year %>% unique %>% sort)
+surv_bin_yrs <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
+                         logsize_t0, survives, surv_yrs)
+surv_bin_yrs <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
+
 
 years_v      <- sort(unique(df$year))
 
@@ -293,14 +293,14 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb,
 
 # Growth
 gr_mod_yr   <- 
-  lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), 
+  lmer(logsize_t1 ~ logsize_t0 + (1 | year), 
        data = grow_df)
 gr_mod_yr_2 <- 
-  lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
+  lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (1 | year), 
        data = grow_df)
 gr_mod_yr_3 <- 
   lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
-         logsize_t0_3 + (logsize_t0 | year), 
+         logsize_t0_3 + (1 | year), 
        data = grow_df)
 
 g_mods <- c(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
@@ -879,8 +879,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     family           = "CC",
     formula          = s_yr * g_yr,
     s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1
-                              + surv_b2_yr * size_1^2
-                              + surv_b3_yr * size_1^3), 
+                              + surv_b2_yr * size_1^2), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1,
     

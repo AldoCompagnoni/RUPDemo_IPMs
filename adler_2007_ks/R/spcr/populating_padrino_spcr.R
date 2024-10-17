@@ -143,7 +143,7 @@ pdb$IpmKernels[2,] <- c(ipm_id,
 # Vital rate expressions
 pdb$VitalRateExpr[1,] <- c(ipm_id,
                            "Survival",
-                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2 + surv_b3_yr * size_1^3)))",
+                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2)))",
                            "Evaluated",
                            "P_yr")
 
@@ -227,7 +227,7 @@ pdb$ParameterValues$parameter_value <- as.numeric(
 pdb$ParSetIndices[1,] <- c(ipm_id,
                            "year",
                            "yr",
-                           "c(35:66, 68:69)",
+                           "c(35:49)",
                            "P_yr; F_yr",
                            "")
 
@@ -255,4 +255,4 @@ bg_ipm_pdb
 lambda(bg_ipm_pdb)
 test_model(pdb_test, id = ipm_id)
 
-plot(lambda(bg_ipm_pdb) ~ c(35:66, 68:69))
+plot(lambda(bg_ipm_pdb) ~ c(35:49))

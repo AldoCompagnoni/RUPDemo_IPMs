@@ -28,10 +28,10 @@ quote_bare <- function( ... ){
  # 8 species total, might exclude some
 # species with the lowest cover later.
 sp_list         <- read.csv(paste0(dat_dir,"species_list.csv")) 
-sp_list %>% dplyr::arrange( desc(count) ) %>% head(20)
+sp_list %>% dplyr::arrange( desc(count)) %>% head(20)
 target_spec     <- sp_list %>% 
                     dplyr::arrange( desc(count) ) %>% 
-                    .[c(12),]
+                    .[c(13),]
 # Define the species variable
 species <- 'Sporobolus cryptandrus'
 sp_abb  <- tolower(gsub(" ", "", 

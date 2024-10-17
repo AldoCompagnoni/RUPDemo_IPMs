@@ -203,22 +203,15 @@ df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
 surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
 grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
 recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% years_re))
-surv_yrs       <- data.frame(year = surv_df$year %>% unique %>% sort)
-surv_bin_yrs   <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
+surv_yrs     <- data.frame(year = surv_df$year %>% unique %>% sort)
+surv_bin_yrs <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
                          logsize_t0, survives, surv_yrs)
-surv_bin_yrs   <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
-
+surv_bin_yrs <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
+years_v      <- sort(unique(df$year))
 
 # Fitting vital rate models with the random effect of year ---------------------
-# without the data of year 33
 
-# remove years with not sufficient data
-rm_yrs      <- surv_df %>% 
-                count(year) %>% 
-                subset( n < 70 ) %>% 
-                .$year
-
-# Survival !!!!!! single boundary !!! ----
+# Survival
 su_mod_yr   <- glmer(survives ~ logsize_t0 + (1 | year), 
                      data = surv_df, family = binomial )
 su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (1 | year), 
@@ -233,9 +226,6 @@ AICtab(s_mods, weights = T)
 su_mod_yr_bestfit_index <- which.min(AICtab(s_mods, weights = T, sort = F)$dAIC)
 su_mod_yr_bestfit <- s_mods[[su_mod_yr_bestfit_index]]
 ranef_su <- data.frame(coef(su_mod_yr_bestfit)[1])
-
-years_v  <- c(surv_bin_yrs[[1]][1,'year']:
-                surv_bin_yrs[[length(surv_bin_yrs)]][1,'year'])
 
 v <- rep(NA,length(surv_bin_yrs))
 for (ii in 1:length(surv_bin_yrs)) {
@@ -733,6 +723,7 @@ pars_yr <- lapply(1:length(years_v),
                   num_grow_params = gr_mod_yr_bestfit_index, 
                   prep_pars)
 
+
 # Identify which years contain parameters with numeric(0)
 contains_numeric0 <- sapply(pars_yr, function(regular_list) {
   any(sapply(regular_list, function(sublist) {
@@ -888,8 +879,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     formula          = s_yr * g_yr,
     s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
-    mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
-      grow_b2_yr * size_1^2,
+    mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1,
     
     # # Dynamically build s_yr based on num_surv_params
     # s_yr = plogis(

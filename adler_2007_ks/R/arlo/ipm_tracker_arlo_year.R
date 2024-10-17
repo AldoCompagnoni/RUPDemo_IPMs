@@ -198,7 +198,7 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_recruitment_size.png"),
 
 # Removing year with too few data ----------------------------------------------
 
-years_re <- c(32:51)
+years_re <- c(32:46, 58, 59)
 df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
 surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
 grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
@@ -212,13 +212,19 @@ surv_bin_yrs   <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
 # Fitting vital rate models with the random effect of year ---------------------
 # without the data of year 33
 
+# remove years with not sufficient data
+rm_yrs      <- surv_df %>% 
+                count(year) %>% 
+                subset( n < 70 ) %>% 
+                .$year
+
 # Survival !!!!!! single boundary !!! ----
-su_mod_yr   <- glmer(survives ~ logsize_t0 + (logsize_t0 | year), 
-                     data = surv_df, family = binomial)
-su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
+su_mod_yr   <- glmer(survives ~ logsize_t0 + (1 | year), 
+                     data = surv_df, family = binomial )
+su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (1 | year), 
                      data = surv_df, family = binomial)
 su_mod_yr_3 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + 
-                       logsize_t0_3 + (logsize_t0 | year), 
+                       logsize_t0_3 + (1 | year), 
                      data = surv_df, family = binomial)
 
 s_mods <- c(su_mod_yr, su_mod_yr_2, su_mod_yr_3)

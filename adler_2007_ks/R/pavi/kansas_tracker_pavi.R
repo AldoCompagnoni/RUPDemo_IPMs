@@ -1,11 +1,11 @@
-# plantTracker for Adler 2007 Kansas Sporobolus asper
+# plantTracker for Adler 2007 Kansas Panicum virgatum
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
 # Date: 2024.10.17
 
 # Code adapted from: https://github.com/aestears/plantTracker
- # Adapted from plantTracker How to (Stears et al. 2022)
+# Adapted from plantTracker How to (Stears et al. 2022)
 
 # List of required CRAN packages
 .cran_packages <- c(
@@ -45,7 +45,7 @@ sp_list     <- read.csv(paste0(data_directory,
                                "quadrat_data/species_list.csv"))  %>% 
   dplyr::arrange(desc(count)) %>% head(25)
 # Select the x_th species (target species)
-target_spec <- sp_list %>% .[c(20),]  
+target_spec <- sp_list %>% .[c(22),]  
 
 # Define the species variable and abbreviation
 species <- target_spec[1,1]
@@ -56,7 +56,7 @@ sp_abb  <- tolower(gsub(" ", "", paste(substr(
 quad_inv        <- 
   as.list(read.csv(paste0(data_directory,
                           "quadrat_data/quadrat_inventory.csv"), sep=',') %>% 
-  dplyr::select(-year))
+            dplyr::select(-year))
 # Remove NAs
 inv_ks          <- lapply(X = quad_inv, 
                           FUN = function(x) x[is.na(x) == FALSE])

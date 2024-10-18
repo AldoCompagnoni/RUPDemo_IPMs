@@ -1,12 +1,12 @@
-# IPM for alder 2007; kansas; Sporobolus asper
+# IPM for alder 2007; kansas; Panicum virgatum
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
 # Date: 2024.10.17
 
 # Process plant growth data to explore vital rates for 
- # the species Sporobolus asper and 
- # generates visualizations and model fits for IPM analysis.
+# the species Panicum virgatum and 
+# generates visualizations and model fits for IPM analysis.
 
 # Setting the stage ------------------------------------------------------------
 # Clear the workspace by removing all objects in the global environment
@@ -30,7 +30,7 @@ sapply(.cran_packages, require, character.only = TRUE)
 
 # Data -------------------------------------------------------------------------
 # Specify the species being analyzed
-species <- 'Sporobolus asper'
+species <- 'Panicum virgatum'
 # Create a unique species abbreviation for file naming
 sp_abb  <- tolower(
   gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
@@ -198,7 +198,7 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_gr.png"),
 
 # Recruitment analysis
 # Create a scatter plot showing the relationship between 
- # total parent plant area and number of recruits
+# total parent plant area and number of recruits
 rec_overall <- 
   ggplot(recr_df, aes(x = tot_p_area, y = nr_quad)) + 
   geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
@@ -213,7 +213,7 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_rec.png"),
 
 
 # Fit vital rate models for the mean IPM -----------------------------------
- # Fit growth models to predict size at time t1 based on size at time t0
+# Fit growth models to predict size at time t1 based on size at time t0
 # Linear model
 gr_mod_mean   <- 
   lm(logsize_t1 ~ logsize_t0, data = grow_df)
@@ -277,7 +277,7 @@ y         <- resid(gr_mod_mean)^2
 gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))  
 
 # Survival
- # Fit models to predict survival based on size at time t0
+# Fit models to predict survival based on size at time t0
 # Logistic regression
 su_mod_mean   <- glm(survives ~ logsize_t0, 
                      data = surv_df, family = "binomial") 
@@ -395,7 +395,7 @@ var_m   <- data.frame(coefficient = names(coef(gr_var_m)),
 grow_out <- Reduce(function(...) rbind(...), list(grow_fe, var_m)) %>%
   mutate(coefficient = as.character(coefficient)) %>%
   mutate(coefficient = replace(coefficient, 
-                                 grepl("Intercept", coefficient), "b0"))
+                               grepl("Intercept", coefficient), "b0"))
 
 write.csv(grow_out, 
           paste0("adler_2007_ks/data/", sp_abb, "/grow_pars_mean.csv"), 
@@ -408,7 +408,7 @@ surv_fe <- data.frame(coefficient = names(coef(su_mod_bestfit)),
 surv_out<- Reduce(function(...) rbind(...), list(surv_fe)) %>%
   mutate(coefficient = as.character(coefficient)) %>%
   mutate(coefficient = replace(coefficient, 
-                                 grepl("Intercept", coefficient), "b0"))
+                               grepl("Intercept", coefficient), "b0"))
 write.csv(surv_out, 
           paste0("adler_2007_ks/data/", sp_abb, "/surv_pars_mean.csv"), 
           row.names = F)
@@ -475,7 +475,7 @@ inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 
 # !!! Check !!! Function describing survival from size t0 to t1
 sx <- function(x, pars) {
-  return(inv_logit(pars$surv_b0 + pars$surv_b1 * x))
+  return(inv_logit(pars$surv_b0 + pars$surv_b1 * x + pars$surv_b2 * x^2))
 }
 
 # Function describing the transition kernel
@@ -567,7 +567,7 @@ pop_counts_t1 <- df %>%
   ungroup 
 
 # Calculate observed population growth rates, 
- # accounting for discontinued sampling!
+# accounting for discontinued sampling!
 pop_counts <- left_join(pop_counts_t0, 
                         pop_counts_t1) %>% 
   # by dropping NAs, we remove gaps in sampling!
@@ -594,8 +594,7 @@ proto_ipm_p <- init_ipm(sim_gen   = "simple",
     family    = "CC",
     formula   = s * g,
     # !!! Check !!! ####
-    s         = plogis(surv_b0 + 
-                          surv_b1 * size_1), 
+    s         = plogis(surv_b0 + surv_b1 * size_1 + surv_b2 * size_1^2), 
     g         = dnorm(size_2, mu_g, grow_sig),
     # !!! Check !!! ####
     mu_g      = grow_b0 + grow_b1 * size_1 + grow_b2 * size_1^2,

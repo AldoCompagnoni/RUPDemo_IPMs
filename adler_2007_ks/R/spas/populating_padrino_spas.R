@@ -1,4 +1,4 @@
-# Populating padrino - alder 2007; kansas; Sporobolus asper
+# Populating padrino - alder 2007; kansas; Panicum virgatum
 
 # Niklas Neisse
 # 2024.17.10
@@ -35,7 +35,7 @@ options(stringsAsFactors = F)
 
 # Data -------------------------------------------------------------------------
 # Define the species variable
-species       <- "Sporobolus asper"
+species       <- "Panicum virgatum"
 sp_abb        <- tolower(
   gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2),
                       collapse = "")))
@@ -45,8 +45,8 @@ sp_abb        <- tolower(
 # # overall imp 
 # source(paste0('adler_2007_ks/R/', sp_abb, '/ipm_tracker_', sp_abb, '.R'))
 
-ipm_id        <- "nnnnn9"
-pars      <- read.csv(
+ipm_id        <- "nnnnn10"
+pars          <- read.csv(
   paste0("adler_2007_ks/data/", sp_abb, "/pars.csv"))
 lam_mean_ipmr <- read.csv(
   paste0("adler_2007_ks/data/", sp_abb, "/lambda.csv"))
@@ -65,7 +65,7 @@ pdb$Metadata[1,] <- c(
   ipm_id, 
   
   # Taxonomic information
-  "Sporobolus_asper", "Sporobolus_asper", "Sporobolus",
+  "Panicum_virgatum", "Panicum_virgatum", "Panicum",
   "Poaceae", "Poales", "Liliopsida", "Magnoliophyta",
   "Plantae", "Herbaceous", "Monocot", "angio", 
   
@@ -138,13 +138,13 @@ pdb$IpmKernels[2,] <- c(ipm_id,
 # Vital rate expressions
 pdb$VitalRateExpr[1,] <- c(ipm_id,
                            "Survival",
-                           "s = 1 / (1 + exp(-(surv_b0 + surv_b1 * size_1)))",
+                           "s = 1 / (1 + exp(-(surv_b0 + surv_b1 * size_1 + surv_b2 * size_1^2)))",
                            "Evaluated",
                            "P")
 
 pdb$VitalRateExpr[2,] <- c(ipm_id,
                            "Growth",
-                           "mu_g = grow_b0 + grow_b1 * size_1",
+                           "mu_g = grow_b0 + grow_b1 * size_1 + grow_b2 * size_1^2",
                            "Evaluated",
                            "P")
 
@@ -187,42 +187,54 @@ pdb$ParameterValues[2,] <- c(ipm_id,
                              pars$surv_b1)
 
 pdb$ParameterValues[3,] <- c(ipm_id,
+                             "Survival",
+                             "size",
+                             "surv_b2",
+                             pars$surv_b2)
+
+pdb$ParameterValues[4,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "grow_b0",
                              pars$grow_b0)
 
-pdb$ParameterValues[4,] <- c(ipm_id,
+pdb$ParameterValues[5,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "grow_b1",
                              pars$grow_b1)
 
-pdb$ParameterValues[5,] <- c(ipm_id,
+pdb$ParameterValues[6,] <- c(ipm_id,
+                             "Growth",
+                             "size",
+                             "grow_b2",
+                             pars$grow_b2)
+
+pdb$ParameterValues[7,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "a",
                              pars$a)
 
-pdb$ParameterValues[6,] <- c(ipm_id,
+pdb$ParameterValues[8,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "b",
                              pars$b)
 
-pdb$ParameterValues[7,] <- c(ipm_id,
+pdb$ParameterValues[9,] <- c(ipm_id,
                              "Fecundity",
                              "size",
                              "fecu_b0",
                              pars$fecu_b0)
 
-pdb$ParameterValues[8,] <- c(ipm_id,
+pdb$ParameterValues[10,] <- c(ipm_id,
                              "Fecundity",
                              "size",
                              "recr_sz",
                              pars$recr_sz)
 
-pdb$ParameterValues[9,] <- c(ipm_id,
+pdb$ParameterValues[11,] <- c(ipm_id,
                              "Fecundity",
                              "size",
                              "recr_sd",

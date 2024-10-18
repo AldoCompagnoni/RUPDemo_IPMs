@@ -1,96 +1,97 @@
 # IPM for alder 2007; kansas; Sporobolus cryptandrus
 
-# Niklas Neisse
-# 2024.10.17
+# Author: Niklas Neisse
+# Email: neisse.n@protonmail.com
+# Date: 2024.10.17
 
-# reading in, and cleaning the data
-# exploring the overall-years rates
-# setting up the vital rate data-frames
+# Process plant growth data to explore vital rates for 
+ # the species Sporobolus cryptandrus and 
+ # generates visualizations and model fits for IPM analysis.
 
 # Setting the stage ------------------------------------------------------------
-# Remove all objects in the global environment
+# Clear the workspace by removing all objects in the global environment
 rm(list = ls()) 
-# Set seed for reproducibility
+# Set a random seed for reproducibility of results
 set.seed(100)
+# Ensure strings are treated as characters rather than factors
 options(stringsAsFactors = F)
 
-
 # Packages ---------------------------------------------------------------------
-
-# Define CRAN packages
+# List of required CRAN packages
 .cran_packages <- c('tidyverse','patchwork','skimr') 
-# Check if CRAN packages are installed
+# Check if all required packages are installed
 .inst <- .cran_packages %in% installed.packages() 
 if(any(!.inst)) {
-  # Install missing CRAN packages
+  # Install any missing packages from CRAN
   install.packages(.cran_packages[!.inst]) 
 }
-# Load required packages
+# Load the necessary packages into the R environment
 sapply(.cran_packages, require, character.only = TRUE) 
 
-
 # Data -------------------------------------------------------------------------
-
-# Define the species variable
+# Specify the species being analyzed
 species <- 'Sporobolus cryptandrus'
-sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
-                                       collapse = "")))
-# plantTracker data
+# Create a unique species abbreviation for file naming
+sp_abb  <- tolower(
+  gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
+                      collapse = "")))
+
+# Load the plant tracking data (this line is commented out for now)
 # source(paste0('adler_2007_ks/R/', sp_abb, '/kansas_tracker_', sp_abb, '.R'))
 
-## Species data frame
-df <- read.csv(paste0('adler_2007_ks/data/', sp_abb, '/ks_', sp_abb, '.csv')) %>% 
+## Read and clean the species data
+df <- read.csv(paste0('adler_2007_ks/data/', 
+                      sp_abb, '/ks_', sp_abb, '.csv')) %>% 
   filter(Species == species) %>%
-  select(-c(Suspect, nearEdge, Site)) %>% # geometry, 
-  mutate(across(c(Quad), as.factor)) %>% 
+  select(-c(Suspect, nearEdge, Site)) %>%
+  mutate(across(c(Quad), as.factor)) %>%
   rename(species  = Species, 
          size_t0  = basalArea_genet,
          size_t1  = size_tplus1,
          survives = survives_tplus1,
          year     = Year,
          quad     = Quad,
-         track_id = trackID) %>% 
+         track_id = trackID) %>%
   mutate(logsize_t0   = log(size_t0),
          logsize_t1   = log(size_t1),
          logsize_t0_2 = logsize_t0^2,
          logsize_t0_3 = logsize_t0^3)
+# Provide a summary of the cleaned data
 skim(df)
 
-
 # Data exploration -------------------------------------------------------------
-
-## Quadrat inventory
-# grouping by quard, year and counting the individuals
+# Analyze the quadrat inventory by year
+# Group data by quadrant and year, counting the number of individuals
 inv_plot_per_year <- df %>% 
   group_by(quad, year) %>% 
   summarise(nr_ind = length(.[2])) %>% 
   ungroup() %>% 
-  # pivot_wider(names_from = year, values_from = nr_ind) %>% 
-  # ploting year against quadrat
+  # Create a scatter plot of quadrat counts over the years
   ggplot() + 
   geom_point(aes(x = year, y = quad)) +
   theme_bw() +
   theme(axis.text.y = element_text(size = 5))
 inv_plot_per_year
 
+# Create results directory if it doesn't exist
 if (!dir.exists(paste0("adler_2007_ks/results/", sp_abb))) {
-  dir.create(paste0("adler_2007_ks/results/", sp_abb))}
-
-ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_inventory_quadrat_per_year.png"),  
+  dir.create(paste0("adler_2007_ks/results/", sp_abb))
+}
+# Save the inventory plot to a file
+ggsave(paste0("adler_2007_ks/results/", 
+              sp_abb, "/overall_inventory_quadrat_per_year.png"),  
        plot = inv_plot_per_year,
        width = 6, height = 4, dpi = 150)
 
-
-# Getting the dfs ready --------------------------------------------------------
-
-## Survival
+# Prepare data frames for analysis ---------------------------------------------
+# Survival data frame
 surv_df <- 
   subset(df, !is.na(survives)) %>%
   subset(size_t0 != 0) %>%
   select(quad, track_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
-## Growth
+# Growth data frame
 grow_df <- 
   df %>% 
   subset(size_t0 != 0) %>%
@@ -98,7 +99,7 @@ grow_df <-
   select(quad, track_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
-## Total area 
+# Total area data frame
 quad_df <- 
   df %>%  
   group_by (quad, year) %>% 
@@ -117,7 +118,7 @@ cover_df <-
   mutate(year = as.integer(year)) %>% 
   drop_na()
 
-## Number of recruits
+# Recruitment data frame
 recr_df <- 
   df %>%   
   group_by (year, quad) %>% 
@@ -126,42 +127,40 @@ recr_df <-
 
 recr_df <- left_join(cover_df, recr_df)
 
-# Create the data folder for the species if it does not exits already
+# Create the data folder for the species if it does not exist already
 if (!dir.exists(paste0("adler_2007_ks/data/", sp_abb))) {
   dir.create(paste0("adler_2007_ks/data/", sp_abb))}
-# Save all data
+
 write.csv(df,      paste0("adler_2007_ks/data/", sp_abb, "/data_df.csv"))
 write.csv(surv_df, paste0("adler_2007_ks/data/", sp_abb, "/survival_df.csv"))
 write.csv(grow_df, paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
 write.csv(recr_df, paste0("adler_2007_ks/data/", sp_abb, "/recruitment_df.csv"))
 
 # Plotting the data --------------------------------------------------------
-
-## sizes at log scale 
+# Create histograms for log-transformed sizes at t0 and t1
 hist_t0 <- 
   ggplot(df, aes(x = logsize_t0)) +
   geom_histogram(binwidth = 0.2, fill = "grey", color = "black") +
   labs(title = "Histogram of size at time t0", x = "Size at time t0") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
-
 hist_t1 <- 
   ggplot(df, aes(x = logsize_t1)) +
   geom_histogram(binwidth = 0.2, fill = "white", color = "black") +
   labs(title = "Histogram of size at time t1", x = "Size at time t1") +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
-
 hist_sizes_log <- hist_t0 + hist_t1
 
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_hist_sizes_log.png"), 
        plot = hist_sizes_log, 
        width = 8, height = 3, units = "in", dpi = 150)
 
-## Survival
-# function removes NAs, and provides standard errors, 
+# Survival analysis
+# Load custom function for plotting binned proportions
 source('helper_functions/plot_binned_prop.R')
 
+# Generate a plot for overall survival based on size at t0
 surv_overall <- 
   ggplot(data = plot_binned_prop(df, 10, logsize_t0, survives)) +
   geom_point(aes(x = logsize_t0, 
@@ -177,12 +176,13 @@ surv_overall <-
   labs(x = expression('log(size)'[t0]),
        y = expression('Survival to time t1'))
 
-
+# Save the survival plot to a file
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_surv.png"), 
        plot = surv_overall, 
        width = 4, height = 3, units = "in", dpi = 150)
 
-## Growth
+# Growth analysis
+# Create a scatter plot of size at t0 versus size at t1
 gr_overall <-
   ggplot(data  = grow_df, aes( x = logsize_t0, y = logsize_t1)) +
   geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') +
@@ -196,83 +196,97 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_gr.png"),
        plot = gr_overall, 
        width = 4, height = 3, units = "in", dpi = 150)
 
-## Recruitment
+# Recruitment analysis
+# Create a scatter plot showing the relationship between total parent plant area and number of recruits
 rec_overall <- 
   ggplot(recr_df, aes(x = tot_p_area, y = nr_quad)) + 
-  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +
-  theme_bw() +
-  labs(x = expression('Total parent plant area '[t0]),
-       y = expression('Number of recruits '     [t1]))
+  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  # Points are semi-transparent and colored red
+  theme_bw() +  # Use a clean black-and-white theme
+  labs(x = expression('Total parent plant area '[t0]),  # X-axis label
+       y = expression('Number of recruits '     [t1]))  # Y-axis label
 
+# Save the recruitment plot as a PNG file
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_rec.png"), 
        plot = rec_overall, 
        width = 4, height = 3, units = "in", dpi = 150)
 
 
 # Fitting vital rate models for the mean IPM -----------------------------------
-
-# Growth
+# Fitting growth models to predict size at time t1 based on size at time t0
 gr_mod_mean    <- 
-  lm(logsize_t1 ~ logsize_t0, data = grow_df)
+  lm(logsize_t1 ~ logsize_t0, data = grow_df)  # Linear model
 gr_mod_mean_2  <- 
-  lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, data = grow_df)
+  lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, data = grow_df)  # Quadratic model
 gr_mod_mean_3  <- 
-  lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = grow_df)
+  lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = grow_df)  # Cubic model
+# Compare models using ANOVA
 anova(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
 
+# Predict size at time t1 using the mean growth model
 grow_df$pred <- predict(gr_mod_mean, type = "response")
 
+# Plot observed size at time t1 against size at time t0 with the fitted line
 grow_line <- 
   ggplot(grow_df, aes(x = logsize_t0, y = logsize_t1)) +
-  geom_point() +
-  geom_abline(aes(intercept = coef(gr_mod_mean)[1],
+  geom_point() +  # Plot observed data
+  geom_abline(aes(intercept = coef(gr_mod_mean)[1],  # Add fitted regression line
                   slope     = coef(gr_mod_mean)[2]),
-              color= 'red', lwd = 2) +
+              color= 'red', lwd = 2) +  # Line in red
   theme_bw()
 
+# Plot predicted versus observed size at time t1
 grow_pred <- 
   ggplot(grow_df, aes(x = pred, y = logsize_t1)) +
-  geom_point() +
-  geom_abline(aes(intercept = 0, slope = 1), 
+  geom_point() +  # Plot predicted vs observed
+  geom_abline(aes(intercept = 0, slope = 1),  # 45-degree line
               color = "red", lwd = 2) + 
   theme_bw()
 
+# Combine growth line and prediction plots
 grow_overall_pred <- grow_line + grow_pred + plot_layout() 
 
+# Save the growth prediction plot
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_grow_pred.png"), 
        plot = grow_overall_pred, 
        width = 8, height = 4, units = "in", dpi = 150)
 
-x         <- fitted(gr_mod_mean)
-y         <- resid(gr_mod_mean)^2
-gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))
+# Fit a model to assess variance in growth
+x         <- fitted(gr_mod_mean)  # Fitted values from growth model
+y         <- resid(gr_mod_mean)^2  # Squared residuals
+gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))  # Non-linear model for variance
 
 
 # Survival
+# Fit models to predict survival based on size at time t0
 su_mod_mean   <- glm(survives ~ logsize_t0, 
-                     data = surv_df, family = "binomial" )
+                     data = surv_df, family = "binomial" )  # Logistic regression
 su_mod_mean_2 <- glm(survives ~ logsize_t0 + logsize_t0_2, 
-                     data = surv_df, family = "binomial" )
+                     data = surv_df, family = "binomial" )  # Quadratic logistic model
 su_mod_mean_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, 
-                     data = surv_df, family = "binomial" )
+                     data = surv_df, family = "binomial" )  # Cubic logistic model
+# Compare models using ANOVA
 anova(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
 
+# Generate predictions for survival across a range of sizes
 surv_x <- seq(min(surv_df$logsize_t0, na.rm = T), 
               max(surv_df$logsize_t0, na.rm = T), length.out = 100)
-surv_pred <- boot::inv.logit(coef(su_mod_mean)[1] + coef(su_mod_mean)[2] * surv_x)
+surv_pred <- boot::inv.logit(coef(su_mod_mean)[1] + coef(su_mod_mean)[2] * surv_x)  # Inverse logit for predictions
 
+# Prepare data for survival plot
 surv_pred_df <- data.frame(logsize_t0 = surv_x, survives = surv_pred)
 
+# Plot observed survival with fitted line
 surv_line <- 
   ggplot() +
   geom_jitter(data = surv_df, aes(x = logsize_t0, 
                                   y = survives),
-              alpha = 0.25, width = 0, height = 0.25) +
+              alpha = 0.25, width = 0, height = 0.25) +  # Jittered points for visibility
   geom_line(data = surv_pred_df, aes(x = logsize_t0, 
                                      y = survives),
-            color = 'red', lwd   = 2 ) +
+            color = 'red', lwd   = 2 ) +  # Fitted line in red
   theme_bw()
 
+# Plot binned survival proportions with error bars
 surv_bin <- 
   ggplot() +
   geom_point(data =  plot_binned_prop(df, 10, 
@@ -286,35 +300,44 @@ surv_bin <-
                     ymax = upr) ) +
   geom_line(data = surv_pred_df, aes(x = logsize_t0, 
                                      y = survives),
-            color = 'red', lwd   = 2) +
+            color = 'red', lwd   = 2) +  # Fitted line in red
   theme_bw()
 
+# Combine survival plots
 surv_overall_pred <- surv_line + surv_bin + plot_layout()
 
+# Save the survival prediction plot
 ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_surv_pred.png"), 
        plot = surv_overall_pred, 
        width = 8, height = 3, units = "in", dpi = 150) 
 
 ## Recruitment
+# Filter recruitment data to exclude NAs
 recr_nona_nr_quad <- recr_df %>% filter(!is.na(nr_quad))
+# Fit a negative binomial model for recruitment
 rec_mod_mean <- MASS::glm.nb(nr_quad ~ 1, data = recr_nona_nr_quad)
 
+# Generate predictions for recruitment
 recr_nona_nr_quad <- 
   recr_nona_nr_quad %>% 
   mutate(pred_mod_mean = predict(rec_mod_mean, type = "response")) 
 
+# Summarize total number of recruits and predictions
 rec_sums_df_m <- 
   recr_nona_nr_quad %>%
   summarize(nr_quad = sum(nr_quad),
             pred_mod_mean = sum(pred_mod_mean))
 
+# Count number of adult individuals
 indiv_m <- surv_df %>%
   summarize(n_adults = n())
 
+# Calculate reproduction per capita (both observed and predicted)
 repr_pc_m <- indiv_m %>%
   bind_cols(rec_sums_df_m) %>%
   mutate(repr_pc_mean = pred_mod_mean / n_adults) %>%
   mutate(repr_pc_obs = nr_quad / n_adults) %>%
-  drop_na
+  drop_na  # Remove any NA values
 
+# Output the reproduction per capita summary
 repr_pc_m

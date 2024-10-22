@@ -3,9 +3,8 @@
 load_packages <- function( ... ){
   
   # Define CRAN packages
-  .cran_packages <- substitute( alist(...) ) %>% 
-                      eval( ) %>% 
-                      sapply( deparse )
+  .cran_packages <- sapply( eval( substitute( alist(...) ) ),
+                            deparse )
   
   # Check if CRAN packages are installed
   .inst <- .cran_packages %in% installed.packages() 

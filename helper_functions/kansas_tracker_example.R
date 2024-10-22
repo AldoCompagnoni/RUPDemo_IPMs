@@ -20,7 +20,7 @@ sp_list         <- read.csv(paste0(dat_dir,"species_list.csv"))
 sp_list %>% dplyr::arrange( desc(count) ) %>% head(20)
 grasses         <- sp_list %>% 
                     dplyr::arrange( desc(count) ) %>% 
-                    .[c(10),]
+                    .[c(7),]
 
 # Read in quad inventory to use as 'inv' list in plantTracker
 quad_inv        <- read.csv(paste0(dat_dir,"quadrat_inventory.csv"),
@@ -97,7 +97,7 @@ rds_full <- lapply( rds_l, function(x) readRDS(
 
 # Save the output file so that it doesn't need to be recreated ever again
 # saveRDS(rds_full,file="KS_polygons_full.rds")
-dat <- readRDS(file="KS_polygons_full.rds")
+dat <- readRDS(file= paste0(dir, "/KS_polygons_full.rds") )
 
 # Subset to the species of interest
 dat_3grasses <- dat[dat$SCI_NAME %in% grasses$species,] %>% 
@@ -108,7 +108,7 @@ dat_3grasses <- dat[dat$SCI_NAME %in% grasses$species,] %>%
 
 # And save the subsetted file, too
 # saveRDS(dat_3grasses,file="KS_polygons_3grasses.rds")
-# dat_3grasses <- readRDS( file="KS_polygons_3grasses.rds" )
+# dat_3grasses <- readRDS( file=paste0(dir,"KS_polygons_3grasses.rds") )
 
 # Check the inv and dat arguments
 checkDat(dat_3grasses, 
@@ -121,18 +121,43 @@ checkDat(dat_3grasses,
 
 
 # Now the data are ready for the trackSpp function
-datTrackSpp <- trackSpp(dat_3grasses,
-                        inv_ks,
-                        dorm=1,
-                        buff=0.05,
-                        clonal=TRUE,
-                        buffGenet = 0.05,
-                        aggByGenet = TRUE,
-                        flagSuspects = TRUE)
+datTrackSpp <- trackSpp( dat_3grasses,
+                         inv_ks,
+                         dorm         = 0,
+                         buff         = 5,
+                         clonal       = FALSE,
+                         # buffGenet    = 0.05,
+                         aggByGenet   = FALSE,
+                         flagSuspects = TRUE )
+
+
+datTrackSpp %>% 
+  dplyr::select( age, survives_tplus1 ) %>% 
+  drop_na %>% 
+  group_by( age ) %>% 
+  summarise( surv = sum(survives_tplus1) / n() ) %>% 
+  ungroup
+
+datTrackSpp %>% 
+  dplyr::select( age, survives_tplus1 ) %>% 
+  drop_na %>% 
+  .$survives_tplus1 %>% 
+  sum
+
+dat_3grasses %>% 
+  subset( Quad == 'e1q1-1' & Year == 40) %>% 
+  dplyr::select( Species ) %>% 
+  plot
+
+# & Year == 43 ) %>% 
+  # dplyr::select(Species) %>% 
+  # plot
+
 datTrackSpp %>% 
   as.data.frame %>% 
   dplyr::select( Site, Quad, Species, trackID,
                  Year, basalArea_genet, recruit,
                  survives_tplus1, age, size_tplus1,
                  nearEdge, Suspect) %>% 
-  write.csv( 'KS_SCSC_ANGE.csv', row.names = F )
+  write.csv( paste0( 'adler_2007_ks/data/', 
+                     'pste/ks_pste.csv'), row.names = F )

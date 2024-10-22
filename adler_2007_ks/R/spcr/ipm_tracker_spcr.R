@@ -17,16 +17,11 @@ set.seed(100)
 options(stringsAsFactors = F)
 
 # Packages ---------------------------------------------------------------------
-# List of required CRAN packages
-.cran_packages <- c('tidyverse','patchwork','skimr') 
-# Check if all required packages are installed
-.inst <- .cran_packages %in% installed.packages() 
-if(any(!.inst)) {
-  # Install any missing packages from CRAN
-  install.packages(.cran_packages[!.inst]) 
-}
-# Load the necessary packages into the R environment
-sapply(.cran_packages, require, character.only = TRUE) 
+
+# load packages
+source( 'helper_functions/load_packages.R' )
+load_packages( tidyverse, patchwork, skimr )
+
 
 # Data -------------------------------------------------------------------------
 # Specify the species being analyzed

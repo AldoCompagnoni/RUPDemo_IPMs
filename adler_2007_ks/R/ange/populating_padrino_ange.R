@@ -1,4 +1,4 @@
-# IPM for kansas bogr year specific
+# IPM for kansas Andropogon gerardii year specific
 
 # Niklas Neisse
 # 2024.09.23
@@ -134,7 +134,7 @@ pdb$IpmKernels[2,] <- c(ipm_id,
 # Vital rate expressions
 pdb$VitalRateExpr[1,] <- c(ipm_id,
                            "Survival",
-                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2 + surv_b3_yr * size_1^3)))",
+                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2)))",
                            "Evaluated",
                            "P_yr")
 

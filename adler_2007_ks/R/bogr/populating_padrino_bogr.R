@@ -1,4 +1,4 @@
-# IPM for kansas bogr year specific
+# IPM for kansas Bouteloua gracilis year specific
 
 # Niklas Neisse
 # 2024.09.23
@@ -135,13 +135,13 @@ pdb$IpmKernels[2,] <- c(ipm_id,
 # Vital rate expressions
 pdb$VitalRateExpr[1,] <- c(ipm_id,
                            "Survival",
-                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2)))",
+                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2 + surv_b3_yr * size_1^3)))",
                            "Evaluated",
                            "P_yr")
 
 pdb$VitalRateExpr[2,] <- c(ipm_id,
                            "Growth",
-                           "mu_g_yr = grow_b0_yr + grow_b1_yr * size_1 + grow_b2_yr * size_1^2",
+                           "mu_g_yr = grow_b0_yr + grow_b1_yr * size_1 + grow_b2_yr * size_1^2 + grow_b3_yr * size_1^3",
                            "Evaluated",
                            "P_yr")
 
@@ -218,7 +218,7 @@ pdb$ParameterValues$parameter_value <- as.numeric(pdb$ParameterValues$parameter_
 pdb$ParSetIndices[1,] <- c(ipm_id,
                            "year",
                            "yr",
-                           "34:71",
+                           "35:71",
                            "P_yr; F_yr",
                            "")
 

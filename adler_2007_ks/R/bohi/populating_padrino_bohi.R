@@ -214,7 +214,7 @@ pdb$ParameterValues$parameter_value <- as.numeric(pdb$ParameterValues$parameter_
 pdb$ParSetIndices[1,] <- c(ipm_id,
                            "year",
                            "yr",
-                           "35:67",
+                           "c(35:67,71)",
                            "P_yr; F_yr",
                            "")
 
@@ -240,4 +240,10 @@ bg_ipm_pdb
 lambda(bg_ipm_pdb)
 test_model(pdb_test, id = ipm_id)
 
-plot(lambda(bg_ipm_pdb) ~ c(35:67))
+lmb_year <- ggplot() +
+  geom_point(aes(x = c(35:67,71), y = lambda(bg_ipm_pdb))) +
+  theme()
+
+ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_lmb.png"), 
+       plot = lmb_year, 
+       width = 4, height = 3, units = "in", dpi = 150)

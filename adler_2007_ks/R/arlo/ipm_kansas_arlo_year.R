@@ -1,7 +1,8 @@
 # IPM for alder 2007 kansas Aristida longiseta year specific
 
-# Niklas Neisse
-# 2024.10.11
+# Author: Niklas Neisse
+# Email: neisse.n@protonmail.com
+# Date: 2024.10.23
 
 #
 
@@ -871,9 +872,11 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     name             = "P_yr",
     family           = "CC",
     formula          = s_yr * g_yr,
-    s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1), 
+    s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1 + 
+                               surv_b2_yr * size_1^2), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
-    mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1,
+    mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
+                        grow_b2_yr * size_1^2,
     
     # # Dynamically build s_yr based on num_surv_params
     # s_yr = plogis(

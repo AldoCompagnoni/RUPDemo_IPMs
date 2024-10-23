@@ -131,13 +131,13 @@ pdb$IpmKernels[2,] <- c(ipm_id,
 # Vital rate expressions
 pdb$VitalRateExpr[1,] <- c(ipm_id,
                            "Survival",
-                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1)))",
+                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2)))",
                            "Evaluated",
                            "P_yr")
 
 pdb$VitalRateExpr[2,] <- c(ipm_id,
                            "Growth",
-                           "mu_g_yr = grow_b0_yr + grow_b1_yr * size_1",
+                           "mu_g_yr = grow_b0_yr + grow_b1_yr * size_1 + grow_b2_yr * size_1^2",
                            "Evaluated",
                            "P_yr")
 

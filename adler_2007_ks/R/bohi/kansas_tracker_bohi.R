@@ -49,9 +49,9 @@ dat_target_spec <- dat[dat$SCI_NAME %in% target_spec$species,] %>%
 datTrackSpp <- trackSpp(dat_target_spec,
                         inv_ks,
                         dorm=1,
-                        buff=0.05,
+                        buff= 5,
                         clonal=TRUE,
-                        buffGenet = 0.05,
+                        buffGenet = 5,
                         aggByGenet = TRUE,
                         flagSuspects = TRUE)
 

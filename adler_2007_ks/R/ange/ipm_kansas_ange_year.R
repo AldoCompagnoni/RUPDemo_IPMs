@@ -567,7 +567,7 @@ inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 # Survival of x-sized individual to time t1
 sx <- function(x, pars) {
   return(inv_logit(pars$surv_b0 + pars$surv_b1*x + 
-                     pars$surv_b2*x^2 + pars$surv_b3*x^3))
+                     pars$surv_b2*x^2))
 }
 
 # Transition of x-sized individual to y-sized individual at time t1
@@ -648,7 +648,6 @@ prep_pars <- function(i) {
   pars_year <- list(surv_b0 = extr_value_list(pars_var_wide, paste("surv_b0", yr_now, sep = "_" )),
                     surv_b1 = extr_value_list(pars_var_wide, paste("surv_b1", yr_now, sep = "_" )),
                     surv_b2 = extr_value_list(pars_var_wide, paste("surv_b2", yr_now, sep = "_" )),
-                    surv_b3 = extr_value_list(pars_var_wide, paste("surv_b3", yr_now, sep = "_" )),
                     grow_b0 = extr_value_list(pars_var_wide, paste("grow_b0", yr_now, sep = "_" )),
                     grow_b1 = extr_value_list(pars_var_wide, paste("grow_b1", yr_now, sep = "_" )),
                     grow_b2 = extr_value_list(pars_var_wide, paste("grow_b2", yr_now, sep = "_" )),
@@ -808,6 +807,7 @@ write.csv(all_pars,
           paste0("adler_2007_ks/data/", sp_abb, "/all_pars.csv"), 
           row.names = F)
 
+
 # proto-IPM with '_yr' suffix
 proto_ipm_yr <- init_ipm(sim_gen   = "simple",
                          di_dd     = "di",
@@ -818,11 +818,11 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     family           = "CC",
     formula          = s_yr * g_yr,
     s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1 + 
-                                surv_b2_yr * size_1^2 + 
-                                surv_b3_yr * size_1^3), 
+                               surv_b2_yr * size_1^2), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
-      grow_b2_yr * size_1^2 + grow_b3_yr * size_1^3,
+                        grow_b2_yr * size_1^2 + 
+                        grow_b3_yr * size_1^3,
     grow_sig         = sqrt(a * exp(b * size_1)),
     data_list        = all_pars,
     states           = list(c('size')),
@@ -887,5 +887,5 @@ write.csv(lam_out,
 lam_out_wide  <- as.list(pivot_wider(lam_out, names_from = "coefficient", 
                                      values_from         = "value"))
 write.csv(lam_out_wide, 
-          paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr.csv"), 
+          paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr_old.csv"), 
           row.names = F)

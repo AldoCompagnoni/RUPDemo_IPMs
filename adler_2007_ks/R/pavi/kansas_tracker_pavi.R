@@ -77,7 +77,7 @@ datTrackSpp <- trackSpp(dat_target_spec, inv_ks,
                         # Dormancy flag
                         dorm         = 1,
                         # Buffer size
-                        buff         = 0.05,
+                        buff         = 5,
                         # Allow for clonal tracking
                         clonal       = TRUE,
                         # Buffer for genet

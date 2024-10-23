@@ -1,4 +1,4 @@
-# plantTracker for Adler 2007 Kansas Sporobolus asper
+# plantTracker for Adler 2007 Kansas Andropogon gerardii
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
@@ -45,7 +45,7 @@ sp_list     <- read.csv(paste0(data_directory,
                                "quadrat_data/species_list.csv"))  %>% 
   dplyr::arrange(desc(count)) %>% head(25)
 # Select the x_th species (target species)
-target_spec <- sp_list %>% .[c(20),]  
+target_spec <- sp_list %>% .[c(5),]  
 
 # Define the species variable and abbreviation
 species <- target_spec[1,1]

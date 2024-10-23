@@ -64,8 +64,8 @@ hist_logsizes_years <-
 
 ggsave(
   paste0("adler_2007_ks/results/", sp_abb, "/years_hist_logsizes_years.png"),  
-       plot = hist_logsizes_years,
-       width = 6, height = 12, dpi = 150)
+  plot = hist_logsizes_years,
+  width = 6, height = 12, dpi = 150)
 
 
 ## Survival 
@@ -190,29 +190,29 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_recruitment_size.png"),
        width = 4, height = 9, dpi = 150)
 
 
-# Removing year with too few data ----------------------------------------------
-
-# years_re <- c(33)
-# df      <- df      %>% filter(!is.na(year) & year != years_re)
-# surv_df <- surv_df %>% filter(!is.na(year) & year != years_re)
-# grow_df <- grow_df %>% filter(!is.na(year) & year != years_re)
-# recr_df <- recr_df %>% filter(!is.na(year) & year != years_re)
-# surv_yrs       <- data.frame(year = surv_df$year %>% unique %>% sort)
-# surv_bin_yrs   <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
-#                          logsize_t0, survives, surv_yrs)
-# surv_bin_yrs   <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
+# # Removing year with too few data ----------------------------------------------
+# 
+# years_re <- c(32:46, 58, 59)
+# df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
+# surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
+# grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
+# recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% years_re))
+# surv_yrs     <- data.frame(year = surv_df$year %>% unique %>% sort)
+# surv_bin_yrs <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
+#                        logsize_t0, survives, surv_yrs)
+# surv_bin_yrs <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
+years_v      <- sort(unique(df$year))
 
 
 # Fitting vital rate models with the random effect of year ---------------------
-# without the data of year 33
 
 # Survival
-su_mod_yr   <- glmer(survives ~ logsize_t0 + (logsize_t0 | year), 
-                     data = surv_df, family = binomial)
-su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
+su_mod_yr   <- glmer(survives ~ logsize_t0 + (1 | year), 
+                     data = surv_df, family = binomial )
+su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (1 | year), 
                      data = surv_df, family = binomial)
 su_mod_yr_3 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + 
-                       logsize_t0_3 + (logsize_t0 | year), 
+                       logsize_t0_3 + (1 | year), 
                      data = surv_df, family = binomial)
 
 s_mods <- c(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
@@ -221,9 +221,6 @@ AICtab(s_mods, weights = T)
 su_mod_yr_bestfit_index <- which.min(AICtab(s_mods, weights = T, sort = F)$dAIC)
 su_mod_yr_bestfit <- s_mods[[su_mod_yr_bestfit_index]]
 ranef_su <- data.frame(coef(su_mod_yr_bestfit)[1])
-
-years_v  <- c(surv_bin_yrs[[1]][1,'year']:
-                surv_bin_yrs[[length(surv_bin_yrs)]][1,'year'])
 
 v <- rep(NA,length(surv_bin_yrs))
 for (ii in 1:length(surv_bin_yrs)) {
@@ -721,6 +718,7 @@ pars_yr <- lapply(1:length(years_v),
                   num_grow_params = gr_mod_yr_bestfit_index, 
                   prep_pars)
 
+
 # Identify which years contain parameters with numeric(0)
 contains_numeric0 <- sapply(pars_yr, function(regular_list) {
   any(sapply(regular_list, function(sublist) {
@@ -865,6 +863,9 @@ write.csv(all_pars,
           paste0("adler_2007_ks/data/", sp_abb, "/all_pars.csv"), 
           row.names = F)
 
+su_mod_yr_bestfit_index
+gr_mod_yr_bestfit_index
+
 # proto-IPM with '_yr' suffix
 proto_ipm_yr <- init_ipm(sim_gen   = "simple",
                          di_dd     = "di",
@@ -960,3 +961,9 @@ lam_out_wide  <- as.list(pivot_wider(lam_out, names_from = "coefficient",
 write.csv(lam_out_wide, 
           paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr.csv"), 
           row.names = F)
+
+
+
+su_mod_yr_bestfit_index
+gr_mod_yr_bestfit_index
+years_v

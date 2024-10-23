@@ -1,4 +1,4 @@
-# plantTracker for Adler 2007 Kansas Sporobolus asper
+# plantTracker for Adler 2007 Kansas Buchloe dactyloides
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
@@ -7,22 +7,14 @@
 # Code adapted from: https://github.com/aestears/plantTracker
  # Adapted from plantTracker How to (Stears et al. 2022)
 
-# List of required CRAN packages
-.cran_packages <- c(
-  # Spatial data handling
-  'sf',
-  # Plant tracking analysis
-  'plantTracker') 
+# Packages ---------------------------------------------------------------------
 
-# Check if all required packages are installed
-.inst <- .cran_packages %in% installed.packages() 
-if(any(!.inst)) {
-  # Install any missing packages from CRAN
-  install.packages(.cran_packages[!.inst]) 
-}
-# Load the necessary packages into the R environment
-sapply(.cran_packages, require, character.only = TRUE)
+# load packages
+source('helper_functions/load_packages.R')
+load_packages(tidyverse, patchwork, skimr, ipmr)
 
+
+# Data -------------------------------------------------------------------------
 # Define directories for data
 data_directory   <- 'adler_2007_ks/data/'
 quadrat_data_dir <- file.path(data_directory, 'quadrat_data/')
@@ -45,7 +37,7 @@ sp_list     <- read.csv(paste0(data_directory,
                                "quadrat_data/species_list.csv"))  %>% 
   dplyr::arrange(desc(count)) %>% head(25)
 # Select the x_th species (target species)
-target_spec <- sp_list %>% .[c(20),]  
+target_spec <- sp_list %>% .[c(2),]  
 
 # Define the species variable and abbreviation
 species <- target_spec[1,1]

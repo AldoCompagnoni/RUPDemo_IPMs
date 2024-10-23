@@ -129,13 +129,13 @@ pdb$IpmKernels[2,] <- c( "nnnnn1",
 # Vital rate expressions
 pdb$VitalRateExpr[1,] <- c( "nnnnn1",
                             "Survival",
-                            "s_yr = 1 / ( 1 + exp( -( surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2 ) ) )",
+                            "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1 + surv_b2_yr * size_1^2  + surv_b3_yr * size_1^3)))",
                             "Evaluated",
                             "P_yr" )
 
 pdb$VitalRateExpr[2,] <- c( "nnnnn1",
                             "Growth",
-                            "mu_g_yr = grow_b0_yr + grow_b1_yr * size_1 + grow_b2_yr * size_1^2 + grow_b3_yr * size_1^3",
+                            "mu_g_yr = grow_b0_yr + grow_b1_yr * size_1 + grow_b2_yr * size_1^2",
                             "Evaluated",
                             "P_yr" )
 
@@ -208,7 +208,7 @@ pdb$ParameterValues$parameter_value <- as.numeric( pdb$ParameterValues$parameter
 pdb$ParSetIndices[1,] <- c("nnnnn1",
                            "year",
                            "yr",
-                           "34:71",
+                           "35:71",
                            "P_yr; F_yr",
                            "")
 
@@ -233,3 +233,5 @@ bg_ipm_pdb <- make_ipm(pdb_test_proto$nnnnn1)
 bg_ipm_pdb
 lambda(bg_ipm_pdb)
 test_model(pdb_test, id = "nnnnn1")
+
+plot( c(35:71), lambda(bg_ipm_pdb))

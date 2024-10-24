@@ -29,12 +29,17 @@ load_packages( tidyverse, patchwork, skimr,
 # Data -------------------------------------------------------------------------
 # Define the species variable
 species <- "Schizachyrium scoparium"
-sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
-                                       collapse = "")))
-grow_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
-surv_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/survival_df.csv"))
-recr_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/recruitment_df.csv"))
-df      <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/data_df.csv"))
+sp_abb  <- 
+  tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
+                              collapse = "")))
+grow_df <- 
+  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
+surv_df <- 
+  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/survival_df.csv"))
+recr_df <- 
+  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/recruitment_df.csv"))
+df      <- 
+  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/data_df.csv"))
 
 df_long <- 
   pivot_longer(df, cols = c(logsize_t0, logsize_t1 ), 
@@ -58,9 +63,10 @@ hist_logsizes_years <-
   theme_bw() +
   theme(axis.text.y = element_text(size = 5))
 
-ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_hist_logsizes_years.png"),  
-       plot = hist_logsizes_years,
-       width = 6, height = 12, dpi = 150)
+ggsave(
+  paste0("adler_2007_ks/results/", sp_abb, "/years_hist_logsizes_years.png"),  
+  plot = hist_logsizes_years,
+  width = 6, height = 12, dpi = 150)
 
 
 ## Survival 
@@ -87,8 +93,10 @@ survival <-
   facet_wrap(.~ transition, ncol = 4) +
   theme_bw() +
   theme(axis.text = element_text(size = 8), title = element_text(size = 10),
-        strip.text.y = element_text(size = 5, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
-        strip.text.x = element_text(size = 5, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.y = element_text(size = 5, 
+                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.x = element_text(size = 5, 
+                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit( '0.5', unit = 'mm' ),
         panel.spacing         = unit( '0.5', unit = 'mm' )) +
   labs(x = expression('log(size)'[t0]),
@@ -116,8 +124,10 @@ growth <-
   theme_bw() +
   theme(axis.text    = element_text(size = 8),
         title        = element_text(size = 10),
-        strip.text.y = element_text(size = 8, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
-        strip.text.x = element_text(size = 8, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.y = element_text(size = 8, 
+                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.x = element_text(size = 8, 
+                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit('0.5', unit = 'mm'),
         panel.spacing         = unit('0.5', unit = 'mm')) +
   labs(x = expression('log(size) '[t0]),
@@ -151,8 +161,10 @@ recruits <-
   theme(axis.text    = element_text(size = 8),
         axis.text.x = element_text(angle = 45, hjust = 1),
         title        = element_text(size = 10),
-        strip.text.y = element_text(size = 8, margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
-        strip.text.x = element_text(size = 8, margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.y = element_text(size = 8, 
+                                    margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.x = element_text(size = 8, 
+                                    margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit('0.5', unit = 'mm'),
         panel.spacing         = unit('0.5', unit = 'mm')) +
   labs(x = expression('Number of adults '[ t0]),
@@ -179,29 +191,29 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_recruitment_size.png"),
        width = 4, height = 9, dpi = 150)
 
 
-# Removing year with too few data ----------------------------------------------
+# CHECK -- Removing year with too few data -------------------------------------
 
-# years_re <- c(33)
-# df      <- df      %>% filter(!is.na(year) & year != years_re)
-# surv_df <- surv_df %>% filter(!is.na(year) & year != years_re)
-# grow_df <- grow_df %>% filter(!is.na(year) & year != years_re)
-# recr_df <- recr_df %>% filter(!is.na(year) & year != years_re)
-# surv_yrs       <- data.frame(year = surv_df$year %>% unique %>% sort)
-# surv_bin_yrs   <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
-#                          logsize_t0, survives, surv_yrs)
-# surv_bin_yrs   <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
+# years_re <- c(32:46, 58, 59)
+# df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
+# surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
+# grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
+# recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% years_re))
+# surv_yrs     <- data.frame(year = surv_df$year %>% unique %>% sort)
+# surv_bin_yrs <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
+#                        logsize_t0, survives, surv_yrs)
+# surv_bin_yrs <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
+years_v      <- sort(unique(df$year))
 
 
 # Fitting vital rate models with the random effect of year ---------------------
-# without the data of year 33
 
 # Survival
-su_mod_yr   <- glmer(survives ~ logsize_t0 + (logsize_t0 | year), 
-                     data = surv_df, family = binomial)
-su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
+su_mod_yr   <- glmer(survives ~ logsize_t0 + (1 | year), 
+                     data = surv_df, family = binomial )
+su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (1 | year), 
                      data = surv_df, family = binomial)
 su_mod_yr_3 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + 
-                       logsize_t0_3 + (logsize_t0 | year), 
+                       logsize_t0_3 + (1 | year), 
                      data = surv_df, family = binomial)
 
 s_mods <- c(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
@@ -210,9 +222,6 @@ AICtab(s_mods, weights = T)
 su_mod_yr_bestfit_index <- which.min(AICtab(s_mods, weights = T, sort = F)$dAIC)
 su_mod_yr_bestfit <- s_mods[[su_mod_yr_bestfit_index]]
 ranef_su <- data.frame(coef(su_mod_yr_bestfit)[1])
-
-years_v  <- c(surv_bin_yrs[[1]][1,'year']:
-                surv_bin_yrs[[length(surv_bin_yrs)]][1,'year'])
 
 v <- rep(NA,length(surv_bin_yrs))
 for (ii in 1:length(surv_bin_yrs)) {
@@ -240,8 +249,8 @@ surv_yr_plots <- function(i) {
   temp_plot <- surv_temp %>% 
     ggplot() +
     geom_point(aes(x = logsize_t0, y = survives), size = 0.5) +
-    geom_line(data = pred_temp_df, aes(x = logsize_t0, y = survives), 
-              color = line_color, lwd = 1) +
+    geom_line(data = pred_temp_df, 
+              aes(x = logsize_t0, y = survives), color = line_color, lwd = 1) +
     labs(title = paste0('19',years_v[i]),
          x = expression('log(size)'[t0]),
          y = expression('Survival probability '[t1])) +
@@ -274,14 +283,14 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb,
 # Growth
 gr_mod_yr   <- 
   lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), 
-                    data = grow_df)
+       data = grow_df)
 gr_mod_yr_2 <- 
   lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
-                    data = grow_df)
+       data = grow_df)
 # Model failed to converge with max|grad| = 0.0297295
 gr_mod_yr_3 <- 
-  lmer(logsize_t1 ~ 
-         logsize_t0 + logsize_t0_2 + logsize_t0_3 + (logsize_t0 | year), 
+  lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
+         logsize_t0_3 + (logsize_t0 | year), 
        data = grow_df)
 
 g_mods <- c(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
@@ -663,15 +672,13 @@ extr_value_list <- function(x, field) {
   return(as.numeric(x[paste0(field)] %>% unlist()))
 }
 
-prep_pars <- function(i, num_surv_params = 2, num_grow_params = 2) {
+prep_pars <- function(i, num_surv_params, num_grow_params) {
   yr_now <- years_v[i]
   
   # Initialize the parameters list with the required order
   pars_year <- list(
     surv_b0  = extr_value_list(pars_var_wide, paste("surv_b0", yr_now, sep = "_")),
-    surv_b1  = extr_value_list(pars_var_wide, paste("surv_b1", yr_now, sep = "_")),
     grow_b0  = extr_value_list(pars_var_wide, paste("grow_b0", yr_now, sep = "_")),
-    grow_b1  = extr_value_list(pars_var_wide, paste("grow_b1", yr_now, sep = "_")),
     a        = extr_value_list(pars_cons_wide, "a"),
     b        = extr_value_list(pars_cons_wide, "b"),
     fecu_b0  = extr_value_list(pars_var_wide, paste("fecu_b0", yr_now, sep = "_")),
@@ -683,22 +690,22 @@ prep_pars <- function(i, num_surv_params = 2, num_grow_params = 2) {
   )
   
   # Dynamically add survival parameters based on num_surv_params
-  for (j in 2:num_surv_params) {
+  for (j in 1:num_surv_params) {
     param_name <- paste0("surv_b", j)
     value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = "_"))
     if (!is.null(value)) {
-      # Insert after surv_b1
-      pars_year <- append(pars_year, setNames(list(value), param_name), after = 2)
+      # Insert after surv_b0
+      pars_year <- append(pars_year, setNames(list(value), param_name), after = 1)
     }
   }
   
   # Dynamically add growth parameters based on num_grow_params
-  for (j in 2:num_grow_params) {
+  for (j in num_grow_params:1) {
     param_name <- paste0("grow_b", j)
     value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = "_"))
     if (!is.null(value)) {
       # Insert immediately after grow_b1
-      pos <- which(names(pars_year) == "grow_b1") + 1
+      pos <- which(names(pars_year) == "grow_b0") + 1
       pars_year <- append(pars_year, setNames(list(value), param_name), after = pos - 1)
     }
   }
@@ -712,6 +719,7 @@ pars_yr <- lapply(1:length(years_v),
                   num_grow_params = gr_mod_yr_bestfit_index, 
                   prep_pars)
 
+
 # Identify which years contain parameters with numeric(0)
 contains_numeric0 <- sapply(pars_yr, function(regular_list) {
   any(sapply(regular_list, function(sublist) {
@@ -720,7 +728,7 @@ contains_numeric0 <- sapply(pars_yr, function(regular_list) {
 })
 
 which_contains_numeric0 <- which(contains_numeric0)
-# Exclude these years
+# CHECK -- Exclude these years ####
 pars_yr <- pars_yr[-which_contains_numeric0]
 years_v <- years_v[-which_contains_numeric0]
 
@@ -778,12 +786,11 @@ pop_counts <- left_join(pop_counts_t0,
   summarise(n_t0 = sum(n_t0),
             n_t1 = sum(n_t1)) %>% 
   ungroup %>% 
-  mutate(obs_pgr = n_t1 / n_t0) %>% 
-  mutate(lambda = lambdas_yr %>% unlist) 
-# %>%
-#   # removing the first two years
-#   filter(year >= min(year)+2)
-
+  mutate(obs_pgr = n_t1 / n_t0) %>%
+  full_join(data.frame(year = as.numeric(names(lambdas_yr)),
+                       lambda = unlist(lambdas_yr)), 
+            by = 'year') %>% 
+  drop_na
 
 lam_mean_yr    <- mean(pop_counts$lambda, na.rm = T)
 lam_mean_count <- mean(pop_counts$obs_pgr, na.rm = T)
@@ -794,6 +801,8 @@ lam_mean_geom
 lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
 lam_mean_overall
 
+# changing the year according to 
+years_v <- pop_counts$year
 
 # projecting a population vector for each year using the year-specific models,
 # and compare the projected population to the observed population
@@ -855,6 +864,10 @@ write.csv(all_pars,
           paste0("adler_2007_ks/data/", sp_abb, "/all_pars.csv"), 
           row.names = F)
 
+# CHECK -- proto ipm #####
+su_mod_yr_bestfit_index
+gr_mod_yr_bestfit_index
+
 # proto-IPM with '_yr' suffix
 proto_ipm_yr <- init_ipm(sim_gen   = "simple",
                          di_dd     = "di",
@@ -868,7 +881,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
                                 surv_b2_yr * size_1^2), 
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
-                                grow_b2_yr * size_1^2,
+      grow_b2_yr * size_1^2,
     
     # # Dynamically build s_yr based on num_surv_params
     # s_yr = plogis(
@@ -952,3 +965,8 @@ write.csv(lam_out_wide,
           paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr.csv"), 
           row.names = F)
 
+
+
+su_mod_yr_bestfit_index
+gr_mod_yr_bestfit_index
+years_v

@@ -207,32 +207,39 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_rec.png"),
        width = 4, height = 3, units = "in", dpi = 150)
 
 
-# Fitting vital rate models for the mean IPM -----------------------------------
-# Fitting growth models to predict size at time t1 based on size at time t0
+# Fit vital rate models for the mean IPM -----------------------------------
+# Fit growth models to predict size at time t1 based on size at time t0
 # Linear model
-gr_mod_mean    <- 
+gr_mod_mean   <- 
   lm(logsize_t1 ~ logsize_t0, data = grow_df)
 # Quadratic model
-gr_mod_mean_2  <- 
+gr_mod_mean_2 <- 
   lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, data = grow_df)  
 # Cubic model
-gr_mod_mean_3  <- 
+gr_mod_mean_3 <- 
   lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = grow_df)  
-# Compare models using ANOVA
-anova(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
+# Compare models using AIC
+gr_mods       <- list(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
+gr_aic        <- sapply(gr_mods, AIC)
+# Assign the best model
+gr_mod_bestfit_index <- which.min(gr_aic)
+gr_mod_bestfit       <- gr_mods[[gr_mod_bestfit_index]]
+gr_ranef             <- coef(gr_mod_bestfit)
 
 # Predict size at time t1 using the mean growth model
-grow_df$pred <- predict(gr_mod_mean, type = "response")
+grow_df$pred <- predict(gr_mod_bestfit, type = "response")
 
 # Plot observed size at time t1 against size at time t0 with the fitted line
+source('helper_functions/line_color_pred_fun.R')
+source('helper_functions/predictor_fun.R')
+
 grow_line <- 
   ggplot(grow_df, aes(x = logsize_t0, y = logsize_t1)) +
   # Plot observed data
   geom_point() +
-  # Add fitted regression line
-  geom_abline(aes(intercept = coef(gr_mod_mean)[1],  
-                  slope     = coef(gr_mod_mean)[2]),
-              color= 'red', lwd = 2) +
+  geom_function(fun = function(x) predictor_fun(x, gr_ranef), 
+                color = line_color_pred_fun(gr_ranef), 
+                lwd = 2) +
   theme_bw()
 
 # Plot predicted versus observed size at time t1
@@ -247,7 +254,8 @@ grow_pred <-
 grow_overall_pred <- grow_line + grow_pred + plot_layout() 
 
 # Save the growth prediction plot
-ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_grow_pred.png"), 
+ggsave(paste0("adler_2007_ks/results/", sp_abb, 
+              "/overall_grow_pred_logs", gr_mod_bestfit_index, ".png"), 
        plot = grow_overall_pred, 
        width = 8, height = 4, units = "in", dpi = 150)
 
@@ -263,25 +271,30 @@ gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))
 # Fit models to predict survival based on size at time t0
 # Logistic regression
 su_mod_mean   <- glm(survives ~ logsize_t0, 
-                     data = surv_df, family = "binomial" ) 
+                     data = surv_df, family = "binomial") 
 # Quadratic logistic model
 su_mod_mean_2 <- glm(survives ~ logsize_t0 + logsize_t0_2, 
-                     data = surv_df, family = "binomial" )  
+                     data = surv_df, family = "binomial")  
 # Cubic logistic model
 su_mod_mean_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, 
-                     data = surv_df, family = "binomial" )  
-# Compare models using ANOVA
-anova(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
+                     data = surv_df, family = "binomial")  
+# Compare models using AIC
+su_mods       <- list(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
+su_aic        <- sapply(su_mods, AIC)
+# Assign the best model
+su_mod_bestfit_index <- which.min(su_aic)
+su_mod_bestfit       <- su_mods[[su_mod_bestfit_index]]
+su_ranef             <- coef(su_mod_bestfit)
 
 # Generate predictions for survival across a range of sizes
 surv_x <- seq(min(surv_df$logsize_t0, na.rm = T), 
               max(surv_df$logsize_t0, na.rm = T), length.out = 100)
-# Inverse logit for predictions
-surv_pred <- boot::inv.logit(coef(su_mod_mean)[1] + 
-                               coef(su_mod_mean)[2] * surv_x)  
 
 # Prepare data for survival plot
-surv_pred_df <- data.frame(logsize_t0 = surv_x, survives = surv_pred)
+surv_pred_df <- predictor_fun(surv_x, su_ranef) %>% 
+  # Inverse logit for predictions
+  boot::inv.logit() %>% 
+  data.frame(logsize_t0 = surv_x, survives = .)
 
 # Plot observed survival with fitted line
 surv_line <- 
@@ -291,7 +304,8 @@ surv_line <-
               alpha = 0.25, width = 0, height = 0.25) + 
   geom_line(data = surv_pred_df, aes(x = logsize_t0, 
                                      y = survives),
-            color = 'red', lwd   = 2) +  
+            color = line_color_pred_fun(su_ranef), 
+            lwd   = 2) +  
   theme_bw()
 
 # Plot binned survival proportions with error bars
@@ -315,7 +329,8 @@ surv_bin <-
 surv_overall_pred <- surv_line + surv_bin + plot_layout()
 
 # Save the survival prediction plot
-ggsave(paste0("adler_2007_ks/results/", sp_abb, "/overall_surv_pred.png"), 
+ggsave(paste0("adler_2007_ks/results/", sp_abb, 
+              "/overall_surv_pred_logs", su_mod_bestfit_index, ".png"), 
        plot = surv_overall_pred, 
        width = 8, height = 3, units = "in", dpi = 150) 
 

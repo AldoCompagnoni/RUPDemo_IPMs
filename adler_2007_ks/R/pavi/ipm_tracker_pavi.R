@@ -20,7 +20,7 @@ options(stringsAsFactors = F)
 
 # load packages
 source( 'helper_functions/load_packages.R' )
-load_packages( tidyverse, patchwork, skimr )
+load_packages( tidyverse, patchwork, skimr, ipmr)
 
 
 # Data -------------------------------------------------------------------------
@@ -230,20 +230,16 @@ gr_ranef             <- coef(gr_mod_bestfit)
 grow_df$pred <- predict(gr_mod_bestfit, type = "response")
 
 # Plot observed size at time t1 against size at time t0 with the fitted line
-if (       length(gr_ranef) == 2) {line_color <- 'red'
-} else if (length(gr_ranef) == 3) {line_color <- 'green'
-} else if (length(gr_ranef) == 4) {line_color <- 'blue'
-} else {                           line_color <- 'black'
-}
+source('helper_functions/line_color_pred_fun.R')
+source('helper_functions/predictor_fun.R')
 
 grow_line <- 
   ggplot(grow_df, aes(x = logsize_t0, y = logsize_t1)) +
   # Plot observed data
   geom_point() +
-  # Add fitted regression line
-  geom_abline(aes(intercept = coef(gr_mod_mean)[1],  
-                  slope     = coef(gr_mod_mean)[2]),
-              color= line_color, lwd = 2) +
+  geom_function(fun = function(x) predictor_fun(x, gr_ranef), 
+                color = line_color_pred_fun(gr_ranef), 
+                lwd = 2) +
   theme_bw()
 
 # Plot predicted versus observed size at time t1
@@ -293,26 +289,14 @@ su_ranef             <- coef(su_mod_bestfit)
 # Generate predictions for survival across a range of sizes
 surv_x <- seq(min(surv_df$logsize_t0, na.rm = T), 
               max(surv_df$logsize_t0, na.rm = T), length.out = 100)
-# Inverse logit for predictions
-su_linear_predictor <- su_ranef[1] 
-if (length(su_ranef) >= 2) {
-  su_linear_predictor <- su_linear_predictor + su_ranef[2] * surv_x}
-if (length(su_ranef) >= 3) {
-  su_linear_predictor <- su_linear_predictor + su_ranef[3] * surv_x^2}
-if (length(su_ranef) >= 4) {
-  su_linear_predictor <- su_linear_predictor + su_ranef[4] * surv_x^3}
-surv_pred <- boot::inv.logit(su_linear_predictor)
 
 # Prepare data for survival plot
-surv_pred_df <- data.frame(logsize_t0 = surv_x, survives = surv_pred)
+surv_pred_df <- predictor_fun(surv_x, su_ranef) %>% 
+  # Inverse logit for predictions
+  boot::inv.logit() %>% 
+  data.frame(logsize_t0 = surv_x, survives = .)
 
 # Plot observed survival with fitted line
-if (       length(su_ranef) == 2) {line_color <- 'red'
-} else if (length(su_ranef) == 3) {line_color <- 'green'
-} else if (length(su_ranef) == 4) {line_color <- 'blue'
-} else {                           line_color <- 'black'
-}
-
 surv_line <- 
   ggplot() +
   geom_jitter(data = surv_df, aes(x = logsize_t0, 
@@ -320,7 +304,8 @@ surv_line <-
               alpha = 0.25, width = 0, height = 0.25) + 
   geom_line(data = surv_pred_df, aes(x = logsize_t0, 
                                      y = survives),
-            color = line_color, lwd   = 2) +  
+            color = line_color_pred_fun(su_ranef), 
+            lwd   = 2) +  
   theme_bw()
 
 # Plot binned survival proportions with error bars
@@ -438,7 +423,6 @@ pars <- Filter(function(x) length(x) > 0, list(
   grow_b0 = extr_value(grow_out, "b0"),
   grow_b1 = extr_value(grow_out, "logsize_t0"),
   grow_b2 = extr_value(grow_out, "logsize_t0_2"),
-  grow_b3 = extr_value(grow_out, "logsize_t0_3"),
   a       = extr_value(grow_out, "a"),
   b       = extr_value(grow_out, "b"),
   fecu_b0 = extr_value(others, "fecu_b0"),
@@ -470,7 +454,7 @@ inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 
 # !!! Check !!! Function describing survival from size t0 to t1
 sx <- function(x, pars) {
-  return(inv_logit(pars$surv_b0 + pars$surv_b1 * x + pars$surv_b2 * x^2))
+  return(inv_logit(pars$surv_b0 + pars$surv_b1 * x))
 }
 
 # Function describing the transition kernel
@@ -589,7 +573,10 @@ proto_ipm_p <- init_ipm(sim_gen   = "simple",
     family    = "CC",
     formula   = s * g,
     # !!! Check !!! ####
-    s         = plogis(surv_b0 + surv_b1 * size_1 + surv_b2 * size_1^2), 
+    s         = plogis(surv_b0 + 
+                         surv_b1 * size_1 + 
+                         surv_b2 * size_1^2 + 
+                         surv_b3 * size_1^3), 
     g         = dnorm(size_2, mu_g, grow_sig),
     # !!! Check !!! ####
     mu_g      = grow_b0 + grow_b1 * size_1 + grow_b2 * size_1^2,
@@ -634,6 +621,7 @@ ipmr_p <- make_ipm(proto_ipm  = proto_ipm_p,
 
 lam_mean_ipmr <- lambda(ipmr_p)
 plot(ipmr_p)
+
 
 lam_out       <- data.frame(coefficient = names(lam_mean_ipmr), 
                             value       = lam_mean_ipmr)

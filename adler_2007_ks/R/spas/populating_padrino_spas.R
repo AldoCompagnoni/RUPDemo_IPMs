@@ -1,7 +1,7 @@
-# Populating padrino - alder 2007; kansas; Panicum virgatum
+# Populating padrino - alder 2007; kansas; Sporobolus asper
 
 # Niklas Neisse
-# 2024.17.10
+# 2024.10.24
 
 #
 
@@ -35,7 +35,7 @@ options(stringsAsFactors = F)
 
 # Data -------------------------------------------------------------------------
 # Define the species variable
-species       <- "Panicum virgatum"
+species       <- "Sporobolus asper"
 sp_abb        <- tolower(
   gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2),
                       collapse = "")))
@@ -45,7 +45,7 @@ sp_abb        <- tolower(
 # # overall imp 
 # source(paste0('adler_2007_ks/R/', sp_abb, '/ipm_tracker_', sp_abb, '.R'))
 
-ipm_id        <- "nnnnn10"
+ipm_id        <- "nnnnnn9"
 pars          <- read.csv(
   paste0("adler_2007_ks/data/", sp_abb, "/pars.csv"))
 lam_mean_ipmr <- read.csv(
@@ -138,7 +138,7 @@ pdb$IpmKernels[2,] <- c(ipm_id,
 # Vital rate expressions
 pdb$VitalRateExpr[1,] <- c(ipm_id,
                            "Survival",
-                           "s = 1 / (1 + exp(-(surv_b0 + surv_b1 * size_1 + surv_b2 * size_1^2)))",
+                           "s = 1 / (1 + exp(-(surv_b0 + surv_b1 * size_1)))",
                            "Evaluated",
                            "P")
 
@@ -173,6 +173,7 @@ pdb$VitalRateExpr[6,] <- c(ipm_id,
                            "F")
 
 
+# CHECK -- Parameter values ####
 # Parameter Values
 pdb$ParameterValues[1,] <- c(ipm_id,
                              "Survival",
@@ -180,61 +181,55 @@ pdb$ParameterValues[1,] <- c(ipm_id,
                              "surv_b0",
                              pars$surv_b0)
 
-pdb$ParameterValues[2,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Survival",
                              "size",
                              "surv_b1",
                              pars$surv_b1)
 
-pdb$ParameterValues[3,] <- c(ipm_id,
-                             "Survival",
-                             "size",
-                             "surv_b2",
-                             pars$surv_b2)
-
-pdb$ParameterValues[4,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "grow_b0",
                              pars$grow_b0)
 
-pdb$ParameterValues[5,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "grow_b1",
                              pars$grow_b1)
 
-pdb$ParameterValues[6,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "grow_b2",
                              pars$grow_b2)
 
-pdb$ParameterValues[7,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "a",
                              pars$a)
 
-pdb$ParameterValues[8,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Growth",
                              "size",
                              "b",
                              pars$b)
 
-pdb$ParameterValues[9,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Fecundity",
                              "size",
                              "fecu_b0",
                              pars$fecu_b0)
 
-pdb$ParameterValues[10,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Fecundity",
                              "size",
                              "recr_sz",
                              pars$recr_sz)
 
-pdb$ParameterValues[11,] <- c(ipm_id,
+pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- c(ipm_id,
                              "Fecundity",
                              "size",
                              "recr_sd",

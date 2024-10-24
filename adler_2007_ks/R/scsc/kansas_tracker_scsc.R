@@ -1,11 +1,11 @@
-# plantTracker for Adler 2007 Kansas Sporobolus cryptandrus
+# plantTracker for Adler 2007 Kansas Schizachyrium scoparium
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
-# Date: 2024.10.17
+# Date: 2024.10.24
 
 # Code adapted from: https://github.com/aestears/plantTracker
- # Adapted from plantTracker How to (Stears et al. 2022)
+# Adapted from plantTracker How to (Stears et al. 2022)
 
 # List of required CRAN packages
 .cran_packages <- c(
@@ -24,7 +24,7 @@ if(any(!.inst)) {
 sapply(.cran_packages, require, character.only = TRUE)
 
 # Define directories for data
-data_directory   <- 'adler_2007_ks/data'
+data_directory   <- 'adler_2007_ks/data/'
 quadrat_data_dir <- file.path(data_directory, 'quadrat_data/')
 shape_files_dir  <- file.path(quadrat_data_dir, 'arcexport/')          
 
@@ -41,10 +41,11 @@ quote_bare <- function(...){
 }
 
 # Read species list and filter for target species
-sp_list     <- read.csv(paste0(quadrat_data_dir,"/species_list.csv"))  %>% 
+sp_list     <- read.csv(paste0(data_directory,
+                               "quadrat_data/species_list.csv"))  %>% 
   dplyr::arrange(desc(count)) %>% head(25)
 # Select the x_th species (target species)
-target_spec <- sp_list %>% .[c(13),]  
+target_spec <- sp_list %>% .[8,]  
 
 # Define the species variable and abbreviation
 species <- target_spec[1,1]
@@ -53,9 +54,9 @@ sp_abb  <- tolower(gsub(" ", "", paste(substr(
 
 # Read in quadrat inventory data and prepare for plantTracker
 quad_inv        <- 
-  as.list(read.csv(paste0(quadrat_data_dir, 
-                          "/quadrat_inventory.csv"), sep=',') %>% 
-  dplyr::select(-year))
+  as.list(read.csv(paste0(data_directory,
+                          "quadrat_data/quadrat_inventory.csv"), sep=',') %>% 
+            dplyr::select(-year))
 # Remove NAs
 inv_ks          <- lapply(X = quad_inv, 
                           FUN = function(x) x[is.na(x) == FALSE])
@@ -63,8 +64,8 @@ inv_ks          <- lapply(X = quad_inv,
 names(inv_ks)   <- gsub( '\\.','-',names(inv_ks) )  
 
 # Read spatial data (polygon for each species per quadrat)
-dat             <- readRDS(file=paste0(quadrat_data_dir, 
-                                       "/KS_polygons_full.rds"))
+dat             <- readRDS(file=paste0(data_directory,
+                                       "quadrat_data/KS_polygons_full.rds"))
 
 # Subset data for the target species
 dat_target_spec <- dat[dat$SCI_NAME %in% target_spec$species,] %>%

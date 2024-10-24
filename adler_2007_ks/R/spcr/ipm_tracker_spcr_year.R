@@ -69,8 +69,8 @@ hist_logsizes_years <-
 
 ggsave(
   paste0("adler_2007_ks/results/", sp_abb, "/years_hist_logsizes_years.png"),  
-       plot = hist_logsizes_years,
-       width = 6, height = 12, dpi = 150)
+  plot = hist_logsizes_years,
+  width = 6, height = 12, dpi = 150)
 
 
 ## Survival 
@@ -197,7 +197,7 @@ ggsave(paste0("adler_2007_ks/results/", sp_abb, "/years_recruitment_size.png"),
 
 # Removing year with too few data ----------------------------------------------
 
-years_re <- c(51:max(df$year))
+years_re <- c(55:max(df$year))
 df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
 surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
 grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
@@ -958,3 +958,7 @@ lam_out_wide  <- as.list(pivot_wider(lam_out, names_from = "coefficient",
 write.csv(lam_out_wide, 
           paste0("adler_2007_ks/data/", sp_abb, "/lambdas_yr.csv"), 
           row.names = F)
+
+su_mod_yr_bestfit_index
+gr_mod_yr_bestfit_index
+years_v

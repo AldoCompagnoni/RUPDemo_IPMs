@@ -81,7 +81,7 @@ datTrackSpp <- trackSpp(dat_target_spec, inv_ks,
                         # Allow for clonal tracking
                         clonal       = TRUE,
                         # Buffer for genet
-                        buffGenet    = 0.05,
+                        buffGenet    = 5,
                         # Aggregate by genet
                         aggByGenet   = TRUE,
                         # Flag potential issues

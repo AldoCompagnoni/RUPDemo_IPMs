@@ -574,8 +574,7 @@ proto_ipm_p <- init_ipm(sim_gen   = "simple",
     family    = "CC",
     formula   = s * g,
     # !!! Check !!! ####
-    s         = plogis(surv_b0 + 
-                          surv_b1 * size_1), 
+    s         = plogis(surv_b0 + surv_b1 * size_1), 
     g         = dnorm(size_2, mu_g, grow_sig),
     # !!! Check !!! ####
     mu_g      = grow_b0 + grow_b1 * size_1 + grow_b2 * size_1^2,
@@ -633,3 +632,6 @@ lam_out_wide  <- as.list(pivot_wider(lam_out,
 write.csv(lam_out_wide, 
           paste0("adler_2007_ks/data/", sp_abb, "/lambda.csv"), 
           row.names = F)
+
+su_mod_bestfit_index
+gr_mod_bestfit_index

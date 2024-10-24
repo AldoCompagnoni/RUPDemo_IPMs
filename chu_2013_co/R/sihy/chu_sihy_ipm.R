@@ -4,8 +4,7 @@
 # Email: neisse.n@protonmail.com
 # Date: 2024.10.17
 
-# Process plant growth data to explore vital rates for 
- # the species Sporobolus asper and 
+# Process plant growth data to explore vital rates and 
  # generates visualizations and model fits for IPM analysis.
 
 # Setting the stage ------------------------------------------------------------

@@ -35,7 +35,7 @@
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 
-base_dir <- ('_i')
+base_dir <- ('zachmann_2016_ih')
 dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
 shp_dir <- paste(base_dir, "/data/quadrat_data/shapefiles/msData/shapefiles/", sep="")
 
@@ -62,7 +62,7 @@ quadNames <- list.files(shp_dir)
 for(i in 1:length(quadNames)){
   quadNow <- quadNames[i]
   quadYears <- unlist(strsplit(list.files(
-    paste0(shp_dir,quadNow,"/"),
+    paste0(shp_dir),
     pattern = ".shp$"), split = ".shp"))
   for (j in 1:length(quadYears)) {
     quadYearNow <- quadYears[j]

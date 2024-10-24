@@ -1,4 +1,4 @@
-# plantTracker for alder 2007
+# plantTracker for chu 2013 colorado Sporobolus cryptandrus
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
@@ -7,6 +7,7 @@
 # Code adapted from: https://github.com/aestears/plantTracker
  # Adapted from plantTracker How to (Stears et al. 2022)
 
+rm(list = ls())
 
 # Packages ---------------------------------------------------------------------
 # Load packages, verify, and download if needed
@@ -17,7 +18,7 @@ load_packages(sf, plantTracker)
 # Data -------------------------------------------------------------------------
 
 # Define directories for data
-quadrat_data_dir <- file.path('adler_2007_ks/data/quadrat_data/')         
+quadrat_data_dir <- file.path('chu_2013_co/data/quadrat_data/')         
 
 # Function to quote bare names for tidy evaluation
 quote_bare <- function(...){
@@ -31,12 +32,16 @@ quote_bare <- function(...){
     sapply(deparse)  
 }
 
+
 # Read species list and filter for target species
-sp_list     <- read.csv(paste0(quadrat_data_dir,
-                               "/species_list.csv"))  %>% 
-  dplyr::arrange(desc(count)) %>% head(25)
+sp_list     <- read_delim(paste0(quadrat_data_dir, "/species_list.csv"),
+                          delim = '\t', escape_double = FALSE, 
+                          trim_ws = TRUE) %>% 
+  as.data.frame() %>% 
+  dplyr::arrange(desc(cover)) 
+
 # Select the x_th species (target species)
-target_spec <- sp_list %>% .[c(20),]  
+target_spec <- sp_list %>% .[c(5),]  
 
 # Define the species variable and abbreviation
 species <- target_spec[1,1]
@@ -45,9 +50,11 @@ sp_abb  <- tolower(gsub(" ", "", paste(substr(
 
 # Read in quadrat inventory data and prepare for plantTracker
 quad_inv        <- 
-  as.list(read.csv(paste0(quadrat_data_dir,
-                          "/quadrat_inventory.csv"), sep=',') %>% 
-  dplyr::select(-year))
+  as.list(read_delim(paste0(quadrat_data_dir, "/quad_inventory.csv"),
+                     delim = '\t', escape_double = FALSE, 
+                     trim_ws = TRUE) %>% 
+  as.data.frame())
+
 # Remove NAs
 inv_ks          <- lapply(X = quad_inv, 
                           FUN = function(x) x[is.na(x) == FALSE])
@@ -56,10 +63,11 @@ names(inv_ks)   <- gsub( '\\.','-',names(inv_ks) )
 
 # Read spatial data (polygon for each species per quadrat)
 dat             <- readRDS(file=paste0(quadrat_data_dir,
-                                       "/KS_polygons_full.rds"))
+                                       "/SGS_LTER_plantTracker_tracked.rds"))
 
 # Subset data for the target species
-dat_target_spec <- dat[dat$SCI_NAME %in% target_spec$species,] %>%
+dat_target_spec <- dat[dat$species %in% target_spec$species,] %>%
+  select(Species, Site, )
   # Rename columns
   setNames(quote_bare(Species, Site, Quad, Year, geometry))  
 

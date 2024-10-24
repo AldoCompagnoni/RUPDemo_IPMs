@@ -1,4 +1,4 @@
-# plantTracker for alder 2007
+# plantTracker for chu 2013 colorado Buchloe dactyloides
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
@@ -7,6 +7,7 @@
 # Code adapted from: https://github.com/aestears/plantTracker
  # Adapted from plantTracker How to (Stears et al. 2022)
 
+rm(list = ls())
 
 # Packages ---------------------------------------------------------------------
 # Load packages, verify, and download if needed
@@ -17,7 +18,7 @@ load_packages(sf, plantTracker)
 # Data -------------------------------------------------------------------------
 
 # Define directories for data
-quadrat_data_dir <- file.path('adler_2007_ks/data/quadrat_data/')         
+quadrat_data_dir <- file.path('chu_2013_co/data/quadrat_data/')         
 
 # Function to quote bare names for tidy evaluation
 quote_bare <- function(...){
@@ -31,10 +32,18 @@ quote_bare <- function(...){
     sapply(deparse)  
 }
 
+
+species_list <- read_delim("chu_2013_co/data/quadrat_data/species_list.csv", 
+                           delim = "\t", escape_double = FALSE, 
+                           trim_ws = TRUE)
+
 # Read species list and filter for target species
-sp_list     <- read.csv(paste0(quadrat_data_dir,
-                               "/species_list.csv"))  %>% 
-  dplyr::arrange(desc(count)) %>% head(25)
+sp_list     <- read_delim(paste0(quadrat_data_dir, "/species_list.csv"),
+                          delim = '\t', escape_double = FALSE, 
+                          trim_ws = TRUE) %>% 
+  dplyr::arrange(desc(cover))
+view(sp_list)
+
 # Select the x_th species (target species)
 target_spec <- sp_list %>% .[c(20),]  
 
@@ -56,7 +65,7 @@ names(inv_ks)   <- gsub( '\\.','-',names(inv_ks) )
 
 # Read spatial data (polygon for each species per quadrat)
 dat             <- readRDS(file=paste0(quadrat_data_dir,
-                                       "/KS_polygons_full.rds"))
+                                       "/KS_polygons_3grasses.rds"))
 
 # Subset data for the target species
 dat_target_spec <- dat[dat$SCI_NAME %in% target_spec$species,] %>%

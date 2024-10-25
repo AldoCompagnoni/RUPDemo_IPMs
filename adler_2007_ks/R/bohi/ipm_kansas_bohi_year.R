@@ -8,7 +8,7 @@
 
 # Setting the stage ------------------------------------------------------------
 # Remove all objects in the global environment
-rm(list = ls()) 
+# rm(list = ls()) 
 # Set seed for reproducibility
 set.seed(100)
 options(stringsAsFactors = F)
@@ -21,7 +21,7 @@ source( 'helper_functions/load_packages.R' )
 load_packages( tidyverse, patchwork, skimr, 
                lme4, bbmle, ipmr, readxl )
 
-rm( list = ls() )
+# rm( list = ls() )
 options( stringsAsFactors = F )
 
 
@@ -31,10 +31,8 @@ species <- "Bouteloua hirsuta"
 sp_abb  <- 
   tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
                               collapse = "")))
-grow_df <- 
-  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
-surv_df <- 
-  read.csv(paste0("adler_2007_ks/data/", sp_abb, "/survival_df.csv"))
+grow_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/growth_df.csv"))
+surv_df <- read.csv(paste0("adler_2007_ks/data/", sp_abb, "/survival_df.csv"))
 recr_df <- 
   read.csv(paste0("adler_2007_ks/data/", sp_abb, "/recruitment_df.csv"))
 df      <- 

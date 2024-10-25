@@ -10,7 +10,7 @@
 
 # Setting the stage ------------------------------------------------------------
 # Remove all objects in the global environment
-rm(list = ls()) 
+# rm(list = ls()) 
 # Set seed for reproducibility
 set.seed(100)
 options(stringsAsFactors = F)
@@ -23,7 +23,7 @@ source( 'helper_functions/load_packages.R' )
 load_packages( tidyverse, patchwork, skimr, 
                lme4, bbmle, ipmr, readxl )
 
-rm( list = ls() )
+# rm( list = ls() )
 options( stringsAsFactors = F )
 
 

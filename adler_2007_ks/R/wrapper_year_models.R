@@ -11,7 +11,7 @@ quote_bare <- function(...){
 # Set up working directory and species codes
 dir         <- 'adler_2007_ks/R/'
 spp_codes_v <- quote_bare( ange, arlo, bocu, bogr, 
-                           buda, pavi, scsc, spas, spcr )
+                           bohi, scsc, spcr )
 
 # function to run year-specific IPMs
 run_yearly_ipms <- function( spp_code_x ){
@@ -21,4 +21,4 @@ run_yearly_ipms <- function( spp_code_x ){
 }
 
 # Run plant tracker for all species
-lapply( spp_codes_v, run_yearly_ipms )
+lapply( spp_codes_v[5], run_yearly_ipms )

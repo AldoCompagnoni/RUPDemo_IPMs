@@ -9,8 +9,9 @@
 # generates visualizations and model fits for IPM analysis.
 
 # Setting the stage ------------------------------------------------------------
+
 # Clear the workspace by removing all objects in the global environment
-rm(list = ls()) 
+# rm(list = ls()) 
 # Set a random seed for reproducibility of results
 set.seed(100)
 # Ensure strings are treated as characters rather than factors

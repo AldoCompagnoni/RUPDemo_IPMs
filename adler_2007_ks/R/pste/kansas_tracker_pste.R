@@ -71,13 +71,13 @@ dat_target_spec <- dat[dat$SCI_NAME %in% target_spec$species,] %>%
 datTrackSpp <- trackSpp(dat_target_spec, 
                         inv_ks,
                         # Number of years in dormancy
-                        dorm         = 1,
+                        dorm         = 0,
                         # Buffer size
                         buff         = 5,
                         # Allow for clonal tracking
                         clonal       = FALSE,
                         # Buffer for genet
-                        buffGenet    = 0.05,
+                        buffGenet    = 5,
                         # Aggregate by genet
                         aggByGenet   = TRUE,
                         # Flag potential issues

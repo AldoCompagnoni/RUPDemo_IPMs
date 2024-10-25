@@ -9,8 +9,9 @@
 # setting up the vital rate data-frames for the year specific 
 
 # Setting the stage ------------------------------------------------------------
+
 # Remove all objects in the global environment
-rm(list = ls()) 
+# rm(list = ls()) 
 # Set seed for reproducibility
 set.seed(100)
 options(stringsAsFactors = F)

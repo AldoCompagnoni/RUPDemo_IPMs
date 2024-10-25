@@ -4,6 +4,8 @@
 # Email: aldo.compagnoni@gmail.com
 # Date: 2024.10.23
 
+# Original models from https://doi.org/10.1111/j.1365-2745.2009.01585.x
+#   check the appendices for details on model fitting!
 
 # Packages ---------------------------------------------------------------------
 
@@ -78,12 +80,23 @@ indiv_t0 <- df %>%
   mutate( year = as.integer(year) ) %>% 
   rename( parents = n )
 
+# cases for quadrats and year
+cases_df <- df %>% 
+              dplyr::select( quad, year ) %>% 
+              unique
+
 # Total number of recruits at time t1
 indiv_t1 <- df %>%  
   subset( recruit == 1 ) %>% 
   count(quad, year) %>% 
   mutate( year = as.integer(year) ) %>% 
-  rename( recruits = n )
+  rename( recruits = n ) %>% 
+  # include all available quad X year combinations
+  right_join( cases_df ) %>% 
+  # if is.na(recruits), then recruits == 0
+  mutate( recruits = replace( recruits,
+                              is.na(recruits),
+                              0) )
 
 # recruits data frame
 recr_df  <- left_join( indiv_t0, indiv_t1 ) %>% 
@@ -110,10 +123,11 @@ mod_surv <- glmer( survives ~ age + (1 | year) + (1 | quad),
                    family = 'binomial' )
 
 # find quadrats
-quad_v     <- setdiff( surv_df$quad %>% unique, 'e2qa-5' )
+quad_v     <- coef(mod_surv)$quad %>% rownames 
+  # setdiff( surv_df$quad %>% unique, 'e2qa-5' )
 
 # find missing years
-year_v     <- intersect( 35:70, coef(mod_surv)$year %>% rownames %>% as.numeric )
+year_v     <- coef(mod_surv)$year %>% rownames
 
 # predicted surv rates
 shat_v     <- predict( mod_surv, 
@@ -124,8 +138,9 @@ shat_v     <- predict( mod_surv,
 
 # mean predictions
 shat_df    <- expand.grid( age  = 0:1,
-                           year = year_v,
-                           quad = quad_v) %>% 
+                           year = year_v %>% as.numeric,
+                           quad = quad_v,
+                           stringsAsFactors = F ) %>% 
                 mutate( shat = shat_v ) %>% 
                 # average across quadrats 
                 group_by( year, age ) %>% 
@@ -162,8 +177,12 @@ ggsave(paste0("adler_2007_ks/results/",
 
 
 # recruitment
-recr_mod <- glmer.nb( recruits ~ 0 + parents + (1 | year) + (1 | quad), 
+library(glmmTMB)
+
+recr_mod <- glmer.nb( recruits ~ 0 + parents + (1 | year) + (1 | quad),
                       data = recr_df )
+recr_tnb <-glmmTMB( recruits ~ 0 + parents + (1 | year) + (1 | quad),
+                    family = truncated_nbinom2(link = "log"), data=recr_df)
 pcr_mod  <- glmer( pcr ~ (1 | year) + (1 | quad), 
                    data = recr_df, family = Gamma(link = "log") )
 
@@ -174,7 +193,7 @@ year_v   <- coef(recr_mod)$year %>% rownames
 # quadrats in the recruitment model
 quad_v   <- coef(recr_mod)$quad %>% rownames
 
-# predicted surv rates
+# predicted recrt rates
 rhat_v   <- predict( recr_mod, 
                      newdata = expand.grid( parents = 1,
                                             year    = year_v,
@@ -237,6 +256,19 @@ pcrhat_df <- expand.grid( year    = as.double(year_v),
                group_by( year ) %>% 
                summarise( pcr = mean(pcr) ) %>% 
                ungroup
+
+# PER CAPITA recruitment data frame
+pcrhat_df <- expand.grid( parents = 1,
+                          year    = as.double(year_v),
+                          quad    = quad_v,
+                          stringsAsFactors = F ) %>%
+  mutate( pcr = predict( recr_mod,
+                         newdata = .,
+                         type = 'response' ) ) %>%
+  group_by( year ) %>%
+  summarise( pcr = mean(pcr) ) %>%
+  ungroup
+
 
 # Matrix population model ------------------------------------------------------
 
@@ -302,7 +334,7 @@ proj_lam <- function( ii ){
 # projected lambdas
 proj_lam_df <- stage_counts %>% 
   dplyr::select( year ) %>% 
-  mutate( proj_lam = sapply(1:27, proj_lam ) )
+  mutate( proj_lam = sapply(1:28, proj_lam ) )
 
 # Population counts at time t0
 pop_counts_t0 <- df %>%

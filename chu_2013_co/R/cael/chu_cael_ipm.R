@@ -37,7 +37,7 @@ sp_abb  <- tolower(
 
 ## Read and clean the species data
 df <- readRDS('chu_2013_co/data/quadrat_data/SGS_LTER_plantTracker_tracked.rds') %>% 
-  filter(Species == species) %>%
+  subset(Species == species) %>%
   as.data.frame() %>% 
   select(-c(Suspect, nearEdge, Site, geometry)) %>%
   mutate(across(c(Quad), as.factor)) %>%

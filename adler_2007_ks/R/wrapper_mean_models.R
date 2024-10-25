@@ -18,19 +18,8 @@ spp_codes_v <- quote_bare( ange, arlo, bocu, bogr,
 run_mean_models <- function( spp_code_x ){
   print( spp_code_x )
   source( paste0(dir, spp_code_x, '/',
-                 'ipm_kansas_',spp_code_x,'.R') )
+                 'ipm_mean_',spp_code_x,'.R') )
 }
 
 # Run plant tracker for all species
 lapply( spp_codes_v, run_mean_models )
-
-
-# # function to run year-specific IPMs
-# run_yearly_ipms <- function( spp_code_x ){
-#   print( spp_code_x )
-#   source( paste0(dir, spp_code_x, '/',
-#                  'ipm_kansas_',spp_code_x,'_year.R') )
-# }
-# 
-# # Run plant tracker for all species
-# lapply( spp_codes_v[6:9], run_yearly_ipms )

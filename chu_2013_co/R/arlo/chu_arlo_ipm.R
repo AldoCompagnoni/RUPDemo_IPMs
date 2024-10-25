@@ -24,20 +24,20 @@ load_packages(tidyverse, patchwork, skimr, ipmr)
 
 # Data -------------------------------------------------------------------------
 # Directory
-dir <- file.path('chu_2013_co') 
+dir     <- file.path('chu_2013_co') 
 # Specify the species
 species <- 'Aristida longiseta'
 # Create a unique species abbreviation for file naming
 sp_abb  <- tolower(
-  gsub(' ', '', paste(substr(unlist(strsplit(species, ' ')), 1, 2), 
-                      collapse = '')))
+              gsub(' ', '', paste(substr(unlist(strsplit(species, ' ')), 1, 2), 
+                                  collapse = '')))
 
 # Load the plant tracking data
 # source(paste0(dir, '/R/', sp_abb, '/chu_', sp_abb, '_tracker.R'))
 
 ## Read and clean the species data
 df <- readRDS('chu_2013_co/data/quadrat_data/SGS_LTER_plantTracker_tracked.rds') %>% 
-  filter(Species == species) %>%
+  subset(Species == species) %>%
   as.data.frame() %>% 
   select(-c(Suspect, nearEdge, Site, geometry)) %>%
   mutate(across(c(Quad), as.factor)) %>%

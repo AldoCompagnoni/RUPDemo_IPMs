@@ -166,7 +166,7 @@ p_surv <- surv_df %>%
                             color = Measure),
                         alpha = 0.75 ) +
             theme_bw() +
-            facet_wrap( ~ year, ncol = 3 ) +
+            facet_wrap( ~ year, ncol = 8 ) +
             lims( y = c(0,1) ) +
             labs( x = 'Age',
                   y = 'Survival' ) +
@@ -355,7 +355,7 @@ proj_lam <- function( year_x, mat_df ){
 }
 
 # model lambdas
-lam_df        <- mpm_pars %>% 
+lam_df        <- mpm_df %>% 
                   mutate( lam      = sapply( year, year_lam, mpm_df),
                           proj_lam = sapply( year, proj_lam, mpm_df) )
                 
@@ -400,7 +400,7 @@ ggplot( pop_counts ) +
 
 
 # for now, store everything as an R object that resembles 
-mpm_pars %>% 
+mpm_df %>% 
   mutate( year = paste0('19',year) ) %>% 
   mutate( SpeciesAuthor = 'Psoralea tenuiflora' ) %>% 
   setNames( c('year', 

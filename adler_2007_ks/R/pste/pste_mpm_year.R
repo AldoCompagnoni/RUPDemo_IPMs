@@ -417,7 +417,7 @@ mpm_pars %>%
 
 # load latest version of COMPADRE 
 #   download here: https://compadre-db.org/Data/Compadre
-load( 'C:/Users/ac22qawo/Downloads/COMPADRE_v.6.23.5.0.RData' )
+load( 'adler_2007_ks/data/COMPADRE_v.6.23.5.0.RData' )
 
 # identify the matrices across COMPADRE 
 id <- compadre$metadata %>% 

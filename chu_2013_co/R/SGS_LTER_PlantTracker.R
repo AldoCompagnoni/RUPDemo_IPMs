@@ -35,21 +35,21 @@
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 
-base_dir <- ('_i')
+base_dir <- ('chu_2013_co')
 dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
-shp_dir <- paste(base_dir, "/data/quadrat_data/shapefiles/msData/shapefiles/", sep="")
+shp_dir <- paste(base_dir, "/data/quadrat_data/shapefiles/", sep="")
 
-# setwd(dat_dir)
 
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list <- read.delim("species_list.csv")
-sp_name_changes <- read.csv("species_name_changes.csv") #will use to check names later on
+sp_list <- read.delim(paste0(dat_dir, "species_list.csv"))
+sp_name_changes <- read.csv(paste0(dat_dir, "species_name_changes.csv")) 
+#  will use to check names later on
 grasses <- subset(sp_list, growthForm=="grass" & longevity=="P" & cover>100 & species!="Carex spp.")
 
 # Read in quad inventory to use as 'inv' list in plantTracker
-quad_inv <- read.delim(paste0(dat_dir,"quad_inventory.csv"))
+quad_inv <- read.delim(paste0(dat_dir, "quad_inventory.csv"))
 quadInv_list <- as.list(quad_inv)
 quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
 inv_sgs <- quadInv_list
@@ -57,7 +57,7 @@ inv_sgs <- quadInv_list
 # Read in shapefiles to create sf dataframe to use as 'dat' in plantTracker
 # Adapted from plantTracker How to (Stears et al. 2022)
 # Create list of quad names
-quadNames <- list.files(shp_dir)
+quadNames <- list.files(paste0(dat_dir, 'shapefiles'))
 # Use for loop to download data from each quad folder
 for(i in 1:length(quadNames)){
   quadNow <- quadNames[i]
@@ -90,13 +90,13 @@ for(i in 1:length(quadNames)){
 }
 
 # Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat,file="SGS_LTER_plantTracker_full.rds")
+saveRDS(dat, file = paste0(dat_dir, "SGS_LTER_plantTracker_full.rds"))
 
 # Subset to the species of interest
 dat2 <- dat[dat$Species %in% grasses$species,]
 
 # And save the subsetted file, too
-saveRDS(dat2,file="SGS_LTER_plantTracker_grasses.rds")
+saveRDS(dat2, file = paste0(dat_dir, "SGS_LTER_plantTracker_grasses.rds"))
 
 # Check the inv and dat arguments
 checkDat(dat2, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
@@ -104,17 +104,18 @@ checkDat(dat2, inv_sgs, species = "Species", site = "Site", quad = "Quad", year 
 invalid_geom <- c(1546, 1605, 1859, 5037, 5745, 5815, 8035, 8092, 11995, 14725, 14734, 17277, 25431, 25983,
                   27239, 28916, 31083, 33376, 34117, 35702, 37448, 38944, 39163, 39322, 40192, 41247, 41455,
                   41523, 42399, 43410, 46233, 47258, 47259, 48923, 50025, 51806, 52793, 55972, 57167)
-dat3<-dat2
+dat3 <- dat2
 for(i in 1:length(invalid_geom)){
    dat3[invalid_geom[i],6] <- st_make_valid(dat3[invalid_geom[i],6])
- }
+}
+
 checkDat(dat3, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 # Still have a couple of repeated rows, somehow, so we will drop those
 drop_rows <- c(25670,58091,75507,116003)
 dat4 <- dat3[!(row.names(dat3) %in% drop_rows),]
 checkDat(dat4, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-saveRDS(dat4,file="SGS_LTER_plantTracker_grasses_filtered.rds")
+saveRDS(dat4, file = paste0(dat_dir, "SGS_LTER_plantTracker_grasses_filtered.rds"))
 
 # Now the data are ready for the trackSpp function
 datTrackSpp <- trackSpp(dat4,

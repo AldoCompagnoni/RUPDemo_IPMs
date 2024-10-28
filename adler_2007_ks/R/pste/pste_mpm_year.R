@@ -243,7 +243,15 @@ recr_p <- recr_df %>%
             facet_wrap( ~ year, ncol = 4 ) +
             theme_bw()
 
-# compare "naove" per capita recruitment, with the model's
+# store the plot
+ggsave(paste0("adler_2007_ks/results/", 
+              sp_abb, 
+              "/years_recruitment.png"),  
+       plot = recr_p,
+       width = 6, height = 9, dpi = 150)
+
+
+# compare "naive" per capita recruitment, with the model's
 recr_df %>% 
   group_by( year ) %>% 
   summarise( pcr_naive = mean(pcr,na.rm=T) ) %>% 
@@ -259,7 +267,7 @@ recr_df %>%
 # Matrix population model ------------------------------------------------------
 
 # MPM parameters
-mpm_pars <- shat_df %>% 
+mpm_df <- shat_df %>% 
               pivot_wider( names_from  = 'age',
                            values_from = 'shat' ) %>% 
               left_join( dplyr::select( recr_pred_df,
@@ -348,8 +356,8 @@ proj_lam <- function( year_x, mat_df ){
 
 # model lambdas
 lam_df        <- mpm_pars %>% 
-                  mutate( lam      = sapply( year, year_lam, mpm_pars),
-                          proj_lam = sapply( year, proj_lam, mpm_pars) )
+                  mutate( lam      = sapply( year, year_lam, mpm_df),
+                          proj_lam = sapply( year, proj_lam, mpm_df) )
                 
 # Population counts at time t0
 pop_counts_t0 <- df %>%
@@ -376,7 +384,7 @@ pop_counts <- left_join(pop_counts_t0,
                 ungroup %>% 
                 mutate( obs_pgr = n_t1 / n_t0) %>% 
                 mutate( year = as.character(year) ) %>% 
-                left_join( mpm_pars ) %>% 
+                left_join( mpm_df ) %>% 
                 mutate( year = as.character(year) ) %>% 
                 left_join( lam_df )
 
@@ -474,7 +482,7 @@ ggplot( compare_df ) +
 
 # compare population growth rates
 ggplot( compare_df ) +
-  geom_point( aes(pcr,mat_pcr) ) +
+  # geom_point( aes(pcr_hat,pub_pcr_hat) ) +
   geom_point( aes( obs_pgr, pub_lam ), col = 'green' ) +
   geom_point( aes( obs_pgr, pub_proj_lam ), col = 'blue' ) +
   geom_point( aes( obs_pgr, lam ), col = 'darkred' ) +

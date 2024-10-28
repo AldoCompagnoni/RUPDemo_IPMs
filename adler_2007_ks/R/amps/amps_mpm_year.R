@@ -396,7 +396,8 @@ pop_counts <- left_join(pop_counts_t0,
   mutate( year = as.character(year) ) %>% 
   left_join( mpm_df ) %>% 
   mutate( year = as.character(year) ) %>% 
-  left_join( lam_df )
+  left_join( lam_df ) %>% 
+  drop_na
 
 # mostly over-predicted population growth
 #   not as bad as the published data though (see below)!
@@ -412,7 +413,7 @@ ggplot( pop_counts ) +
 # for now, store everything as an R object that resembles 
 mpm_df %>% 
   mutate( year = paste0('19',year) ) %>% 
-  mutate( SpeciesAuthor = 'Psoralea tenuiflora' ) %>% 
+  mutate( SpeciesAuthor = species ) %>% 
   setNames( c('year', 
               'surv_age0', 'surv_age1', 
               'per_capita_recruitment',
@@ -431,11 +432,13 @@ load( 'adler_2007_ks/data/COMPADRE_v.6.23.5.0.RData' )
 
 # identify the matrices across COMPADRE 
 id <- compadre$metadata %>% 
-  subset( grepl('Psoralea', SpeciesAuthor ) ) %>% 
+  subset( grepl('Ambrosia', SpeciesAuthor ) ) %>% 
+  subset( Species == 'psilostachya' ) %>% 
   subset( MatrixComposite == 'Individual' ) %>% 
   subset( MatrixStartYear %in% paste0('19', pop_counts$year) ) %>% 
   row.names %>% 
   as.numeric
+
 
 # years we can directly compare
 yrs_mat   <- compadre$metadata$MatrixStartYear[id] %>% 
@@ -512,13 +515,13 @@ compute_df <- compare_df %>%
   as.data.frame %>% 
   drop_na
 
-# dramatically better fit than published lambdas
-rmse( compute_df$obs_pgr,
-      compute_df$pub_lam ) 
-rmse( compute_df$obs_pgr,
-      compute_df$lam ) 
-rmse( compute_df$obs_pgr,
-      compute_df$pub_proj_lam ) 
-rmse( compute_df$obs_pgr,
-      compute_df$proj_lam ) 
+# # dramatically better fit than published lambdas
+# rmse( compute_df$obs_pgr,
+#       compute_df$pub_lam ) 
+# rmse( compute_df$obs_pgr,
+#       compute_df$lam ) 
+# rmse( compute_df$obs_pgr,
+#       compute_df$pub_proj_lam ) 
+# rmse( compute_df$obs_pgr,
+#       compute_df$proj_lam ) 
 

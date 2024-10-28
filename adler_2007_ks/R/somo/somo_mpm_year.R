@@ -412,7 +412,7 @@ ggplot( pop_counts ) +
 # for now, store everything as an R object that resembles 
 mpm_df %>% 
   mutate( year = paste0('19',year) ) %>% 
-  mutate( SpeciesAuthor = 'Psoralea tenuiflora' ) %>% 
+  mutate( SpeciesAuthor = species ) %>% 
   setNames( c('year', 
               'surv_age0', 'surv_age1', 
               'per_capita_recruitment',
@@ -431,7 +431,8 @@ load( 'adler_2007_ks/data/COMPADRE_v.6.23.5.0.RData' )
 
 # identify the matrices across COMPADRE 
 id <- compadre$metadata %>% 
-  subset( grepl('Psoralea', SpeciesAuthor ) ) %>% 
+  subset( grepl('Solidago', SpeciesAuthor ) ) %>% 
+  subset( Species == 'mollis' ) %>% 
   subset( MatrixComposite == 'Individual' ) %>% 
   subset( MatrixStartYear %in% paste0('19', pop_counts$year) ) %>% 
   row.names %>% 

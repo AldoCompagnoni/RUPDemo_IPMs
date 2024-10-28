@@ -34,6 +34,7 @@
 #
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
+library(tidyverse)
 
 base_dir <- ('zachmann_2016_ih')
 dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
@@ -44,53 +45,106 @@ shp_dir <- paste(base_dir, "/data/quadrat_data/shapefiles/msData/shapefiles/", s
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list <- read.delim("species_list.csv")
-sp_name_changes <- read.csv("species_name_changes.csv") #will use to check names later on
-grasses <- subset(sp_list, growthForm=="grass" & longevity=="P" & cover>100 & species!="Carex spp.")
+sp_list <- read_csv(paste0(dat_dir, "species_list.csv"))
+# sp_name_changes <- read.csv("species_name_changes.csv") #will use to check names later on
+grasses <- subset(sp_list, growthForm=="grass" & cover>100 & species!="Carex spp.")
 
 # Read in quad inventory to use as 'inv' list in plantTracker
-quad_inv <- read.delim(paste0(dat_dir,"quad_inventory.csv"))
+quad_inv <- read_csv(paste0(dat_dir,"quad_inventory.csv")) %>% 
+  select(-year)
 quadInv_list <- as.list(quad_inv)
 quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
 inv_sgs <- quadInv_list
 
-# Read in shapefiles to create sf dataframe to use as 'dat' in plantTracker
-# Adapted from plantTracker How to (Stears et al. 2022)
-# Create list of quad names
-quadNames <- list.files(shp_dir)
-# Use for loop to download data from each quad folder
-for(i in 1:length(quadNames)){
-  quadNow <- quadNames[i]
-  quadYears <- unlist(strsplit(list.files(
-    paste0(shp_dir),
-    pattern = ".shp$"), split = ".shp"))
-  for (j in 1:length(quadYears)) {
-    quadYearNow <- quadYears[j]
-    shapeNow <- sf::st_read(dsn = paste0(shp_dir,quadNow),
-                            layer = quadYearNow)
-    shapeNow$Site <- "CO"
-    shapeNow$Quad <- quadNow
-    shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][4])
-    if (grepl(quadYearNow, pattern = "pnt")) {
-      shapeNow <- shapeNow[,!(names(shapeNow)
-                              %in% c("coords_x1", "coords_x2", "coords_x1_", "coords_x2_", "coords_x1.1", "coords_x2.1"))]
-      shapeNow <- sf::st_buffer(x = shapeNow, dist = .0025)
-      shapeNow$type <- "point"
-    } else {
-      shapeNow <- shapeNow[,!(names(shapeNow) %in% c("SP_ID", "SP_ID_1", "area", "x", "y"))]
-      
-      shapeNow$type <- "polygon"
-    }
-    if (i == 1 & j == 1) {
-      dat <- shapeNow
-    } else {
-      dat <- rbind(dat, shapeNow)
-    }
+dat_1216 <- dat
+
+
+
+# Create a list of all shapefiles in the directory
+shpFiles <- list.files(shp_dir, pattern = "\\.shp$", full.names = TRUE)
+
+process_shapefile <- function(file) {
+  # Get the base filename without extension
+  quadYearNow <- tools::file_path_sans_ext(basename(file))
+  shapeNow <- sf::st_read(dsn = file)
+  
+  # Extract quad and year using more robust regular expressions
+  shapeNow$Site <- "IH"
+  shapeNow$Quad <- gsub("_(\\d+)_.*", "", quadYearNow)  # Extracts the quad (e.g., Q9, Q10)
+  
+  year_match <- regmatches(quadYearNow, regexec("_(\\d+)_", quadYearNow))  # Match year
+  shapeNow$Year <- as.numeric(year_match[[1]][2])  # Extracts the year (e.g., 57)
+  
+  # Remove unnecessary columns and define type
+  if (grepl("pnt", quadYearNow)) {
+    # For point shapefiles, buffer the geometries slightly
+    shapeNow <- sf::st_buffer(shapeNow[, !names(shapeNow) %in% c("coords_x1", "coords_x2", "coords_x1_", "coords_x2_", "coords_x1.1", "coords_x2.1")], dist = .0025)
+    shapeNow$type <- "point"
+  } else {
+    # For polygon shapefiles, remove unnecessary columns
+    shapeNow <- shapeNow[, !names(shapeNow) %in% c("SP_ID", "SP_ID_1", "area", "x", "y")]
+    shapeNow$type <- "polygon"
+  }
+  
+  # Return only the relevant columns
+  shapeNow[, c("Site", "Quad", "Year", "type")]
+}
+
+# Apply the function to all shapefiles and combine results
+dat <- do.call(rbind, lapply(shpFiles, process_shapefile))
+max(dat$Quad)
+
+
+
+shpFiles <- list.files(shp_dir, pattern = ".shp$", full.names = TRUE)
+dat <- NULL
+# Define a common set of columns
+common_columns <- c("Site", "Quad", "Year", "type")
+
+# Use a for loop to read and process each shapefile
+for (file in shpFiles) {
+  # Extract the file name without the extension to get the quad name and year
+  quadYearNow <- tools::file_path_sans_ext(basename(file))
+  
+  # Read the shapefile
+  shapeNow <- sf::st_read(dsn = file)
+  
+  # Assign site and quad based on the filename
+  shapeNow$Site <- "CO"
+  shapeNow$Quad <- gsub("_.*", "", quadYearNow)  # Extract the quad name
+  
+  # Extract the year, checking for the expected format
+  year_match <- regmatches(quadYearNow, regexec("_(\\d+)$", quadYearNow))
+  shapeNow$Year <- as.numeric(year_match[[1]][2])  # Extract the year, if present
+  
+  # Check if the shapefile is for points or polygons
+  if (grepl(quadYearNow, pattern = "pnt")) {
+    # Remove unnecessary columns for point data
+    shapeNow <- shapeNow[, !(names(shapeNow) %in% c("coords_x1", "coords_x2", 
+                                                    "coords_x1_", "coords_x2_", 
+                                                    "coords_x1.1", "coords_x2.1"))]
+    shapeNow <- sf::st_buffer(x = shapeNow, dist = .0025)
+    shapeNow$type <- "point"
+  } else {
+    # Remove unnecessary columns for polygon data
+    shapeNow <- shapeNow[, !(names(shapeNow) %in% c("SP_ID", "SP_ID_1", "area", "x", "y"))]
+    shapeNow$type <- "polygon"
+  }
+  
+  # Standardize columns to a common set
+  shapeNow <- shapeNow[, common_columns, drop = FALSE]
+  
+  # Combine data frames
+  if (is.null(dat)) {
+    dat <- shapeNow
+  } else {
+    dat <- rbind(dat, shapeNow)
   }
 }
 
+
 # Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat,file="SGS_LTER_plantTracker_full.rds")
+saveRDS(dat, paste0(dat_dir,"SGS_LTER_plantTracker_full.rds"))
 
 # Subset to the species of interest
 dat2 <- dat[dat$Species %in% grasses$species,]

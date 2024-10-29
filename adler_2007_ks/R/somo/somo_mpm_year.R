@@ -140,19 +140,18 @@ mod_surv   <- glmer( survives ~ age + (1 | year) + (1 | quad),
                      family = 'binomial' )
 
 # calculate year-specific mean predictions
-shat0       <- data.frame( age  = 0,
-                           year = coef(mod_surv)$year %>% rownames,
-                           stringsAsFactors = F ) %>%
-  mutate( shat = coef(mod_surv)$year[,1] %>% boot::inv.logit() )
-shat1       <- data.frame( age  = 1,
-                           year = coef(mod_surv)$year %>% rownames,
-                           stringsAsFactors = F ) %>%
-  mutate( shat = coef(mod_surv)$year[,1:2] %>% 
-            rowSums %>% 
-            boot::inv.logit() )
-
-# Hmmm, I realize now this is a sub-optimal object name...
-shat_df     <- bind_rows( shat0, shat1 )
+shat_df       <- expand.grid( age  = as.factor( c(0,1) ),
+                               year = coef(mod_surv)$year %>% rownames,
+                               quad = coef(mod_surv)$quad %>% rownames,
+                               stringsAsFactors = F ) %>%
+                    mutate( shat = predict( mod_surv,
+                                            newdata=.,
+                                            type = 'response') ) %>% 
+                    # marginalize over the "quad" random effect
+                    group_by( age, year ) %>% 
+                    summarise( shat = mean(shat) ) %>% 
+                    ungroup %>% 
+                    mutate( age = as.character(age) %>% as.numeric )
 
 # plot raw data against model predictions
 p_surv <- surv_df %>%
@@ -338,7 +337,7 @@ stage_counts <- df %>%
   summarize(n_t0 = n()) %>% 
   ungroup %>% 
   # only retain year_t0 for which we have data
-  right_join( dplyr::select(mpm_df,year) ) %>% 
+  right_join( dplyr::select(mpm_df, year) ) %>% 
   drop_na %>% 
   pivot_wider( names_from  = 'age',
                values_from = 'n_t0',
@@ -386,6 +385,7 @@ pop_counts_t1 <- df %>%
 #   accounting for discontinued sampling!
 pop_counts <- left_join(pop_counts_t0, 
                         pop_counts_t1) %>% 
+  mutate( year = year - 1 ) %>% 
   # by dropping NAs, we remove gaps in sampling!
   drop_na %>% 
   group_by(year) %>% 

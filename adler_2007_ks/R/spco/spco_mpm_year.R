@@ -1,4 +1,4 @@
-# MPM year specific Adler 2007 Kansas Ambrosia psilostachya
+# MPM year specific Adler 2007 Kansas Sphaeralcea coccinea
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com &
@@ -144,14 +144,14 @@ shat_df       <- expand.grid( age  = as.factor( c(0,1) ),
                               year = coef(mod_surv)$year %>% rownames,
                               quad = coef(mod_surv)$quad %>% rownames,
                               stringsAsFactors = F ) %>%
-                    mutate( shat = predict( mod_surv,
-                                            newdata=.,
-                                            type = 'response') ) %>% 
-                    # marginalize over the "quad" random effect
-                    group_by( age, year ) %>% 
-                    summarise( shat = mean(shat) ) %>% 
-                    ungroup %>% 
-                    mutate( age = as.character(age) %>% as.numeric )
+  mutate( shat = predict( mod_surv,
+                          newdata=.,
+                          type = 'response') ) %>% 
+  # marginalize over the "quad" random effect
+  group_by( age, year ) %>% 
+  summarise( shat = mean(shat) ) %>% 
+  ungroup %>% 
+  mutate( age = as.character(age) %>% as.numeric )
 
 # plot raw data against model predictions
 p_surv <- surv_df %>%
@@ -196,14 +196,9 @@ ggsave(paste0("adler_2007_ks/results/",
 
 # 1. yes or no recruits?
 yesno_df <- recr_df %>% 
-  mutate(recruits_yesno = as.numeric(recruits > 0)) %>% 
-  select(quad, year, parents, recruits_yesno) %>% 
-  drop_na() %>% 
-  group_by(year) %>% 
-  # filter for years with more than `x` occurrences
-  filter(n() > 8) %>% 
-  ungroup()
-
+  mutate( recruits_yesno = as.numeric(recruits > 0) ) %>% 
+  dplyr::select( quad, year, parents, recruits_yesno ) %>% 
+  drop_na
 
 # Yes-or-no recruits? (NOTE: parent number matters)
 yesno_mod    <- glmer( recruits_yesno ~ (1 | year),
@@ -236,10 +231,47 @@ pcr_pred_df  <- expand.grid( year    = coef(pcr_mod)$year %>% rownames,
                                   type = 'response' ) 
   )
 
+# 2.1 per capita recruitment unconditional 
+pcr_uc_df       <- recr_df %>% 
+  mutate( recruits_uc = replace(recruits,
+                                recruits == 0,
+                                0.1) ) %>% 
+  mutate( pcr_uc = recruits_uc / parents)
+
+
+# Per-capita recruitment model
+pcr_uc_mod      <- glmer( pcr_uc ~ (1 | year),
+                          data = pcr_uc_df,
+                          family = Gamma(link = "log") )
+
+# predict per capita recruitment
+pcr_uc_pred_df  <- expand.grid( year    = coef(pcr_uc_mod)$year %>% rownames,
+                                stringsAsFactors = F ) %>% 
+  # conditional (on recruitment == 1) per capita recruitment
+  mutate( uc_pcr_hat = predict( pcr_uc_mod, 
+                                newdata = .,
+                                type = 'response' ) 
+  )
+
 # hurdle model predictions
-recr_pred_df <- left_join( yesno_pred_df, 
-                           pcr_pred_df ) %>% 
-  mutate( pcr_hat = cond_pcr_hat * yesno_prob ) 
+recr_pred_df <- left_join( yesno_pred_df,
+                           pcr_uc_pred_df) %>% 
+  left_join(pcr_pred_df) %>%
+  mutate( pcr_uc_hat = uc_pcr_hat, 
+          pcr_hat = cond_pcr_hat * yesno_prob)
+
+pcr_comp_mod <-
+  recr_pred_df %>% 
+  ggplot() +
+  geom_point(aes(x = pcr_uc_hat, y = pcr_hat)) +
+  geom_abline(intercept = 0, slope = 1, color = 'black', pch = 1)
+
+ggsave(paste0("adler_2007_ks/results/", 
+              sp_abb, 
+              "/pcr_comp_mod.png"),  
+       plot = pcr_comp_mod,
+       width = 6, height = 9, dpi = 150)
+
 
 # plot on recruitment
 recr_p <- recr_df %>% 
@@ -266,7 +298,8 @@ ggsave(paste0("adler_2007_ks/results/",
 
 
 # compare "naive" per capita recruitment, with the model's
-recr_df %>% 
+pcr_comp_naive <- 
+  recr_df %>% 
   group_by( year ) %>% 
   summarise( pcr_naive = mean(pcr,na.rm=T) ) %>% 
   ungroup %>% 
@@ -274,8 +307,16 @@ recr_df %>%
   ggplot() +
   geom_point( aes(  x = pcr_naive,
                     y = pcr_hat) ) +
+  geom_point( aes(  x = pcr_naive,
+                    y = pcr_uc_hat), color = 'red') +
   geom_abline( intercept = 0,
                slope     = 1 )
+
+ggsave(paste0("adler_2007_ks/results/", 
+              sp_abb, 
+              "/pcr_comp_naive.png"),  
+       plot = pcr_comp_naive,
+       width = 6, height = 9, dpi = 150)
 
 
 # Matrix population model ------------------------------------------------------
@@ -437,8 +478,7 @@ load( 'adler_2007_ks/data/COMPADRE_v.6.23.5.0.RData' )
 
 # identify the matrices across COMPADRE 
 id <- compadre$metadata %>% 
-  subset( grepl('Ambrosia', SpeciesAuthor ) ) %>% 
-  subset( Species == 'psilostachya' ) %>% 
+  subset( grepl('Sphaeralcea_coccinea', SpeciesAuthor ) ) %>% 
   subset( MatrixComposite == 'Individual' ) %>% 
   subset( MatrixStartYear %in% paste0('19', pop_counts$year) ) %>% 
   row.names %>% 
@@ -520,13 +560,13 @@ compute_df <- compare_df %>%
   as.data.frame %>% 
   drop_na
 
-# # dramatically better fit than published lambdas
-# rmse( compute_df$obs_pgr,
-#       compute_df$pub_lam ) 
-# rmse( compute_df$obs_pgr,
-#       compute_df$lam ) 
-# rmse( compute_df$obs_pgr,
-#       compute_df$pub_proj_lam ) 
-# rmse( compute_df$obs_pgr,
-#       compute_df$proj_lam ) 
+# dramatically better fit than published lambdas
+rmse( compute_df$obs_pgr,
+      compute_df$pub_lam )
+rmse( compute_df$obs_pgr,
+      compute_df$lam )
+rmse( compute_df$obs_pgr,
+      compute_df$pub_proj_lam )
+rmse( compute_df$obs_pgr,
+      compute_df$proj_lam )
 

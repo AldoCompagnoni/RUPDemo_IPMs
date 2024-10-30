@@ -1,4 +1,4 @@
-# plantTracker for Adler 2007 Kansas Lesquerella ovalifolia
+# plantTracker for Adler 2007 Kansas Hedyotis nigricans
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
@@ -37,7 +37,7 @@ forb_list     <- read.csv(paste0(data_dir,
   head(25)
 
 # Select the x_th species (target species)
-target_spec <- forb_list %>% .[c(6),]  
+target_spec <- forb_list %>% .[c(8),]  
 
 # Define the species variable and abbreviation
 species <- target_spec$species

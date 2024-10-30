@@ -33,10 +33,11 @@ quote_bare <- function(...){
 forb_list     <- read.csv(paste0(data_dir,
                                "quadrat_data/species_list.csv"))  %>% 
   arrange(desc(count)) %>% 
-  filter(type == 'forb') 
+  filter(type == 'forb') %>% 
+  head(25)
 
 # Select the x_th species (target species)
-target_spec <- forb_list %>% .[c(1),]  
+target_spec <- forb_list %>% .[c(5),]  
 
 # Define the species variable and abbreviation
 species <- target_spec$species
@@ -95,4 +96,3 @@ datTrackSpp %>%
                 survives_tplus1, age, size_tplus1, nearEdge, Suspect) %>%
   write.csv(paste0('adler_2007_ks/data/', sp_abb, '/ks_', sp_abb, '.csv'), 
             row.names = FALSE)  
-

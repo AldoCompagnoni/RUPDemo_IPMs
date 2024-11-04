@@ -32,6 +32,8 @@
 #
 # Setup
 #
+
+
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 library(tidyverse)
@@ -56,86 +58,32 @@ quadInv_list <- as.list(quad_inv)
 quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
 inv_sgs <- quadInv_list
 
-dat_1216 <- dat
-
-
 
 # Create a list of all shapefiles in the directory
-shpFiles <- list.files(shp_dir, pattern = "\\.shp$", full.names = TRUE)
+shpFiles <- list.files(shp_dir)
 
-process_shapefile <- function(file) {
-  # Get the base filename without extension
-  quadYearNow <- tools::file_path_sans_ext(basename(file))
-  shapeNow <- sf::st_read(dsn = file)
-  
-  # Extract quad and year using more robust regular expressions
-  shapeNow$Site <- "IH"
-  shapeNow$Quad <- gsub("_(\\d+)_.*", "", quadYearNow)  # Extracts the quad (e.g., Q9, Q10)
-  
-  year_match <- regmatches(quadYearNow, regexec("_(\\d+)_", quadYearNow))  # Match year
-  shapeNow$Year <- as.numeric(year_match[[1]][2])  # Extracts the year (e.g., 57)
-  
-  # Remove unnecessary columns and define type
-  if (grepl("pnt", quadYearNow)) {
-    # For point shapefiles, buffer the geometries slightly
-    shapeNow <- sf::st_buffer(shapeNow[, !names(shapeNow) %in% c("coords_x1", "coords_x2", "coords_x1_", "coords_x2_", "coords_x1.1", "coords_x2.1")], dist = .0025)
-    shapeNow$type <- "point"
-  } else {
-    # For polygon shapefiles, remove unnecessary columns
-    shapeNow <- shapeNow[, !names(shapeNow) %in% c("SP_ID", "SP_ID_1", "area", "x", "y")]
-    shapeNow$type <- "polygon"
-  }
-  
-  # Return only the relevant columns
-  shapeNow[, c("Site", "Quad", "Year", "type")]
-}
+quadYears <- unlist(strsplit(list.files(
+  paste0(shp_dir,"/"),
+  pattern = ".shp$"), split = ".shp"))
 
-# Apply the function to all shapefiles and combine results
-dat <- do.call(rbind, lapply(shpFiles, process_shapefile))
-max(dat$Quad)
-
-
-
-shpFiles <- list.files(shp_dir, pattern = ".shp$", full.names = TRUE)
-dat <- NULL
-# Define a common set of columns
-common_columns <- c("Site", "Quad", "Year", "type")
-
-# Use a for loop to read and process each shapefile
-for (file in shpFiles) {
-  # Extract the file name without the extension to get the quad name and year
-  quadYearNow <- tools::file_path_sans_ext(basename(file))
-  
-  # Read the shapefile
-  shapeNow <- sf::st_read(dsn = file)
-  
-  # Assign site and quad based on the filename
-  shapeNow$Site <- "CO"
-  shapeNow$Quad <- gsub("_.*", "", quadYearNow)  # Extract the quad name
-  
-  # Extract the year, checking for the expected format
-  year_match <- regmatches(quadYearNow, regexec("_(\\d+)$", quadYearNow))
-  shapeNow$Year <- as.numeric(year_match[[1]][2])  # Extract the year, if present
-  
-  # Check if the shapefile is for points or polygons
-  if (grepl(quadYearNow, pattern = "pnt")) {
-    # Remove unnecessary columns for point data
-    shapeNow <- shapeNow[, !(names(shapeNow) %in% c("coords_x1", "coords_x2", 
-                                                    "coords_x1_", "coords_x2_", 
-                                                    "coords_x1.1", "coords_x2.1"))]
+for (j in 1:length(quadYears)) {
+  quadYearNow <- quadYears[j]
+  shapeNow <- sf::st_read(dsn = paste0(shp_dir),
+                          layer = quadYearNow)
+  shapeNow$Site <- "Ih"
+  shapeNow$Quad <- strsplit(quadYearNow, split = "_")[[1]][1]
+  shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][2])
+  if (grepl(quadYearNow, pattern = "_D")) {
+    shapeNow <- shapeNow[,!(names(shapeNow)
+                            %in% c("OBJECTID", "seedling", "stem", "x", "y"))]
     shapeNow <- sf::st_buffer(x = shapeNow, dist = .0025)
     shapeNow$type <- "point"
   } else {
-    # Remove unnecessary columns for polygon data
-    shapeNow <- shapeNow[, !(names(shapeNow) %in% c("SP_ID", "SP_ID_1", "area", "x", "y"))]
+    shapeNow <- shapeNow[,!(names(shapeNow) %in% c("SP_ID", "stemID", "area", "x", "y"))]
+    
     shapeNow$type <- "polygon"
   }
-  
-  # Standardize columns to a common set
-  shapeNow <- shapeNow[, common_columns, drop = FALSE]
-  
-  # Combine data frames
-  if (is.null(dat)) {
+  if (j == 1) {
     dat <- shapeNow
   } else {
     dat <- rbind(dat, shapeNow)
@@ -146,21 +94,31 @@ for (file in shpFiles) {
 # Save the output file so that it doesn't need to be recreated ever again
 saveRDS(dat, paste0(dat_dir,"SGS_LTER_plantTracker_full.rds"))
 
-# Subset to the species of interest
-dat2 <- dat[dat$Species %in% grasses$species,]
-
-# And save the subsetted file, too
-saveRDS(dat2,file="SGS_LTER_plantTracker_grasses.rds")
+# # Subset to the species of interest
+# dat2 <- dat[dat$Species %in% grasses$species,]
+# # And save the subsetted file, too
+# saveRDS(dat2,file="SGS_LTER_plantTracker_grasses.rds")
 
 # Check the inv and dat arguments
-checkDat(dat2, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat, inv_sgs, species = "species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 # Some rows had invalid geometry, so we fix the geometries
-invalid_geom <- c(1546, 1605, 1859, 5037, 5745, 5815, 8035, 8092, 11995, 14725, 14734, 17277, 25431, 25983,
-                  27239, 28916, 31083, 33376, 34117, 35702, 37448, 38944, 39163, 39322, 40192, 41247, 41455,
-                  41523, 42399, 43410, 46233, 47258, 47259, 48923, 50025, 51806, 52793, 55972, 57167)
-dat3<-dat2
+invalid_geom <- c(
+  55, 343, 531, 691, 698, 718, 721, 738, 940, 956, 1123, 1130, 1161, 1330, 1332, 
+  1688, 1724, 1927, 3486, 3612, 4404, 4765, 5339, 5724, 6072, 6370, 6374, 7196, 
+  8772, 9675, 9733, 9789, 9792, 9800, 9914, 9915, 9927, 9958, 9988, 9998, 10000, 
+  10033, 10043, 10175, 10187, 10219, 10233, 10238, 10240, 10430, 10614, 10618, 
+  10653, 10952, 11180, 11430, 11494, 11495, 11522, 11530, 12023, 12200, 12218, 
+  12265, 12553, 12565, 12571, 12577, 12603, 12607, 12610, 12629, 12886, 12908, 
+  12930, 13126, 13153, 13158, 13203, 13420, 13582, 13667, 13675, 13789, 13955, 
+  13980, 14233, 14259, 14276, 14386, 14396, 14398, 14406, 14422, 14895, 15992, 
+  16192, 16571, 17199, 17594, 21621, 23199, 23212, 24037, 24039, 24049, 24060, 
+  24066, 24203, 24205, 24208, 24251, 24342, 24347, 24399, 24403, 24412, 24451, 
+  24528, 24793, 24796, 24912, 24916, 24934, 25198, 25245, 25263, 25359, 25403, 
+  25533, 25559, 25589, 25682, 25897, 25930, 25941, 26136, 26145, 26162, 26543, 
+  26863, 26891, 2690)
+dat01 <- dat
 for(i in 1:length(invalid_geom)){
-   dat3[invalid_geom[i],6] <- st_make_valid(dat3[invalid_geom[i],6])
+  dat01[invalid_geom[i],6] <- st_make_valid(dat01[invalid_geom[i],6])
  }
 checkDat(dat3, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 # Still have a couple of repeated rows, somehow, so we will drop those

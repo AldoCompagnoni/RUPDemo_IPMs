@@ -12,7 +12,7 @@ rm(list = ls())
 # Packages ---------------------------------------------------------------------
 # Load packages, verify, and download if needed
 source('helper_functions/load_packages.R')
-load_packages(sf, plantTracker)
+load_packages(sf, plantTracker, tidyverse)
 
 
 # Data -------------------------------------------------------------------------

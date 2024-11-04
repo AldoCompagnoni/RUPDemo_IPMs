@@ -8,7 +8,6 @@
 # Original models from https://doi.org/10.1111/j.1365-2745.2009.01585.x
 #   check the appendices for details on model fitting!
 
-rm(list = ls())
 
 # Packages ---------------------------------------------------------------------
 

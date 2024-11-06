@@ -62,7 +62,10 @@ dat             <- readRDS(file=paste0(data_directory,
 # Subset data for the target species
 dat_target_spec <- dat[dat$SCI_NAME %in% target_spec$species,] %>%
   # Rename columns
-  setNames(quote_bare(Species, Site, Quad, Year, geometry))  
+  setNames(quote_bare(Species, Site, Quad, Year, geometry)) %>% 
+  subset( !(Quad == 'e1q5-2') )
+
+
 
 # Prepare data for the trackSpp function
 datTrackSpp <- trackSpp(dat_target_spec, inv_ks,

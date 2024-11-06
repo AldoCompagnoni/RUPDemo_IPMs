@@ -1,4 +1,5 @@
 # function to plot your survival data "binned" (instead of "jittered")
+# https://stats.stackexchange.com/questions/82720/confidence-interval-around-binomial-estimate-of-0-or-1
 
 # Arguments: data frame, number of bins, 
 # UNQUOTED name of discrete variable (usually age)

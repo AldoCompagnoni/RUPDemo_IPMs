@@ -1,23 +1,24 @@
-# plantTracker for Adler 2007 Kansas Sphaeralcea coccinea
+# plantTracker for chu 2013 colorado Poa secunda
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com
-# Date: 2024.10.28
+# Date: 2024.10.24
 
 # Code adapted from: https://github.com/aestears/plantTracker
-# Adapted from plantTracker How to (Stears et al. 2022)
+ # Adapted from plantTracker How to (Stears et al. 2022)
 
-# load packages
-source( 'helper_functions/load_packages.R' )
-load_packages( sf, plantTracker, tidyverse )
+rm(list = ls())
 
-# Type of population model
-mod_type <- 'mpm'
+# Packages ---------------------------------------------------------------------
+# Load packages, verify, and download if needed
+source('helper_functions/load_packages.R')
+load_packages(sf, plantTracker, tidyverse)
 
-# Directories 1
-data0_dir <- 'chu_2013_co/data/'
-quad_dir  <- paste0( data0_dir, 'quadrat_data/')
-sh_dir    <- paste0( quad_dir,  'arcexport/')          
+
+# Data -------------------------------------------------------------------------
+# Directory
+base_dir <- ('zachmann_2016_id')
+dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
 
 # Function to quote bare names for tidy evaluation
 quote_bare <- function(...){
@@ -31,62 +32,49 @@ quote_bare <- function(...){
     sapply(deparse)  
 }
 
+
 # Read species list and filter for target species
-forb_list     <- read_delim("chu_2013_co/data/quadrat_data/species_list.csv", 
-                            delim = "\t", escape_double = FALSE, 
-                            trim_ws = TRUE)  %>% 
-  dplyr::arrange(desc(density)) %>% 
-  filter(growthForm == 'forb') %>% 
-  head(25)
+sp_list     <- read_csv(paste0(dat_dir, "/species_list.csv")) %>% 
+  as.data.frame() %>% 
+  dplyr::arrange(desc(cover)) 
 
 # Select the x_th species (target species)
-target_spec <- forb_list %>% .[c(1),]  
+target_spec <- sp_list %>% .[c(2),]  
 
 # Define the species variable and abbreviation
-species <- target_spec$species
+species <- target_spec[1,1]
 sp_abb  <- tolower(gsub(" ", "", paste(substr(
   strsplit(species, " ")[[1]], 1, 2), collapse = "")))
 
-# Directories 2
-data_dir   <- paste0('chu_2013_co/data/',    sp_abb, '_', mod_type)
-result_dir <- paste0('chu_2013_co/results/', sp_abb, '_', mod_type)
-R_dir      <- paste0('chu_2013_co/R/',       sp_abb, '_', mod_type)
-
-
 # Read in quadrat inventory data and prepare for plantTracker
-quad_inv        <- read_delim(paste0(data0_dir,
-                                   "quadrat_data/quad_inventory.csv"), 
-                              delim = "\t", escape_double = FALSE, 
-                              trim_ws = TRUE) %>% 
-  as.list
+quad_inv        <- 
+  as.list(read_csv(paste0(dat_dir, "/quad_inventory.csv")) %>% 
+  as.data.frame())
 
 # Remove NAs
-inv_co          <- lapply(X = quad_inv, 
+inv_ks          <- lapply(X = quad_inv, 
                           FUN = function(x) x[is.na(x) == FALSE])
-
 # Replace dots in names with dashes
-names(inv_co)   <- gsub( '\\.','-',names(inv_co) )  
+names(inv_ks)   <- gsub( '\\.','-',names(inv_ks) )  
 
 # Read spatial data (polygon for each species per quadrat)
 dat             <- readRDS(
-  file = paste0(quad_dir, "SGS_LTER_plantTracker_all_filtered.rds"))
+  file=paste0(dat_dir, "/SGS_LTER_plantTracker_all_filtered.rds"))
 
 # Subset data for the target species
-dat_target_spec <- dat[dat$Species %in% target_spec$species,] %>%
-  select(-c(type)) %>% 
+dat_target_spec <- dat[dat$species %in% target_spec$species,] %>%
+  select(-c(type, Species)) %>% 
   # Rename columns
-  setNames( quote_bare(Species, Site, 
-                       Quad, Year, geometry) )  
+  setNames(quote_bare(Species, Site, Quad, Year, geometry))  
 
 # Prepare data for the trackSpp function
-datTrackSpp <- trackSpp(dat_target_spec, 
-                        inv_co,
-                        # Number of years in dormancy
-                        dorm         = 0,
+datTrackSpp <- trackSpp(dat_target_spec, inv_ks,
+                        # Dormancy flag
+                        dorm         = 1,
                         # Buffer size
                         buff         = 5,
                         # Allow for clonal tracking
-                        clonal       = FALSE,
+                        clonal       = TRUE,
                         # Buffer for genet
                         buffGenet    = 5,
                         # Aggregate by genet
@@ -95,8 +83,8 @@ datTrackSpp <- trackSpp(dat_target_spec,
                         flagSuspects = TRUE)   
 
 # Create output directory if it doesn't exist
-if (!dir.exists(data_dir)) {
-  dir.create(data_dir)
+if (!dir.exists(paste0("adler_2007_ks/data/", sp_abb))) {
+  dir.create(paste0("adler_2007_ks/data/", sp_abb))
 }
 
 # Save the tracked data to a CSV file
@@ -104,5 +92,5 @@ datTrackSpp %>%
   as.data.frame %>% 
   dplyr::select(Site, Quad, Species, trackID, Year, basalArea_genet, recruit,
                 survives_tplus1, age, size_tplus1, nearEdge, Suspect) %>%
-  write.csv(paste0(data_dir, '/ks_', sp_abb, '.csv'), 
+  write.csv(paste0('adler_2007_ks/data/', sp_abb, '/ks_', sp_abb, '.csv'), 
             row.names = FALSE)  

@@ -32,164 +32,166 @@
 #
 # Setup
 #
+
+
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 library(tidyverse)
 
-base_dir <- ('chu_2013_co')
+base_dir <- ('zachmann_2016_id')
 dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
-shp_dir <- paste(base_dir, "/data/quadrat_data/shapefiles/", sep="")
+shp_dir <- paste(base_dir, 
+                 "/data/quadrat_data/shapefiles/msData/shapefiles/", sep="")
 
+# setwd(dat_dir)
 
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list <- read.delim(paste0(dat_dir, "species_list.csv"))
-sp_name_changes <- read.csv(paste0(dat_dir, "species_name_changes.csv")) 
-#  will use to check names later on
-grasses <- subset(sp_list, growthForm=="grass" & longevity=="P" & cover>100 & species!="Carex spp.")
+sp_list <- read_csv(paste0(dat_dir, "species_list.csv"))
+# sp_name_changes <- read.csv("species_name_changes.csv") #will use to check names later on
+grasses <- subset(sp_list, 
+                  growthForm == "grass" & cover > 100 & species!= "Carex spp.")
 
 # Read in quad inventory to use as 'inv' list in plantTracker
-quad_inv <- read.delim(paste0(dat_dir, "quad_inventory.csv"))
+quad_inv <- read_csv(paste0(dat_dir,"quad_inventory.csv")) %>% 
+  select(-year)
 quadInv_list <- as.list(quad_inv)
 quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
 inv_sgs <- quadInv_list
 
-# Read in shapefiles to create sf dataframe to use as 'dat' in plantTracker
-# Adapted from plantTracker How to (Stears et al. 2022)
-# Create list of quad names
-quadNames <- list.files(paste0(dat_dir, 'shapefiles'))
-# Use for loop to download data from each quad folder
-for(i in 1:length(quadNames)){
-  quadNow <- quadNames[i]
-  quadYears <- unlist(strsplit(list.files(
-    paste0(shp_dir,quadNow,"/"),
-    pattern = ".shp$"), split = ".shp"))
-  for (j in 1:length(quadYears)) {
-    quadYearNow <- quadYears[j]
-    shapeNow <- sf::st_read(dsn = paste0(shp_dir,quadNow),
-                            layer = quadYearNow)
-    shapeNow$Site <- "CO"
-    shapeNow$Quad <- quadNow
-    shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][4])
-    if (grepl(quadYearNow, pattern = "pnt")) {
-      shapeNow <- shapeNow[,!(names(shapeNow)
-                              %in% c("coords_x1", "coords_x2", "coords_x1_", "coords_x2_", "coords_x1.1", "coords_x2.1"))]
-      shapeNow <- sf::st_buffer(x = shapeNow, dist = .0025)
-      shapeNow$type <- "point"
-    } else {
-      shapeNow <- shapeNow[,!(names(shapeNow) %in% c("SP_ID", "SP_ID_1", "area", "x", "y"))]
-      
-      shapeNow$type <- "polygon"
-    }
-    if (i == 1 & j == 1) {
-      dat <- shapeNow
-    } else {
-      dat <- rbind(dat, shapeNow)
-    }
+
+# Create a list of all shapefiles in the directory
+shpFiles <- list.files(shp_dir)
+
+quadYears <- unlist(strsplit(list.files(
+  paste0(shp_dir,"/"),
+  pattern = ".shp$"), split = ".shp"))
+
+for (j in 1:length(quadYears)) {
+  quadYearNow <- quadYears[j]
+  shapeNow <- sf::st_read(dsn = paste0(shp_dir),
+                          layer = quadYearNow)
+  shapeNow$Site <- "Id"
+  shapeNow$Quad <- strsplit(quadYearNow, split = "_")[[1]][1]
+  shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][2])
+  if (grepl(quadYearNow, pattern = "_D")) {
+    shapeNow <- shapeNow[,!(names(shapeNow)
+                            %in% c("OBJECTID", "seedling", "stem", "x", "y"))]
+    shapeNow <- sf::st_buffer(x = shapeNow, dist = .0025)
+    shapeNow$type <- "point"
+  } else {
+    shapeNow <- shapeNow[,!(names(shapeNow) %in% c("SP_ID", "stemID", "area", "x", "y"))]
+    
+    shapeNow$type <- "polygon"
   }
-}
+  if (j == 1) {
+    dat <- shapeNow
+  } else {
+    dat <- rbind(dat, shapeNow)
+  }
+} 
+
 
 # Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat, file = paste0(dat_dir, "SGS_LTER_plantTracker_full.rds"))
-dat <- readRDS(file = paste0(dat_dir, "SGS_LTER_plantTracker_full.rds"))
+saveRDS(dat, paste0(dat_dir,"SGS_LTER_plantTracker_full.rds"))
+dat <- readRDS(paste0(dat_dir,"SGS_LTER_plantTracker_full.rds"))
 
 # # Subset to the species of interest
 # dat2 <- dat[dat$Species %in% grasses$species,]
-# 
 # # And save the subsetted file, too
-# saveRDS(dat2, file = paste0(dat_dir, "SGS_LTER_plantTracker_grasses.rds"))
+# saveRDS(dat2,file="SGS_LTER_plantTracker_grasses.rds")
 
 # Check the inv and dat arguments
-checkDat(dat, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat, inv_sgs, species = "species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 # Some rows had invalid geometry, so we fix the geometries
 invalid_geom <- c(
-  2311, 2347, 2649, 2929, 3229, 3301, 3874, 3877, 3879, 3933, 4008, 4012, 4163, 
-  4248, 4275, 4305, 4480, 4509, 4890, 5020, 6461, 6858, 6892, 7025, 7094, 7118, 
-  7322, 7634, 7684, 8187, 8315, 8397, 8415, 8521, 8537, 8742, 9350, 9513, 10506, 
-  10836, 11043, 11117, 11121, 11153, 11464, 11487, 11822, 11849, 11906, 11926, 
-  12160, 12200, 12254, 12704, 13489, 14743, 15185, 15647, 15650, 15892, 15978, 
-  16376, 16499, 16906, 17117, 17583, 18024, 18347, 18374, 18406, 18427, 18778, 
-  18786, 19427, 20258, 20665, 21173, 21340, 21818, 22169, 22202, 22372, 23128, 
-  23155, 23478, 23950, 24536, 25893, 25935, 27171, 27523, 27775, 28132, 28525, 
-  28529, 29028, 29045, 29052, 29071, 29102, 29105, 29205, 29539, 29943, 30065, 
-  30219, 30635, 31042, 31617, 31634, 34811, 35096, 35388, 35683, 35948, 36047, 
-  36139, 36174, 36194, 36211, 36219, 36220, 36552, 36582, 36738, 36897, 37347, 
-  37385, 37388, 37471, 39161, 39549, 39733, 39927, 40093, 40315, 40324, 40459, 
-  40783, 40834, 41218, 41226, 41252, 41258, 41324, 41330, 41502, 41602, 41645, 
-  42148, 42336, 43659, 44177, 44285, 44376, 44593, 44756, 44778, 44847, 44892, 
-  44894, 44962, 45351, 45515, 45559, 45652, 45682, 47282, 47496, 47577, 47904, 
-  48020, 48378, 48764, 49028, 49057, 49097, 49159, 49341, 49370, 49440, 49603, 
-  50608, 50703, 51166, 51175, 51377, 51402, 51557, 51683, 51849, 52111, 52454, 
-  52457, 53041, 53448, 53449, 53471, 53523, 54208, 55464, 55764, 55872, 55905, 
-  56139, 56314, 56496, 56826, 57085, 57086, 57156, 57183, 57508, 57766, 57850, 
-  57975, 58194, 58795, 59964, 60244, 60261, 60906, 61559, 61957, 61962, 62564, 
-  63315, 63419, 63736, 63739, 63764, 63808, 63809, 64229, 64320, 65145, 66132, 
-  68407, 68586, 68878, 68922, 69033, 69300, 69315, 69401, 69827, 69983, 70051, 
-  70375, 70435, 70468, 70470, 70493, 70503, 70552, 70663, 70912, 71118, 74592, 
-  75064, 75067, 75433, 75800, 75962, 76001, 76473, 77872, 78722, 79486, 79550, 
-  80555, 82966, 83268, 83403, 83447, 83746)
+  255, 343, 531, 691, 698, 718, 721, 738, 940, 956, 1123, 1130, 1161, 1330, 1332, 
+  1688, 1724, 1927, 3486, 3612, 4404, 4765, 5339, 5724, 6072, 6370, 6374, 7196, 
+  8772, 9675, 9733, 9789, 9792, 9800, 9914, 9915, 9927, 9958, 9988, 9998, 10000, 
+  10033, 10043, 10175, 10187, 10219, 10233, 10238, 10240, 10430, 10614, 10618, 
+  10653, 10952, 11180, 11430, 11494, 11495, 11522, 11530, 12023, 12200, 12218, 
+  12265, 12553, 12565, 12571, 12577, 12603, 12607, 12610, 12629, 12886, 12908, 
+  12930, 13126, 13153, 13158, 13203, 13420, 13582, 13667, 13675, 13789, 13955, 
+  13980, 14233, 14259, 14276, 14386, 14396, 14398, 14406, 14422, 14895, 15992, 
+  16192, 16571, 17199, 17594, 21621, 23199, 23212, 24037, 24039, 24049, 24060, 
+  24066, 24203, 24205, 24208, 24251, 24342, 24347, 24399, 24403, 24412, 24451, 
+  24528, 24793, 24796, 24912, 24916, 24934, 25198, 25245, 25263, 25359, 25403, 
+  25533, 25559, 25589, 25682, 25897, 25930, 25941, 26136, 26145, 26162, 26543, 
+  26863, 26891)
 dat01 <- dat
 for(i in 1:length(invalid_geom)){
   dat01[invalid_geom[i],6] <- st_make_valid(dat01[invalid_geom[i],6])
+ }
+
+checkDat(dat01, inv_sgs, species = "species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+invalid_geom2 <- c(
+  26902, 26911, 26929, 27207, 27214, 27223, 27376, 27405, 27438, 27605, 29292, 
+  32885, 36773, 36810, 36854, 36865, 36879, 36942, 36982, 36991, 37003, 37006, 
+  37120, 37227, 37818, 38062, 38069, 38071, 38076, 38082, 38092, 38106, 38350, 
+  38359, 38366, 38378, 38570, 38619, 38857, 38868, 38883, 38886, 39150, 39153, 
+  39160, 39165, 39176, 39179, 39500, 39993, 39996, 40032, 40257, 40259, 40406, 
+  40418, 40430, 40618, 40934, 40943, 40965, 41268, 41278, 41491, 41523, 41572, 
+  41661, 41662, 41695, 42100, 42117, 42149, 42177, 42248, 42295, 42448, 42459, 
+  42495, 42511, 47870, 48337, 49282, 49285, 49333, 49552, 50796, 51316, 57159, 
+  57160, 57184, 57186, 57190, 57193, 57229, 57328, 57332, 57334, 57390, 57558, 
+  57562, 57609, 57611, 57841, 57842, 57843, 57844, 58081, 58087, 58113, 58125, 
+  58426, 58484, 58485, 58488, 58824, 58825, 58826, 59131, 59407, 59411, 59814, 
+  60338, 60339, 60340, 60936, 60966, 60995, 60997, 61457, 61488, 61509, 61546, 
+  61903, 62024, 62048)
+for(i in 1:length(invalid_geom2)){
+  dat01[invalid_geom2[i],6] <- st_make_valid(dat01[invalid_geom2[i],6])
 }
 
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = "species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 invalid_geom3 <- c(
-  84097, 84276, 84278, 84284, 84287, 84788, 84790, 84797, 84891, 84983, 85272, 
-  85308, 85432, 85722, 85915, 86004, 86006, 86136, 86855, 87068, 87679, 87700, 
-  87851, 87980, 88221, 88296, 88600, 88704, 88705, 89198, 89209, 89250, 89325, 
-  89828, 90245, 90560, 90908, 91531, 93498, 93810, 94125, 94231, 94421, 94516, 
-  94537, 94774, 94957, 95176, 95177, 95590, 95593, 95625, 95659, 95681, 95705, 
-  95722, 95948, 96222, 96339, 96876, 99074, 99278, 99528, 100124, 100136, 
-  100774, 100807, 100833, 101630, 101737, 102260, 102600, 102605, 102630, 
-  107938, 108186, 108274, 108644, 109236, 109762, 110054, 110428, 110810, 
-  110939, 111117, 111211, 111543, 111666, 111770, 113269, 113853, 114078, 
-  114299, 114300, 114343, 114691, 115359, 115535, 115554, 115560, 115689, 
-  115904, 116045, 116069, 116103, 116217, 116304, 118893, 119007, 119208, 
-  119220, 119562, 119792, 120299, 120302, 120726, 120873, 121031, 121034, 
-  121039, 121411, 121461, 121544, 121691, 121805, 121887
-)
+  62053, 62055, 62337, 62394, 62411, 62442, 62444, 62446, 62680, 62718, 62723, 
+  62791, 62792, 62793, 62794, 62796, 63095, 63099, 63119, 63120, 63121, 63122, 
+  63402, 63500, 63502, 63867, 65053, 66083, 69089, 70091, 71068, 72536, 72586, 
+  72635, 72895, 72935, 72985, 72989, 73239, 73245, 73264, 73270, 73280, 73508, 
+  73531, 80562, 80617, 81052, 81061, 81100, 81101, 81103, 81619, 81670, 81963, 
+  82079, 82101, 82158, 82176, 82361, 82430, 82648, 82654, 82658, 82865, 82876, 
+  82888, 82902, 83250, 83262, 83267, 83525, 83564, 83571, 83839, 83872, 84151, 
+  84175, 84462, 84468, 84483, 84487, 84507, 84512, 84525, 84526, 84528, 84529, 
+  84530, 84532, 84534, 84784, 84805, 84818, 84820, 84830, 84886, 84889, 84891, 
+  85263, 85292, 85294, 85298, 85302, 85323, 85326, 85331, 85332, 85333, 86129, 
+  86135, 86136, 86155, 86184, 86519, 87149, 87206, 87399, 87724, 88443, 88483, 
+  88484, 88491, 88658, 88674, 88693, 89244, 90461, 90768, 91250, 91831, 91917, 
+  92426, 92428, 93055)
 for(i in 1:length(invalid_geom3)){
   dat01[invalid_geom3[i],6] <- st_make_valid(dat01[invalid_geom3[i],6])
 }
 
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = "species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 invalid_geom4 <- c(
-  123325, 123790, 123984, 124009, 124070, 124334, 124681, 125120, 125129, 
-  125839, 126288, 130048, 130659, 130935, 130961, 131130, 131281, 131344, 
-  131349, 131406, 131475, 131606, 131674, 131676, 131751, 131762, 131841, 
-  132125, 132232, 132253, 132258, 132548, 132609, 132623, 133163, 133274
-)
-
+  93090, 93100, 93520, 93820, 93847, 94129, 94462, 94755, 94979, 95287, 95333, 
+  97101, 98687, 101685, 101757, 101864, 101992, 102231, 102258, 103113, 103119, 
+  103124, 103143, 103479, 103480, 103511, 103517, 103822, 103870, 103875, 
+  103882, 104161, 104165, 104182, 104187, 104216, 104406, 104408, 104423, 
+  104424, 104630, 104658, 104687, 104704, 104966, 105219, 105501, 105550, 
+  105810, 106033, 106040, 106231, 106243, 106266, 106268, 106270, 106498, 
+  106925, 107994, 108122, 108437, 109119, 109120, 109321, 109356, 109357, 
+  109664, 110134, 111643, 111731, 112878, 113623, 114117, 115306, 117155, 
+  117162, 117163, 117685, 120601)
 for(i in 1:length(invalid_geom4)){
   dat01[invalid_geom4[i],6] <- st_make_valid(dat01[invalid_geom4[i],6])
 }
 
 checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-dat02 <- dat01[!is.na(dat01$Species), ]
-checkDat(dat02, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-# Still have a couple of repeated rows, somehow, so we will drop those
-drop_rows <- c(
-  401, 1010, 1661, 24487, 25606, 25670, 26255, 32384, 38391, 39569, 55076,
-  55089)
+# # Still have a couple of repeated rows, somehow, so we will drop those
+# drop_rows <- c(25670,58091,75507,116003)
+# dat4 <- dat3[!(row.names(dat3) %in% drop_rows),]
+# checkDat(dat4, inv_sgs, species = "species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-dat03 <- dat02[!(row.names(dat02) %in% drop_rows),]
-checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-# Still have a couple of repeated rows, somehow, so we will drop those
-drop_rows2 <- c(
-  55112, 58091, 64803, 72238, 75507, 77291, 79196, 96626, 103604, 116003, 
-  128419)
+dat01 <- dat01 %>% 
+  mutate(Species = species)
 
-dat03 <- dat03[!(row.names(dat03) %in% drop_rows2),]
-checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-
-saveRDS(dat03, file = paste0(dat_dir, "SGS_LTER_plantTracker_all_filtered.rds"))
+saveRDS(dat01, paste0(dat_dir,"SGS_LTER_plantTracker_all_filtered.rds"))
 
 # # Now the data are ready for the trackSpp function
-# datTrackSpp <- trackSpp(dat02,
+# datTrackSpp <- trackSpp(dat4,
 #                         inv_sgs,
 #                         dorm=1,
 #                         buff=0.05,

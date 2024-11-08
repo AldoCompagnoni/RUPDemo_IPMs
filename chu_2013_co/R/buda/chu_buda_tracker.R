@@ -62,11 +62,12 @@ inv_ks          <- lapply(X = quad_inv,
 names(inv_ks)   <- gsub( '\\.','-',names(inv_ks) )  
 
 # Read spatial data (polygon for each species per quadrat)
-dat             <- readRDS(file=paste0(quadrat_data_dir,
-                                       "/SGS_LTER_plantTracker_tracked.rds"))
+dat             <- readRDS(
+  file=paste0(quadrat_data_dir, "/SGS_LTER_plantTracker_grasses_filtered.rds"))
 
 # Subset data for the target species
 dat_target_spec <- dat[dat$Species %in% target_spec$species,] %>%
+  select(-c(type)) %>% 
   # Rename columns
   setNames(quote_bare(Species, Site, Quad, Year, geometry))  
 
@@ -75,11 +76,11 @@ datTrackSpp <- trackSpp(dat_target_spec, inv_ks,
                         # Dormancy flag
                         dorm         = 1,
                         # Buffer size
-                        buff         = 5,
+                        buff         = 0.05,
                         # Allow for clonal tracking
                         clonal       = TRUE,
                         # Buffer for genet
-                        buffGenet    = 5,
+                        buffGenet    = 0.05,
                         # Aggregate by genet
                         aggByGenet   = TRUE,
                         # Flag potential issues

@@ -1,4 +1,4 @@
-# Populating padrino - chu 2013 colorado - Poa secunda
+# Populating padrino - chu 2013 colorado - Hesperostipa comata
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -31,18 +31,18 @@ author_year <- 'zachmann_2016'
 # Define region abbreviation
 region_abb  <- 'id'
 # Define species 
-species     <- 'Poa secunda'
+species     <- 'Hesperostipa comata'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnnnn18'
+ipm_id      <- 'nnnnn19'
 
 
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (here Wikipedia)
 species_accepted <- gsub(" ", "_", species)
 # The accepted genus
-tax_genus <- 'Pseudoroegneria'
+tax_genus <- 'Hesperostipa'
 # The accepted family
 tax_family <- 'Poa'
 # The accepted order

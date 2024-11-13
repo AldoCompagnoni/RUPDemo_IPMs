@@ -1,4 +1,4 @@
-# plantTracker - chu 2013 colorado Poa secunda
+# plantTracker - chu 2013 colorado Hesperostipa comata
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -23,7 +23,7 @@ source('helper_functions/plant_tracker_01.R')
 
 # Select the x_th species (target species)
 head(sp_list)
-target_spec <- sp_list %>% .[c(2),]  
+target_spec <- sp_list %>% .[c(3),]  
 
 source('helper_functions/plant_tracker_02.R')
 

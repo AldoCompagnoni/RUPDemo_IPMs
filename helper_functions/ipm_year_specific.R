@@ -1,4 +1,4 @@
-# IPM year specific pipline
+# IPM year specific pipeline
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -9,8 +9,6 @@
 
 
 # Setting the stage ------------------------------------------------------------
-# Remove all objects in the global environment
-# rm(list = ls()) 
 # Set seed for reproducibility
 set.seed(100)
 options(stringsAsFactors = F)

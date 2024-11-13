@@ -1,4 +1,4 @@
-# IPM mean - chu 2013 colorado Poa secunda
+# IPM mean - chu 2013 colorado - Hesperostipa comata
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -35,7 +35,7 @@ author_year <- 'zachmann_2016'
 # Define region abbreviation
 region_abb <- 'id'
 # Define species 
-species <- 'Poa secunda'
+species <- 'Hesperostipa comata'
 
 # Run the ipm mean wraper function
 source('helper_functions/ipm_mean.R')

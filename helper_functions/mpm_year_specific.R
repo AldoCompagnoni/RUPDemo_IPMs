@@ -14,7 +14,11 @@
 # Packages ---------------------------------------------------------------------
 # read and check  
 source('helper_functions/load_packages.R')
-load_packages(tidyverse, patchwork, skimr, lme4, ggthemes)
+load_packages(tidyverse, patchwork, skimr, lme4, ggthemes, boot)
+# 
+# library(ggplot2)
+# library(dplyr)
+# library(boot)
 
 
 # Data -------------------------------------------------------------------------
@@ -150,12 +154,97 @@ write.csv(recr_df, row.names = F,
 
 
 # Survival ---------------------------------------------------------------------
+hist_age <- ggplot(surv_out_df, aes(x = age)) +
+  geom_histogram(binwidth = .5, na.rm = TRUE) +
+  labs(x = 'Age',
+       y = 'Count', 
+       title    = 'Age hist',
+       subtitle = paste(script_prefix, '-', species))
+
+ggsave(paste0(result_dir, '/0_age_counts.png'),  
+       plot = hist_age,      width = 6, height = 9, dpi = 150)
+
+
+#-------------------------------------------------------------------------------
+
+# Function to get survival probabilities and confidence intervals
+get_survival_data <- function(age_class) {
+  # Subset the data for the given age class
+  data_subset <- subset(surv_out_df, age == age_class)
+  
+  # Check if the subset has more than one observation
+  if (nrow(data_subset) < 2) {
+    # If there are fewer than 2 rows, skip this age class (or return NA)
+    return(data.frame(
+      age = age_class,
+      mean_survival = NA,
+      lower_ci = NA,
+      upper_ci = NA,
+      n_obs = 0  # Add number of observations
+    ))
+  }
+  
+  # Fit the logistic regression model
+  model <- glm(survives ~ 1, family = 'binomial', data = data_subset)
+  
+  # Get confidence intervals for the model's intercept (as a vector)
+  ci <- confint(model)
+  
+  # Extract lower and upper bounds for the intercept
+  lower_ci <- boot::inv.logit(ci[1])  # 2.5% percentile
+  upper_ci <- boot::inv.logit(ci[2])  # 97.5% percentile
+  
+  # Mean survival probability (logit to probability transformation)
+  mean_survival <- boot::inv.logit(coef(model))
+  
+  # Get the number of observations in this age class
+  n_obs <- nrow(data_subset)
+  
+  # Return a data frame with age class, mean survival, 
+  #  confidence intervals, and number of observations
+  return(data.frame(
+    age = age_class,
+    mean_survival = mean_survival,
+    lower_ci = lower_ci,
+    upper_ci = upper_ci,
+    n_obs = n_obs
+  ))
+}
+
+# Apply the function to all unique ages in the dataset
+age_classes <- unique(surv_out_df$age)  # Get all unique age values
+survival_results <- bind_rows(lapply(age_classes, get_survival_data))
+
+# Remove rows with missing survival results (if any)
+survival_results <- na.omit(survival_results)
+
+# Plot the results with points, error bars, and number of observations
+surv_age <- ggplot(survival_results, aes(x = age, y = mean_survival)) +
+  geom_point(color = "blue", size = 2) + 
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), 
+                width = 0.2, color = "blue") + 
+  geom_text(aes(label = paste("n =", n_obs)), vjust = 7, 
+            color = "black", size = 3) +  
+  geom_smooth(data = surv_out_df, aes(x = age, y = survives), method = "glm", 
+              method.args = list(family = "binomial"), color = "red", se = T) +  
+  labs(x = "Age", y = "Survival Probability", 
+       title = "Survival Probability by Age with 95% CI") +
+  theme() +
+  ylim(0, 1)
+
+ggsave(paste0(result_dir, '/0_surv_age.png'),  
+       plot = surv_age,      width = 6, height = 9, dpi = 150)  
+  
+#-------------------------------------------------------------------------------
+
+# Check if surv_age_threshold is already defined (manual specification), 
+#  otherwise set default to 1
+surv_age_threshold <- if (
+  !exists("surv_age_threshold")) 1 else surv_age_threshold
+
 # survival data. For this model, only two age classes
-surv_df <- surv_out_df %>% 
-  # consider all individuals past year 0 as if they had age 1
-  mutate(age = dplyr::case_when(
-    age == 0 ~ 0,
-    age > 0  ~ 1))
+surv_df <- surv_out_df %>%
+  mutate(age = replace(age, age > surv_age_threshold, surv_age_threshold))
 
 # Survival model: Random effect of year only
 mod_surv   <- glmer(survives ~ age + (1 | year) + (1 | quad),
@@ -164,7 +253,7 @@ mod_surv   <- glmer(survives ~ age + (1 | year) + (1 | quad),
 
 # calculate year-specific mean predictions
 surv_ysmpred_re_fun <- function(mod, re) {
-  shat_df       <- expand.grid(age  = as.factor(c(0,1)),
+  shat_df       <- expand.grid(age  = as.factor(c(0:surv_age_threshold)),
                                year = coef(mod)$year %>% rownames,
                                quad = coef(mod)$quad %>% rownames,
                                stringsAsFactors = F) %>%
@@ -416,11 +505,8 @@ make_mat <- function(year_x, mat_df){
 
 # project based on stage distribution
 stage_counts <- df %>%
-  mutate(year = as.character(year)) %>% 
-  mutate(age = dplyr::case_when(
-    age == 0 ~ 0,
-    age > 0  ~ 1) 
-  ) %>% 
+  mutate(year = as.character(year)) %>%
+  mutate(age = replace(age, age > surv_age_threshold, surv_age_threshold)) %>% 
   group_by(year, age) %>%
   summarize(n_t0 = n()) %>% 
   ungroup %>% 

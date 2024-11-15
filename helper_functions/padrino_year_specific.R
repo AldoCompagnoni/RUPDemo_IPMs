@@ -30,9 +30,9 @@ sp_abb  <-
                               collapse = '')))
 # Directory 
 pub_dir    <- file.path(paste0(author_year, '_', region_abb))
-R_dir      <- file.path(pub_dir, 'R',      sp_abb)
-data_dir   <- file.path(pub_dir, 'data',   sp_abb)
-result_dir <- file.path(pub_dir, 'result', sp_abb)
+R_dir      <- file.path(pub_dir, 'R',       sp_abb)
+data_dir   <- file.path(pub_dir, 'data',    sp_abb)
+result_dir <- file.path(pub_dir, 'results', sp_abb)
 
 # Prefix for all the files
 script_prefix <- str_c(str_extract(author_year, '^[^_]+'), 

@@ -1,4 +1,4 @@
-# plantTracker for Adler 2007 Kansas Sphaeralcea coccinea
+# plantTracker - adler 2007 Kansas - Sphaeralcea coccinea
 
 # Author: Niklas Neisse
 # Email: neisse.n@protonmail.com

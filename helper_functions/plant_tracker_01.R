@@ -13,12 +13,15 @@
 # Packages ---------------------------------------------------------------------
 # Load packages, verify, and download if needed
 source('helper_functions/load_packages.R')
-load_packages(sf, plantTracker, tidyverse)
+load_packages(sf, plantTracker, tidyverse, readr)
 
 # Data -------------------------------------------------------------------------
 # Directory 1
 pub_dir <- file.path(paste0(author_year, '_', region_abb))
-dat_dir <- file.path(pub_dir, 'data', '//quadrat_data/', sep='')
+dat_dir <- file.path(pub_dir, 'data', 'quadrat_data', sep='')  
+if (!dir.exists(dat_dir)) {
+  dat_dir <- file.path(pub_dir, 'data', 'quad_data')
+}
 # Prefix for the script name
 script_prefix <- str_c(str_extract(author_year, '^[^_]+'), 
                        str_sub(str_extract(author_year, '_\\d+$'), -2, -1))
@@ -36,15 +39,38 @@ quote_bare <- function(...){
     sapply(deparse)  
 }
 
+# Set the default delimiter (comma)
+default_delimiter <- ','
+
+# Check if a custom delimiter is defined (for example, it could be passed as a function argument or set elsewhere)
+delimiter <- if (exists('custom_delimiter') && !is.null(custom_delimiter)) {
+  custom_delimiter  # Use the custom delimiter if defined
+} else {
+  default_delimiter # Use the default delimiter (comma) if no custom delimiter is set
+}
+
 # Read species list and filter for target species
-sp_list <- read_csv(paste0(dat_dir, '/species_list.csv')) %>% 
-  as.data.frame() %>% 
-  filter(growthForm == gr_form) %>% 
-  {
-    if(gr_form == 'forb') {
-      filter(., is.na(cover)) %>%
-        arrange(desc(density))
+sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'), 
+                      delim = delimiter, escape_double = FALSE, 
+                      trim_ws = TRUE) %>% 
+  as.data.frame() %>%
+  { 
+    if("type" %in% colnames(.)) {
+      rename(., growthForm = type)
     } else {
-      arrange(., desc(cover))
+      .
+    }
+    }%>%
+  filter(growthForm == gr_form) %>% 
+  { 
+    if('count' %in% colnames(.)) {
+      arrange(., desc(count))
+    } else {
+      if(gr_form == 'forb') {
+        filter(., is.na(cover)) %>%
+          arrange(desc(density))
+      } else {
+        arrange(., desc(cover))
+      }
     }
   }

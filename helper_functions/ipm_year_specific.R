@@ -236,15 +236,16 @@ su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (1 | year),
 su_mod_yr_3 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + 
                        logsize_t0_3 + (1 | year), 
                      data = surv_df, family = binomial)
-s_mods <- c(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
+s_mods      <- c(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
 
 # Assign the best model to the variable
-su_dAIC_values <- AICtab(s_mods, weights = T, sort = F)$dAIC
+su_dAIC_values    <- AICtab(s_mods, weights = T, sort = F)$dAIC
+
 # Get the sorted indices of dAIC values
 su_sorted_indices <- order(su_dAIC_values)
 su_mod_ys_bestfit_index <- su_sorted_indices[1 + su_complex_down_by]
 su_mod_yr_bestfit <- s_mods[[su_mod_ys_bestfit_index]]
-ranef_su <- data.frame(coef(su_mod_yr_bestfit)[1])
+ranef_su          <- data.frame(coef(su_mod_yr_bestfit)[1])
 
 v <- rep(NA,length(surv_bin_yrs))
 for (ii in 1:length(surv_bin_yrs)) {
@@ -252,10 +253,14 @@ for (ii in 1:length(surv_bin_yrs)) {
 }
 
 surv_yr_plots <- function(i) {
+  
   surv_temp    <- as.data.frame(surv_bin_yrs[[i]])
   x_temp       <- seq(min(surv_temp$logsize_t0, na.rm = TRUE), 
-                      max(surv_temp$logsize_t0, na.rm = TRUE), length.out = 100)
+                      max(surv_temp$logsize_t0, na.rm = TRUE), 
+                      length.out = 100)
+  
   linear_predictor <- ranef_su[i, 1] 
+  
   if (ncol(ranef_su) >= 2) {
     linear_predictor <- linear_predictor + ranef_su[i, 2] * x_temp}
   if (ncol(ranef_su) >= 3) {
@@ -267,7 +272,8 @@ surv_yr_plots <- function(i) {
   } else if (ncol(ranef_su) == 3) {line_color <- 'green'
   } else if (ncol(ranef_su) == 4) {line_color <- 'blue'
   } else {line_color <- 'black'  # Default color 
-  }  
+  } 
+  
   pred_temp_df <- data.frame(logsize_t0 = x_temp, survives = pred_temp)
   temp_plot <- surv_temp %>% 
     ggplot() +
@@ -277,6 +283,7 @@ surv_yr_plots <- function(i) {
     labs(title = paste0('19',years_v[i]),
          x = expression('log(size)'[t0]),
          y = expression('Survival probability '[t1])) +
+    ylim( 0, 1 ) +
     theme_bw() +
     theme(text         = element_text(size = 5),
           axis.title.y = element_text(
@@ -409,7 +416,7 @@ indiv_yr <- surv_df %>%
 
 # calculate per-capita recruitment rate
 repr_pc_yr <- indiv_yr %>% 
-  left_join(rec_sums_df ) %>%
+  left_join( rec_sums_df ) %>%
   mutate(repr_percapita = pred_mod / n_adults,
          repr_pc_obs    = nr_quad / n_adults,
          year = year - 1 ) %>% 
@@ -805,6 +812,7 @@ pop_counts_t1 <- df %>%
 pop_counts <- left_join(pop_counts_t0, 
                         pop_counts_t1) %>% 
   # by dropping NAs, we remove gaps in sampling!
+  mutate(year = year - 1) %>% 
   drop_na %>% 
   group_by(year) %>% 
   summarise(n_t0 = sum(n_t0),

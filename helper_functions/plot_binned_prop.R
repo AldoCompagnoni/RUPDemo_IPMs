@@ -23,45 +23,32 @@ plot_binned_prop <- function(df, n_bins, siz_var, rsp_var){
   mid  <- lwr + (1/2*h)
   
   # standard error of a bernoulli process
-  # https://stats.stackexchange.com/questions/29641/standard-error-for-the-mean-of-a-sample-of-binomial-random-variables
-  se_bern <- function( x, percentile ){
+  # https://stats.stackexchange.com/questions/82720/confidence-interval-around-binomial-estimate-of-0-or-1
+  se_bern <- function( x, lwr_upr ){
     
     # do not suppress potential convergence warnings
-    mod <- glm( x ~ 1, family = 'binomial') 
-    
-    # suppress these warnings because irrelevant
-    #   (e.g. "regularize.values")
-    suppressWarnings(
-      ci  <- mod %>% 
-        confint %>% 
-        boot::inv.logit() %>% 
-        .[percentile]
-    )
-    
-    pred <- boot::inv.logit(coef(mod)) %>% round(5)
-    
-    if( pred == 1 ) return( 1 )
-    if( pred == 0 ) return( 0 )
-    if( !(pred %in% c(0,1)) ) return( ci )
+    surv_n <- sum( x )
+    tot_n  <- length( x )
+    binom.confint( surv_n, tot_n, methods=c("wilson") )[,lwr_upr]
     
   }
   
-  binned_prop <- function(lwr_x, upr_x, response, percentile){
+  binned_prop <- function(lwr_x, upr_x, response, lwr_upr ){
     
     id  <- which(df[,size_var] > lwr_x & df[,size_var] < upr_x) 
     tmp <- df[id,]
     
     if( response == 'prob' ){   return( sum(tmp[,resp_var],na.rm=T) / nrow(tmp) ) }
     if( response == 'n_size' ){ return( nrow(tmp) ) }
-    if( response == 'se' ){ return( se_bern(tmp[,resp_var], percentile) ) }
+    if( response == 'se' ){ return( se_bern(tmp[,resp_var], lwr_upr) ) }
     
   }
   
   y_binned <- Map(binned_prop, lwr, upr, 'prob') %>% unlist
   x_binned <- mid
   y_n_size <- Map(binned_prop, lwr, upr, 'n_size') %>% unlist
-  y_se_lwr <- Map(binned_prop, lwr, upr, 'se', '2.5 %') %>% unlist
-  y_se_upr <- Map(binned_prop, lwr, upr, 'se', '97.5 %') %>% unlist
+  y_se_lwr <- Map(binned_prop, lwr, upr, 'se', 'lower') %>% unlist
+  y_se_upr <- Map(binned_prop, lwr, upr, 'se', 'upper') %>% unlist
   
   data.frame(x_binned, 
              y_binned,

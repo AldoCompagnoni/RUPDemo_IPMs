@@ -51,11 +51,11 @@ years_re <- c()
 # Models:
 #  Going down in complexity of the survival and/or growth model.
 # Survival model, 0 means keep the complexity (takes: 0-2)
-su_complex_down_by <- c(0)
+su_complex <- c(0)
 # Growth model, 0 means keep the complexity (takes: 0-2)
-gr_complex_down_by <- c(0)
+gr_complex <- c(0)
 
 
 # Main code --------------------------------------------------------------------
 # Run the IPM year specific wrapper function
-source('helper_functions/ipm_year_specific.R')
+source('pipeline/ipm_year_specific.R')

@@ -243,7 +243,7 @@ su_dAIC_values    <- AICtab(s_mods, weights = T, sort = F)$dAIC
 
 # Get the sorted indices of dAIC values
 su_sorted_indices <- order(su_dAIC_values)
-su_mod_ys_bestfit_index <- su_sorted_indices[1 + su_complex_down_by]
+su_mod_ys_bestfit_index <- su_sorted_indices[1 + su_complex]
 su_mod_yr_bestfit <- s_mods[[su_mod_ys_bestfit_index]]
 ranef_su          <- data.frame(coef(su_mod_yr_bestfit)[1])
 
@@ -326,10 +326,10 @@ g_mods <- c(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 
 
 # Assign the best model
-gr_dAIC_values <- AICtab(s_mods, weights = T, sort = F)$dAIC
+gr_dAIC_values <- AICtab(G_mods, weights = T, sort = F)$dAIC
 # Get the sorted indices of dAIC values
 gr_sorted_indices <- order(gr_dAIC_values)
-gr_mod_ys_bestfit_index <- gr_sorted_indices[1 + gr_complex_down_by]
+gr_mod_ys_bestfit_index <- gr_sorted_indices[1 + gr_complex]
 gr_mod_yr_bestfit <- g_mods[[gr_mod_ys_bestfit_index]]
 ranef_gr <- data.frame(coef(gr_mod_yr_bestfit)[1])
 

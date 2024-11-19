@@ -91,10 +91,17 @@ ggsave(paste0(result_dir,
 
 # Getting the dfs ready --------------------------------------------------------
 
+# find last year at time t0 (last census year, minus 1)
+last_year   <- (df$year %>% max) - 1
+
 # Survival data that retains all ages
 surv_out_df <- df %>% 
+  mutate( survives = replace( survives,
+                              is.na( survives ) & year == last_year,
+                              0 ) ) %>% 
   subset(!is.na(survives)) %>%
   select(quad, track_id, year, age, survives) 
+  
 
 # Total number of individuals time t0
 indiv_t0  <- df %>%  
@@ -505,7 +512,7 @@ make_mat <- function(year_x, mat_df){
 
 # project based on stage distribution
 stage_counts <- df %>%
-  mutate(year = as.character(year)) %>%
+  mutate(year = as.character(year) ) %>%
   mutate(age = replace(age, age > surv_age_threshold, surv_age_threshold)) %>% 
   group_by(year, age) %>%
   summarize(n_t0 = n()) %>% 
@@ -544,6 +551,7 @@ lam_df        <- mpm_df %>%
 
 # Population counts at time t0
 pop_counts_t0 <- df %>%
+  # subset( !is.na(age) ) %>% 
   group_by(year, quad) %>%
   summarize(n_t0 = n()) %>% 
   ungroup %>% 
@@ -551,6 +559,7 @@ pop_counts_t0 <- df %>%
 
 # Population counts at time t1
 pop_counts_t1 <- df %>%
+  # subset( !is.na(age) ) %>% 
   group_by(year, quad) %>%
   summarize(n_t1 = n()) %>% 
   ungroup 

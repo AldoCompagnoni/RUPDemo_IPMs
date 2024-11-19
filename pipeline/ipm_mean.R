@@ -1,45 +1,57 @@
-# IPM for chu 2013 colorado Aristida longiseta
+# IPM mean to padrino pipeline
 
 # Author: Niklas Neisse
-# Email: neisse.n@protonmail.com
-# Date: 2024.10.17
+# Co    : Aspen Workman, Aldo Compagnoni
+# Email : neisse.n@protonmail.com
+# Main  : aldo.compagnoni@idiv.de
+# Web   : https://aldocompagnoni.weebly.com/
+# Date: 2024.11.08
 
-# Process plant growth data to explore vital rates and 
- # generates visualizations and model fits for IPM analysis.
+# reading in, and cleaning the data
+#  exploring the overall-years rates
+#  setting up the vital rate data-frames for the year specific 
 
 # Setting the stage ------------------------------------------------------------
-# Clear the workspace by removing all objects in the global environment
-rm(list = ls()) 
-# Set a random seed for reproducibility of results
+
+# Remove all objects in the global environment
+# rm(list = ls()) 
+# Set seed for reproducibility
 set.seed(100)
-# Ensure strings are treated as characters rather than factors
 options(stringsAsFactors = F)
 
 # Packages ---------------------------------------------------------------------
 
 # load packages
-source('helper_functions/load_packages.R')
-load_packages(tidyverse, patchwork, skimr, ipmr)
+source( 'helper_functions/load_packages.R' )
+load_packages( tidyverse, patchwork, skimr, ipmr, binom, bbmle )
 
 
 # Data -------------------------------------------------------------------------
-# Directory
-dir     <- file.path('chu_2013_co') 
-# Specify the species
-species <- 'Aristida longiseta'
 # Create a unique species abbreviation for file naming
-sp_abb  <- tolower(
-              gsub(' ', '', paste(substr(unlist(strsplit(species, ' ')), 1, 2), 
-                                  collapse = '')))
+sp_abb  <- tolower(gsub(' ', '', 
+                        paste(substr(unlist(strsplit(species, ' ')), 1, 2),
+                              collapse = '')))
 
-# Load the plant tracking data
-# source(paste0(dir, '/R/', sp_abb, '/chu_', sp_abb, '_tracker.R'))
+# Directory 
+pub_dir    <- file.path(paste0(author_year, '_', region_abb))
+R_dir      <- file.path(pub_dir, 'R',       sp_abb)
+data_dir   <- file.path(pub_dir, 'data',    sp_abb)
+result_dir <- file.path(pub_dir, 'results', sp_abb)
+
+#
+script_prefix <- str_c(str_extract(author_year, "^[^_]+"), 
+                       str_sub(str_extract(author_year, "_\\d+$"), -2, -1))
+
+
+# Plant tracker if its not already exists
+if (!file.exists(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv'))) {
+  source(paste0(R_dir, '/', script_prefix, '_', sp_abb, '_tracker.R'))
+}
 
 ## Read and clean the species data
-df <- readRDS('chu_2013_co/data/quadrat_data/SGS_LTER_plantTracker_tracked.rds') %>% 
-  subset(Species == species) %>%
-  as.data.frame() %>% 
-  select(-c(Suspect, nearEdge, Site, geometry)) %>%
+df <- read.csv(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv')) %>% 
+  filter(Species == species) %>%
+  select(-c(Suspect, nearEdge, Site)) %>%
   mutate(across(c(Quad), as.factor)) %>%
   rename(species  = Species, 
          size_t0  = basalArea_genet,
@@ -52,8 +64,7 @@ df <- readRDS('chu_2013_co/data/quadrat_data/SGS_LTER_plantTracker_tracked.rds')
          logsize_t1   = log(size_t1),
          logsize_t0_2 = logsize_t0^2,
          logsize_t0_3 = logsize_t0^3)
-# Provide a summary of the cleaned data
-skim(df)
+
 
 # Data exploration -------------------------------------------------------------
 # Analyze the quadrat inventory by year
@@ -62,93 +73,88 @@ inv_plot_per_year <- df %>%
   group_by(quad, year) %>% 
   summarise(nr_ind = length(.[2])) %>% 
   ungroup() %>% 
+  # pivot_wider(names_from = year, values_from = nr_ind) %>%
   # Create a scatter plot of quadrat counts over the years
   ggplot() + 
   geom_point(aes(x = year, y = quad)) +
   theme_bw() +
+  labs(title    = 'Sampling inventory',
+       subtitle = paste(script_prefix, species)) +
   theme(axis.text.y = element_text(size = 5))
 inv_plot_per_year
 
-# Create results directory if it doesn't exist
-if (!dir.exists(paste0(dir, '/results/', sp_abb))) {
-  dir.create(paste0(dir, '/results/', sp_abb))
-}
-# Save the inventory plot to a file
-ggsave(paste0(dir, '/results/', 
-              sp_abb, '/overall_inventory_quadrat_per_year.png'),  
-       plot = inv_plot_per_year,
-       width = 6, height = 4, dpi = 150)
-
 # Prepare data frames for analysis ---------------------------------------------
 # Survival data frame
-surv_df <- 
-  subset(df, !is.na(survives)) %>%
+surv_df <- subset(df, !is.na(survives)) %>%
   subset(size_t0 != 0) %>%
   select(quad, track_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 # Growth data frame
-grow_df <- 
-  df %>% 
+grow_df <- df %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
   select(quad, track_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 # Total area data frame
-quad_df <- 
-  df %>%  
+quad_df <- df %>%  
   group_by (quad, year) %>% 
   summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
   ungroup
 
-group_df <- 
-  quad_df %>% 
+group_df <- quad_df %>% 
   group_by (year) %>% 
   summarise(g_cov = mean(tot_p_area)) %>% 
   ungroup
 
-cover_df <- 
-  left_join(quad_df, group_df) %>% 
+cover_df <- left_join(quad_df, group_df) %>%
   mutate(year = year + 1) %>% 
   mutate(year = as.integer(year)) %>% 
   drop_na()
 
 # Recruitment data frame
-recr_df <- 
-  df %>%   
+recr_df <- df %>%
   group_by (year, quad) %>% 
   summarise(nr_quad = sum(recruit, na.rm = T)) %>% 
   ungroup
 
 recr_df <- left_join(cover_df, recr_df)
 
-# Create the data folder for the species if it does not exist already
-if (!dir.exists(paste0(dir, '/data/', sp_abb))) {
-  dir.create(paste0(dir, '/data/', sp_abb))}
+# Save data
+write.csv(df, 
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_data_df.csv'))
+write.csv(surv_df,
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_survival_df.csv'))
+write.csv(grow_df,
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_growth_df.csv'))
+write.csv(recr_df,
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_recruitment_df.csv'))
 
-write.csv(df,      paste0(dir, '/data/', sp_abb, '/data_df.csv'))
-write.csv(surv_df, paste0(dir, '/data/', sp_abb, '/survival_df.csv'))
-write.csv(grow_df, paste0(dir, '/data/', sp_abb, '/growth_df.csv'))
-write.csv(recr_df, paste0(dir, '/data/', sp_abb, '/recruitment_df.csv'))
 
 # Plotting the data --------------------------------------------------------
 # Create histograms for log-transformed sizes at t0 and t1
 hist_t0 <- 
   ggplot(df, aes(x = logsize_t0)) +
   geom_histogram(binwidth = 0.2, fill = 'grey', color = 'black') +
-  labs(title = 'Histogram of size at time t0', x = 'Size at time t0') +
+  labs(title    = 'Histogram',
+       subtitle = paste(script_prefix, species), 
+       x        = 'Size at time t0') +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
 hist_t1 <- 
   ggplot(df, aes(x = logsize_t1)) +
   geom_histogram(binwidth = 0.2, fill = 'white', color = 'black') +
-  labs(title = 'Histogram of size at time t1', x = 'Size at time t1') +
+  labs(x = 'Size at time t1') +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
 hist_sizes_log <- hist_t0 + hist_t1
 
-ggsave(paste0(dir, '/results/', sp_abb, '/overall_hist_sizes_log.png'), 
+ggsave(paste0(result_dir, '/1.0_overall_hist_sizes_log.png'), 
        plot = hist_sizes_log, 
        width = 8, height = 3, units = 'in', dpi = 150)
 
@@ -157,8 +163,7 @@ ggsave(paste0(dir, '/results/', sp_abb, '/overall_hist_sizes_log.png'),
 source('helper_functions/plot_binned_prop.R')
 
 # Generate a plot for overall survival based on size at t0
-surv_overall <- 
-  ggplot(data = plot_binned_prop(df, 10, logsize_t0, survives)) +
+surv_overall <- ggplot(data = plot_binned_prop(df, 10, logsize_t0, survives)) +
   geom_point(aes(x = logsize_t0, 
                  y = survives),
              alpha = 1, pch = 16, color = 'red' ) +
@@ -169,11 +174,13 @@ surv_overall <-
   theme_bw() +
   theme(axis.text = element_text(size = 8),
         title     = element_text(size = 10)) +
-  labs(x = expression('log(size)'[t0]),
-       y = expression('Survival to time t1'))
+  labs(title    = 'Sampling inventory',
+       subtitle = paste(script_prefix, species),
+       x        = expression('log(size)'[t0]),
+       y        = expression('Survival to time t1'))
 
 # Save the survival plot to a file
-ggsave(paste0(dir, '/results/', sp_abb, '/overall_surv.png'), 
+ggsave(paste0(result_dir, '/1.1_overall_surv.png'), 
        plot = surv_overall, 
        width = 4, height = 3, units = 'in', dpi = 150)
 
@@ -185,45 +192,52 @@ gr_overall <-
   theme_bw() +
   theme(axis.text = element_text(size = 8),
         title     = element_text(size = 10)) +
-  labs(x = expression('log(size) ' [t0]),
-       y = expression('log(size)  '[t1]))
+  labs(title    = 'Sampling inventory',
+       subtitle = paste(script_prefix, species),
+       x        = expression('log(size) ' [t0]),
+       y        = expression('log(size)  '[t1]))
 
-ggsave(paste0(dir, '/results/', sp_abb, '/overall_gr.png'), 
+ggsave(paste0(result_dir, '/1.2_overall_gr.png'), 
        plot = gr_overall, 
        width = 4, height = 3, units = 'in', dpi = 150)
 
 # Recruitment analysis
 # Create a scatter plot showing the relationship between 
- # total parent plant area and number of recruits
+# total parent plant area and number of recruits
 rec_overall <- 
   ggplot(recr_df, aes(x = tot_p_area, y = nr_quad)) + 
   geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
   theme_bw() + 
-  labs(x = expression('Total parent plant area '[t0]),   
-       y = expression('Number of recruits '     [t1]))  
+  labs(title    = 'Sampling inventory',
+       subtitle = paste(script_prefix, species),
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1]))  
 
 # Save the recruitment plot as a PNG file
-ggsave(paste0(dir, '/results/', sp_abb, '/overall_rec.png'), 
+ggsave(paste0(result_dir, '/1.3_overall_rec.png'), 
        plot = rec_overall, 
        width = 4, height = 3, units = 'in', dpi = 150)
 
 
 # Fit vital rate models for the mean IPM -----------------------------------
- # Fit growth models to predict size at time t1 based on size at time t0
+# Fit growth models to predict size at time t1 based on size at time t0
 # Linear model
-gr_mod_mean   <- 
-  lm(logsize_t1 ~ logsize_t0, data = grow_df)
+gr_mod_mean   <- lm(logsize_t1 ~ 
+                      logsize_t0, data = grow_df)
 # Quadratic model
-gr_mod_mean_2 <- 
-  lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, data = grow_df)  
+gr_mod_mean_2 <- lm(logsize_t1 ~ 
+                      logsize_t0 + logsize_t0_2, data = grow_df)  
 # Cubic model
-gr_mod_mean_3 <- 
-  lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = grow_df)  
+gr_mod_mean_3 <- lm(logsize_t1 ~ 
+                      logsize_t0 + logsize_t0_2 + logsize_t0_3, data = grow_df)
+
 # Compare models using AIC
-gr_mods       <- list(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
-gr_aic        <- sapply(gr_mods, AIC)
-# Assign the best model
-gr_mod_bestfit_index <- which.min(gr_aic)
+gr_mods              <- list(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
+gr_dAIC_values       <- AICtab(gr_mods, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+gr_sorted_indices    <- order(gr_dAIC_values)
+gr_mod_bestfit_index <- gr_sorted_indices[1 + gr_complex]
 gr_mod_bestfit       <- gr_mods[[gr_mod_bestfit_index]]
 gr_ranef             <- coef(gr_mod_bestfit)
 
@@ -231,6 +245,7 @@ gr_ranef             <- coef(gr_mod_bestfit)
 grow_df$pred <- predict(gr_mod_bestfit, type = 'response')
 
 # Plot observed size at time t1 against size at time t0 with the fitted line
+# Define functions
 source('helper_functions/line_color_pred_fun.R')
 source('helper_functions/predictor_fun.R')
 
@@ -241,7 +256,9 @@ grow_line <-
   geom_function(fun = function(x) predictor_fun(x, gr_ranef), 
                 color = line_color_pred_fun(gr_ranef), 
                 lwd = 2) +
-  theme_bw()
+  theme_bw() + 
+  labs(title    = 'Growth prediction',
+       subtitle = paste(script_prefix, species))
 
 # Plot predicted versus observed size at time t1
 grow_pred <- 
@@ -255,8 +272,8 @@ grow_pred <-
 grow_overall_pred <- grow_line + grow_pred + plot_layout() 
 
 # Save the growth prediction plot
-ggsave(paste0(dir, '/results/', sp_abb, 
-              '/overall_grow_pred_logs', gr_mod_bestfit_index, '.png'), 
+ggsave(paste0(result_dir, '/2.1_overall_grow_pred_logs', 
+              gr_mod_bestfit_index, '.png'), 
        plot = grow_overall_pred, 
        width = 8, height = 4, units = 'in', dpi = 150)
 
@@ -269,7 +286,7 @@ y         <- resid(gr_mod_mean)^2
 gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))  
 
 # Survival
- # Fit models to predict survival based on size at time t0
+# Fit models to predict survival based on size at time t0
 # Logistic regression
 su_mod_mean   <- glm(survives ~ logsize_t0, 
                      data = surv_df, family = 'binomial') 
@@ -279,11 +296,14 @@ su_mod_mean_2 <- glm(survives ~ logsize_t0 + logsize_t0_2,
 # Cubic logistic model
 su_mod_mean_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, 
                      data = surv_df, family = 'binomial')  
+
 # Compare models using AIC
-su_mods       <- list(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
-su_aic        <- sapply(su_mods, AIC)
-# Assign the best model
-su_mod_bestfit_index <- which.min(su_aic)
+su_mods              <- list(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
+su_dAIC_values       <- AICtab(su_mods, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+su_sorted_indices    <- order(su_dAIC_values)
+su_mod_bestfit_index <- su_sorted_indices[1 + su_complex]
 su_mod_bestfit       <- su_mods[[su_mod_bestfit_index]]
 su_ranef             <- coef(su_mod_bestfit)
 
@@ -307,7 +327,9 @@ surv_line <-
                                      y = survives),
             color = line_color_pred_fun(su_ranef), 
             lwd   = 2) +  
-  theme_bw()
+  theme_bw() + 
+  labs(title    = 'Survival prediction',
+       subtitle = paste(script_prefix, species))
 
 # Plot binned survival proportions with error bars
 surv_bin <- 
@@ -330,8 +352,8 @@ surv_bin <-
 surv_overall_pred <- surv_line + surv_bin + plot_layout()
 
 # Save the survival prediction plot
-ggsave(paste0(dir, '/results/', sp_abb, 
-              '/overall_surv_pred_logs', su_mod_bestfit_index, '.png'), 
+ggsave(paste0(result_dir, '/2.2_overall_surv_pred_logs', 
+              su_mod_bestfit_index, '.png'), 
        plot = surv_overall_pred, 
        width = 8, height = 3, units = 'in', dpi = 150) 
 
@@ -363,8 +385,6 @@ repr_pc_m <- indiv_m %>%
   mutate(repr_pc_obs = nr_quad / n_adults) %>%
   drop_na 
 
-# Output the reproduction per capita summary
-repr_pc_m
 
 # Exporting parameter estimates ------------------------------------------------
 # Growth
@@ -376,11 +396,13 @@ var_m   <- data.frame(coefficient = names(coef(gr_var_m)),
 grow_out <- Reduce(function(...) rbind(...), list(grow_fe, var_m)) %>%
   mutate(coefficient = as.character(coefficient)) %>%
   mutate(coefficient = replace(coefficient, 
-                                 grepl('Intercept', coefficient), 'b0'))
+                               grepl('Intercept', coefficient), 'b0'))
 
 write.csv(grow_out, 
-          paste0(dir, '/data/', sp_abb, '/grow_pars_mean.csv'), 
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_grow_pars_mean.csv'), 
           row.names = F)
+
 
 # Survival
 surv_fe <- data.frame(coefficient = names(coef(su_mod_bestfit)),
@@ -389,9 +411,10 @@ surv_fe <- data.frame(coefficient = names(coef(su_mod_bestfit)),
 surv_out<- Reduce(function(...) rbind(...), list(surv_fe)) %>%
   mutate(coefficient = as.character(coefficient)) %>%
   mutate(coefficient = replace(coefficient, 
-                                 grepl('Intercept', coefficient), 'b0'))
+                               grepl('Intercept', coefficient), 'b0'))
 write.csv(surv_out, 
-          paste0(dir, '/data/', sp_abb, '/surv_pars_mean.csv'), 
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_surv_pars_mean.csv'), 
           row.names = F)
 
 # Recruitment 
@@ -407,7 +430,8 @@ others   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
                                        repr_pc_m$repr_pc_mean))
 
 write.csv(others, 
-          paste0(dir, '/data/', sp_abb, '/other_pars_mean.csv'), 
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_other_pars_mean.csv'), 
           row.names = F)
 
 
@@ -417,6 +441,8 @@ extr_value <- function(x, field){
 }
 
 pars <- Filter(function(x) length(x) > 0, list(
+  prefix  = script_prefix,
+  species = species,
   surv_b0 = extr_value(surv_out, 'b0'),
   surv_b1 = extr_value(surv_out, 'logsize_t0'),
   surv_b2 = extr_value(surv_out, 'logsize_t0_2'),
@@ -432,11 +458,14 @@ pars <- Filter(function(x) length(x) > 0, list(
   recr_sd = extr_value(others, 'rec_sd'),
   L       = extr_value(others, 'min_siz'),
   U       = extr_value(others, 'max_siz'),
-  mat_siz = 200
+  mat_siz = 200,
+  su_mod_bestfit_index = su_mod_bestfit_index,
+  gr_mod_bestfit_index = gr_mod_bestfit_index
 ))
 
 write.csv(pars, 
-          paste0(dir, '/data/', sp_abb, '/pars.csv'), 
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_pars.csv'), 
           row.names = F)
 
 
@@ -445,21 +474,33 @@ grow_sd <- function(x, pars) {
   pars$a * (exp(pars$b* x)) %>% sqrt 
 }
 
-# !!! Check !!! Function describing growth from size x to size y ####
-gr_mod_bestfit_index
-gxy <- function(x, y, pars) {
-  return(dnorm(y, mean = pars$grow_b0 + pars$grow_b1*x + 
-                 pars$grow_b2*x^2,
-               sd = grow_sd(x, pars)))
+# Growth from size x to size y
+gxy <- function(x, y, pars, num_pars = gr_mod_bestfit_index) {
+  mean_value <- 0
+  for (i in 0:num_pars) {
+    param_name <- paste0('grow_b', i)
+    if (!is.null(pars[[param_name]])) {
+      mean_value <- mean_value + pars[[param_name]] * x^i
+    }
+  }
+  sd_value <- grow_sd(x, pars)
+  return(dnorm(y, mean = mean_value, sd = sd_value))
 }
 
 # Function describing the invert logit
 inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 
-# !!! Check !!! Function describing survival from size t0 to t1 ####
-su_mod_bestfit_index
-sx <- function(x, pars) {
-  return(inv_logit(pars$surv_b0 + pars$surv_b1 * x))
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, num_pars = su_mod_bestfit_index) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_pars) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
 }
 
 # Function describing the transition kernel
@@ -551,7 +592,7 @@ pop_counts_t1 <- df %>%
   ungroup 
 
 # Calculate observed population growth rates, 
- # accounting for discontinued sampling!
+# accounting for discontinued sampling!
 pop_counts <- left_join(pop_counts_t0, 
                         pop_counts_t1) %>% 
   # by dropping NAs, we remove gaps in sampling!
@@ -570,8 +611,6 @@ lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
 
 
 # Building the IPM with ipmr ---------------------------------------------------
-su_mod_bestfit_index
-gr_mod_bestfit_index
 proto_ipm_p <- init_ipm(sim_gen   = 'simple',
                         di_dd     = 'di',
                         det_stoch = 'det') %>% 
@@ -579,12 +618,18 @@ proto_ipm_p <- init_ipm(sim_gen   = 'simple',
     name      = 'P',
     family    = 'CC',
     formula   = s * g,
-    # !!! Check !!! ####
-    s         = plogis(surv_b0 + surv_b1 * size_1), 
+    s         = plogis(
+      surv_b0 + 
+        (if (su_mod_bestfit_index >= 1) surv_b1 * size_1   else 0) +
+        (if (su_mod_bestfit_index >= 2) surv_b2 * size_1^2 else 0) +
+        (if (su_mod_bestfit_index >= 3) surv_b3 * size_1^3 else 0)),
+    
+    mu_g      = grow_b0 + 
+      (if (gr_mod_bestfit_index >= 1) grow_b1 * size_1   else 0) +
+      (if (gr_mod_bestfit_index >= 2) grow_b2 * size_1^2 else 0) +
+      (if (gr_mod_bestfit_index >= 3) grow_b3 * size_1^3 else 0),
+     
     g         = dnorm(size_2, mu_g, grow_sig),
-    # !!! Check !!! ####
-    mu_g      = grow_b0 + grow_b1 * size_1 + 
-      grow_b2 * size_1^2,
     grow_sig  = sqrt(a * exp(b * size_1)),
     data_list = pars,
     states    = list(c('size')),
@@ -625,20 +670,18 @@ ipmr_p <- make_ipm(proto_ipm  = proto_ipm_p,
                    iterations = 200)
 
 lam_mean_ipmr <- lambda(ipmr_p)
-plot(ipmr_p)
 
 lam_out       <- data.frame(coefficient = names(lam_mean_ipmr), 
                             value       = lam_mean_ipmr)
 write.csv(lam_out, 
-          paste0(dir, '/data/', sp_abb, '/lambda_vec.csv'), 
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_lambda_vec.csv'), 
           row.names = F)
 
 lam_out_wide  <- as.list(pivot_wider(lam_out, 
                                      names_from  = 'coefficient', 
                                      values_from = 'value'))
 write.csv(lam_out_wide, 
-          paste0(dir, '/data/', sp_abb, '/lambda.csv'), 
+          paste0(data_dir, '/', 
+                 script_prefix, '_', sp_abb, '_lambda.csv'), 
           row.names = F)
-
-su_mod_bestfit_index
-gr_mod_bestfit_index

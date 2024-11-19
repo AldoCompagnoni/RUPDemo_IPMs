@@ -1,4 +1,4 @@
-# IPM mean - chu 2013 colorado - Hesperostipa comata
+# IPM mean - zachmann 2016 idoho - Hesperostipa comata
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -46,3 +46,25 @@ skim(df)
 # Output -----------------------------------------------------------------------
 # Reproduction per capita summary
 repr_pc_m
+
+
+# Building the IPM from scratch ------------------------------------------------
+# Parameters
+tibble(parameter = names(pars), value = unlist(pars))
+
+# mean population growth rate
+lam_mean
+
+# observed population growth rate
+pop_counts 
+
+# Geometric mean of yearly population growth rates
+lam_mean_count 
+
+# Overall (aggregated) population growth rate
+lam_mean_overall 
+
+# Building the IPM with ipmr ---------------------------------------------------
+ipmr_p 
+plot(ipmr_p)
+

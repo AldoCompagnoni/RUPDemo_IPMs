@@ -18,7 +18,7 @@ plot_binned_prop <- function(df, n_bins, siz_var, rsp_var){
   
   # binned survival probabilities
   h    <- (max(df[,size_var],na.rm=T) - min(df[,size_var],na.rm=T)) / n_bins
-  lwr  <- min(df[,size_var],na.rm=T) + (h*c(0:(n_bins-1)))
+  lwr  <-  min(df[,size_var],na.rm=T) + (h*c(0:(n_bins-1)))
   upr  <- lwr + h
   mid  <- lwr + (1/2*h)
   
@@ -40,13 +40,13 @@ plot_binned_prop <- function(df, n_bins, siz_var, rsp_var){
     
     if( response == 'prob' ){   return( sum(tmp[,resp_var],na.rm=T) / nrow(tmp) ) }
     if( response == 'n_size' ){ return( nrow(tmp) ) }
-    if( response == 'se' ){ return( se_bern(tmp[,resp_var], lwr_upr) ) }
+    if( response == 'se' ){     return( se_bern(tmp[,resp_var], lwr_upr) ) }
     
   }
   
-  y_binned <- Map(binned_prop, lwr, upr, 'prob') %>% unlist
+  y_binned <- Map(binned_prop, lwr, upr, 'prob')        %>% unlist
   x_binned <- mid
-  y_n_size <- Map(binned_prop, lwr, upr, 'n_size') %>% unlist
+  y_n_size <- Map(binned_prop, lwr, upr, 'n_size')      %>% unlist
   y_se_lwr <- Map(binned_prop, lwr, upr, 'se', 'lower') %>% unlist
   y_se_upr <- Map(binned_prop, lwr, upr, 'se', 'upper') %>% unlist
   

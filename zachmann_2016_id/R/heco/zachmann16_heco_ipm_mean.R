@@ -1,4 +1,4 @@
-# IPM mean - zachmann 2016 idoho - Hesperostipa comata
+# IPM mean - Zachmann 2016 Idaho - Hesperostipa comata
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -7,29 +7,25 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2024.11.08
 
-# reading in, and cleaning the data
-#  exploring the overall-years rates
-#  setting up the vital rate data-frames for the year specific 
+# Read in and clean the data
+#  explore the overall-years rates
+#  set up the vital rate data-frames for the year specific 
+#  build the ipm from scratch
+#  build the ipm with `ipmr`
+
 
 # Comments ---------------------------------------------------------------------
-# 1. the pipeline runs plant tracker only if the data does not exist already
-# 2. find all the graphics in the result folder of the respective species
-# 2.1 and the growth, survival and recruitment data in their respective folder
-# 3. check the global environment for all the other objects
+# 0. !!! Please define all key variables in the in the corresponding section !!!
+# 1. The pipeline runs plant tracker only if the data does not exist already
+# 2. Find all the graphics in the result folder of the respective species
+#     and the growth, survival and recruitment data in the data folder
 
-# 3.1 df     : view(df)
-# 3.2 surv_df: view(surv_df)
-# 3.3 grow_df: view(grow_df)
-# 3.4 recr_df: view(recr_df)
 
-# 3.5 growth models    : list(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
-# 3.6 gorwth var. model: gr_var_m
-# 3.7 survival models  : list(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
-# 3.8 recruitment model: rec_mod_mean
-
+# Clean up ---------------------------------------------------------------------
 rm(list = ls())
 
-# Data -------------------------------------------------------------------------
+
+# Key variables ----------------------------------------------------------------
 # Define publication 
 author_year <- 'zachmann_2016'
 # Define region abbreviation
@@ -37,26 +33,62 @@ region_abb <- 'id'
 # Define species 
 species <- 'Hesperostipa comata'
 
-# Run the ipm mean wraper function
-source('helper_functions/ipm_mean.R')
 
-# Provide a summary of the cleaned data
+# CHECK -- Adaptions to the models ---------------------------------------------
+# Years:
+#  Removal of certain years if unspecified nothing is removed
+years_re <- c()
+
+# Models:
+#  Changing to the next best complexity of the survival and/or growth model.
+# Survival model, 0 means keep the complexity (takes: 0-2)
+su_complex <- c(0)
+# Growth model, 0 means keep the complexity (takes: 0-2)
+gr_complex <- c(0)
+
+
+# Main pipeline ----------------------------------------------------------------
+# Run the ipm mean wraper function
+source('pipeline/ipm_mean.R')
+
+
+# Data 1 -----------------------------------------------------------------------
+# Raw
 skim(df)
 
-# Output -----------------------------------------------------------------------
-# Reproduction per capita summary
-repr_pc_m
+# Survival
+skim(surv_df)
+
+# Growth
+skim(grow_df)
+
+# Recruitment
+skim(recr_df)
+
+
+# Models -----------------------------------------------------------------------
+# Survival 
+list(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
+
+# Growth
+list(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
+
+# Growth variation
+gr_var_m
+
+# Recruitment
+rec_mod_mean
 
 
 # Building the IPM from scratch ------------------------------------------------
 # Parameters
 tibble(parameter = names(pars), value = unlist(pars))
 
-# mean population growth rate
+# Mean population growth rate
 lam_mean
 
-# observed population growth rate
-pop_counts 
+# Observed population growth rate
+skim(pop_counts) 
 
 # Geometric mean of yearly population growth rates
 lam_mean_count 
@@ -64,7 +96,7 @@ lam_mean_count
 # Overall (aggregated) population growth rate
 lam_mean_overall 
 
+
 # Building the IPM with ipmr ---------------------------------------------------
 ipmr_p 
 plot(ipmr_p)
-

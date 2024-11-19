@@ -19,7 +19,7 @@ options(stringsAsFactors = F)
 # load packages
 source('helper_functions/load_packages.R' )
 load_packages( tidyverse, patchwork, skimr, 
-               lme4, bbmle, ipmr, readxl )
+               lme4, bbmle, ipmr, readxl, binom )
 
 
 # Data -------------------------------------------------------------------------
@@ -326,7 +326,7 @@ g_mods <- c(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 
 
 # Assign the best model
-gr_dAIC_values <- AICtab(G_mods, weights = T, sort = F)$dAIC
+gr_dAIC_values <- AICtab(g_mods, weights = T, sort = F)$dAIC
 # Get the sorted indices of dAIC values
 gr_sorted_indices <- order(gr_dAIC_values)
 gr_mod_ys_bestfit_index <- gr_sorted_indices[1 + gr_complex]

@@ -60,8 +60,14 @@ sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'),
     } else {
       .
     }
-    }%>%
-  filter(growthForm == gr_form) %>% 
+  } %>%
+  filter(
+    if(gr_form == "grass") {
+      growthForm %in% c("grass", "c3", "c4")  # If 'grass' is specified, include 'grass', 'c3', and 'c4'
+    } else {
+      growthForm == gr_form  # Otherwise, filter exactly by the specified growthForm
+    }
+  ) %>% 
   { 
     if('count' %in% colnames(.)) {
       arrange(., desc(count))

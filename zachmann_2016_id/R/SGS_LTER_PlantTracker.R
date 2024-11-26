@@ -177,7 +177,7 @@ for(i in 1:length(invalid_geom4)){
   dat01[invalid_geom4[i],6] <- st_make_valid(dat01[invalid_geom4[i],6])
 }
 
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = "species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
 # # Still have a couple of repeated rows, somehow, so we will drop those
 # drop_rows <- c(25670,58091,75507,116003)
@@ -186,7 +186,7 @@ checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year
 
 
 dat01 <- dat01 %>% 
-  mutate(Species = species)
+  rename(Species = species)
 
 saveRDS(dat01, paste0(dat_dir,"SGS_LTER_plantTracker_all_filtered.rds"))
 

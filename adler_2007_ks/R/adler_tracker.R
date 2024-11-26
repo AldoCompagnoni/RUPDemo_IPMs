@@ -2,7 +2,8 @@ library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 library(tidyverse) 
 
-dat_dir <- 'adler_2007_ks/data/quadrat_data/'
+setwd('C:/code/RUPDemo_IPMs')
+dat_dir <- 'adler_2007_ks/data/quad_data/'
 shp_dir <- paste0(dat_dir, "arcexport/")
 
 # Read in species list, species name changes, and subset species list to perennial grasses

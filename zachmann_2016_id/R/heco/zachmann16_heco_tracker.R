@@ -1,4 +1,4 @@
-# plantTracker - chu 2013 colorado - Hesperostipa comata
+# plantTracker - zachmann 2016 idaho - Hesperostipa comata
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -21,13 +21,13 @@ gr_form    <- 'grass'
 # Customized delimiter for `read_delim` function, comma is predefined
 custom_delimiter <- c()
 
-source('helper_functions/plant_tracker_01.R')
+source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list)
+head(sp_list, 10)
 target_spec <- sp_list %>% .[c(3),]  
 
-source('helper_functions/plant_tracker_02.R')
+source('pipeline/plant_tracker_02.R')
 
 # Exploration ------------------------------------------------------------------
 # Quadrat inventory

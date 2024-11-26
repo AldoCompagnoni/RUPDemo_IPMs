@@ -20,13 +20,23 @@ df_binned_prop_year <- function(ii, df_in, n_bins, siz_var, rsp_var, years){
   upr  <- lwr + h
   mid  <- lwr + (1/2 * h)
   
-  binned_prop <- function(lwr_x, upr_x, response){
+  se_bern <- function( x, lwr_upr ){
+    
+    # do not suppress potential convergence warnings
+    surv_n <- sum( x )
+    tot_n  <- length( x )
+    binom.confint( surv_n, tot_n, methods=c("wilson") )[,lwr_upr]
+    
+  }
+  
+  binned_prop <- function(lwr_x, upr_x, response, lwr_upr){
     
     id  <- which(df[,size_var] > lwr_x & df[,size_var] < upr_x) 
     tmp <- df[id,]
     
     if(response == 'prob'){   return(sum (tmp[,resp_var], na.rm = T)/nrow(tmp))}
     if(response == 'n_size'){ return(nrow(tmp))}
+    if(response == 'se' ){    return(se_bern(tmp[,resp_var], lwr_upr))}
     
   }
   

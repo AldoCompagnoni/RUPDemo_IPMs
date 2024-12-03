@@ -1,27 +1,4 @@
 # Using plantTracker to convert chart quadrat data from SGS LTER to demographic data for IPMs
-# Aspen Workman, fall 2023
-
-# Data sets were provided by the Shortgrass Steppe Long Term Ecological Research group,
-# a partnership between Colorado State University, United States Department of Agriculture,
-# Agricultural Research Service, and the U.S. Forest Service Pawnee National Grassland.
-# Significant funding for these data was provided by the National Science Foundation Long
-# Term Ecological Research program (NSF Grant Number DEB-1027319 and 0823405).
-
-# Data source
-# Chengjin Chu, John Norman, Robert Flynn, Nicole Kaplan, William K. Lauenroth,
-# Peter B. Adler. 2013. Cover, density, and demographics of shortgrass steppe plants
-# mapped 1997–2010 in permanent grazed and ungrazed quadrats. Ecology 94:1435.
-# http://dx.doi.org/10.1890/13-0121.1
-
-# Brief data description
-# 14 years (1997-2010) of chart quadrat data from the Shortgrass Steppe Long Term Ecological
-# Research project. 24 quadrats (1mx1m) were mapped annually. 6 pastures (19, 11, 24, 7, 5a, 5b)
-# each contained 4 quadrats. Each pasture had two historically ungrazed and two historically
-# grazed quadrats. One ungrazed quadrat was opened to grazing and one grazed quadrat was closed
-# to grazing beginning in 1991. Each pasture contained 4 quadrats, ex. gzgz_5a, unun_5a,
-# gzun_5a, and ungz_5a. Density-type species (forbs) were mapped as single points. Cover-type
-# species (perennial grasses) were mapped as polygons (when mapped as points, converted to
-# arbitrarily small square polygons with area of 0.25 cm sq). Some records were lost from 2000.
 
 # Outline
 # This script uses the plantTracker package (Stears et al. 2022, Methods in Ecology & Evolution)
@@ -118,6 +95,7 @@ dat <- dat %>% mutate(Year = as.numeric(Year))
 checkDat(dat, inv_ks, species = "SCI_NAME", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
 saveRDS(dat, file = paste0(dat_dir, "SGS_LTER_plantTracker_all_filtered.rds"))
+readRDS(file = paste0(dat_dir, '/SGS_LTER_plantTracker_all_filtered.rds'))
 
 # # Now the data are ready for the trackSpp function
 # datTrackSpp <- trackSpp(dat02,

@@ -1,11 +1,11 @@
-# plantTracker - zachmann 2016 idaho - Arnica fulgens
+# plantTracker - Zachmann 2016 Idaho - Arnica fulgens
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
+# Date  : 2024.12.03
 
 # Publication : https://doi.org/10.1890/13-0121.1
 
@@ -21,13 +21,13 @@ gr_form    <- 'forb'
 # Customized delimiter for `read_delim` function, comma is predefined
 custom_delimiter <- c(',')
 
-source('helper_functions/plant_tracker_01.R')
+source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
 head(sp_list)
 target_spec <- sp_list %>% .[c(3),]  
 
-source('helper_functions/plant_tracker_02.R')
+source('pipeline/plant_tracker_02.R')
 
 # Exploration ------------------------------------------------------------------
 # Quadrat inventory

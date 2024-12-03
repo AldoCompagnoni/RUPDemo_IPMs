@@ -34,7 +34,7 @@ quote_bare <- function(...){
 
 # Read species list and filter for target species
 sp_list     <- read.csv(paste0(data_directory,
-                               "quadrat_data/species_list.csv"))  %>% 
+                               "quad_data/species_list.csv"))  %>% 
   dplyr::arrange(desc(count)) %>% head(25)
 # Select the x_th species (target species)
 target_spec <- sp_list %>% .[c(2),]  

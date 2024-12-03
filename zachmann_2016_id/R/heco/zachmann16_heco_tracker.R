@@ -1,4 +1,4 @@
-# plantTracker - zachmann 2016 idaho - Hesperostipa comata
+# plantTracker - Zachmann 2016 Idaho - Hesperostipa comata
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -9,7 +9,7 @@
 
 # Publication: https://doi.org/10.1890/10-0404.1
 
-rm(list = ls())
+# rm(list = ls())
 
 # Data -------------------------------------------------------------------------
 # Define publication 

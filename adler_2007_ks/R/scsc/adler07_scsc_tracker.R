@@ -1,4 +1,4 @@
-# plantTracker - Zachmann 2016 Idaho - Erigeron corymbosus
+# plantTracker - Adler 2007 Kansas - Schizachyrium scoparium
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -7,27 +7,29 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2024.12.03
 
-# Publication : https://doi.org/10.1890/13-0121.1
+# Publication : 
 
-rm(list = ls())
+# rm(list = ls())
+
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'zachmann_2016'
+author_year <- 'adler_2007'
 # Define region abbreviation
-region_abb <- 'id'
+region_abb <- 'ks'
 # Define growth form (grass, forb, shrub, c4)
-gr_form    <- 'forb'
+gr_form    <- 'grass'
 # Customized delimiter for `read_delim` function, comma is predefined
-custom_delimiter <- c(',')
+custom_delimiter <- c()
 
 source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list)
-target_spec <- sp_list %>% .[c(2),]  
+head(sp_list, 20)
+target_spec <- sp_list %>% .[c(3),]  
 
 source('pipeline/plant_tracker_02.R')
+
 
 # Exploration ------------------------------------------------------------------
 # Quadrat inventory

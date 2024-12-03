@@ -1,13 +1,13 @@
-# plantTracker for chu 2013 colorado Pseudoroegneria spicata
+# plantTracker - Zachmann 2016 Idaho - Pseudoroegneria spicata
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
+# Date  : 2024.12.03
 
-# 
+# Publication : https://doi.org/10.1890/13-0121.1
 
 rm(list = ls())
 

@@ -1,15 +1,15 @@
-# plantTracker - chu 2013 colorado - Chenopodium leptophyllum
+# plantTracker - Chu 2013 Colorado - Chenopodium leptophyllum
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
+# Date  : 2024.12.03
 
-# Publication : https://doi.org/10.1890/13-0121.1
+# Publication: https://doi.org/10.1890/13-0121.1
 
-rm(list = ls())
+# rm(list = ls())
 
 # Data -------------------------------------------------------------------------
 # Define publication 
@@ -21,13 +21,13 @@ gr_form    <- 'forb'
 # Customized delimiter for `read_delim` function, comma is predefined
 custom_delimiter <- '\t'
 
-source('helper_functions/plant_tracker_01.R')
+source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list)
-target_spec <- sp_list %>% .[c(4),]  
+head(sp_list, 20)
+target_spec <- sp_list %>% .[c(3),]  
 
-source('helper_functions/plant_tracker_02.R')
+source('pipeline/plant_tracker_02.R')
 
 # Exploration ------------------------------------------------------------------
 # Quadrat inventory

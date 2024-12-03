@@ -5,7 +5,7 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.11.08
+# Date  : 2024.12.03
 
 # Read in and clean the data
 #  explore the overall-years rates
@@ -22,7 +22,7 @@
 
 
 # Clean up ---------------------------------------------------------------------
-rm(list = ls())
+# rm(list = ls())
 
 
 # Key variables ----------------------------------------------------------------

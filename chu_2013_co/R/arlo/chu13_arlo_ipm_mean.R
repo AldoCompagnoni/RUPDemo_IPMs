@@ -1,4 +1,4 @@
-# IPM year specific - Zachmann 2016 Idaho - Hesperostipa comata
+# IPM mean - Chu 2013 Colorado - Aristida longiseta
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -7,10 +7,16 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2024.12.03
 
+# Read in and clean the data
+#  explore the overall-years rates
+#  set up the vital rate data-frames for the year specific 
+#  build the ipm from scratch
+#  build the ipm with `ipmr`
+
 
 # Comments ---------------------------------------------------------------------
 # 0. !!! Please define all key variables in the in the corresponding section !!!
-# 1. The pipeline runs plant tracker and IPM mean only if needed 
+# 1. The pipeline runs plant tracker only if the data does not exist already
 # 2. Find all the graphics in the result folder of the respective species
 #     and the growth, survival and recruitment data in the data folder
 
@@ -21,11 +27,11 @@
 
 # Key variables ----------------------------------------------------------------
 # Define publication 
-author_year <- 'zachmann_2016'
+author_year <- 'chu_2013'
 # Define region abbreviation
-region_abb <- 'id'
+region_abb  <- 'co'
 # Define species 
-species <- 'Hesperostipa comata'
+species     <- 'Aristida longiseta'
 
 
 # CHECK -- Adaptions to the models ---------------------------------------------
@@ -34,56 +40,52 @@ species <- 'Hesperostipa comata'
 years_re <- c()
 
 # Models:
-#  Going down in complexity of the survival and/or growth model.
+#  Changing to the next best complexity of the survival and/or growth model.
 # Survival model, 0 means keep the complexity (takes: 0-2)
 su_complex <- c(0)
 # Growth model, 0 means keep the complexity (takes: 0-2)
 gr_complex <- c(0)
 
 
-# Main code --------------------------------------------------------------------
-# Run the IPM year specific wrapper function
-source('pipeline/ipm_year_specific.R')
+# Main pipeline ----------------------------------------------------------------
+# Run the ipm mean wraper function
+source('pipeline/ipm_mean.R')
 
 
-# Data -------------------------------------------------------------------------
-
-# Dataframe
+# Data 1 -----------------------------------------------------------------------
+# Raw
 skim(df)
 
 # Survival
 skim(surv_df)
 
-# Grow_df
+# Growth
 skim(grow_df)
 
-# Recruitment 
+# Recruitment
 skim(recr_df)
-
-# Population counts
-skim(pop_counts)
 
 
 # Models -----------------------------------------------------------------------
 # Survival 
-list(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
+list(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
 
 # Growth
-list(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
+list(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
 
 # Growth variation
-gr_var
+gr_var_m
 
 # Recruitment
-rec_mod
+rec_mod_mean
 
 
 # Building the IPM from scratch ------------------------------------------------
-# All parameters
-skim(all_pars)
+# Parameters
+tibble(parameter = names(pars), value = unlist(pars))
 
 # Mean population growth rate
-lam_mean_yr
+lam_mean
 
 # Observed population growth rate
 skim(pop_counts) 
@@ -92,11 +94,9 @@ skim(pop_counts)
 lam_mean_count 
 
 # Overall (aggregated) population growth rate
-lam_mean_overall
-
-# Mean lambda 
-lam_mean_kern
+lam_mean_overall 
 
 
 # Building the IPM with ipmr ---------------------------------------------------
-ipmr_yr 
+ipmr_p 
+plot(ipmr_p)

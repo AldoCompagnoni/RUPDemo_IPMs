@@ -1,11 +1,11 @@
-# IPM mean - Chu 2013 Colorado - Aristida longiseta
+# IPM mean - Chu 2013 Colorado - Schedonnardus paniculatus
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.11.19
+# Date  : 2024.12.03
 
 # Read in and clean the data
 #  explore the overall-years rates
@@ -27,11 +27,11 @@ rm(list = ls())
 
 # Key variables ----------------------------------------------------------------
 # Define publication 
-author_year <- 'chu_2013'
+author_year <- 'zachmann_2016'
 # Define region abbreviation
-region_abb  <- 'co'
+region_abb <- 'id'
 # Define species 
-species     <- 'Aristida longiseta'
+species <- 'Schedonnardus paniculatus'
 
 
 # CHECK -- Adaptions to the models ---------------------------------------------

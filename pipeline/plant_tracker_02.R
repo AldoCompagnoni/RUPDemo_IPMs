@@ -45,7 +45,7 @@ names(inv)   <- gsub( '\\.','-',names(inv) )
 # Read spatial data (polygon for each species per quadrat)
 dat             <- readRDS(
   file = paste0(dat_dir, '/SGS_LTER_plantTracker_all_filtered.rds')) %>%
-  select(-any_of(c("type", "Species"))) %>% 
+  select(-any_of(c("type"))) %>% 
   # Rename columns
   setNames(quote_bare(Species, Site, Quad, Year, geometry))
 

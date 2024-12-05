@@ -1,4 +1,4 @@
-# plantTracker - Adler 2007 Kansas - Buchloe dactyloides
+# plantTracker - Adler 2007 Kansas - Bouteloua curtipendula
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -26,15 +26,15 @@ source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
 head(sp_list, 20)
-target_spec <- sp_list %>% .[c(2),]  
+target_spec <- sp_list %>% .[c(3),]  
 
 
 # Modifications to the data structure ------------------------------------------
 # Specific plots to exclude, a list of plots
-mod_plot <- c('e1q5-2')
+mod_plot <- c()
+
 
 source('pipeline/plant_tracker_02.R')
-
 
 # Exploration ------------------------------------------------------------------
 # Quadrat inventory
@@ -43,4 +43,3 @@ quad_inv
 dat_target_spec
 # Buffer size - regular and genet
 st_bbox(dat_target_spec)
-buff

@@ -1,39 +1,18 @@
 # Using plantTracker to convert chart quadrat data from SGS LTER to demographic data for IPMs
 # Aspen Workman, fall 2023
 #
-# Data sets were provided by the Shortgrass Steppe Long Term Ecological Research group,
-# a partnership between Colorado State University, United States Department of Agriculture,
-# Agricultural Research Service, and the U.S. Forest Service Pawnee National Grassland.
-# Significant funding for these data was provided by the National Science Foundation Long
-# Term Ecological Research program (NSF Grant Number DEB-1027319 and 0823405).
-#
-# Data source
-# Chengjin Chu, John Norman, Robert Flynn, Nicole Kaplan, William K. Lauenroth,
-# Peter B. Adler. 2013. Cover, density, and demographics of shortgrass steppe plants
-# mapped 1997–2010 in permanent grazed and ungrazed quadrats. Ecology 94:1435.
-# http://dx.doi.org/10.1890/13-0121.1
-#
-# Brief data description
-# 14 years (1997-2010) of chart quadrat data from the Shortgrass Steppe Long Term Ecological
-# Research project. 24 quadrats (1mx1m) were mapped annually. 6 pastures (19, 11, 24, 7, 5a, 5b)
-# each contained 4 quadrats. Each pasture had two historically ungrazed and two historically
-# grazed quadrats. One ungrazed quadrat was opened to grazing and one grazed quadrat was closed
-# to grazing beginning in 1991. Each pasture contained 4 quadrats, ex. gzgz_5a, unun_5a,
-# gzun_5a, and ungz_5a. Density-type species (forbs) were mapped as single points. Cover-type
-# species (perennial grasses) were mapped as polygons (when mapped as points, converted to
-# arbitrarily small square polygons with area of 0.25 cm sq). Some records were lost from 2000.
 #
 # Outline
 # This script uses the plantTracker package (Stears et al. 2022, Methods in Ecology & Evolution)
 # to convert this chart quadrat data to demographic data that will be used to parameterize vital
 # rate models for the construction of integral projection models (IPMs) of the perennial grasses.
 #
-#
+# Publication: https://esajournals.onlinelibrary.wiley.com/doi/10.1002/ecy.3530
 #
 # Setup
 #
 library(sf) #ver 1.0-1.2
-library(plantTracker) #ver 1.1.0
+# library(plantTracker) #ver 1.1.0
 library(tidyverse)
 
 base_dir <- ('anderson_2016_az')
@@ -72,15 +51,19 @@ for(i in 1:length(quadNames)){
     shapeNow$Site <- "AZ"
     shapeNow$Quad <- quadNow
     shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][4])
-    if (grepl(quadYearNow, pattern = "pnt")) {
-      shapeNow <- shapeNow[,!(names(shapeNow)
-                              %in% c("coords_x1", "coords_x2", "coords_x1_", "coords_x2_", "coords_x1.1", "coords_x2.1"))]
-      shapeNow <- sf::st_buffer(x = shapeNow, dist = .0025)
-      shapeNow$type <- "point"
-    } else {
-      shapeNow <- shapeNow[,!(names(shapeNow) %in% c("SP_ID", "SP_ID_1", "area", "x", "y"))]
+    if (grepl(quadYearNow, pattern = "_D")) {
+      # Keep only the relevant columns for point data
+      shapeNow <- shapeNow %>%
+        select(Species, Site, Quad, Year, geometry) %>%
+        mutate(type = "point")
       
-      shapeNow$type <- "polygon"
+      # Apply buffer if necessary for point data
+      shapeNow <- st_buffer(shapeNow, dist = .0025)
+    } else {
+      # Keep only the relevant columns for polygon data
+      shapeNow <- shapeNow %>%
+        select(Species, Site, Quad, Year, geometry) %>%
+        mutate(type = "polygon")
     }
     if (i == 1 & j == 1) {
       dat <- shapeNow
@@ -91,14 +74,9 @@ for(i in 1:length(quadNames)){
 }
 
 # Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat, file = paste0(dat_dir, "SGS_LTER_plantTracker_full.rds"))
-dat <- readRDS(file = paste0(dat_dir, "SGS_LTER_plantTracker_full.rds"))
+saveRDS(dat, file = paste0(dat_dir, "anderson16az_quadrats_full.rds"))
+dat <- readRDS(file = paste0(dat_dir, "anderson16az_quadrats_full.rds"))
 
-# # Subset to the species of interest
-# dat2 <- dat[dat$Species %in% grasses$species,]
-# 
-# # And save the subsetted file, too
-# saveRDS(dat2, file = paste0(dat_dir, "SGS_LTER_plantTracker_grasses.rds"))
 
 # Check the inv and dat arguments
 checkDat(dat, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
@@ -188,93 +166,3 @@ checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year
 
 saveRDS(dat03, file = paste0(dat_dir, "SGS_LTER_plantTracker_all_filtered.rds"))
 
-# # Now the data are ready for the trackSpp function
-# datTrackSpp <- trackSpp(dat02,
-#                         inv_sgs,
-#                         dorm=1,
-#                         buff=0.05,
-#                         clonal=TRUE,
-#                         buffGenet = 0.05,
-#                         aggByGenet = TRUE,
-#                         flagSuspects = TRUE)
-# 
-# 
-# saveRDS(datTrackSpp,file="SGS_LTER_plantTracker_tracked.rds")
-# 
-# # Playing around with the data
-# 
-# all_spp <- datTrackSpp
-# for(i in 1:7552){
-#   all_spp$Treatment[i] <- str_split(all_spp$Quad[i],"_")[[1]][1]
-#   all_spp$Pasture[i] <- str_split(all_spp$Quad[i],"_")[[1]][2]
-# }
-# 
-# Ari_lon <- all_spp[all_spp$Species == "Aristida longiseta",] # 337 occurrences
-# Bou_gra <- all_spp[all_spp$Species == "Bouteloua gracilis",] # 3547 occurrences
-# Buc_dac <- all_spp[all_spp$Species == "Buchloe dactyloides",] # 999 occurrences
-# Sit_hys <- all_spp[all_spp$Species == "Sitanion hystrix",] # 471 occurrences
-# Spo_cry <- all_spp[all_spp$Species == "Sporobolus cryptandrus",] # 1256 occurrences
-# Sti_com <- all_spp[all_spp$Species == "Stipa comata",] # 880 occurrences
-# 
-# 
-# ggplot(Bou_gra) +
-#   geom_point(aes( x = log(basalArea_genet),y = survives_tplus1,group=Treatment, color=Treatment))
-# 
-# do.call( cbind, list( Bou_gra$Treatment,
-#                       Bou_gra$Year
-#                       ) ) %>% 
-#   as.data.frame %>% 
-#   count(V1,V2) %>% 
-#   arrange(V2,V1)
-# 
-# Bou_gra_df <- Bou_gra %>% st_drop_geometry()
-# Bou_gra_df$logsize <- log(Bou_gra_df$basalArea_genet)
-# write.csv(Bou_gra_df,"Bou_gra.csv")
-# 
-# Bou_gra_unun <- Bou_gra_df[Bou_gra_df$Treatment=="unun",]
-# Bou_gra_ungz <- Bou_gra_df[Bou_gra_df$Treatment=="ungz",]
-# Bou_gra_gzgz <- Bou_gra_df[Bou_gra_df$Treatment=="gzgz",]
-# Bou_gra_gzun <- Bou_gra_df[Bou_gra_df$Treatment=="gzun",]
-# 
-# Bou_gra_binned_unun <- plot_binned_prop(Bou_gra_unun,20,logsize,survives_tplus1)
-# Bou_gra_binned_ungz <- plot_binned_prop(Bou_gra_ungz,20,logsize,survives_tplus1)
-# Bou_gra_binned_gzgz <- plot_binned_prop(Bou_gra_gzgz,20,logsize,survives_tplus1)
-# Bou_gra_binned_gzun <- plot_binned_prop(Bou_gra_gzun,20,logsize,survives_tplus1)
-# 
-# Bou_gra_binned_trt <- data.frame(matrix(vector(), 80, 4,
-#                        dimnames=list(c(), c("binned_logsize", "binned_survival_t1", "treatment","n"))),
-#                 stringsAsFactors=F)
-# 
-# Bou_gra_binned_trt$binned_logsize[1:20] <- Bou_gra_binned_gzgz$x_binned
-# Bou_gra_binned_trt$binned_survival_t1[1:20] <- Bou_gra_binned_gzgz$y_binned
-# Bou_gra_binned_trt$treatment[1:20] <- "gzgz"
-# Bou_gra_binned_trt$n[1:20] <- Bou_gra_binned_gzgz$n_s
-# 
-# Bou_gra_binned_trt$binned_logsize[21:40] <- Bou_gra_binned_gzun$x_binned
-# Bou_gra_binned_trt$binned_survival_t1[21:40] <- Bou_gra_binned_gzun$y_binned
-# Bou_gra_binned_trt$treatment[21:40] <- "gzun"
-# Bou_gra_binned_trt$n[21:40] <- Bou_gra_binned_gzun$n_s
-# 
-# Bou_gra_binned_trt$binned_logsize[41:60] <- Bou_gra_binned_unun$x_binned
-# Bou_gra_binned_trt$binned_survival_t1[41:60] <- Bou_gra_binned_unun$y_binned
-# Bou_gra_binned_trt$treatment[41:60] <- "unun"
-# Bou_gra_binned_trt$n[41:60] <- Bou_gra_binned_unun$n_s
-# 
-# Bou_gra_binned_trt$binned_logsize[61:80] <- Bou_gra_binned_ungz$x_binned
-# Bou_gra_binned_trt$binned_survival_t1[61:80] <- Bou_gra_binned_ungz$y_binned
-# Bou_gra_binned_trt$treatment[61:80] <- "ungz"
-# Bou_gra_binned_trt$n[61:80] <- Bou_gra_binned_ungz$n_s
-# 
-# 
-# ggplot(Bou_gra_binned_trt) +
-#   geom_point(aes(x=binned_logsize,y=binned_survival_t1,group=treatment,color=treatment))
-# 
-# 
-# Spo_cry_df <- Spo_cry %>% st_drop_geometry()
-# Spo_cry_df$logsize <- log(Spo_cry_df$basalArea_genet)
-# write.csv(Spo_cry_df,"Spo_cry.csv")
-#               
-# 
-# Buc_dac_df <- Buc_dac %>% st_drop_geometry()
-# Buc_dac_df$logsize <- log(Buc_dac_df$basalArea_genet)
-# write.csv(Buc_dac_df,"Buc_dac.csv")

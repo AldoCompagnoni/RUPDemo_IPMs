@@ -50,7 +50,11 @@ dat             <- readRDS(
   setNames(quote_bare(Species, Site, Quad, Year, geometry))
 
 # Subset data for the target species
-dat_target_spec <- dat[dat$Species %in% target_spec$species,]
+dat_target_spec <- dat[dat$Species %in% target_spec$species,] %>% 
+  # Exclude certain samples
+  filter(
+    if (length(mod_plot) > 0) !(Quad %in% mod_plot) else TRUE
+  )
 
 buff <- if_else(st_bbox(dat_target_spec)[3] < 1.1, 0.05, 5)
 

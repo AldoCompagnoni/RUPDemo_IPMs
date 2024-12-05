@@ -63,7 +63,7 @@ sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'),
   } %>%
   filter(
     if(gr_form == "grass") {
-      growthForm %in% c("grass", "c3", "c4")  # If 'grass' is specified, include 'grass', 'c3', and 'c4'
+      growthForm %in% c("grass", "c3", "c4", "shortgrass")  # If 'grass' is specified, include 'grass', 'c3', and 'c4'
     } else {
       growthForm == gr_form  # Otherwise, filter exactly by the specified growthForm
     }
@@ -80,3 +80,4 @@ sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'),
       }
     }
   }
+

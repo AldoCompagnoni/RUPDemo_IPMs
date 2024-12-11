@@ -57,6 +57,7 @@ dat_target_spec <- dat[dat$Species %in% target_spec$species,] %>%
   )
 
 buff <- if_else(st_bbox(dat_target_spec)[3] < 1.1, 0.05, 5)
+clonal <- if_else(gr_form == 'forb', F, T)
 
 # Prepare data for the trackSpp function
 datTrackSpp <- trackSpp(dat_target_spec, inv,
@@ -65,7 +66,7 @@ datTrackSpp <- trackSpp(dat_target_spec, inv,
                         # Buffer size
                         buff         = buff,
                         # Allow for clonal tracking
-                        clonal       = TRUE,
+                        clonal       = clonal,
                         # Buffer for genet
                         buffGenet    = buff,
                         # Aggregate by genet

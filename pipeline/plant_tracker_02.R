@@ -25,7 +25,7 @@ if (gr_form == 'forb') {
   R_dir      <- file.path(pub_dir, 'R', sp_abb)
   data_dir   <- file.path(pub_dir, 'data', sp_abb)
   result_dir <- file.path(pub_dir, 'results', sp_abb)
-  }
+}
 
 # Read in quadrat inventory data and prepare for plantTracker
 quad_file <- list.files(
@@ -38,19 +38,29 @@ quad_inv        <- as.list(
 
 # Remove NAs
 inv          <- lapply(X = quad_inv, 
-                          FUN = function(x) x[is.na(x) == FALSE])
+                       FUN = function(x) x[is.na(x) == FALSE])
 # Replace dots in names with dashes
 names(inv)   <- gsub( '\\.','-',names(inv) )  
 
 # Read spatial data (polygon for each species per quadrat)
-dat             <- readRDS(
-  file = paste0(dat_dir, '/SGS_LTER_plantTracker_all_filtered.rds')) %>%
+if (length(list.files(dat_dir, pattern = "^SGS_.*\\.rds$", full.names = TRUE)) > 0) {
+  # Read the first SGS_* file found
+  data <- readRDS(
+    file = paste0(dat_dir, '/SGS_LTER_plantTracker_all_filtered.rds'))
+} else {
+  # Fallback to the default file if no SGS_* files exist
+  data <- readRDS(file = paste0(dat_dir, '/', 
+                                strsplit(author_year, "_")[[1]][1],
+                                substr(author_year, nchar(author_year) - 1, nchar(author_year)),
+                                region_abb, '_quadrats_filtered.rds'))
+} %>%
   select(-any_of(c("type"))) %>% 
   # Rename columns
   setNames(quote_bare(Species, Site, Quad, Year, geometry))
 
+
 # Subset data for the target species
-dat_target_spec <- dat[dat$Species %in% target_spec$species,] %>% 
+dat_target_spec <- data[data$Species %in% target_spec$species,] %>% 
   # Exclude certain samples
   filter(
     if (exists("mod_plot") && length(mod_plot) > 0) !(Quad %in% mod_plot) else TRUE

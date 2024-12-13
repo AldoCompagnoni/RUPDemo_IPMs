@@ -1,11 +1,11 @@
-# plantTracker - Anderson 2016 Arizona -
+# plantTracker - Anderson 2016 Arizona - Bouteloua eriopoda 
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.12.03
+# Date  : 2024.12.13
 
 # Publication : https://doi.org/10.1890/13-0121.1
 
@@ -24,7 +24,7 @@ custom_delimiter <- c(',')
 source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list)
+head(sp_list, 20)
 target_spec <- sp_list %>% .[c(3),]  
 
 source('pipeline/plant_tracker_02.R')

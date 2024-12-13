@@ -1,13 +1,13 @@
-# MPM year specific - Zachmann 2016 Idaho - Phlox longifolia
+# MPM year specific - Adler 2007 Kansas - Paronychia jamesii
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
+# Date  : 2024.12.12
 
-# Publication : https://doi.org/10.1890/13-0121.1
+# Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
 
 
 # Comments ---------------------------------------------------------------------
@@ -20,11 +20,11 @@ rm(list = ls())
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'zachmann_2016'
+author_year <- 'adler_2007'
 # Define region abbreviation
-region_abb  <- 'id'
+region_abb  <- 'ks'
 # Define the species variable
-species     <- 'Phlox longifolia'
+species     <- 'Paronychia jamesii'
 # Type of population model
 mod_type    <- 'mpm'
 
@@ -33,10 +33,6 @@ mod_type    <- 'mpm'
 # Years:
 #  Removal of certain years if unspecified nothing is removed
 years_re <- c()
-# Age:
-#  Set a age threshold at which all ages get the same survival probability
-#  If unspecified it's 'c(1)'
-surv_age_threshold <- c(4)
 
 
 # MPM pipeline -- with model comparison -- -------------------------------------

@@ -7,7 +7,7 @@
 # to convert this chart quadrat data to demographic data that will be used to parameterize vital
 # rate models for the construction of integral projection models (IPMs) of the perennial grasses.
 #
-# Publication: https://esajournals.onlinelibrary.wiley.com/doi/10.1002/ecy.3530
+# Publication:  https://doi.org/10.1002/ecy.3530
 #
 # Setup
 #
@@ -15,21 +15,26 @@ library(sf) #ver 1.0-1.2
 # library(plantTracker) #ver 1.1.0
 library(tidyverse)
 
-base_dir <- ('anderson_2016_az')
+base_dir <- ('christensen_2021_nm')
 dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
-shp_dir <- paste(base_dir, "/data/quadrat_data/shapefiles/", sep="")
+shp_dir <- paste(base_dir, "/data/quadrat_data/Jornada_shapefiles/", sep="")
 
 
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list <- read.csv(paste0(dat_dir, "species_list.csv"))
+sp_list <- read.csv(paste0(dat_dir, "Jornada_quadrat_species_list.csv")) %>% 
+  mutate(species_bn2 = species,
+         species = paste(genus, species))
 
-sp_name_changes <- read.csv(paste0(dat_dir, "species_name_changes.csv")) 
+# sp_name_changes <- read.csv(paste0(dat_dir, "species_name_changes.csv")) 
 #  will use to check names later on
 
 # Read in quad inventory to use as 'inv' list in plantTracker
-quad_inv <- read.csv(paste0(dat_dir, "quad_inventory.csv"))
+# Read the data
+quad_inv <- read.csv(paste0(dat_dir, "Jornada_quadrat_sampling_dates.csv"))[c(1:2)] %>%
+  mutate(quadrat = as.factor(quadrat))
+
 quadInv_list <- as.list(quad_inv)
 quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
 inv_sgs <- quadInv_list

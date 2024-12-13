@@ -33,7 +33,9 @@ quad_inv <- read_csv(paste0(dat_dir,"/Summarize_Quadrats_by_Year.csv")) %>%
   t() %>%                             # Transpose the dataframe
   as.data.frame() %>%                 # Convert back to dataframe
   rownames_to_column("Year") %>%
-  # mutate(across(starts_with("Plot"), ~ ifelse(. == "X", Year, .)))
+  mutate(Year = substr(as.character(Year), 3, 4))
+
+quad_inv[,-1] <- apply(quad_inv[,-1], 2, function(x) ifelse(x == "X", quad_inv$Year, x))
 
 
 quadInv_list <- as.list(quad_inv)
@@ -47,6 +49,11 @@ shpFiles <- list.files(shp_dir)
 quadYears <- unlist(strsplit(list.files(
   paste0(shp_dir,"/"),
   pattern = ".shp$"), split = ".shp"))
+
+
+
+
+
 
 for (j in 1:length(quadYears)) {
   quadYearNow <- quadYears[j]

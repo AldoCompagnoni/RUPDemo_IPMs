@@ -35,14 +35,13 @@ sp_list <- read.csv(paste0(dat_dir, "Jornada_quadrat_species_list.csv")) %>%
 quad_inv <- read.csv(paste0(dat_dir, "Jornada_quadrat_sampling_dates.csv"))[c(1:2)] %>%
   mutate(quadrat = as.factor(quadrat))
 
-quadInv_list <- as.list(quad_inv)
-quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
+quadInv_list <- split(quad_inv$year, quad_inv$quadrat)
 inv_sgs <- quadInv_list
 
 # Read in shapefiles to create sf dataframe to use as 'dat' in plantTracker
 # Adapted from plantTracker How to (Stears et al. 2022)
 # Create list of quad names
-quadNames <- list.files(paste0(dat_dir, 'shapefiles'))
+quadNames <- list.files(paste0(dat_dir, 'Jornada_shapefiles'))
 # Use for loop to download data from each quad folder
 for(i in 1:length(quadNames)){
   quadNow <- quadNames[i]
@@ -53,10 +52,10 @@ for(i in 1:length(quadNames)){
     quadYearNow <- quadYears[j]
     shapeNow <- sf::st_read(dsn = paste0(shp_dir,quadNow),
                             layer = quadYearNow)
-    shapeNow$Site <- "AZ"
+    shapeNow$Site <- "NM"
     shapeNow$Quad <- quadNow
     shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][2])
-    if (grepl(quadYearNow, pattern = "_D")) {
+    if (grepl(quadYearNow, pattern = "_pnt")) {
       # Keep only the relevant columns for point data
       shapeNow <- shapeNow %>%
         select(Species, Site, Quad, Year, geometry) %>%

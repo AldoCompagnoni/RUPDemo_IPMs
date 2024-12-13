@@ -12,7 +12,7 @@
 # Setup
 #
 library(sf) #ver 1.0-1.2
-# library(plantTracker) #ver 1.1.0
+library(plantTracker) #ver 1.1.0
 library(tidyverse)
 
 base_dir <- ('anderson_2016_az')
@@ -91,56 +91,12 @@ for(i in 1:length(invalid_geom)){
 }
 
 checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-invalid_geom3 <- c(
-  84097, 84276, 84278, 84284, 84287, 84788, 84790, 84797, 84891, 84983, 85272, 
-  85308, 85432, 85722, 85915, 86004, 86006, 86136, 86855, 87068, 87679, 87700, 
-  87851, 87980, 88221, 88296, 88600, 88704, 88705, 89198, 89209, 89250, 89325, 
-  89828, 90245, 90560, 90908, 91531, 93498, 93810, 94125, 94231, 94421, 94516, 
-  94537, 94774, 94957, 95176, 95177, 95590, 95593, 95625, 95659, 95681, 95705, 
-  95722, 95948, 96222, 96339, 96876, 99074, 99278, 99528, 100124, 100136, 
-  100774, 100807, 100833, 101630, 101737, 102260, 102600, 102605, 102630, 
-  107938, 108186, 108274, 108644, 109236, 109762, 110054, 110428, 110810, 
-  110939, 111117, 111211, 111543, 111666, 111770, 113269, 113853, 114078, 
-  114299, 114300, 114343, 114691, 115359, 115535, 115554, 115560, 115689, 
-  115904, 116045, 116069, 116103, 116217, 116304, 118893, 119007, 119208, 
-  119220, 119562, 119792, 120299, 120302, 120726, 120873, 121031, 121034, 
-  121039, 121411, 121461, 121544, 121691, 121805, 121887
-)
-for(i in 1:length(invalid_geom3)){
-  dat01[invalid_geom3[i],6] <- st_make_valid(dat01[invalid_geom3[i],6])
-}
-
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-invalid_geom4 <- c(
-  123325, 123790, 123984, 124009, 124070, 124334, 124681, 125120, 125129, 
-  125839, 126288, 130048, 130659, 130935, 130961, 131130, 131281, 131344, 
-  131349, 131406, 131475, 131606, 131674, 131676, 131751, 131762, 131841, 
-  132125, 132232, 132253, 132258, 132548, 132609, 132623, 133163, 133274
-)
-
-for(i in 1:length(invalid_geom4)){
-  dat01[invalid_geom4[i],6] <- st_make_valid(dat01[invalid_geom4[i],6])
-}
-
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-dat02 <- dat01[!is.na(dat01$Species), ]
-checkDat(dat02, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-
 # Still have a couple of repeated rows, somehow, so we will drop those
 drop_rows <- c(
-  401, 1010, 1661, 24487, 25606, 25670, 26255, 32384, 38391, 39569, 55076,
-  55089)
+  61364, 74426, 74463, 74467)
 
-dat03 <- dat02[!(row.names(dat02) %in% drop_rows),]
-checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+dat02 <- dat01[!(row.names(dat01) %in% drop_rows),]
+checkDat(dat02, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-# Still have a couple of repeated rows, somehow, so we will drop those
-drop_rows2 <- c(
-  55112, 58091, 64803, 72238, 75507, 77291, 79196, 96626, 103604, 116003, 
-  128419)
-
-dat03 <- dat03[!(row.names(dat03) %in% drop_rows2),]
-checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-
-saveRDS(dat03, file = paste0(dat_dir, "SGS_LTER_plantTracker_all_filtered.rds"))
+saveRDS(dat02, file = paste0(dat_dir, "anderson16az_quadrats_filtered.rds"))
 

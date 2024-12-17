@@ -43,17 +43,17 @@ inv          <- lapply(X = quad_inv,
 names(inv)   <- gsub( '\\.','-',names(inv) )  
 
 # Read spatial data (polygon for each species per quadrat)
-if (length(list.files(dat_dir, pattern = "^SGS_.*\\.rds$", full.names = TRUE)) > 0) {
+data <- {if (length(list.files(dat_dir, pattern = "^SGS_.*\\.rds$", full.names = TRUE)) > 0) {
   # Read the first SGS_* file found
-  data <- readRDS(
+  readRDS(
     file = paste0(dat_dir, '/SGS_LTER_plantTracker_all_filtered.rds'))
 } else {
   # Fallback to the default file if no SGS_* files exist
-  data <- readRDS(file = paste0(dat_dir, '/', 
+  readRDS(file = paste0(dat_dir, '/', 
                                 strsplit(author_year, "_")[[1]][1],
                                 substr(author_year, nchar(author_year) - 1, nchar(author_year)),
                                 region_abb, '_quadrats_filtered.rds'))
-} %>%
+}} %>%
   select(-any_of(c("type"))) %>% 
   # Rename columns
   setNames(quote_bare(Species, Site, Quad, Year, geometry))

@@ -82,6 +82,10 @@ inv_plot_per_year <- df %>%
        subtitle = paste(script_prefix, species)) +
   theme(axis.text.y = element_text(size = 5))
 inv_plot_per_year
+ggsave(paste0(result_dir, '/0.0_quad_per_year.png'), 
+       plot = inv_plot_per_year, 
+       width = 8, height = 3, units = 'in', dpi = 150)
+
 
 # Prepare data frames for analysis ---------------------------------------------
 # Survival data frame
@@ -153,6 +157,13 @@ hist_t1 <-
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
 hist_sizes_log <- hist_t0 + hist_t1
+
+if (!dir.exists('anderson_2016_az/results')) {
+  dir.create('anderson_2016_az/results')
+}
+if (!dir.exists(result_dir)) {
+  dir.create(result_dir)
+}
 
 ggsave(paste0(result_dir, '/1.0_overall_hist_sizes_log.png'), 
        plot = hist_sizes_log, 

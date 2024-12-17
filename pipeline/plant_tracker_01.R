@@ -73,10 +73,9 @@ sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'),
       arrange(., desc(count))
     } else {
       if (gr_form == 'forb') {
-        filter(., is.na(cover)) %>%
-          arrange(desc(if ('density' %in% colnames(.)) { density } else { pointFeatures }))
+        arrange(., desc(if ('density' %in% colnames(.)){density} else {pointFeatures}))
       } else {
-        arrange(., desc(if ('cover' %in% colnames(.)) { cover}else { polygonFeatures  }))
+        arrange(., desc(if ('cover' %in% colnames(.)){cover} else {polygonFeatures}))
       }
     }
   }

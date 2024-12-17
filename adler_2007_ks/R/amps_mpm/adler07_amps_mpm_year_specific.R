@@ -5,6 +5,8 @@
 #  aldo.compagnoni@gmail.com
 # Date: 2024.10.30
 
+# Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
+
 # Comments ---------------------------------------------------------------------
 # 1. the pipeline runs plant tracker only if the data does not exist already
 # 2. find all the graphics in the result folder of the respective species

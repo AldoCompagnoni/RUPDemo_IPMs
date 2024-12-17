@@ -13,6 +13,8 @@
 #  build the ipm from scratch
 #  build the ipm with `ipmr`
 
+# Publication: https://doi.org/10.1890/13-0121.1
+
 
 # Comments ---------------------------------------------------------------------
 # 0. !!! Please define all key variables in the in the corresponding section !!!

@@ -5,6 +5,8 @@
 #  aldo.compagnoni@gmail.com
 # Date: 2024.10.28
 
+# Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
+
 # Original models from https://doi.org/10.1111/j.1365-2745.2009.01585.x
 #   check the appendices for details on model fitting!
 

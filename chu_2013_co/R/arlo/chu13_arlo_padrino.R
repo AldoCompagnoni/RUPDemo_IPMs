@@ -5,6 +5,8 @@
 
 #
 
+# Publication: https://doi.org/10.1890/13-0121.1
+
 
 # Setting the stage ------------------------------------------------------------
 # Remove all objects in the global environment

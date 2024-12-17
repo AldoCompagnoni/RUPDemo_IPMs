@@ -1,5 +1,7 @@
 # IPM data clean for alder 2007 & chu 2016; kansas; bocu
 
+# Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
+
 # Niklas Neisse
 # 2024.09.30
 

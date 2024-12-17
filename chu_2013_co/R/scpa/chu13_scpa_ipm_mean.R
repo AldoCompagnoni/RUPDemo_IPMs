@@ -7,6 +7,8 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2024.12.03
 
+# Publication: https://doi.org/10.1890/13-0121.1
+
 # Read in and clean the data
 #  explore the overall-years rates
 #  set up the vital rate data-frames for the year specific 

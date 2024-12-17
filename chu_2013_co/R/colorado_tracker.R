@@ -4,6 +4,8 @@
 # Email: neisse.n@protonmail.com
 # Date: 2024.10.24
 
+# Publication: https://doi.org/10.1890/13-0121.1
+
 # Code adapted from: https://github.com/aestears/plantTracker
  # Adapted from plantTracker How to (Stears et al. 2022)
 

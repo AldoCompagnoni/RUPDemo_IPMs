@@ -7,7 +7,7 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2024.12.11
 
-# Publication : https://doi.org/10.1890/13-0121.1
+# Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
 
 rm(list = ls())
 

@@ -1,13 +1,13 @@
-# plantTracker - Anderson 2016 Arizona - Bouteloua rothrockii
+# plantTracker - Anderson 2016 Arizona - Isocoma tenuisecta
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.12.13
+# Date  : 2024.12.17
 
-# Publication: https://doi.org/10.1890/11-2200.1
+# Publication : https://doi.org/10.1890/11-2200.1
 
 rm(list = ls())
 
@@ -17,7 +17,7 @@ author_year <- 'anderson_2016'
 # Define region abbreviation
 region_abb <- 'az'
 # Define growth form (grass, forb, shrub, c4)
-gr_form    <- 'grass'
+gr_form    <- 'forb'
 # Customized delimiter for `read_delim` function, comma is predefined
 custom_delimiter <- c(',')
 

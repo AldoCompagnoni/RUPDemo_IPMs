@@ -1,4 +1,4 @@
-# plantTracker - Anderson 2016 Arizona - Bouteloua rothrockii
+# plantTracker - Anderson 2016 Arizona - Lycurus phleoides
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -25,7 +25,7 @@ source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
 head(sp_list, 20)
-target_spec <- sp_list %>% .[c(1),]  
+target_spec <- sp_list %>% .[c(8),]  
 
 source('pipeline/plant_tracker_02.R')
 

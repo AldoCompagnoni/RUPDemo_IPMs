@@ -23,9 +23,10 @@ shp_dir <- paste(base_dir, "/data/quadrat_data/Jornada_shapefiles/", sep="")
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list <- read.csv(paste0(dat_dir, "Jornada_quadrat_species_list.csv")) %>% 
+sp_list <- read.csv(paste0(dat_dir, "species_list.csv")) %>% 
   mutate(species_bn2 = species,
-         species = paste(genus, species))
+         species = paste(genus, species)) %>%
+  select(species, everything())
 
 # sp_name_changes <- read.csv(paste0(dat_dir, "species_name_changes.csv")) 
 #  will use to check names later on
@@ -58,7 +59,7 @@ for(i in 1:length(quadNames)){
     if (grepl(quadYearNow, pattern = "_pnt")) {
       # Keep only the relevant columns for point data
       shapeNow <- shapeNow %>%
-        select(Species, Site, Quad, Year, geometry) %>%
+        select(species, Site, Quad, Year, geometry) %>%
         mutate(type = "point")
       
       # Apply buffer if necessary for point data
@@ -66,7 +67,7 @@ for(i in 1:length(quadNames)){
     } else {
       # Keep only the relevant columns for polygon data
       shapeNow <- shapeNow %>%
-        select(Species, Site, Quad, Year, geometry) %>%
+        select(species, Site, Quad, Year, geometry) %>%
         mutate(type = "polygon")
     }
     if (i == 1 & j == 1) {

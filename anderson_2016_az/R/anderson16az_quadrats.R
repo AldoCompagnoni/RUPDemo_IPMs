@@ -10,7 +10,9 @@
 # Publication: https://esajournals.onlinelibrary.wiley.com/doi/10.1002/ecy.3530
 #
 # Setup
-#
+
+# rm(ls = list())
+
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 library(tidyverse)
@@ -99,4 +101,4 @@ dat02 <- dat01[!(row.names(dat01) %in% drop_rows),]
 checkDat(dat02, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
 saveRDS(dat02, file = paste0(dat_dir, "anderson16az_quadrats_filtered.rds"))
-
+dat02 <- readRDS(file = paste0(dat_dir, "anderson16az_quadrats_filtered.rds"))

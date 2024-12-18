@@ -53,19 +53,22 @@ delimiter <- if (exists('custom_delimiter') && !is.null(custom_delimiter)) {
 sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'), 
                       delim = delimiter, escape_double = FALSE, 
                       trim_ws = TRUE) %>% 
-  as.data.frame() %>%
+  as.data.frame()  %>%
   { 
+    # Rename 'type' or 'form' to 'growthForm' if they exist
     if("type" %in% colnames(.)) {
-      rename(., growthForm = type)
-    } else {
-      .
+      . <- rename(., growthForm = type)
     }
+    if("form" %in% colnames(.)) {
+      . <- rename(., growthForm = form)
+    }
+    .
   } %>%
   filter(
-    if(gr_form == "grass") {
-      growthForm %in% c("grass", "c3", "c4", "shortgrass")  # If 'grass' is specified, include 'grass', 'c3', and 'c4'
+    if(tolower(gr_form) == "grass") {
+      tolower(growthForm) %in% c("grass", "c3", "c4", "shortgrass")  # If 'grass' is specified, include 'grass', 'c3', 'c4'
     } else {
-      growthForm == gr_form  # Otherwise, filter exactly by the specified growthForm
+      tolower(growthForm) == tolower(gr_form)  # Otherwise, filter exactly by the specified growthForm
     }
   ) %>% 
   {

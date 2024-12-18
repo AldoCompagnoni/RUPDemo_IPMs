@@ -43,19 +43,23 @@ inv          <- lapply(X = quad_inv,
 names(inv)   <- gsub( '\\.','-',names(inv) )  
 
 # Read spatial data (polygon for each species per quadrat)
-data <- {if (length(list.files(dat_dir, pattern = "^SGS_.*\\.rds$", full.names = TRUE)) > 0) {
-  # Read the first SGS_* file found
-  readRDS(
-    file = paste0(dat_dir, '/SGS_LTER_plantTracker_all_filtered.rds'))
-} else {
-  # Fallback to the default file if no SGS_* files exist
-  readRDS(file = paste0(dat_dir, '/', 
-                                strsplit(author_year, "_")[[1]][1],
-                                substr(author_year, nchar(author_year) - 1, nchar(author_year)),
-                                region_abb, '_quadrats_filtered.rds'))
-}} %>%
-  select(-any_of(c("type"))) %>% 
-  # Rename columns
+data <- {
+  # Check for files ending with '_quadrats_filtered.rds' in the specified directory
+  rds_files <- list.files(dat_dir, pattern = "_quadrats_filtered\\.rds$", full.names = TRUE)
+  
+  # If files matching the pattern are found, read the first one
+  if (length(rds_files) > 0) {
+    readRDS(file = rds_files[1])
+  } else {
+    # Fallback to the default file if no files matching the pattern are found
+    readRDS(file = paste0(dat_dir, '/', 
+                          strsplit(author_year, "_")[[1]][1],
+                          substr(author_year, nchar(author_year) - 1, nchar(author_year)),
+                          region_abb, '_quadrats_filtered.rds'))
+  }
+} %>%
+  select(-any_of(c("type"))) %>%  # Remove the 'type' column
+  # Rename columns to a standardized format
   setNames(quote_bare(Species, Site, Quad, Year, geometry))
 
 

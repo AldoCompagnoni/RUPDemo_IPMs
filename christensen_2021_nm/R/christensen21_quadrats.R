@@ -10,10 +10,14 @@
 # Publication:  https://doi.org/10.1002/ecy.3530
 #
 # Setup
-#
+
+# rm(list = ls())
+
 library(sf) #ver 1.0-1.2
-# library(plantTracker) #ver 1.1.0
+library(plantTracker) #ver 1.1.0
 library(tidyverse)
+library(stringr)
+library(dplyr)
 
 base_dir <- ('christensen_2021_nm')
 dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
@@ -23,10 +27,11 @@ shp_dir <- paste(base_dir, "/data/quadrat_data/Jornada_shapefiles/", sep="")
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list <- read.csv(paste0(dat_dir, "species_list.csv")) %>% 
+sp_list <- read.csv(paste0(dat_dir, "Jornada_quadrat_species_list.csv")) %>% 
   mutate(species_bn2 = species,
          species = paste(genus, species)) %>%
   select(species, everything())
+
 
 # sp_name_changes <- read.csv(paste0(dat_dir, "species_name_changes.csv")) 
 #  will use to check names later on
@@ -35,9 +40,80 @@ sp_list <- read.csv(paste0(dat_dir, "species_list.csv")) %>%
 # Read the data
 quad_inv <- read.csv(paste0(dat_dir, "Jornada_quadrat_sampling_dates.csv"))[c(1:2)] %>%
   mutate(quadrat = as.factor(quadrat))
-
 quadInv_list <- split(quad_inv$year, quad_inv$quadrat)
-inv_sgs <- quadInv_list
+
+
+# Set the path to your main folder
+main_folder <- "christensen_2021_nm/data/quadrat_data/Jornada_shapefiles//"
+
+# List all subfolders within the main folder
+folder_names <- list.dirs(main_folder, full.names = FALSE, recursive = FALSE)
+
+# Create an empty list to store the years for each folder
+years_list_per_folder <- list()
+
+# Iterate over each folder
+for (folder in folder_names) {
+  
+  # List all .shp files in the current folder
+  folder_path <- file.path(main_folder, folder)
+  files <- list.files(folder_path, pattern = "\\.shp$", full.names = TRUE)
+  
+  # Initialize an empty vector to hold all years for the current folder
+  folder_years <- c()
+  
+  # Iterate over the .shp files in the folder
+  for (file in files) {
+    # Print the filename to debug
+    print(paste("Processing file:", basename(file)))
+    
+    # Extract the year from the filename (assuming it's a 4-digit year)
+    years <- str_extract(basename(file), "\\d{4}")
+    
+    # If a year is found, add it to the folder_years vector
+    if (!is.na(years)) {
+      print(paste("Year extracted:", years))
+      folder_years <- c(folder_years, years)
+    } else {
+      print("No year found in filename")
+    }
+  }
+  
+  # Store the unique years for this folder in the list
+  if (length(folder_years) > 0) {
+    years_list_per_folder[[folder]] <- unique(folder_years)
+  } else {
+    years_list_per_folder[[folder]] <- NA
+  }
+}
+
+for (folder in names(years_list_per_folder)) {
+  # Convert the years from character to integer
+  years_list_per_folder[[folder]] <- as.integer(years_list_per_folder[[folder]])
+}
+
+
+# Now we need to create a dataframe with rownames as all unique years across all folders
+# Find all unique years across all folders
+all_unique_years <- sort(unique(unlist(years_list_per_folder)))
+
+# Create an empty dataframe with all unique years as row names
+years_df <- data.frame(matrix(ncol = length(folder_names), nrow = length(all_unique_years)))
+rownames(years_df) <- all_unique_years
+colnames(years_df) <- folder_names
+
+# Fill the dataframe: For each folder, check if the year is present
+for (folder in folder_names) {
+  # Get the unique years for the current folder
+  folder_years <- years_list_per_folder[[folder]]
+  
+  # For each unique year, fill the dataframe with the year if it's in the folder's unique years
+  years_df[[folder]] <- ifelse(rownames(years_df) %in% folder_years, rownames(years_df), NA)
+}
+
+write.csv(row.names = F, years_df, paste0(dat_dir, "/quadrat_inventory.csv"))
+
+inv_sgs <- years_list_per_folder
 
 # Read in shapefiles to create sf dataframe to use as 'dat' in plantTracker
 # Adapted from plantTracker How to (Stears et al. 2022)
@@ -79,73 +155,54 @@ for(i in 1:length(quadNames)){
 }
 
 # Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat, file = paste0(dat_dir, "anderson16az_quadrats_full.rds"))
-dat <- readRDS(file = paste0(dat_dir, "anderson16az_quadrats_full.rds"))
+saveRDS(dat, file = paste0(dat_dir, "christensen21_quadrats_full.rds"))
+dat <- readRDS(file = paste0(dat_dir, "/christensen21_quadrats_full.rds")) %>% 
+  rename(Species = species)
+
+dat$geometry <- st_make_valid(dat$geometry)
+invalid_polygons <- st_is_valid(dat$geometry) & !sapply(dat$geometry, function(x) length(x[[1]]) >= 4)
+dat <- dat[!invalid_polygons, ]
+dat <- dat[!is.na(dat$Species), ]
 
 
 # Check the inv and dat arguments
 checkDat(dat, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 # Some rows had invalid geometry, so we fix the geometries
 invalid_geom <- c(
-  17707, 17838, 18256, 19466, 21327, 35642, 39386, 46376, 60034, 60042, 60364, 
-  60374, 97081, 100701, 111066, 113144, 120701, 128870, 128929, 129569, 130959, 
-  134738)
+  215388)
 dat01 <- dat
 for(i in 1:length(invalid_geom)){
   dat01[invalid_geom[i],6] <- st_make_valid(dat01[invalid_geom[i],6])
 }
 
 checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-invalid_geom3 <- c(
-  84097, 84276, 84278, 84284, 84287, 84788, 84790, 84797, 84891, 84983, 85272, 
-  85308, 85432, 85722, 85915, 86004, 86006, 86136, 86855, 87068, 87679, 87700, 
-  87851, 87980, 88221, 88296, 88600, 88704, 88705, 89198, 89209, 89250, 89325, 
-  89828, 90245, 90560, 90908, 91531, 93498, 93810, 94125, 94231, 94421, 94516, 
-  94537, 94774, 94957, 95176, 95177, 95590, 95593, 95625, 95659, 95681, 95705, 
-  95722, 95948, 96222, 96339, 96876, 99074, 99278, 99528, 100124, 100136, 
-  100774, 100807, 100833, 101630, 101737, 102260, 102600, 102605, 102630, 
-  107938, 108186, 108274, 108644, 109236, 109762, 110054, 110428, 110810, 
-  110939, 111117, 111211, 111543, 111666, 111770, 113269, 113853, 114078, 
-  114299, 114300, 114343, 114691, 115359, 115535, 115554, 115560, 115689, 
-  115904, 116045, 116069, 116103, 116217, 116304, 118893, 119007, 119208, 
-  119220, 119562, 119792, 120299, 120302, 120726, 120873, 121031, 121034, 
-  121039, 121411, 121461, 121544, 121691, 121805, 121887
-)
-for(i in 1:length(invalid_geom3)){
-  dat01[invalid_geom3[i],6] <- st_make_valid(dat01[invalid_geom3[i],6])
-}
-
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-invalid_geom4 <- c(
-  123325, 123790, 123984, 124009, 124070, 124334, 124681, 125120, 125129, 
-  125839, 126288, 130048, 130659, 130935, 130961, 131130, 131281, 131344, 
-  131349, 131406, 131475, 131606, 131674, 131676, 131751, 131762, 131841, 
-  132125, 132232, 132253, 132258, 132548, 132609, 132623, 133163, 133274
-)
-
-for(i in 1:length(invalid_geom4)){
-  dat01[invalid_geom4[i],6] <- st_make_valid(dat01[invalid_geom4[i],6])
-}
-
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-dat02 <- dat01[!is.na(dat01$Species), ]
-checkDat(dat02, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-
 # Still have a couple of repeated rows, somehow, so we will drop those
 drop_rows <- c(
-  401, 1010, 1661, 24487, 25606, 25670, 26255, 32384, 38391, 39569, 55076,
-  55089)
+  215388)
 
-dat03 <- dat02[!(row.names(dat02) %in% drop_rows),]
+dat03 <- dat01[!(row.names(dat01) %in% drop_rows),]
 checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-# Still have a couple of repeated rows, somehow, so we will drop those
-drop_rows2 <- c(
-  55112, 58091, 64803, 72238, 75507, 77291, 79196, 96626, 103604, 116003, 
-  128419)
 
-dat03 <- dat03[!(row.names(dat03) %in% drop_rows2),]
-checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-saveRDS(dat03, file = paste0(dat_dir, "SGS_LTER_plantTracker_all_filtered.rds"))
+# Perform a left join to match Species in dat03 with species_code in sp_list
+dat04 <- dat03 %>%
+  left_join(sp_list %>%
+              select(species_code, species), by = c("Species" = "species_code")) %>%
+  mutate(Species = coalesce(species, Species)) %>%  # Update Species with species from sp_list
+  select(-species)  # Optionally drop the extra species column
 
+species_summary <- dat %>%
+  select(Species) %>% 
+  as.data.frame(.) %>% 
+  count(Species) %>%
+  rename(count = n) %>%
+  arrange(desc(count))
+
+sp_list <- sp_list %>%
+  left_join(species_summary, by = c("species" = "Species"))
+
+write.csv(row.names = F, sp_list, paste0(dat_dir, "species_list.csv"))
+
+saveRDS(dat04, file = paste0(dat_dir, "christensen21_quadrats_filtered.rds"))
+dat04 <- readRDS(file = paste0(dat_dir, "christensen21_quadrats_filtered.rds"))

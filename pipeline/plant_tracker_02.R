@@ -52,10 +52,7 @@ data <- {
     readRDS(file = rds_files[1])
   } else {
     # Fallback to the default file if no files matching the pattern are found
-    readRDS(file = paste0(dat_dir, '/', 
-                          strsplit(author_year, "_")[[1]][1],
-                          substr(author_year, nchar(author_year) - 1, nchar(author_year)),
-                          region_abb, '_quadrats_filtered.rds'))
+    readRDS(file = list.files(dat_dir, pattern = "all_filtered\\.rds$", full.names = TRUE)[1])
   }
 } %>%
   select(-any_of(c("type"))) %>%  # Remove the 'type' column

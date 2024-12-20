@@ -164,6 +164,7 @@ hist_t1 <-
   labs(x = 'Size at time t1') +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
+
 hist_sizes_log <- hist_t0 + hist_t1
 
 ggsave(paste0(result_dir, '/1.0_overall_hist_sizes_log.png'), 

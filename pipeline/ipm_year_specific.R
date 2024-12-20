@@ -103,9 +103,8 @@ surv_yr_pan_df <-
 survival <-
   ggplot(data   = surv_yr_pan_df, aes(x = logsize_t0, y = survives)) +
   geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +
-  geom_errorbar(aes(x = logsize_t0, 
-                    ymin = lwr,
-                    ymax = upr), width = 0.2 ) +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr), 
+                width = 0.25, linewidth = 0.1) +
   scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
   # split in panels
   facet_wrap(.~ transition, ncol = 4) +

@@ -63,12 +63,14 @@ sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'),
       . <- rename(., growthForm = form)
     }
     .
-  } %>%
+  } %>% 
   filter(
     if(tolower(gr_form) == "grass") {
-      tolower(growthForm) %in% c("grass", "c3", "c4", "shortgrass")  # If 'grass' is specified, include 'grass', 'c3', 'c4'
+      # If 'grass' is specified, include 'grass', 'c3', 'c4'
+      tolower(growthForm) %in% c("grass", "c3", "c4", "shortgrass")  
     } else {
-      tolower(growthForm) == tolower(gr_form)  # Otherwise, filter exactly by the specified growthForm
+      # Otherwise, filter exactly by the specified growthForm
+      tolower(growthForm) == tolower(gr_form)  
     }
   ) %>% 
   {

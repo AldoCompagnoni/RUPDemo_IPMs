@@ -38,10 +38,14 @@ R_dir      <- file.path(pub_dir, 'R',       sp_abb)
 data_dir   <- file.path(pub_dir, 'data',    sp_abb)
 result_dir <- file.path(pub_dir, 'results', sp_abb)
 
-#
-script_prefix <- str_c(str_extract(author_year, "^[^_]+"), 
-                       str_sub(str_extract(author_year, "_\\d+$"), -2, -1))
+# Define script prefix
+script_prefix <- str_c( str_extract(author_year, "^[^_]+"), 
+                        str_sub(str_extract(author_year, "_\\d+$"), -2, -1) )
 
+# anderson16 et al requires state identifier
+if( grepl('anderson16',script_prefix) ){
+  script_prefix <- str_c(script_prefix, region_abb )
+}
 
 # Plant tracker if its not already exists
 if (!file.exists(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv'))) {

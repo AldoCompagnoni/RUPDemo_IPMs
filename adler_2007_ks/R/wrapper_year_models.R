@@ -17,8 +17,8 @@ spp_codes_v <- quote_bare( ange, arlo, bocu, bogr,
 run_yearly_ipms <- function( spp_code_x ){
   print( spp_code_x )
   source( paste0(dir, spp_code_x, '/',
-                 'ipm_kansas_',spp_code_x,'_year.R') )
+                 'adler07_',spp_code_x,'_ipm_year_specific.R') )
 }
 
 # Run plant tracker for all species
-lapply( spp_codes_v[5], run_yearly_ipms )
+lapply( spp_codes_v, run_yearly_ipms )

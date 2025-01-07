@@ -18,7 +18,7 @@ spp_codes_v <- quote_bare( ange, arlo, bocu, bogr,
 run_mean_models <- function( spp_code_x ){
   print( spp_code_x )
   source( paste0(dir, spp_code_x, '/',
-                 'ipm_mean_',spp_code_x,'.R') )
+                 'adler07_',spp_code_x,'_ipm_mean.R') )
 }
 
 # Run plant tracker for all species

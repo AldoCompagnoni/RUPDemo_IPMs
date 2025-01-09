@@ -29,7 +29,7 @@ rm(list = ls())
 
 # Key variables ----------------------------------------------------------------
 # Define publication 
-author_year <- 'zachmann_2016'
+author_year <- 'chu_2013'
 # Define region abbreviation
 region_abb <- 'id'
 # Define species 

@@ -1,4 +1,4 @@
-# Populating padrino - IMP year specific - wrapper
+# Populating padrino - IMP year specific - pipeline
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni

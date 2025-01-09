@@ -31,7 +31,7 @@ rm(list = ls())
 # Define publication 
 author_year <- 'chu_2013'
 # Define region abbreviation
-region_abb <- 'id'
+region_abb <- 'co'
 # Define species 
 species <- 'Sitanion hystrix'
 

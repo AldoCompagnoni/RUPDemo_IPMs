@@ -1,13 +1,13 @@
-# Populating padrino - Zachmann 2016 Idaho - Hesperostipa comata
+# Populating padrino - Adler 2007 Kansas - Aristida longiseta
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.01.09
+# Date  : 2025.01.13
 
-# Publication: https://doi.org/10.1890/10-0404.1
+# Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
 
 
 # Comments ---------------------------------------------------------------------
@@ -23,26 +23,25 @@
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'zachmann_2016'
+author_year <- 'adler_2007'
 # Define region abbreviation
-region_abb  <- 'id'
+region_abb  <- 'ks'
 # Define species 
-species     <- 'Hesperostipa comata'
+species     <- 'Aristida longiseta'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnnnn19'
+ipm_id      <- 'nnnnn7'
 
 # IPM-Type: 'year_specific' or 'mean'?
 ipm_type    <- 'year_specific'
 
 
-
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (here Wikipedia)
-species_accepted <- gsub(" ", "_", species)
+species_accepted <- gsub(' ', '_', species)
 # The accepted genus
-tax_genus  <- 'Hesperostipa'
+tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family
 tax_family <- 'Poa'
 # The accepted order
@@ -68,7 +67,7 @@ angio_gymno   <- 'angio'
 
 # Publication information ------------------------------------------------------
 # The last names of each author on the manuscript, separated by a semicolon
-authors  <- 'Zachmann; Moffet; Adler'
+authors  <- 'Adler; Tyburczy; Laurenroth'
 # The abbreviated name of the journal that the model appears in. 
 #  This follows the BIOSIS format. 
 #  Exceptions are when the source is not a journal 
@@ -77,36 +76,36 @@ authors  <- 'Zachmann; Moffet; Adler'
 #  then include a link in the remark column
 journal  <- 'Ecology'
 #  The year the article was published
-pub_year <- '2016'
+pub_year <- '2007'
 # The DOI of the publication (NOT THE doi.org URL though!!)
-doi      <- '10.1890/10-0404.1'
+doi      <- '10.1890/0012-9658(2007)88[2673%3ALMQFKP]2.0.CO%3B2'
 # The last name of the corresponding author
-corresponding_author <- 'Zachmann'
+corresponding_author <- 'Adler'
 # The corresponding author’s email, along with the year of publication 
 #  in parentheses to denote how old (and possibly inaccessible) it is. 
 #  For example, this could levisc8@gmail.com (2020). 
 #  If you are able to find a more recent email address via Google, 
 #  then this can also be used (this isn’t necessarily expected though).
-email_year <- 'lzachmann@gmail.com (2024)'
+email_year <- 'peter.adler@usu.edu (2024)'
 # Any qualitative comments you may have on the model. 
 #  These can range from comments to accuracy of GPS coordinates to descriptions 
 #  of the different levels of a treatment that was applied
 remark   <- NA
 # The full APA style citation for the paper
-apa_citation <- 'Zachmann, L., Moffet, C., & Adler, P. (2010). Mapped quadrats in sagebrush steppe: long‐term data for analyzing demographic rates and plant–plant interactions: Ecological Archives E091‐243. Ecology, 91(11), 3427-3427..'
+apa_citation <- 'Adler, P. B., Tyburczy, W. R., & Lauenroth, W. K. (2007). LONG‐TERM MAPPED QUADRATS FROM KANSAS PRAIRIE DEMOGRAPHIC INFORMATION FOR HERBACEOUS PLANTS: Ecological Archives E088‐161. Ecology, 88(10), 2673-2673.'
 # If there is one, a link to the Electronic Supplementary Material that 
 #  contains further details/parameter values for the model
-demog_appendix_link <- 'https://figshare.com/collections/Mapped_quadrats_in_sagebrush_steppe_long-term_data_for_analyzing_demographic_rates_and_plant_plant_interactions/3303612'
+demog_appendix_link <- 'https://figshare.com/collections/LONG-TERM_MAPPED_QUADRATS_FROM_KANSAS_PRAIRIE_DEMOGRAPHIC_INFORMATION_FOR_HERBACEOUS_PLANTS/3299993'
 
 
 # Data collection information --------------------------------------------------
 # The year that demographic data collection began. Formatted YYYY (e.g. 1990)
-start_year  <- 1923
+start_year  <- 1932
 # The month of the year that demographic data collection began. 
 #  This is an integer between 1 and 12, where 1 corresponds to January
 start_month <- 6
 #  The final year of demographic data collection. Formatted YYYY
-end_year    <- 1957
+end_year    <- 1971
 # The month of the year that demographic data collection concluded
 end_month   <- 6
 # Indicates the time step (periodicity) for which the seasonal, annual, 
@@ -126,12 +125,12 @@ population_name <- NA
 number_populations <- NA
 # The decimal latitude of the population. 
 #  Use the dms_deg function from pdbDigitUtils to generate this
-lat         <- '44.2'
+lat         <- '38.8'
 # The decimal longitude of the population. 
 #  Use the dms_deg function from pdbDigitUtils to generate this
-lon         <- '-112.1'
+lon         <- '-99.3'
 # The altitude above/below sea level, in meters
-altitude    <- '1569'
+altitude    <- '462'
 # The ISO3 country code for the country in which the population is located. 
 country     <- 'USA'
 # The continent that the population is located on. 
@@ -140,7 +139,7 @@ country     <- 'USA'
 continent   <- 'n_america'
 # The biome code
 #  https://patrickbarks.shinyapps.io/biomes/
-ecoregion   <- 'DES'
+ecoregion   <- 'TGS'
 
 
 # Main code --------------------------------------------------------------------
@@ -166,5 +165,3 @@ plot(lambda(bg_ipm_pdb) ~ lam_mean_ipmr$years)
 
 # Testing the model with padrino
 test_model(pdb_test, id = ipm_id)
-
-

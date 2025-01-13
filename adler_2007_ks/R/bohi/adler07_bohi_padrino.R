@@ -31,7 +31,7 @@ species     <- 'Bouteloua hirsuta'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnnnn6'
+ipm_id      <- 'nnn006'
 
 # IPM-Type: 'year_specific' or 'mean'?
 ipm_type    <- 'year_specific'
@@ -43,7 +43,7 @@ species_accepted <- gsub(' ', '_', species)
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family
-tax_family <- 'Poa'
+tax_family <- 'Poaceae'
 # The accepted order
 tax_order  <- 'Poales' 
 # The accepted class

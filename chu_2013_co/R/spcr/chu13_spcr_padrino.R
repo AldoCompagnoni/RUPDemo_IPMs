@@ -31,7 +31,7 @@ species       <- 'Sporobolus cryptandrus'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnnnn12'
+ipm_id      <- 'nnn102'
 
 # IPM-Type: 'year_specicific' or 'mean'?
 ipm_type    <- 'mean'

@@ -31,7 +31,7 @@ species       <- 'Buchloe dactyloides'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnnnn11'
+ipm_id      <- 'nnn101'
 
 # IPM-Type: 'year_specicific' or 'mean'?
 ipm_type    <- 'mean'

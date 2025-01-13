@@ -5,7 +5,7 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.01.09
+# Date  : 2025.01.13
 
 # Publication: https://doi.org/10.1890/10-0404.1
 
@@ -37,14 +37,13 @@ ipm_id      <- 'nnnnn19'
 ipm_type    <- 'year_specific'
 
 
-
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (here Wikipedia)
 species_accepted <- gsub(" ", "_", species)
 # The accepted genus
-tax_genus  <- 'Hesperostipa'
+tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family
-tax_family <- 'Poa'
+tax_family <- 'Poaceae'
 # The accepted order
 tax_order  <- 'Poales' 
 # The accepted class
@@ -166,5 +165,4 @@ plot(lambda(bg_ipm_pdb) ~ lam_mean_ipmr$years)
 
 # Testing the model with padrino
 test_model(pdb_test, id = ipm_id)
-
 

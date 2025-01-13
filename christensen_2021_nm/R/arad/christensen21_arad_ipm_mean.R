@@ -33,7 +33,7 @@ author_year <- 'christensen_2021'
 # Define region abbreviation
 region_abb  <- 'nm'
 # Define species 
-species <- 'Aristida adscensionis '
+species <- 'Aristida adscensionis'
 
 
 # CHECK -- Adaptions -----------------------------------------------------------

@@ -300,7 +300,10 @@ x         <- fitted(gr_mod_mean)
 # Squared residuals
 y         <- resid(gr_mod_mean)^2  
 # Non-linear model for variance
-gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))  
+gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0),
+                 control = nls.control(maxiter = 1000, 
+                                       tol = 1e-6, 
+                                       warnOnly = TRUE) )  
 
 # Survival
 # Fit models to predict survival based on size at time t0

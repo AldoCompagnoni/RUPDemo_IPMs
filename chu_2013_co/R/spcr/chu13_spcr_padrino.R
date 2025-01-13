@@ -144,7 +144,7 @@ ecoregion   <- 'TGS'
 
 
 # Main code --------------------------------------------------------------------
-source('pipeline/padrino_mean.R')
+source('pipeline/padrino_ipm_type.R')
 
 
 # Parameters -------------------------------------------------------------------

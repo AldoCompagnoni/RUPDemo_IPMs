@@ -44,7 +44,7 @@ quadInv_list <- split(quad_inv$year, quad_inv$quadrat)
 
 
 # Set the path to your main folder
-main_folder <- "christensen_2021_nm/data/quadrat_data/Jornada_shapefiles//"
+main_folder <- "christensen_2021_nm/data/quadrat_data/Jornada_shapefiles/"
 
 # List all subfolders within the main folder
 folder_names <- list.dirs(main_folder, full.names = FALSE, recursive = FALSE)
@@ -200,7 +200,7 @@ species_summary <- dat %>%
   arrange(desc(count))
 
 sp_list <- sp_list %>%
-  left_join(species_summary, by = c("species" = "Species"))
+  left_join(species_summary, by = c("species_code" = "Species"))
 
 write.csv(row.names = F, sp_list, paste0(dat_dir, "species_list.csv"))
 

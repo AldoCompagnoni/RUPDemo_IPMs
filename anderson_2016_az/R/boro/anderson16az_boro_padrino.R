@@ -130,7 +130,7 @@ lat         <- '31.8'
 #  Use the dms_deg function from pdbDigitUtils to generate this
 lon         <- '-110.8'
 # The altitude above/below sea level, in meters
-altitude    <- '4100'
+altitude    <- '1250'
 # The ISO3 country code for the country in which the population is located. 
 country     <- 'USA'
 # The continent that the population is located on. 

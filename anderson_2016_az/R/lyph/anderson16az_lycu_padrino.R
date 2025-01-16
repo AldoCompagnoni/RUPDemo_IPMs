@@ -1,4 +1,4 @@
-# Populating padrino - Anderson 2016 Arizona - Heteropogon contortus
+# Populating padrino - Anderson 2016 Arizona - Lycurus phleoides
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -27,11 +27,11 @@ author_year <- 'anderson_2016'
 # Define region abbreviation
 region_abb  <- 'az'
 # Define species 
-species     <- 'Heteropogon contortus'
+species     <- 'Lycurus phleoides'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnn303'
+ipm_id      <- 'nnn305'
 
 # IPM-Type: 'year_specific' or 'mean'?
 ipm_type    <- 'year_specific'
@@ -39,7 +39,7 @@ ipm_type    <- 'year_specific'
 
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (here Wikipedia)
-species_accepted <- gsub(' ', '_', species)
+species_accepted <- 'Muhlenbergia alopecuroides'
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family

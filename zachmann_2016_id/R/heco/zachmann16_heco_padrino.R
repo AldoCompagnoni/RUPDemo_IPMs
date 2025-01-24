@@ -31,7 +31,7 @@ species     <- 'Hesperostipa comata'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnnnn19'
+ipm_id      <- 'nnn203'
 
 # IPM-Type: 'year_specific' or 'mean'?
 ipm_type    <- 'year_specific'

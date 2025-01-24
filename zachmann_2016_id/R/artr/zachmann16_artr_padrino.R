@@ -1,11 +1,11 @@
-# Populating padrino - Zachmann 2016 Idaho - Poa secunda
+# Populating padrino - Zachmann 2016 Idaho - Artemisia tripartita
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.01.13
+# Date  : 2025.01.24
 
 # Publication: https://doi.org/10.1890/10-0404.1
 
@@ -27,11 +27,11 @@ author_year <- 'zachmann_2016'
 # Define region abbreviation
 region_abb  <- 'id'
 # Define species 
-species     <- 'Poa secunda'
+species     <- 'Artemisia tripartita'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnn202'
+ipm_id      <- 'nnn204'
 
 # IPM-Type: 'year_specific' or 'mean'?
 ipm_type    <- 'year_specific'
@@ -165,3 +165,4 @@ plot(lambda(bg_ipm_pdb) ~ lam_mean_ipmr$years)
 
 # Testing the model with padrino
 test_model(pdb_test, id = ipm_id)
+

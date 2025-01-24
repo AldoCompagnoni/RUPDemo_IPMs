@@ -1,5 +1,6 @@
 library(sf)
 library(dplyr)
+library(tidyverse)
 
 
 base_dir <- "C:/code/RUPDemo_IPMs/moore_2021_az/data/Species_Shapefile_Extractions/"
@@ -30,16 +31,30 @@ plot(as.factor(file_info_df$quadrat), file_info_df$year)
 
 
 file_info_df <- file_info_df %>% 
-  mutate(year = as.factor(year))
+  mutate(year = str_sub(as.factor(year))) %>%
+  rename(Year = year) %>% 
+  mutate(Year = as.numeric(str_sub(Year, start = -2))) %>%
+  mutate(quadrat = gsub("Quadrat_", "", quadrat),
+         quadrat = gsub("_bar_", " / ", quadrat))
 
 # Get a list of unique quadrats for each year
 unique_quadrats_by_year <- file_info_df %>%
-  group_by(year) %>%
+  group_by(Year) %>%
   summarise(unique_quadrats = list(unique(quadrat))) %>%
-  arrange(year)
+  arrange(Year)
+
+# Get a list of unique year for each quadrats
+unique_quadrats_by_plot <- file_info_df %>%
+  group_by(quadrat) %>%
+  summarise(Year = list(unique(Year))) %>%
+  arrange(quadrat)
+
+
 
 # Convert to a list
-unique_quadrats_list <- setNames(unique_quadrats_by_year$unique_quadrats, unique_quadrats_by_year$year)
+unique_quadrats_list <- setNames(unique_quadrats_by_year$unique_quadrats, unique_quadrats_by_year$Year)
+unique_year_list     <- setNames(unique_quadrats_by_plot$Year           , unique_quadrats_by_plot$quadrat)
+inv_sgs <- unique_year_list
 
 # Print the result
 print(unique_quadrats_list)
@@ -71,3 +86,16 @@ ggplot(plot_data, aes(x = year, y = quadrat, color = factor(match))) +
         axis.title = element_blank(),  # Remove axis titles
         legend.position = "none") +  # Remove the legend
   labs(title = "Presence of Quadrats by Year")
+
+
+
+
+#### ----------
+
+
+
+
+
+
+
+

@@ -128,40 +128,63 @@ unique_quadrats_by_plot <- file_info_df %>%
   summarise(Year = list(unique(Year))) %>%
   arrange(quadrat)
 
-unique_year_list     <- setNames(unique_quadrats_by_plot$Year           , unique_quadrats_by_plot$quadrat)
+unique_year_list     <- setNames(unique_quadrats_by_plot$Year, 
+                                 unique_quadrats_by_plot$quadrat)
 inv_sgs <- unique_year_list
 
 
 
-# From geo-data ----------------------------------------------------------------
+# Data from geo-data -----------------------------------------------------------
 wdName <- paste0(base_dir, "data/Quadrat_Spatial_Data/Combined_by_Site.gdb" )
 "moore_2021_az/data/Quadrat_Spatial_Data"
 cover_all <- sf::st_read( dsn = wdName,
                           layer = "Cover_All" ) %>% 
   rename(geometry = Shape,
-         Species  = species,
-         Quad = Quadrat) %>% 
-  mutate(Site = 'AZ',
-         type = 'polygon',
-         Year = as.numeric(str_sub(Year, start = -2))) %>%
-  select(Species, Site, Quad, Year, type, geometry)
+         species  = species,
+         Quadrat = Quadrat)
 
 density_all <- sf::st_read( dsn = wdName,
                             layer = "Density_All" ) %>% 
   rename(geometry = Shape,
-         Species  = species,
-         Quad = Quadrat) %>% 
-  mutate(Site = 'AZ',
-         type = 'point',
-         Year = as.numeric(str_sub(Year, start = -2))) %>%
-  select(Species, Site, Quad, Year, type, geometry)
-
-# Combine the polygons with the points
-dat <- bind_rows(cover_all, density_all)
+         species  = species,
+         Quadrat = Quadrat) 
 
 
+# Species list -----------------------------------------------------------------
 
 
+dens <- st_drop_geometry( density_all )
+cov <- st_drop_geometry( cover_all )
+
+colnames( dens ) <- c( "Id", "species", "seedling", "x", "y", "Site", "SPCODE", 
+                       "Quadrat", "Year", "Type", "IsEmpty", "Shape_Length", 
+                       "Shape_Area" )
+
+cov <- cov[,c(1,2,4:6,8:15)]
+
+all <- rbind( dens, cov )
+
+
+# Drop instances which we will not consider for modeling
+# e.g. taxa which were not identified to the species level
+
+all <- all[-grep( " sp.", all$species ),]
+all <- all[-grep( "Unknown", all$species ),]
+all <- all[-which( all$species %in% c( "No Density Species Observed",
+                                       "No Cover Species Observed",
+                                       "Nama dichotoma" ) ),]
+
+
+# Create summary table
+## For each species, summarize the total number of quads, the number of years it
+## was observed, and the total instances of observation
+
+summary <- all %>% summarise( quads = length( unique( Quadrat ) ),
+                              years = length( unique( Year ) ),
+                              counts = n(),
+                              .by = "species" ) %>%
+  arrange(desc(indivs))
+  
 
 
 # Save the output file so that it doesn't need to be recreated ever again

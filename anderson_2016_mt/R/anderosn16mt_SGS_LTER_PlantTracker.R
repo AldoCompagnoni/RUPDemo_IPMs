@@ -6,18 +6,21 @@
 # rate models for the construction of integral projection models (IPMs) of the perennial grasses.
 
 
-
+# Packages ---------------------------------------------------------------------
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 library(tidyverse)
 
+
+# Specifications ---------------------------------------------------------------
+# Directories
 base_dir <- ('anderson_2016_mt')
 dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
 shp_dir <- paste(base_dir, 
                  "/data/quadrat_data/shapefiles/", sep="")
 
-# setwd(dat_dir)
 
+# Data -------------------------------------------------------------------------
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.

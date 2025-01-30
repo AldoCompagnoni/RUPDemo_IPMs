@@ -156,11 +156,14 @@ density_all <- sf::st_read( dsn = wdName,
 dens <- st_drop_geometry( density_all )
 cov <- st_drop_geometry( cover_all )
 
-colnames( dens ) <- c( "Id", "species", "seedling", "x", "y", "Site", "SPCODE", 
-                       "Quadrat", "Year", "Type", "IsEmpty", "Shape_Length", 
-                       "Shape_Area" )
+colnames( dens ) <- c( "id", "species", "seedling", "x", "y", "site", "spcode", 
+                       "quadrat", "year", "type", "is_empty", "shape_length", 
+                       "shape_area" )
 
 cov <- cov[,c(1,2,4:6,8:15)]
+colnames( cov ) <- c( "id", "species", "seedling", "x", "y", "site", "spcode", 
+                      "quadrat", "year", "type", "is_empty", "shape_length", 
+                      "shape_area" )
 
 all <- rbind( dens, cov )
 
@@ -179,12 +182,18 @@ all <- all[-which( all$species %in% c( "No Density Species Observed",
 ## For each species, summarize the total number of quads, the number of years it
 ## was observed, and the total instances of observation
 
-summary <- all %>% summarise( quads = length( unique( Quadrat ) ),
-                              years = length( unique( Year ) ),
-                              counts = n(),
-                              .by = "species" ) %>%
-  arrange(desc(indivs))
-  
+summary <- all %>% 
+  group_by(species, type) %>% 
+  summarise( quads = length( unique( quadrat ) ),
+                              years = length( unique( year ) ),
+                              counts = n()) %>%
+  arrange(desc(counts))
+
+write.csv(row.names = F, summary, 
+          paste0(dat_dir, "quadrat_data/moore21_species_list.csv"))
+saveRDS(inv_sgs, 
+        file = paste0(dat_dir, "quadrat_data/moore21_quadrat_inventory.RData"))
+
 
 
 # Save the output file so that it doesn't need to be recreated ever again

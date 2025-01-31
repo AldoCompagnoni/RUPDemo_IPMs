@@ -64,5 +64,11 @@ run_mean_models <- function( ii ){
 }
 
 # Run plant tracker for all species
-run_mean_models( 17 )
-# lapply( 31:33, run_mean_models )
+
+# error
+run_mean_models( 24 )
+# error
+run_mean_models( 20 )
+# error
+run_mean_models( 21 )
+lapply( 1:33, run_mean_models )

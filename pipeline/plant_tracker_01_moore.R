@@ -55,7 +55,7 @@ sp_list <- read_delim(file.path(dat_dir,
                       delim = delimiter, escape_double = FALSE, 
                       trim_ws = TRUE) %>% 
   as.data.frame() %>% 
-  filter(type == m_type) %>% 
+  filter(Type == m_type) %>% 
   arrange(desc(counts))
 
 

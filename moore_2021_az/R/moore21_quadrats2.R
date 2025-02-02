@@ -72,7 +72,7 @@ shpFiles <- list.files(
   recursive = TRUE
 )
 
-shpFiles[1]
+shpFiles[c(1, 100, 1000, 10000)]
 
 
 # ---------------------------------------------------------

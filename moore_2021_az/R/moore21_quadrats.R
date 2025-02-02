@@ -15,6 +15,21 @@ base_dir <- ('moore_2021_az/')
 dat_dir <- paste(base_dir, "data/", sep="")
 shp_dir <- paste(base_dir,  "data/Species_Shapefile_Extractions/", sep="")
 
+
+# Define publication 
+author_year <- 'moore_2021'
+# Define region abbreviation
+region_abb  <- 'az'
+
+
+# Directories
+dir_publ        <- paste0(author_year, '_', region_abb, '/')
+dir_data        <- paste0(dir_publ, "data/")
+dir_data_ancill <- paste0(dir_data, 'Ancillary_Data_CSVs/')
+dir_data_quad   <- paste0(dir_data, 'quadrat_data/')
+dir_shp         <- paste0(dir_publ,  "data/Species_Shapefile_Extractions/")
+
+
 # setwd(dat_dir)
 
 # # Read in species list, species name changes, and subset species list to perennial grasses
@@ -118,20 +133,28 @@ file_info_df <- as.data.frame(file_info_df)
 file_info_df <- file_info_df %>% 
   mutate(year = str_sub(as.factor(year))) %>%
   rename(Year = year) %>% 
-  mutate(Year = as.numeric(str_sub(Year, start = -2))) %>%
+  mutate(Year = as.numeric(Year)) %>%
   mutate(quadrat = gsub("Quadrat_", "", quadrat),
          quadrat = gsub("_bar_", " / ", quadrat))
 
 
-unique_quadrats_by_plot <- file_info_df %>%
+unique_quadrats_by_plot <- bind_rows(
+  tibble(
+    quadrat = "year",  # New quadrat
+    Year = list(unique(file_info_df$Year))),
+  file_info_df %>%
   group_by(quadrat) %>%
   summarise(Year = list(unique(Year))) %>%
   arrange(quadrat)
+  )
 
 unique_year_list     <- setNames(unique_quadrats_by_plot$Year, 
                                  unique_quadrats_by_plot$quadrat)
 inv_sgs <- unique_year_list
 
+
+saveRDS(inv_sgs, 
+        file = paste0(dir_data_quad, "moore21_quadrat_inventory.RData"))
 
 
 # Data from geo-data -----------------------------------------------------------
@@ -151,76 +174,115 @@ density_all <- sf::st_read( dsn = wdName,
 
 
 # Species list -----------------------------------------------------------------
+names(cover_all)
+summary(cover_all$area)
+hist(log(cover_all$Shape_Area))
 
 
-dens <- st_drop_geometry( density_all )
-cov <- st_drop_geometry( cover_all )
-
-colnames( dens ) <- c( "id", "species", "seedling", "x", "y", "site", "spcode", 
-                       "quadrat", "year", "type", "is_empty", "shape_length", 
-                       "shape_area" )
-
-cov <- cov[,c(1,2,4:6,8:15)]
-colnames( cov ) <- c( "id", "species", "seedling", "x", "y", "site", "spcode", 
-                      "quadrat", "year", "type", "is_empty", "shape_length", 
-                      "shape_area" )
-
-all <- rbind( dens, cov )
+names(density_all)
+density_all1 <- density_all %>% 
+  mutate(area = NA,
+         N_Flower = NA) %>%
+  rename(x = coords_x1,
+         y = coords_x2)
 
 
-# Drop instances which we will not consider for modeling
-# e.g. taxa which were not identified to the species level
+density_all2 <- st_centroid(density_all1) %>%  
+  st_buffer(dist = 0.0003120444)
 
-all <- all[-grep( " sp.", all$species ),]
-all <- all[-grep( "Unknown", all$species ),]
-all <- all[-which( all$species %in% c( "No Density Species Observed",
-                                       "No Cover Species Observed",
-                                       "Nama dichotoma" ) ),]
+names(density_all2)
+names(cover_all)
+df0 <- rbind(density_all2, cover_all)
+
+names(df0)
+df0 <- df0 %>% 
+  select(-c('area')) %>% 
+  mutate(Year = as.numeric(Year))
+  
+
+
+# class(dplyr::select(cover_all,geometry))
+# df<- rbind(dplyr::select(density_all,geometry), 
+#            dplyr::select(cover_all,geometry))
+# class(df)
+# 
+# dens <- st_drop_geometry( density_all )
+# cov <- st_drop_geometry( cover_all )
+# 
+# colnames( dens ) <- c( "id", "species", "seedling", "x", "y", "site", "spcode", 
+#                        "quadrat", "year", "type", "is_empty", "shape_length", 
+#                        "shape_area" )
+# 
+# cov <- cov[,c(1,2,4:6,8:15)]
+# colnames( cov ) <- c( "id", "species", "seedling", "x", "y", "site", "spcode", 
+#                       "quadrat", "year", "type", "is_empty", "shape_length", 
+#                       "shape_area" )
+# 
+# all <- rbind( dens, cov )
+# 
+# df3 <- st_set_geometry(all, df)
+# 
+# sf::st_join(df, all)
+# class(df1)
+
+
+
+
+  
+saveRDS(df0, paste0(dat_dir, "moore21_quadrats_full.rds"))
+
+
+# # Drop instances which we will not consider for modeling
+# # e.g. taxa which were not identified to the species level
+# 
+# all <- all[-grep( " sp.", all$species ),]
+# all <- all[-grep( "Unknown", all$species ),]
+# all <- all[-which( all$species %in% c( "No Density Species Observed",
+#                                        "No Cover Species Observed",
+#                                        "Nama dichotoma" ) ),]
 
 
 # Create summary table
 ## For each species, summarize the total number of quads, the number of years it
 ## was observed, and the total instances of observation
 
-summary <- all %>% 
-  group_by(species, type) %>% 
-  summarise( quads = length( unique( quadrat ) ),
-                              years = length( unique( year ) ),
+summary <- st_drop_geometry(df0) %>% 
+  group_by(species, Type) %>% 
+  summarise( quads = length( unique( Quadrat ) ),
+                              years = length( unique( Year ) ),
                               counts = n()) %>%
   arrange(desc(counts))
 
 write.csv(row.names = F, summary, 
-          paste0(dat_dir, "quadrat_data/moore21_species_list.csv"))
-saveRDS(inv_sgs, 
-        file = paste0(dat_dir, "quadrat_data/moore21_quadrat_inventory.RData"))
+          paste0(dir_data_quad, "moore21_species_list.csv"))
 
 
 
-# Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat, paste0(dat_dir, "moore21_quadrats_full.rds"))
-dat <- readRDS(paste0(dat_dir,"moore21_quadrats_full.rds"))
+# # Save the output file so that it doesn't need to be recreated ever again
+# saveRDS(dat, paste0(dat_dir, "moore21_quadrats_full.rds"))
+# dat <- readRDS(paste0(dat_dir,"moore21_quadrats_full.rds"))
 
 # Check the inv and dat arguments
-checkDat(dat, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(df0, inv_sgs, species = "species", site = "Site", quad = "Quadrat", year = "Year", geometry = "geometry")
 # Some rows had invalid geometry, so we fix the geometries
 invalid_geom <- c(
-  3146, 8319, 18289, 19786, 27563, 34043, 35209, 49599, 61568, 65631, 65665, 
-  65694, 70818, 70909, 70959, 71089, 71180, 73612, 74764, 79341, 80852, 81541, 
-  81618, 81649, 81670, 84806, 89715, 90888, 92893, 94915, 95587, 97439, 102470, 
-  105213, 105230, 110909, 114020, 114285, 116927, 116928, 116933, 116943, 
-  116950, 116953, 116954, 116971)
-dat01 <- dat
+  128863, 134036, 144006, 145503, 153280, 159760, 160926, 175316, 187285, 191348, 191382, 191411, 196535, 196626, 196676, 196806, 196897, 199329, 200481, 205058, 206569, 207258, 207335, 207366, 207387, 210523, 215432, 216605, 218610, 220632, 221304, 223156, 228187, 230930, 230947, 236626, 239737, 240002, 242644, 242645, 242650, 242660, 242667, 242670, 242671, 242688)
+dat01 <- df0
 for(i in 1:length(invalid_geom)){
-  dat01[invalid_geom[i],6] <- st_make_valid(dat01[invalid_geom[i],6])
+  dat01[invalid_geom[i],15] <- st_make_valid(dat01[invalid_geom[i],15])
 }
 
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = "species", site = "Site", quad = "Quadrat", year = "Year", geometry = "geometry")
 # Still have a couple of repeated rows, somehow, so we will drop those
 drop_rows <- c(
-  132536, 160880, 200079, 200081, 200083, 200085, 200087, 200089, 200091)
+  8684, 37028, 76227, 76229, 76231, 76233, 76235, 76237, 76239)
 
 dat02 <- dat01[!(row.names(dat01) %in% drop_rows),]
-checkDat(dat02, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat02, inv_sgs, species = "species", site = "Site", quad = "Quadrat", year = "Year", geometry = "geometry")
 
-saveRDS(dat02, file = paste0(dat_dir, "moore21_quadrats_filtered.rds"))
+
+
+# FIX----------------------------------------------------------------------------
+
+saveRDS(dat02, file = paste0(dir_data_quad, "moore21_quadrats_full.rds"))
 dat02 <- readRDS(file = paste0(dat_dir, "moore21_quadrats_filtered.rds"))

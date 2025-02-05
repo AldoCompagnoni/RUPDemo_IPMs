@@ -1,13 +1,13 @@
-# IPM mean - Moore 2021 Arizona - Poa compressa
+# IPM mean - Moore 2021 Arizona - Carex geophila
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.01.30
+# Date  : 2025.02.05
 
-# Publication: https://doi.org/10.1002/ecy.3661
+# Publication: https://doi.org/10.1002/ecy.3530
 
 # Read in and clean the data
 #  explore the overall-years rates
@@ -33,7 +33,7 @@ author_year <- 'moore_2021'
 # Define region abbreviation
 region_abb  <- 'az'
 # Define species 
-species <- 'Poa compressa'
+species <- 'Carex geophila'
 
 
 # CHECK -- Adaptions -----------------------------------------------------------

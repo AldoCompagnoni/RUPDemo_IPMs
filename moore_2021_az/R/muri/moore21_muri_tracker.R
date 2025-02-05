@@ -25,7 +25,7 @@ source('pipeline/plant_tracker_01_moore.R')
 
 # Select the x_th species (target species)
 head(sp_list, 20)
-target_spec <- sp_list[16,]
+target_spec <- sp_list[17,]
 
 source('pipeline/plant_tracker_02_moore.R')
 
@@ -37,3 +37,4 @@ dat_target_spec
 # Buffer size - regular and genet
 st_bbox(dat_target_spec)
 buff
+

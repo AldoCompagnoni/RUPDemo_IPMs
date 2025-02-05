@@ -1,4 +1,4 @@
-# IPM mean - Moore 2021 Arizona - Poa compressa
+# IPM mean - Moore 2021 Arizona - Elymus elymoides
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -7,7 +7,7 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2024.01.30
 
-# Publication: https://doi.org/10.1002/ecy.3661
+# Publication: https://doi.org/10.1002/ecy.3530
 
 # Read in and clean the data
 #  explore the overall-years rates
@@ -33,7 +33,7 @@ author_year <- 'moore_2021'
 # Define region abbreviation
 region_abb  <- 'az'
 # Define species 
-species <- 'Poa compressa'
+species <- 'Elymus elymoides'
 
 
 # CHECK -- Adaptions -----------------------------------------------------------

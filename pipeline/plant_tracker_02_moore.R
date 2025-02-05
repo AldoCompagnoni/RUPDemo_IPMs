@@ -59,29 +59,36 @@ data <- {
     readRDS(file = list.files(dat_dir, pattern = "all_filtered\\.rds$", full.names = TRUE)[1])
   }
   
-} %>%
-  # Remove the 'type' column
-  select(-any_of(c("type"))) %>%  
-  # Rename columns to a standardized format
-  setNames(quote_bare(Species, Site, Quad, Year, geometry))
+} 
 
 
 # Subset data for the target species
 dat_target_spec <- data %>% 
-  subset( Species %in% target_spec$species ) %>% 
+  subset( species %in% target_spec$species ) %>% 
   # Exclude certain samples
   filter(
     if (exists("mod_plot") && length(mod_plot) > 0) !(Quad %in% mod_plot) else TRUE
   )
 
 # set the buffer to 0.05 or 5 depending on the unit of measure used in GIS file
-buff    <- if_else(st_bbox(dat_target_spec)[3] < 1.1, 0.05, 5)
+buff    <- 0.05
 
 # Forbs are not "clonal"; we assume non-forbs are clonal.
 clonal  <- if_else(m_type == 'Density', F, T)
 
+dat_target_spec %>% 
+  select('species', 'Quadrat', 'Year', 'geometry') %>% 
+  rename(Species = species, 
+         Quad = Quadrat) %>% 
+  mutate(Site = 'az')
+
 # Prepare data for the trackSpp function
-datTrackSpp <- trackSpp(dat_target_spec, inv,
+datTrackSpp <- trackSpp(dat_target_spec %>% 
+                          select('species', 'Quadrat', 'Year', 'geometry') %>% 
+                          rename(Species = species, 
+                                 Quad = Quadrat) %>% 
+                          mutate(Site = 'az'),
+                        inv,
                         # Dormancy flag
                         dorm         = 1,
                         # Buffer size

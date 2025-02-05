@@ -179,6 +179,31 @@ summary(cover_all$area)
 hist(log(cover_all$Shape_Area))
 
 
+# # Update geometry for those with Shape_Area smaller than 2.5 * 10^-6
+# cover_all_updated <- cover_all
+# # Apply the geometry transformation for features with Shape_Area < 2.5e-6
+# for (i in 1:nrow(cover_all)) {
+#   if (cover_all$Shape_Area[i] < 2.5e-6) {
+#     cover_all_updated$geometry[i] <- st_buffer(st_centroid(cover_all$geometry[i]), dist = 0.001)
+#   }
+# }
+
+
+
+# Subset the data where Shape_Area < 2.5e-6 and Shape_Area > 0
+subset_to_update <- cover_all[cover_all$Shape_Area < 2.5e-6 & cover_all$Shape_Area > 0, ]
+
+# Apply centroid and buffer transformations to the subset
+subset_to_update <- st_buffer(st_centroid(subset_to_update), dist = 0.001)
+
+# Remove the updated subset from the original data
+cover_all_remaining <- cover_all[cover_all$Shape_Area >= 2.5e-6 | cover_all$Shape_Area == 0, ]
+
+# Combine the updated subset with the remaining original data
+cover_all_updated <- rbind(cover_all_remaining, subset_to_update)
+
+
+
 names(density_all)
 density_all1 <- density_all %>% 
   mutate(area = NA,
@@ -188,11 +213,14 @@ density_all1 <- density_all %>%
 
 
 density_all2 <- st_centroid(density_all1) %>%  
-  st_buffer(dist = 0.0003120444)
+#  st_buffer(dist = 0.0003120444) # what we decided with aspen
+  st_buffer(dist = 0.001) # this gives us the lowest in the graphs 
+ # which is 3.14*10^-6 m2 -- log --> ~ -12
+
 
 names(density_all2)
 names(cover_all)
-df0 <- rbind(density_all2, cover_all)
+df0 <- rbind(density_all2, cover_all_updated)
 
 names(df0)
 df0 <- df0 %>% 
@@ -266,7 +294,7 @@ write.csv(row.names = F, summary,
 checkDat(df0, inv_sgs, species = "species", site = "Site", quad = "Quadrat", year = "Year", geometry = "geometry")
 # Some rows had invalid geometry, so we fix the geometries
 invalid_geom <- c(
-  128863, 134036, 144006, 145503, 153280, 159760, 160926, 175316, 187285, 191348, 191382, 191411, 196535, 196626, 196676, 196806, 196897, 199329, 200481, 205058, 206569, 207258, 207335, 207366, 207387, 210523, 215432, 216605, 218610, 220632, 221304, 223156, 228187, 230930, 230947, 236626, 239737, 240002, 242644, 242645, 242650, 242660, 242667, 242670, 242671, 242688)
+  128861, 134027, 143973, 145470, 153222, 159612, 160762, 175001, 186821, 190840, 190874, 190903, 196026, 196117, 196167, 196297, 196388, 198730, 199882, 204361, 205862, 206551, 206628, 206659, 206680, 209765, 214580, 215726, 217726, 219736, 220399, 222227, 227217, 229959, 229976, 235643, 238753, 239018, 241560, 241561, 241566, 241576, 241583, 241586, 241587, 241604)
 dat01 <- df0
 for(i in 1:length(invalid_geom)){
   dat01[invalid_geom[i],15] <- st_make_valid(dat01[invalid_geom[i],15])
@@ -283,6 +311,6 @@ checkDat(dat02, inv_sgs, species = "species", site = "Site", quad = "Quadrat", y
 
 
 # FIX----------------------------------------------------------------------------
-
-saveRDS(dat02, file = paste0(dir_data_quad, "moore21_quadrats_full.rds"))
-dat02 <- readRDS(file = paste0(dat_dir, "moore21_quadrats_filtered.rds"))
+# "moore_2021_az/data/quadrat_data/moore21_quadrats_filtered.rds"
+saveRDS(dat02, file = paste0(dir_data_quad, "moore21_quadrats_filtered.rds"))
+dat02 <- readRDS(file = paste0(dir_data_quad, "moore21_quadrats_filtered.rds"))

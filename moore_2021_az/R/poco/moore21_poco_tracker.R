@@ -25,7 +25,7 @@ source('pipeline/plant_tracker_01_moore.R')
 
 # Select the x_th species (target species)
 head(sp_list, 20)
-target_spec <- sp_list[10,]
+target_spec <- sp_list[11,]
 
 source('pipeline/plant_tracker_02_moore.R')
 

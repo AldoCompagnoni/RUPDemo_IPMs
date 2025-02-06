@@ -158,7 +158,7 @@ pdb
 
 
 # Run IPM with padrino --------------------------------------------------------- 
-# Deterministic lambda, year specific
+# Deterministic lambda
 bg_ipm_pdb
 lambda(bg_ipm_pdb)
 lam_mean_ipmr

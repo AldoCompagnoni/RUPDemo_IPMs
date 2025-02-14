@@ -1,4 +1,3 @@
-# starting anderson_2016_mt/R/pasm/ipm_mean_pasm.R
 # IPM for Anderson 2016; Montana; Pascopyrum smithii
 
 
@@ -13,7 +12,7 @@
 # Setting the stage ------------------------------------------------------------
 
 # Clear the workspace by removing all objects in the global environment
-# rm(list = ls()) 
+rm(list = ls()) 
 # Set a random seed for reproducibility of results
 set.seed(100)
 # Ensure strings are treated as characters rather than factors
@@ -43,7 +42,7 @@ pas_smi  <- tolower(
 ## Read and clean the species data
 
 getwd()
-df <- read.csv("data/mt_pasm.csv", header = TRUE) %>% 
+df <- read.csv("anderson_2016_mt/data/mt_pasm.csv", header = TRUE) %>% 
   filter(Species == species) %>%
   select(-c(Suspect, nearEdge, Site)) %>%
   mutate(across(c(Quad), as.factor)) %>%
@@ -79,7 +78,7 @@ inv_plot_per_year
 # Save the inventory plot to a file
 
 
-ggsave(paste0("results/inv_plot_per_year.png"),  
+ggsave(paste0("anderson_2016_mt/results/inv_plot_per_year.png"),  
        plot = inv_plot_per_year,
        width = 6, height = 4, dpi = 150)
 
@@ -131,10 +130,10 @@ recr_df <- left_join(cover_df, recr_df)
 #if (!dir.exists(paste0("anderson_2016_mt/data/", pas_smi))) {
   #dir.create(paste0("anderson_2016_mt/data/", pas_smi))}
 
-write.csv(df,      paste0("data/pas_smi_data_df.csv"))
-write.csv(surv_df, paste0("data/pas_smi_survival_df.csv"))
-write.csv(grow_df, paste0("data/pas_smi_growth_df.csv"))
-write.csv(recr_df, paste0("data/pas_smi_recruitment_df.csv"))
+write.csv(df,      paste0("anderson_2016_mt/data/pasm_data_df.csv"))
+write.csv(surv_df, paste0("anderson_2016_mt/data/passm_survival_df.csv"))
+write.csv(grow_df, paste0("anderson_2016_mt/data/pasm_growth_df.csv"))
+write.csv(recr_df, paste0("anderson_2016_mt/data/pasm_recruitment_df.csv"))
 
 # Plotting the data --------------------------------------------------------
 # Create histograms for log-transformed sizes at t0 and t1
@@ -152,7 +151,7 @@ hist_t1 <-
   theme(plot.title = element_text(hjust = 0.5))
 hist_sizes_log <- hist_t0 + hist_t1
 
-ggsave(paste0("results/overall_hist_sizes_log.png"), 
+ggsave(paste0("anderson_2016_mt/results/overall_hist_sizes_log.png"), 
        plot = hist_sizes_log, 
        width = 8, height = 3, units = "in", dpi = 150)
 
@@ -194,7 +193,7 @@ surv_overall <-
   
  
 # Save the survival plot to a file
-ggsave(paste0("results/overall_surv.png"), 
+ggsave(paste0("anderson_2016_mt/results/overall_surv.png"), 
        plot = surv_overall, 
        width = 4, height = 3, units = "in", dpi = 150)
 
@@ -209,7 +208,7 @@ gr_overall <-
   labs(x = expression('log(size) ' [t0]),
        y = expression('log(size)  '[t1]))
 
-ggsave(paste0("results/overall_gr.png"), 
+ggsave(paste0("anderson_2016_mt/results/overall_gr.png"), 
        plot = gr_overall, 
        width = 4, height = 3, units = "in", dpi = 150)
 
@@ -224,7 +223,7 @@ rec_overall <-
        y = expression('Number of recruits '     [t1]))  
 
 # Save the recruitment plot as a PNG file
-ggsave(paste0("results/overall_rec.png"), 
+ggsave(paste0("anderson_2016_mt/results/overall_rec.png"), 
        plot = rec_overall, 
        width = 4, height = 3, units = "in", dpi = 150)
 
@@ -277,7 +276,7 @@ grow_pred <-
 grow_overall_pred <- grow_line + grow_pred + plot_layout() 
 
 # Save the growth prediction plot
-ggsave(paste0("results/gr_mod_bestfit_index.png"), 
+ggsave(paste0("anderson_2016_mt/results/gr_mod_bestfit_index.png"), 
        plot = grow_overall_pred, 
        width = 8, height = 4, units = "in", dpi = 150)
 
@@ -351,7 +350,7 @@ surv_bin <-
 surv_overall_pred <- surv_line + surv_bin + plot_layout()
 
 # Save the survival prediction plot
-ggsave(paste0("results/su_mod_bestfit_index.png"), 
+ggsave(paste0("anderson_2016_mt/results/su_mod_bestfit_index.png"), 
        plot = surv_overall_pred, 
        width = 8, height = 3, units = "in", dpi = 150) 
 

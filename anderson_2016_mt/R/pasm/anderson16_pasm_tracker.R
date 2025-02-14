@@ -32,8 +32,14 @@ sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1,
 
 # Read in quad inventory to use as 'inv' list in plantTracker
 quad_inv        <- read.csv(paste0(dat_dir,"quad_inventory.csv"),
-                            sep=',') %>% 
-  dplyr::select(-year)
+                            sep=',') 
+#%>% 
+  #dplyr::select(-Year)
+
+
+quad_inv <- read.csv(paste0(dat_dir,"quad_inventory.csv"), sep=',', stringsAsFactors = FALSE)
+names(quad_inv)
+
 quadInv_list    <- as.list(quad_inv)
 quadInv_list    <- lapply(X = quadInv_list, 
                           FUN = function(x) x[is.na(x) == FALSE])
@@ -72,3 +78,4 @@ datTrackSpp %>%
   write.csv( paste0('anderson_2016_mt/data/',
                     sp_abb,'/mt_',sp_abb,'.csv'), 
              row.names = F )
+

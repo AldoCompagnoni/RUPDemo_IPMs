@@ -43,11 +43,11 @@ species_accepted <- gsub(' ', '_', species)
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family
-tax_family <- 'Poaceae'
+tax_family <- 'Asteraceae'
 # The accepted order
-tax_order  <- 'Poales' 
+tax_order  <- 'Asterales' 
 # The accepted class
-tax_class  <- 'Liliopsida'
+tax_class  <- 'Eudicots'
 # The accepted phylum
 tax_phylum <- 'Magnoliophyta' 
 # The kingdom

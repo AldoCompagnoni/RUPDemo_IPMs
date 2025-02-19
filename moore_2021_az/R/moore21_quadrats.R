@@ -22,11 +22,6 @@ region_abb  <- 'az'
 
 
 # Directories ------------------------------------------------------------------
-# base_dir <- ('moore_2021_az/')
-# dat_dir <- paste(base_dir, "data/", sep="")
-# shp_dir <- paste(base_dir,  "data/Species_Shapefile_Extractions/", sep="")
-
-# Directories
 dir_publ        <- paste0(author_year, '_', region_abb, '/')
 dir_data        <- paste0(dir_publ, "data/")
 dir_data_ancill <- paste0(dir_data, 'Ancillary_Data_CSVs/')

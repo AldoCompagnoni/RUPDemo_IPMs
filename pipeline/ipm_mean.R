@@ -5,14 +5,13 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date: 2024.11.08
+# Date  : 2025.02.21
 
 # reading in, and cleaning the data
 #  exploring the overall-years rates
 #  setting up the vital rate data-frames for the year specific 
 
 # Setting the stage ------------------------------------------------------------
-
 # Remove all objects in the global environment
 # rm(list = ls()) 
 # Set seed for reproducibility
@@ -35,13 +34,14 @@ v_sp_abb  <- tolower(
 v_script_prefix <- str_c(
   str_extract(v_author_year, "^[^_]+"),
   str_sub(str_extract(v_author_year, "_\\d+$"), -2, -1))
-# Define prefix for scripts
+# Define prefix for two of the same author and year
 if (
   length(
     list.dirs(
       full.names = TRUE, recursive = FALSE)[grepl(
         paste0("^", v_author_year), basename(
-          list.dirs(full.names = TRUE, recursive = FALSE)))]) > 1) {
+          list.dirs(full.names = TRUE, recursive = FALSE)))]
+    ) > 1) {
   v_script_prefix <- paste0(v_script_prefix, v_region_abb)
 }
 # Define suffix for plot outputs
@@ -54,9 +54,11 @@ v_ggp_suffix <- paste(
   paste0(toupper(substr(v_script_prefix, 1, 1)), 
          substr(v_script_prefix, 2, nchar(v_script_prefix))), '/', 
   v_species, 
-  '\n Size threshold:', !is.null(v_size_threshold),
-  '\n Model complexity altered in growth / survival:',
-  !is.null(v_mod_set_gr), '/', !is.null(v_mod_set_su))
+  '\n Size threshold:', 
+  '/', ifelse(is.null(v_size_threshold), !is.null(v_size_threshold), v_size_threshold),
+  '\n Model complexity altered in growth / survival:', 
+  '/', ifelse(is.null(v_mod_set_gr), !is.null(v_mod_set_gr), v_mod_set_gr), 
+  '/', ifelse(is.null(v_mod_set_su), !is.null(v_mod_set_su), v_mod_set_su))
 
 
 # Directory --------------------------------------------------------------------

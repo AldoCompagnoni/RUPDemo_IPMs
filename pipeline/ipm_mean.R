@@ -55,7 +55,7 @@ v_ggp_suffix <- paste(
          substr(v_script_prefix, 2, nchar(v_script_prefix))), '/', 
   v_species, 
   '\n Size threshold:', 
-  '/', ifelse(is.null(v_size_threshold), !is.null(v_size_threshold), v_size_threshold),
+  ifelse(is.null(v_size_threshold), !is.null(v_size_threshold), v_size_threshold),
   '\n Model complexity altered in growth / survival:', 
   '/', ifelse(is.null(v_mod_set_gr), !is.null(v_mod_set_gr), v_mod_set_gr), 
   '/', ifelse(is.null(v_mod_set_su), !is.null(v_mod_set_su), v_mod_set_su))

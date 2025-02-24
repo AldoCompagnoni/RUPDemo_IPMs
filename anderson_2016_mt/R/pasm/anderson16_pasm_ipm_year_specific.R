@@ -1,42 +1,44 @@
-# IPM for kansas Bouteloua hirsuta year specific
+# year specific IPM for Montana Pascopyrum smithii 
 
-# Niklas Neisse
-# 2024.10.11
-
-#
+# Diana Spurite
+# 14.02.25
 
 
 # Setting the stage ------------------------------------------------------------
 # Remove all objects in the global environment
-# rm(list = ls()) 
+rm(list = ls()) 
 # Set seed for reproducibility
 set.seed(100)
 options(stringsAsFactors = F)
 
 
 # Packages ---------------------------------------------------------------------
-
+#install.packages("binom")
 # load packages
 source( 'helper_functions/load_packages.R' )
 load_packages( tidyverse, patchwork, skimr, 
                lme4, bbmle, ipmr, readxl )
 
+
+library(binom)
 # rm( list = ls() )
 options( stringsAsFactors = F )
 
 
 # Data -------------------------------------------------------------------------
 # Define the species variable
-species <- "Bouteloua hirsuta"
+species <- "Pascopyrum smithii "
+
+#Automated species abbreviation. So instead of remembering the genus and species names, now I need to remember what the data object is called.
 sp_abb  <- 
   tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
                               collapse = "")))
-grow_df <- read.csv(paste0("anderson_2016_mt/data/", sp_abb, "/growth_df.csv"))
-surv_df <- read.csv(paste0("anderson_2016_mt/data/", sp_abb, "/survival_df.csv"))
+grow_df <- read.csv(paste0("anderson_2016_mt/data/pasm_growth_df.csv"))
+surv_df <- read.csv(paste0("anderson_2016_mt/data/pasm_survival_df.csv"))
 recr_df <- 
-  read.csv(paste0("anderson_2016_mt/data/", sp_abb, "/recruitment_df.csv"))
+  read.csv(paste0("anderson_2016_mt/data/pasm_recruitment_df.csv"))
 df      <- 
-  read.csv(paste0("anderson_2016_mt/data/", sp_abb, "/data_df.csv"))
+  read.csv(paste0("anderson_2016_mt/data/data_df.csv"))
 
 df_long <- 
   pivot_longer(df, cols = c(logsize_t0, logsize_t1 ), 
@@ -61,7 +63,7 @@ hist_logsizes_years <-
   theme(axis.text.y = element_text(size = 5))
 
 ggsave(
-  paste0("anderson_2016_mt/results/", sp_abb, "/years_hist_logsizes_years.png"),  
+  paste0("anderson_2016_mt/results/years_hist_logsizes_years.png"),  
   plot = hist_logsizes_years,
   width = 6, height = 12, dpi = 150)
 
@@ -71,10 +73,14 @@ ggsave(
 source("helper_functions/plot_binned_prop_year.R")
 
 surv_yrs       <- data.frame(year = surv_df$year %>% unique %>% sort)
+
+#Number 15 here is the n_bin = number of bins and = NOT related to the number of survival transitions
+
 surv_bin_yrs   <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15, 
                          logsize_t0, survives, surv_yrs)
 surv_bin_yrs   <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
 
+# keep as is
 surv_yr_pan_df <- 
   bind_rows(surv_bin_yrs) %>% 
   mutate(transition = paste(paste0(year),
@@ -99,7 +105,7 @@ survival <-
   labs(x = expression('log(size)'[t0]),
        y = expression('Survival to time t1'))
 
-ggsave(paste0("anderson_2016_mt/results/", sp_abb, "/years_survival.png"), 
+ggsave(paste0("anderson_2016_mt/results/years_survival.png"), 
        plot = survival,
        width = 4, height = 9, dpi = 150)
 
@@ -130,7 +136,7 @@ growth <-
   labs(x = expression('log(size) '[t0]),
        y = expression('log(size) '[t1]))
 
-ggsave(paste0("anderson_2016_mt/results/", sp_abb, "/years_growth.png"), 
+ggsave(paste0("anderson_2016_mt/results/years_growth.png"), 
        plot = growth,
        width = 4, height = 9, dpi = 150)
 
@@ -167,7 +173,7 @@ recruits <-
   labs(x = expression('Number of adults '[ t0]),
        y = expression('Number of recruits '[ t1]))
 
-ggsave(paste0("anderson_2016_mt/results/", sp_abb, "/years_recruits.png"), 
+ggsave(paste0("anderson_2016_mt/results/years_recruits.png"), 
        plot = recruits,
        width = 4, height = 9, dpi = 150)
 
@@ -183,7 +189,12 @@ recruitment_size <-
   labs(x = expression('log(size)'[t0]),
        y = "Frequency")
 
-ggsave(paste0("anderson_2016_mt/results/", sp_abb, "/years_recruitment_size.png"), 
+
+hist(rec_size$logsize_t0)
+
+
+
+ggsave(paste0("anderson_2016_mt/results/years_recruitment_size.png"), 
        plot = recruitment_size,
        width = 4, height = 9, dpi = 150)
 
@@ -209,9 +220,23 @@ su_mod_yr   <- glmer(survives ~ logsize_t0 + (1 | year),
                      data = surv_df, family = binomial )
 su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (1 | year), 
                      data = surv_df, family = binomial)
+#Warning message:
+#In checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,  :
+ #              Model is nearly unidentifiable: large eigenvalue ratio
+  #           - Rescale variables?
+               
+               
 su_mod_yr_3 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + 
                        logsize_t0_3 + (1 | year), 
                      data = surv_df, family = binomial)
+
+#Warning messages:
+#1: In checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,  :
+ #                 Model failed to converge with max|grad| = 0.250244 (tol = 0.002, component 1)
+  #              2: In checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,  :
+   #                               Model is nearly unidentifiable: very large eigenvalue
+    #                            - Rescale variables?;Model is nearly unidentifiable: large eigenvalue ratio
+     #                           - Rescale variables?
 
 s_mods <- c(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
 AICtab(s_mods, weights = T)
@@ -271,8 +296,7 @@ surv_yr_plots <- function(i) {
 surv_yrs   <- lapply(1:length(surv_bin_yrs), surv_yr_plots)
 surv_years <- wrap_plots(surv_yrs) + plot_layout(ncol = 4)
 
-ggsave(paste0("anderson_2016_mt/results/", sp_abb, 
-              "/years_surv_logsize", su_mod_yr_bestfit_index, ".png"), 
+ggsave(paste0("anderson_2016_mt/results/years_surv_logsize", su_mod_yr_bestfit_index, ".png"), 
        plot  = surv_years,
        width = 4, height = 9, dpi = 150)
 
@@ -281,14 +305,16 @@ ggsave(paste0("anderson_2016_mt/results/", sp_abb,
 gr_mod_yr   <- 
   lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), 
        data = grow_df)
+#   Model failed to converge with max|grad| = 0.970828 (tol = 0.002, component 1)
 gr_mod_yr_2 <- 
   lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
        data = grow_df)
-# Model failed to converge with max|grad| = 0.0297295
+# Model failed to converge with max|grad| = 0.234411 (tol = 0.002, component 1)
 gr_mod_yr_3 <- 
   lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
          logsize_t0_3 + (logsize_t0 | year), 
        data = grow_df)
+#Model failed to converge with max|grad| = 0.0937206 (tol = 0.002, component 1)
 
 g_mods <- c(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 AICtab(g_mods, weights = T)
@@ -344,8 +370,7 @@ grow_yr_plots <- function(i){
 grow_yrs   <- lapply(sort(unique(grow_df$year)), grow_yr_plots)
 grow_years <- wrap_plots(grow_yrs) + plot_layout(ncol = 4)
 
-ggsave(paste0("anderson_2016_mt/results/", sp_abb, 
-              "/years_growth_logsize", gr_mod_yr_bestfit_index, ".png"), 
+ggsave(paste0("anderson_2016_mt/results/years_growth_logsize", gr_mod_yr_bestfit_index, ".png"), 
        plot = grow_years,
        width = 4, height = 9, dpi = 150)
 
@@ -398,7 +423,7 @@ recruitment <-
        y = "Predicted per capita recruitment") +
   theme_bw()
 
-ggsave(paste0("anderson_2016_mt/results/", sp_abb, "/years_recruitment.png"), 
+ggsave(paste0("anderson_2016_mt/results/years_recruitment.png"), 
        plot = recruitment,
        width = 6, height = 4, dpi = 150)
 
@@ -434,7 +459,7 @@ surv_out_yr <- Reduce(rbind, su_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(surv_out_yr, 
-          paste0("anderson_2016_mt/data/", sp_abb, "/2.surv_pars.csv"), 
+          paste0("anderson_2016_mt/data/2.surv_pars.csv"), 
           row.names = F)
 
 
@@ -467,7 +492,7 @@ grow_out_yr <- Reduce(function(...) rbind(...), gr_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(grow_out_yr, 
-          paste0("anderson_2016_mt/data/", sp_abb, "/2.grow_pars.csv"), 
+          paste0("anderson_2016_mt/data/2.grow_pars.csv"), 
           row.names = F)
 
 
@@ -483,7 +508,7 @@ recr_out_yr <- Reduce(function(...) rbind(...), list(rc_pc, rc_sz)) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(recr_out_yr, 
-          paste0("anderson_2016_mt/data/",sp_abb,"/2.recr_pars.csv"), 
+          paste0("anderson_2016_mt/data/2.recr_pars.csv"), 
           row.names = F)
 
 
@@ -525,7 +550,7 @@ pars_cons_wide <- as.list(pivot_wider(pars_cons, names_from = "coefficient",
                                       values_from = "value"))
 
 write.csv(pars_cons_wide, 
-          paste0("anderson_2016_mt/data/", sp_abb, "/2.pars_cons.csv"), 
+          paste0("anderson_2016_mt/data/2.pars_cons.csv"), 
           row.names = F)
 
 
@@ -557,7 +582,7 @@ pars_var_wide <- as.list(pivot_wider(pars_var,
                                      values_from = "value") )
 
 write.csv(pars_var_wide, 
-          paste0("anderson_2016_mt/data/", sp_abb, "/2.pars_var.csv"), 
+          paste0("anderson_2016_mt/data/2.pars_var.csv"), 
           row.names = F)
 
 
@@ -659,8 +684,22 @@ lambda_ipm <- function(i) {
   return(Re(eigen(kernel(i)$k_yx)$value[1]))
 }
 
+
+
+Fmat_test <- kernel(pars_mean)$Fmat
+
+print(summary(Fmat_test))  # Shows min, max, NA, etc.
+print(any(is.na(Fmat_test)))  # TRUE means there are NA values
+
+# All attempts to figure this out starts to go in circles. The solution is # # likely/maybe will come from figuring out the recruitment sizes.
+
+
+
 lam_mean <- lambda_ipm(pars_mean)
 lam_mean
+
+
+
 
 
 ## population growth rates for each year

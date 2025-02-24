@@ -43,8 +43,8 @@ names(quad_inv)
 quadInv_list    <- as.list(quad_inv)
 quadInv_list    <- lapply(X = quadInv_list, 
                           FUN = function(x) x[is.na(x) == FALSE])
-inv_ks          <- quadInv_list 
-names(inv_ks)   <- gsub( '\\.','-',names(inv_ks) )
+inv_mt          <- quadInv_list 
+names(inv_mt)   <- gsub( '\\.','-',names(inv_mt) )
 
 # Read in the data
 dat <- readRDS(file=paste0(dat_dir,"anderson16mt_plantTracker_all_filtered.rds"))
@@ -55,13 +55,14 @@ dat_target_spec <- dat[dat$species %in% target_spec$species,] %>%
 
 # Now the data are ready for the trackSpp function
 datTrackSpp <- trackSpp(dat_target_spec,
-                        inv_ks,
+                        inv_mt,
                         dorm=1,
                         buff= 0.05,
                         clonal=TRUE,
                         buffGenet = 0.05,
                         aggByGenet = TRUE,
                         flagSuspects = TRUE)
+
 
 # create folder
 if (!dir.exists(paste0("anderson_2016_mt/data/", sp_abb))) {

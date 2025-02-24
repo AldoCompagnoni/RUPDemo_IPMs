@@ -44,11 +44,14 @@ if (
     ) > 1) {
   v_script_prefix <- paste0(v_script_prefix, v_region_abb)
 }
+
 # Define suffix for plot outputs
 v_suffix     <- ""
+if (length(v_years_re)       > 0) {v_suffix <- paste0(v_suffix, "_yr1")}
 if (length(v_size_threshold) > 0) {v_suffix <- paste0(v_suffix, "_st1")}
 if (length(v_mod_set_gr)     > 0) {v_suffix <- paste0(v_suffix, "_gr1")}
 if (length(v_mod_set_su)     > 0) {v_suffix <- paste0(v_suffix, "_su1")}
+
 # Define graph subtitle
 v_ggp_suffix <- paste(
   paste0(toupper(substr(v_script_prefix, 1, 1)), 
@@ -57,8 +60,10 @@ v_ggp_suffix <- paste(
   '\n Size threshold:', 
   ifelse(is.null(v_size_threshold), !is.null(v_size_threshold), v_size_threshold),
   '\n Model complexity altered in growth / survival:', 
-  '/', ifelse(is.null(v_mod_set_gr), !is.null(v_mod_set_gr), v_mod_set_gr), 
-  '/', ifelse(is.null(v_mod_set_su), !is.null(v_mod_set_su), v_mod_set_su))
+  ifelse(is.null(v_mod_set_gr), !is.null(v_mod_set_gr), v_mod_set_gr), '/', 
+  ifelse(is.null(v_mod_set_su), !is.null(v_mod_set_su), v_mod_set_su),
+  '\n Years removed:',
+  ifelse(is.null(v_years_re), !is.null(v_years_re), paste(v_years_re, collapse = ", ")))
 
 
 # Directory --------------------------------------------------------------------

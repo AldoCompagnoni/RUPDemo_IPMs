@@ -968,7 +968,7 @@ ggsave(paste0(dir_result, '/5_years_lamda_mod_vs_obs', v_suffix, '.png'),
 # all of our varying and constant parameters into a single list
 all_pars <- c(pars_cons_wide, pars_var_wide)
 # add the index of the best model to the parameter
-all_pars[['mod_gr_index']] <- v_mod_su_index
+all_pars[['mod_su_index']] <- v_mod_su_index
 all_pars[['mod_gr_index']] <- v_mod_gr_index
 
 write.csv(all_pars, 
@@ -986,9 +986,9 @@ proto_ipm_yr <- init_ipm(sim_gen   = 'simple',
     formula          = s_yr * g_yr,
     s_yr             = plogis(
       surv_b0_yr + 
-        (if (mod_gr_index >= 1) surv_b1_yr * size_1   else 0) +
-        (if (mod_gr_index >= 2) surv_b2_yr * size_1^2 else 0) +
-        (if (mod_gr_index >= 3) surv_b3_yr * size_1^3 else 0)),
+        (if (mod_su_index >= 1) surv_b1_yr * size_1   else 0) +
+        (if (mod_su_index >= 2) surv_b2_yr * size_1^2 else 0) +
+        (if (mod_su_index >= 3) surv_b3_yr * size_1^3 else 0)),
     
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + 

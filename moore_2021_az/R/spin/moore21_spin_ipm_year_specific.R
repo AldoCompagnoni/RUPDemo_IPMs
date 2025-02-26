@@ -20,7 +20,7 @@ v_author_year <- c('moore_2021')
 # Define region abbreviation
 v_region_abb  <- c('az')
 # Define species 
-v_species     <- c('Antennaria parvifolia')
+v_species     <- c('Sporobolus interruptus')
 
 
 # CHECK -- Adaptions -----------------------------------------------------------

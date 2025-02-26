@@ -292,15 +292,15 @@ su_sorted_indices <- order(su_dAIC_values)
 # Establish the index of model complexity
 if (length(v_mod_set_su) == 0) {
   su_mod_ys_index_bestfit <- su_sorted_indices[1]
-  v_mod_su_index <- su_mod_ys_index_bestfit - 1 
+  v_mod_su_index          <- su_mod_ys_index_bestfit - 1 
 } else {
   su_mod_ys_index_bestfit <- v_mod_set_su +1
-  v_mod_su_index <- v_mod_set_su
+  v_mod_su_index          <- v_mod_set_su
 }
 
 # Specify the model
-su_mod_yr_bestfit   <- su_mods[[su_mod_ys_index_bestfit]]
-su_ranef         <- data.frame(coef(su_mod_yr_bestfit)[1])
+su_mod_yr_bestfit <- su_mods[[su_mod_ys_index_bestfit]]
+su_ranef          <- data.frame(coef(su_mod_yr_bestfit)[1])
 
 
 v <- rep(NA,length(surv_bin_yrs))
@@ -396,15 +396,15 @@ gr_sorted_indices <- order(gr_dAIC_values)
 # Establish the index of model complexity
 if (length(v_mod_set_gr) == 0) {
   gr_mod_ys_index_bestfit <- gr_sorted_indices[1]
-  v_mod_gr_index <- gr_mod_ys_index_bestfit - 1 
+  v_mod_gr_index          <- gr_mod_ys_index_bestfit - 1 
 } else {
   gr_mod_ys_index_bestfit <- v_mod_set_gr +1
-  v_mod_gr_index <- v_mod_set_gr
+  v_mod_gr_index          <- v_mod_set_gr
 }
 
 # Specify the model
-gr_mod_yr_bestfit   <- gr_mods[[gr_mod_ys_index_bestfit]]
-gr_ranef         <- data.frame(coef(gr_mod_yr_bestfit)[1])
+gr_mod_yr_bestfit <- gr_mods[[gr_mod_ys_index_bestfit]]
+gr_ranef          <- data.frame(coef(gr_mod_yr_bestfit)[1])
 
 
 grow_yr_plots <- function(i){
@@ -657,14 +657,14 @@ create_coef_df <- function(model, prefix) {
 
 # Create data frames for survival and growth models
 su_data_frames <- create_coef_df(su_mod_yr_bestfit, 'surv_b')
-grow_data_frames <- create_coef_df(gr_mod_yr_bestfit, 'grow_b')
+gr_data_frames <- create_coef_df(gr_mod_yr_bestfit, 'grow_b')
 
 # Create the fecundity data frame
 fecu_b0 <- data.frame(coefficient = paste0('fecu_b0_', repr_pc_yr$year),
                       value = repr_pc_yr$repr_percapita)
 
 # Combine all data frames into one
-pars_var <- Reduce(rbind, c(su_data_frames, grow_data_frames, list(fecu_b0)))
+pars_var <- Reduce(rbind, c(su_data_frames, gr_data_frames, list(fecu_b0)))
 
 pars_var_wide <- as.list(pivot_wider(pars_var, 
                                      names_from  = 'coefficient', 
@@ -968,8 +968,8 @@ ggsave(paste0(dir_result, '/5_years_lamda_mod_vs_obs', v_suffix, '.png'),
 # all of our varying and constant parameters into a single list
 all_pars <- c(pars_cons_wide, pars_var_wide)
 # add the index of the best model to the parameter
-all_pars[['su_mod_ys_index_bestfit']] <- su_mod_ys_index_bestfit
-all_pars[['gr_mod_ys_index_bestfit']] <- gr_mod_ys_index_bestfit
+all_pars[['mod_gr_index']] <- v_mod_su_index
+all_pars[['mod_gr_index']] <- v_mod_gr_index
 
 write.csv(all_pars, 
           paste0(dir_data, '/all_pars', v_suffix, '.csv'), 
@@ -986,15 +986,15 @@ proto_ipm_yr <- init_ipm(sim_gen   = 'simple',
     formula          = s_yr * g_yr,
     s_yr             = plogis(
       surv_b0_yr + 
-        (if (su_mod_ys_index_bestfit >= 1) surv_b1_yr * size_1   else 0) +
-        (if (su_mod_ys_index_bestfit >= 2) surv_b2_yr * size_1^2 else 0) +
-        (if (su_mod_ys_index_bestfit >= 3) surv_b3_yr * size_1^3 else 0)),
+        (if (mod_gr_index >= 1) surv_b1_yr * size_1   else 0) +
+        (if (mod_gr_index >= 2) surv_b2_yr * size_1^2 else 0) +
+        (if (mod_gr_index >= 3) surv_b3_yr * size_1^3 else 0)),
     
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + 
-      (if (gr_mod_ys_index_bestfit >= 1) grow_b1_yr * size_1   else 0) +
-      (if (gr_mod_ys_index_bestfit >= 2) grow_b2_yr * size_1^2 else 0) +
-      (if (gr_mod_ys_index_bestfit >= 3) grow_b3_yr * size_1^3 else 0),
+      (if (mod_gr_index >= 1) grow_b1_yr * size_1   else 0) +
+      (if (mod_gr_index >= 2) grow_b2_yr * size_1^2 else 0) +
+      (if (mod_gr_index >= 3) grow_b3_yr * size_1^3 else 0),
     
     grow_sig         = sqrt(a * exp(b * size_1)),
     data_list        = all_pars,

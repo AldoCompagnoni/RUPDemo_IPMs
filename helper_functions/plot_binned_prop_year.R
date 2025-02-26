@@ -22,10 +22,10 @@ df_binned_prop_year <- function(ii, df_in, n_bins, siz_var, rsp_var, years) {
   
   # Standard error of a Bernoulli process with handling for small sample sizes
   se_bern <- function(x, lwr_upr) {
-    if (length(x) == 0) return(c(NA, NA))  # Return NA if no observations in the bin
+    if (length(x) == 0) return(c(NA))  # Return NA if no observations in the bin
     surv_n <- sum(x, na.rm = TRUE)
     tot_n  <- length(x)
-    if (tot_n == 0) return(c(NA, NA))  # Return NA if there are no observations in the bin
+    if (tot_n == 0) return(c(NA))  # Return NA if there are no observations in the bin
     binom.confint(surv_n, tot_n, methods = c("wilson"))[, lwr_upr]
   }
   

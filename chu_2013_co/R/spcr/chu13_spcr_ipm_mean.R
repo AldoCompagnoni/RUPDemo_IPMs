@@ -5,22 +5,13 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.12.03
+# Date  : 2025.02.24
 
 # Publication: https://doi.org/10.1890/13-0121.1
 
-# Read in and clean the data
-#  explore the overall-years rates
-#  set up the vital rate data-frames for the year specific 
-#  build the ipm from scratch
-#  build the ipm with `ipmr`
-
-
-# Comments ---------------------------------------------------------------------
-# 0. !!! Please define all key variables in the in the corresponding section !!!
-# 1. The pipeline runs plant tracker only if the data does not exist already
-# 2. Find all the graphics in the result folder of the respective species
-#     and the growth, survival and recruitment data in the data folder
+# Read in and clean the data, explore the overall-years rates,
+#  set up the vital rate data-frames for the year specific,
+#  build the ipm from scratch, build the ipm with `ipmr`
 
 
 # Clean up ---------------------------------------------------------------------
@@ -29,24 +20,22 @@
 
 # Key variables ----------------------------------------------------------------
 # Define publication 
-author_year <- 'chu_2013'
+v_author_year <- c('chu_2013')
 # Define region abbreviation
-region_abb <- 'co'
+v_region_abb  <- c('co')
 # Define species 
-species <- 'Sporobolus cryptandrus'
+v_species     <- c('Sporobolus cryptandrus')
 
 
-# CHECK -- Adaptions to the models ---------------------------------------------
-# Years:
-#  Removal of certain years if unspecified nothing is removed
-years_re <- c()
-
-# Models:
-#  Changing to the next best complexity of the survival and/or growth model.
-# Survival model, 0 means keep the complexity (takes: 0-2)
-su_complex <- c(0)
-# Growth model, 0 means keep the complexity (takes: 0-2)
-gr_complex <- c(0)
+# CHECK -- Adaptions -----------------------------------------------------------
+# Removal of certain years if unspecified nothing is removed
+v_years_re       <- c()
+# Define size threshold
+v_size_threshold <- c(-12.7)
+# Set a complexity to the growth and survival model 
+# (NULL = highest AIC / 0 = intercept / 1 = linear / 2 = quadratic / 3 = cubic)
+v_mod_set_gr     <- c()
+v_mod_set_su     <- c()
 
 
 # Main pipeline ----------------------------------------------------------------

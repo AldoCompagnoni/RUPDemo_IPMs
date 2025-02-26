@@ -9,82 +9,127 @@
 
 
 # Setting the stage ------------------------------------------------------------
+# Remove all objects in the global environment
+# rm(list = ls()) 
 # Set seed for reproducibility
 set.seed(100)
 options(stringsAsFactors = F)
 
 
 # Packages ---------------------------------------------------------------------
-
 # load packages
 source('helper_functions/load_packages.R' )
-load_packages( tidyverse, patchwork, skimr, 
-               lme4, bbmle, ipmr, readxl, binom )
+load_packages( 
+  tidyverse, patchwork, skimr, lme4, bbmle, ipmr, readxl, binom)
+
+
+# Specification ----------------------------------------------------------------
+# Create a unique species abbreviation for file naming
+v_sp_abb  <- tolower(
+  gsub(' ', '', paste(
+    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
+# Define script prefix
+v_script_prefix <- str_c(
+  str_extract(v_author_year, "^[^_]+"),
+  str_sub(str_extract(v_author_year, "_\\d+$"), -2, -1))
+# Define prefix for two of the same author and year
+if (
+  length(
+    list.dirs(
+      full.names = TRUE, recursive = FALSE)[grepl(
+        paste0("^", v_author_year), basename(
+          list.dirs(full.names = TRUE, recursive = FALSE)))]
+  ) > 1) {
+  v_script_prefix <- paste0(v_script_prefix, v_region_abb)
+}
+
+# Define suffix for plot outputs
+v_suffix     <- c("")
+if (length(v_years_re)       > 0) {v_suffix <- paste0(v_suffix, "_yr1")}
+if (length(v_size_threshold) > 0) {v_suffix <- paste0(v_suffix, "_st1")}
+if (length(v_mod_set_gr)     > 0) {v_suffix <- paste0(v_suffix, "_gr1")}
+if (length(v_mod_set_su)     > 0) {v_suffix <- paste0(v_suffix, "_su1")}
+
+# Define graph subtitle
+v_ggp_suffix <- paste(
+  paste0(toupper(substr(v_script_prefix, 1, 1)), 
+         substr(v_script_prefix, 2, nchar(v_script_prefix))), '/', 
+  v_species, 
+  '\n Size threshold:', 
+  ifelse(is.null(v_size_threshold), !is.null(v_size_threshold), v_size_threshold),
+  '\n Model complexity altered in growth / survival:', 
+  ifelse(is.null(v_mod_set_gr), !is.null(v_mod_set_gr), v_mod_set_gr), '/', 
+  ifelse(is.null(v_mod_set_su), !is.null(v_mod_set_su), v_mod_set_su),
+  '\n Years removed:',
+  ifelse(is.null(v_years_re), !is.null(v_years_re), paste(v_years_re, collapse = ", ")))
+
+
+# Directory --------------------------------------------------------------------
+dir_pub    <- file.path(paste0(v_author_year, '_', v_region_abb))
+dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
+dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
+dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+
+if (!dir.exists(paste0(dir_pub, '/R'))) {
+  dir.create(paste0(dir_pub, '/R'))}
+if (!dir.exists(paste0(dir_pub, '/data'))) {
+  dir.create(paste0(dir_pub, '/data'))}
+if (!dir.exists(paste0(dir_pub, '/results'))) {
+  dir.create(paste0(dir_pub, '/results'))}
+
+if (!dir.exists(dir_R     )) {dir.create(dir_R     )}
+if (!dir.exists(dir_data  )) {dir.create(dir_data  )}
+if (!dir.exists(dir_result)) {dir.create(dir_result)}
+
+
+# Ipm mean and plant tracker if they not already exists ------------------------
+if (!file.exists(
+  paste0(dir_data, '/', v_script_prefix, '_', v_sp_abb, '_data_df.csv'))) {
+  source(paste0(dir_R, '/', v_script_prefix, '_', v_sp_abb, '_ipm_mean.R'))
+}
 
 
 # Data -------------------------------------------------------------------------
-# Species abbriviation
-sp_abb  <- 
-  tolower(gsub(' ', '', paste(substr(unlist(strsplit(species, ' ')), 1, 2), 
-                              collapse = '')))
-# Directory 
-pub_dir    <- file.path(paste0(author_year, '_', region_abb))
-R_dir      <- file.path(pub_dir, 'R',      sp_abb)
-data_dir   <- file.path(pub_dir, 'data',   sp_abb)
-result_dir <- file.path(pub_dir, 'results', sp_abb)
-
-# Prefix for all the files
-script_prefix <- str_c(str_extract(author_year, '^[^_]+'), 
-                       str_sub(str_extract(author_year, '_\\d+$'), -2, -1))
-
-# Ipm mean and plant tracker if they not already exists
-if (!file.exists(
-  paste0(data_dir, '/', script_prefix, '_', sp_abb, '_data_df.csv'))) {
-  source(paste0(R_dir, '/', script_prefix, '_', sp_abb, '_ipm_mean.R'))
-}
-
-# Data from IPM mean
 df      <- read.csv(
-  paste0(data_dir, '/', script_prefix, '_', sp_abb, '_data_df.csv'))
+  paste0(dir_data, '/', v_script_prefix, '_', v_sp_abb, '_data_df.csv'))
 grow_df <- read.csv(
-  paste0(data_dir, '/', script_prefix, '_', sp_abb, '_growth_df.csv'))
+  paste0(dir_data, '/', v_script_prefix, '_', v_sp_abb, '_growth_df.csv'))
 surv_df <- read.csv(
-  paste0(data_dir, '/', script_prefix, '_', sp_abb, '_survival_df.csv'))
+  paste0(dir_data, '/', v_script_prefix, '_', v_sp_abb, '_survival_df.csv'))
 recr_df <- read.csv(
-  paste0(data_dir, '/', script_prefix, '_', sp_abb, '_recruitment_df.csv'))
+  paste0(dir_data, '/', v_script_prefix, '_', v_sp_abb, '_recruitment_df.csv'))
 
-df_long <- 
-  pivot_longer(df, cols = c(logsize_t0, logsize_t1 ), 
-               names_to = 'size', values_to = 'size_value' ) %>% 
+df_long <- pivot_longer(
+  df, cols = c(logsize_t0, logsize_t1 ), 
+  names_to = 'size', values_to = 'size_value' ) %>% 
   select(c(size_t0, year, size,  size_value)) %>% 
   mutate(size = as.factor(size),
          year_fac = as.factor(year))
 
 size_labs        <- c('at time t0', 'at time t1')
-names(size_labs) <- c('logsize', 'logsize_t1')
+names(size_labs) <- c('logsize_t0', 'logsize_t1')
 
-# 
-hist_logsizes_years <-
-  df_long %>% 
+# Histogram of sizes, t0 and t1
+g_hist_logsizes_years <- df_long %>% 
   ggplot(aes(x = size_value)) +
   geom_histogram(binwidth = 1) +
   facet_grid(year_fac ~ size, 
              scales = 'free_y',
              labeller = labeller(size = size_labs)) +
   labs(title    = 'Histogram',
-       subtitle = paste(script_prefix, species),
+       subtitle = v_ggp_suffix,
        x        = 'log(size)',
        y        = 'Frequency') +
   theme_bw() +
   theme(axis.text.y = element_text(size = 5))
 
 ggsave(
-  paste0(result_dir, '/3.1_years_hist_logsizes_years.png'),  
-  plot = hist_logsizes_years,
+  paste0(dir_result, '/3.1_years_hist_logsizes_years', v_suffix, '.png'),  
+  plot = g_hist_logsizes_years,
   width = 6, height = 12, dpi = 150)
 
 
-## Survival 
+# Survival 
 # function to plot your survival data 'binned' per year (instead of 'jittered')
 source('helper_functions/plot_binned_prop_year.R')
 
@@ -93,15 +138,13 @@ surv_bin_yrs   <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
                          logsize_t0, survives, surv_yrs)
 surv_bin_yrs   <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
 
-surv_yr_pan_df <- 
-  bind_rows(surv_bin_yrs) %>% 
-  mutate(transition = paste(paste0(year),
-                            substr(paste0(year + 1), 3, 4),
-                            sep = '-')) %>% 
+surv_yr_pan_df <- bind_rows(surv_bin_yrs) %>% 
+  mutate(transition = paste(
+    paste0(year), substr(paste0(year + 1), 3, 4), sep = '-')) %>% 
   mutate(year = as.integer(year - surv_yrs[1,]))
 
-survival <-
-  ggplot(data   = surv_yr_pan_df, aes(x = logsize_t0, y = survives)) +
+g_survival <- ggplot(
+  data = surv_yr_pan_df, aes(x = logsize_t0, y = survives)) +
   geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +
   geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr), 
                 width = 0.25, linewidth = 0.1) +
@@ -110,33 +153,31 @@ survival <-
   facet_wrap(.~ transition, ncol = 4) +
   theme_bw() +
   theme(axis.text = element_text(size = 8), title = element_text(size = 10),
-        strip.text.y = element_text(size = 5, 
-                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
-        strip.text.x = element_text(size = 5, 
-                                    margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.y = element_text(
+          size = 5, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
+        strip.text.x = element_text(
+          size = 5, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit( '0.5', unit = 'mm' ),
         panel.spacing         = unit( '0.5', unit = 'mm' )) +
-  labs(title    = 'Histogram',
-       subtitle = paste(script_prefix, species),
+  labs(title    = 'Survival',
+       subtitle = v_ggp_suffix,
        x        = expression('log(size)'[t0]),
        y        = expression('Survival to time t1'))
 
-ggsave(paste0(result_dir, '/3.2_years_survival.png'), 
-       plot = survival,
+ggsave(paste0(dir_result, '/3.2_years_survival', v_suffix, '.png'), 
+       plot = g_survival,
        width = 4, height = 9, dpi = 150)
 
-## Growth
-grow_yr_pan_df <- 
-  grow_df %>%
-  mutate(transition = paste(paste0(year),
-                            substr(paste0(year + 1), 
-                                   nchar(paste0(year + 1)) - 1, 
-                                   nchar(paste0(year + 1))),
-                            sep = '-')) %>% 
+# Growth
+grow_yr_pan_df <- grow_df %>%
+  mutate(transition = paste(
+    paste0(year), substr(
+      paste0(year + 1), nchar(paste0(year + 1)) - 1, 
+      nchar(paste0(year + 1))), sep = '-')) %>% 
   mutate(year       = as.integer(year - min(year)))
 
-growth <-
-  ggplot(data  = grow_yr_pan_df, aes(x = logsize_t0, y = logsize_t1)) +
+g_growth <- ggplot(
+  data = grow_yr_pan_df, aes(x = logsize_t0, y = logsize_t1)) +
   geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') +
   # split in panels
   facet_wrap(.~ transition, ncol = 4) +
@@ -149,16 +190,16 @@ growth <-
                                     margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit('0.5', unit = 'mm'),
         panel.spacing         = unit('0.5', unit = 'mm')) +
-  labs(title    = 'Histogram',
-       subtitle = paste(script_prefix, species),
+  labs(title    = 'Growth',
+       subtitle = v_ggp_suffix,
        x        =  expression('log(size) '[t0]),
        y        = expression('log(size) '[t1]))
 
-ggsave(paste0(result_dir, '/3.3_years_growth.png'), 
-       plot = growth,
+ggsave(paste0(dir_result, '/3.3_years_growth', v_suffix, '.png'), 
+       plot = g_growth,
        width = 4, height = 9, dpi = 150)
 
-## Recruits
+# Recruits
 indiv_qd <- surv_df %>%
   group_by(quad) %>%
   count(year) %>% 
@@ -171,8 +212,7 @@ repr_yr <- indiv_qd %>%
   mutate(year = year - 1) %>% 
   drop_na
 
-recruits <- 
-  repr_yr %>% 
+g_recruits <- repr_yr %>% 
   filter(nr_quad  != max(repr_yr$nr_quad)) %>% 
   filter(n_adults != max(repr_yr$n_adults)) %>% 
   ggplot(aes(x = n_adults, y = nr_quad ) ) +
@@ -188,38 +228,39 @@ recruits <-
                                     margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit('0.5', unit = 'mm'),
         panel.spacing         = unit('0.5', unit = 'mm')) +
-  labs(title    = 'Histogram',
-       subtitle = paste(script_prefix, species),
+  labs(title    = 'Recruits',
+       subtitle = v_ggp_suffix,
        x        = expression('Number of adults '[ t0]),
        y        = expression('Number of recruits '[ t1]))
 
-ggsave(paste0(result_dir, '/3.4_years_recruits.png'), 
-       plot = recruits,
+ggsave(paste0(dir_result, '/3.4_v_years_recruits', v_suffix, '.png'), 
+       plot = g_recruits,
        width = 4, height = 9, dpi = 150)
 
-## Recruitment size
+# Recruitment size
 rec_size          <- df %>% subset(recruit == 1)
 rec_size$year_fac <- as.factor(rec_size$year)
 
-recruitment_size <- 
-  rec_size %>% ggplot(aes(x = logsize_t0)) +
+g_recruitment_size <- rec_size %>% 
+  ggplot(aes(x = logsize_t0)) +
   geom_histogram() +
   facet_wrap(year_fac ~ ., scales = 'free_y', 
              ncol = 4) +
-  labs(title    = 'Histogram',
-       subtitle = paste(script_prefix, species),
+  labs(title    = 'Recruitment size',
+       subtitle = v_ggp_suffix,
        x        = expression('log(size)'[t0]),
        y        = 'Frequency')
 
-ggsave(paste0(result_dir, '/3.4_years_recruitment_size.png'), 
-       plot = recruitment_size,
+ggsave(paste0(dir_result, '/3.4_v_years_recruitment_size', v_suffix, '.png'), 
+       plot = g_recruitment_size,
        width = 4, height = 9, dpi = 150)
 
+
 # Removing year with too few data ----------------------------------------------
-df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
-surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
-grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
-recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% years_re))
+df      <- df      %>% filter(!is.na(year) & !(year %in% v_years_re))
+surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% v_years_re))
+grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% v_years_re))
+recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% v_years_re))
 surv_yrs     <- data.frame(year = surv_df$year %>% unique %>% sort)
 surv_bin_yrs <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
                        logsize_t0, survives, surv_yrs)
@@ -229,25 +270,38 @@ years_v      <- sort(unique(df$year))
 
 
 # Fitting vital rate models with the random effect of year ---------------------
-
-# Survival
-su_mod_yr   <- glmer(survives ~ logsize_t0 + (1 | year), 
-                     data = surv_df, family = binomial )
-su_mod_yr_2 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + (1 | year), 
-                     data = surv_df, family = binomial)
-su_mod_yr_3 <- glmer(survives ~ logsize_t0 + logsize_t0_2 + 
-                       logsize_t0_3 + (1 | year), 
-                     data = surv_df, family = binomial)
-s_mods      <- c(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
+# Survival year specific -------------------------------------------------------
+su_mod_yr_0 <- glmer(
+  survives ~ 1 + (1 | year),
+  data = surv_df, family = binomial)
+su_mod_yr   <- glmer(
+  survives ~ logsize_t0 + (1 | year), 
+  data = surv_df, family = binomial )
+su_mod_yr_2 <- glmer(
+  survives ~ logsize_t0 + logsize_t0_2 + (1 | year), 
+  data = surv_df, family = binomial)
+su_mod_yr_3 <- glmer(
+  survives ~ logsize_t0 + logsize_t0_2 +  logsize_t0_3 + (1 | year), 
+  data = surv_df, family = binomial)
+su_mods     <- list(su_mod_yr_0, su_mod_yr, su_mod_yr_2, su_mod_yr_3)
 
 # Assign the best model to the variable
-su_dAIC_values    <- AICtab(s_mods, weights = T, sort = F)$dAIC
-
-# Get the sorted indices of dAIC values
+su_dAIC_values    <- AICtab(su_mods, weights = T, sort = F)$dAIC
 su_sorted_indices <- order(su_dAIC_values)
-su_mod_ys_bestfit_index <- su_sorted_indices[1 + su_complex]
-su_mod_yr_bestfit <- s_mods[[su_mod_ys_bestfit_index]]
-ranef_su          <- data.frame(coef(su_mod_yr_bestfit)[1])
+
+# Establish the index of model complexity
+if (length(v_mod_set_su) == 0) {
+  su_mod_ys_index_bestfit <- su_sorted_indices[1]
+  v_mod_su_index          <- su_mod_ys_index_bestfit - 1 
+} else {
+  su_mod_ys_index_bestfit <- v_mod_set_su +1
+  v_mod_su_index          <- v_mod_set_su
+}
+
+# Specify the model
+su_mod_yr_bestfit <- su_mods[[su_mod_ys_index_bestfit]]
+su_ranef          <- data.frame(coef(su_mod_yr_bestfit)[1])
+
 
 v <- rep(NA,length(surv_bin_yrs))
 for (ii in 1:length(surv_bin_yrs)) {
@@ -261,18 +315,18 @@ surv_yr_plots <- function(i) {
                       max(surv_temp$logsize_t0, na.rm = TRUE), 
                       length.out = 100)
   
-  linear_predictor <- ranef_su[i, 1] 
+  linear_predictor <- su_ranef[i, 1] 
   
-  if (ncol(ranef_su) >= 2) {
-    linear_predictor <- linear_predictor + ranef_su[i, 2] * x_temp}
-  if (ncol(ranef_su) >= 3) {
-    linear_predictor <- linear_predictor + ranef_su[i, 3] * x_temp^2}
-  if (ncol(ranef_su) >= 4) {
-    linear_predictor <- linear_predictor + ranef_su[i, 4] * x_temp^3}
+  if (ncol(su_ranef) >= 2) {
+    linear_predictor <- linear_predictor + su_ranef[i, 2] * x_temp}
+  if (ncol(su_ranef) >= 3) {
+    linear_predictor <- linear_predictor + su_ranef[i, 3] * x_temp^2}
+  if (ncol(su_ranef) >= 4) {
+    linear_predictor <- linear_predictor + su_ranef[i, 4] * x_temp^3}
   pred_temp <- boot::inv.logit(linear_predictor)
-  if (ncol(ranef_su) == 2) {line_color <- 'red'
-  } else if (ncol(ranef_su) == 3) {line_color <- 'green'
-  } else if (ncol(ranef_su) == 4) {line_color <- 'blue'
+  if (ncol(su_ranef) == 2) {line_color <- 'red'
+  } else if (ncol(su_ranef) == 3) {line_color <- 'green'
+  } else if (ncol(su_ranef) == 4) {line_color <- 'blue'
   } else {line_color <- 'black'  # Default color 
   } 
   
@@ -282,7 +336,7 @@ surv_yr_plots <- function(i) {
     geom_point(aes(x = logsize_t0, y = survives), size = 0.5) +
     geom_line(data = pred_temp_df, 
               aes(x = logsize_t0, y = survives), color = line_color, lwd = 1) +
-    labs(title = paste0('19',years_v[i]),
+    labs(title = years_v[i],
          x = expression('log(size)'[t0]),
          y = expression('Survival probability '[t1])) +
     ylim( 0, 1 ) +
@@ -304,55 +358,72 @@ surv_yr_plots <- function(i) {
 }
 
 surv_yrs   <- lapply(1:length(surv_bin_yrs), surv_yr_plots)
-surv_years <- wrap_plots(surv_yrs) + plot_layout(ncol = 4)
+g_surv_years <- wrap_plots(surv_yrs) + 
+  plot_layout(ncol = 4) + 
+  plot_annotation(
+    title = "Survival year specific",  # Set the grand title
+    subtitle = v_ggp_suffix,  # Set the grand subtitle
+    theme = theme(plot.title = element_text(size = 13, face = "bold"),
+                  plot.subtitle = element_text(size = 11)))
 
-ggsave(paste0(result_dir, '/4.1_years_surv_logsize', 
-              su_mod_ys_bestfit_index, '.png'), 
-       plot  = surv_years,
+ggsave(paste0(
+  dir_result, '/4.1_years_surv_logsize', v_suffix, '.png'), 
+       plot  = g_surv_years,
        width = 4, height = 9, dpi = 150)
 
 
-# Growth
-gr_mod_yr   <- 
-  lmer(logsize_t1 ~ logsize_t0 + (logsize_t0 | year), 
+# Growth year specific ---------------------------------------------------------
+gr_mod_yr_0 <- lmer(
+  logsize_t1 ~ 1 + (logsize_t0 | year), 
+  data = grow_df)
+gr_mod_yr   <- lmer(
+  logsize_t1 ~ logsize_t0 + (logsize_t0 | year), 
        data = grow_df)
-gr_mod_yr_2 <- 
-  lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
+gr_mod_yr_2 <- lmer(
+  logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
        data = grow_df)
 # Model failed to converge with max|grad| = 0.0297295
-gr_mod_yr_3 <- 
-  lmer(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
-         logsize_t0_3 + (logsize_t0 | year), 
+gr_mod_yr_3 <- lmer(
+  logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + (logsize_t0 | year), 
        data = grow_df)
-g_mods <- c(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 
-
+gr_mods <- list(gr_mod_yr_0, gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 # Assign the best model
-gr_dAIC_values <- AICtab(g_mods, weights = T, sort = F)$dAIC
+gr_dAIC_values <- AICtab(gr_mods, weights = T, sort = F)$dAIC
 # Get the sorted indices of dAIC values
 gr_sorted_indices <- order(gr_dAIC_values)
-gr_mod_ys_bestfit_index <- gr_sorted_indices[1 + gr_complex]
-gr_mod_yr_bestfit <- g_mods[[gr_mod_ys_bestfit_index]]
-ranef_gr <- data.frame(coef(gr_mod_yr_bestfit)[1])
+
+# Establish the index of model complexity
+if (length(v_mod_set_gr) == 0) {
+  gr_mod_ys_index_bestfit <- gr_sorted_indices[1]
+  v_mod_gr_index          <- gr_mod_ys_index_bestfit - 1 
+} else {
+  gr_mod_ys_index_bestfit <- v_mod_set_gr +1
+  v_mod_gr_index          <- v_mod_set_gr
+}
+
+# Specify the model
+gr_mod_yr_bestfit <- gr_mods[[gr_mod_ys_index_bestfit]]
+gr_ranef          <- data.frame(coef(gr_mod_yr_bestfit)[1])
+
 
 grow_yr_plots <- function(i){
-  
   temp_f <- function(x) {
-    linear_predictor <- ranef_gr[which(rownames(ranef_gr) == i), 1]
-    if (ncol(ranef_gr) >= 2) {
+    linear_predictor <- gr_ranef[which(rownames(gr_ranef) == i), 1]
+    if (ncol(gr_ranef) >= 2) {
       linear_predictor <- linear_predictor + 
-        ranef_gr[which(rownames(ranef_gr) == i), 2] * x}
-    if (ncol(ranef_gr) >= 3) {
+        gr_ranef[which(rownames(gr_ranef) == i), 2] * x}
+    if (ncol(gr_ranef) >= 3) {
       linear_predictor <- linear_predictor + 
-        ranef_gr[which(rownames(ranef_gr) == i), 3] * x^2}
-    if (ncol(ranef_gr) >= 4) {
+        gr_ranef[which(rownames(gr_ranef) == i), 3] * x^2}
+    if (ncol(gr_ranef) >= 4) {
       linear_predictor <- linear_predictor + 
-        ranef_gr[which(rownames(ranef_gr) == i), 4] * x^3}
+        gr_ranef[which(rownames(gr_ranef) == i), 4] * x^3}
     return(linear_predictor)
   }
-  if (ncol(ranef_gr) == 2) {line_color <- 'red' } 
-  else if (ncol(ranef_gr) == 3) {line_color <- 'green'} 
-  else if (ncol(ranef_gr) == 4) {line_color <- 'blue'} 
+  if (ncol(gr_ranef) == 2) {line_color <- 'red' } 
+  else if (ncol(gr_ranef) == 3) {line_color <- 'green'} 
+  else if (ncol(gr_ranef) == 4) {line_color <- 'blue'} 
   else {line_color <- 'black'}
   temp_plot <- grow_df %>% 
     filter(year == i) %>% 
@@ -360,7 +431,7 @@ grow_yr_plots <- function(i){
     geom_point(aes(x = logsize_t0, y = logsize_t1), size = 0.5, alpha = 0.5) +
     geom_function(fun = temp_f, color = line_color, lwd = 1) +
     geom_abline(intercept = 0, slope = 1, color = 'red', lty = 2) +
-    labs(title = paste0('19',i),
+    labs(title = i,
          x = expression('log(size) '[ t0]),
          y = expression('log(size) '[ t1])) +
     theme_bw() +
@@ -379,22 +450,28 @@ grow_yr_plots <- function(i){
   return(temp_plot)
 }
 
-grow_yrs   <- lapply(sort(unique(grow_df$year)), grow_yr_plots)
-grow_years <- wrap_plots(grow_yrs) + plot_layout(ncol = 4)
+grow_yrs     <- lapply(sort(unique(grow_df$year)), grow_yr_plots)
+g_grow_years <- wrap_plots(grow_yrs) + 
+  plot_layout(ncol = 4) + 
+  plot_annotation(
+    title = "Growth - year specific",  
+    subtitle = v_ggp_suffix,  
+    theme = theme(plot.title = element_text(size = 13, face = "bold"),
+                  plot.subtitle = element_text(size = 11)))
 
-ggsave(paste0(result_dir, '/4.2_years_growth_logsize', 
-              gr_mod_ys_bestfit_index, '.png'), 
-       plot = grow_years,
+ggsave(paste0(
+  dir_result, '/4.2_years_growth_logsize', v_suffix, '.png'), 
+       plot = g_grow_years,
        width = 4, height = 9, dpi = 150)
 
-# Growth variance
+
+# Growth variance year specific ------------------------------------------------
 x      <- fitted(gr_mod_yr_bestfit)
 y      <- resid( gr_mod_yr_bestfit)^2
 gr_var <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))
 
 
-# Recruitment model
-
+# Recruitment model year specific ----------------------------------------------
 recr_nona_nr_quad <- recr_df %>% filter(!is.na(nr_quad))
 
 rec_mod <- glmer.nb(nr_quad ~ (1 | year), data = recr_nona_nr_quad)
@@ -425,28 +502,25 @@ repr_pc_yr <- indiv_yr %>%
   drop_na
 
 # recruitment plot
-recruitment <-
-  repr_pc_yr %>% 
+g_recruitment <- repr_pc_yr %>% 
   ggplot() +
   geom_point( aes(x = repr_pc_obs,
                   y = repr_percapita)) +
   geom_abline(aes(intercept = 0, slope = 1),
               color = 'red', lwd = 2, alpha = 0.5) +
-  labs(title    = 'Histogram',
-       subtitle = paste(script_prefix, species),
+  labs(title    = 'Recruitment',
+       subtitle = v_ggp_suffix,
        x        = 'Observed per capita recruitment',
        y        = 'Predicted per capita recruitment') +
   theme_bw()
 
-ggsave(paste0(result_dir, '/4.3_years_recruitment.png'), 
-       plot = recruitment,
+ggsave(paste0(dir_result, '/4.3_v_years_recruitment', v_suffix, '.png'), 
+       plot = g_recruitment,
        width = 6, height = 4, dpi = 150)
 
 
 # Exporting parameter estimates ------------------------------------------------
-
 # Survival
-#
 # Get the coefficients matrix
 su_coef_matrix <- coef(su_mod_yr_bestfit)$year
 
@@ -474,11 +548,11 @@ surv_out_yr <- Reduce(rbind, su_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(surv_out_yr, 
-          paste0(data_dir, '/2.surv_pars.csv'), 
+          paste0(dir_data, '/2.surv_pars', v_suffix, '.csv'), 
           row.names = F)
 
 
-## Growth
+# Growth
 # Get coefficients matrix
 gr_coef_matrix <- coef(gr_mod_yr_bestfit)$year
 
@@ -507,11 +581,11 @@ grow_out_yr <- Reduce(function(...) rbind(...), gr_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(grow_out_yr, 
-          paste0(data_dir, '/2.grow_pars.csv'), 
+          paste0(dir_data, '/2.grow_pars', v_suffix, '.csv'), 
           row.names = F)
 
 
-## Recruitment
+# Recruitment
 rc_pc <- data.frame(coefficient = paste0('rec_pc_',repr_pc_yr$year),
                     value = repr_pc_yr$repr_percapita)
 
@@ -523,11 +597,11 @@ recr_out_yr <- Reduce(function(...) rbind(...), list(rc_pc, rc_sz)) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(recr_out_yr, 
-          paste0(data_dir, '/2.recr_pars.csv'), 
+          paste0(dir_data, '/2.recr_pars', v_suffix, '.csv'), 
           row.names = F)
 
 
-## df constant parameters, fixed effects estimates, and mean parameter estimates
+# df constant parameters, fixed effects estimates, and mean parameter estimates
 constants <- data.frame(coefficient = c('recr_sz',
                                         'recr_sd',
                                         'a',
@@ -565,7 +639,7 @@ pars_cons_wide <- as.list(pivot_wider(pars_cons, names_from = 'coefficient',
                                       values_from = 'value'))
 
 write.csv(pars_cons_wide, 
-          paste0(data_dir, '/2.pars_cons.csv'), 
+          paste0(dir_data, '/2.pars_cons', v_suffix, '.csv'), 
           row.names = F)
 
 
@@ -583,33 +657,33 @@ create_coef_df <- function(model, prefix) {
 
 # Create data frames for survival and growth models
 su_data_frames <- create_coef_df(su_mod_yr_bestfit, 'surv_b')
-grow_data_frames <- create_coef_df(gr_mod_yr_bestfit, 'grow_b')
+gr_data_frames <- create_coef_df(gr_mod_yr_bestfit, 'grow_b')
 
 # Create the fecundity data frame
 fecu_b0 <- data.frame(coefficient = paste0('fecu_b0_', repr_pc_yr$year),
                       value = repr_pc_yr$repr_percapita)
 
 # Combine all data frames into one
-pars_var <- Reduce(rbind, c(su_data_frames, grow_data_frames, list(fecu_b0)))
+pars_var <- Reduce(rbind, c(su_data_frames, gr_data_frames, list(fecu_b0)))
 
 pars_var_wide <- as.list(pivot_wider(pars_var, 
                                      names_from  = 'coefficient', 
                                      values_from = 'value') )
 
 write.csv(pars_var_wide, 
-          paste0(data_dir, '/2.pars_var.csv'), 
+          paste0(dir_data, '/2.pars_var', v_suffix, '.csv'), 
           row.names = F)
 
 
 # Building the year-specific IPMs from scratch ---------------------------------
-## Functions
+# Functions
 # Standard deviation of growth model
 grow_sd <- function(x, pars) {
   pars$a * (exp(pars$b * x)) %>% sqrt 
 }
 
 # Growth from size x to size y
-gxy <- function(x, y, pars, num_params = gr_mod_ys_bestfit_index) {
+gxy <- function(x, y, pars, num_params = gr_mod_ys_index_bestfit) {
   mean_value <- 0
   for (i in 0:num_params) {
     param_name <- paste0('grow_b', i)
@@ -625,7 +699,7 @@ gxy <- function(x, y, pars, num_params = gr_mod_ys_bestfit_index) {
 inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 
 # Survival of x-sized individual to time t1
-sx <- function(x, pars, num_params = su_mod_ys_bestfit_index) {
+sx <- function(x, pars, num_params = su_mod_ys_index_bestfit) {
   survival_value <- pars$surv_b0
   for (i in 1:num_params) {
     param_name <- paste0('surv_b', i)
@@ -692,7 +766,7 @@ kernel <- function(pars) {
 }
 
 
-## mean population growth rate
+# mean population growth rate
 pars_mean <- pars_cons_wide
 
 lambda_ipm <- function(i) {
@@ -703,7 +777,7 @@ lam_mean <- lambda_ipm(pars_mean)
 lam_mean
 
 
-## population growth rates for each year
+# population growth rates for each year
 pars_yr <- vector(mode = 'list', length = length(years_v))
 extr_value_list <- function(x, field) {
   return(as.numeric(x[paste0(field)] %>% unlist()))
@@ -752,8 +826,8 @@ prep_pars <- function(i, num_surv_params, num_grow_params) {
 }
 
 pars_yr <- lapply(1:length(years_v), 
-                  num_surv_params = su_mod_ys_bestfit_index, 
-                  num_grow_params = gr_mod_ys_bestfit_index, 
+                  num_surv_params = v_mod_su_index, 
+                  num_grow_params = v_mod_gr_index, 
                   prep_pars)
 
 
@@ -765,7 +839,7 @@ contains_numeric0 <- sapply(pars_yr, function(regular_list) {
 })
 
 which_contains_numeric0 <- which(contains_numeric0)
-# CHECK -- Exclude these years ####
+# CHECK -- Exclude these years ##
 pars_yr <- pars_yr[-which_contains_numeric0]
 years_v <- years_v[-which_contains_numeric0]
 
@@ -779,7 +853,7 @@ lambdas_yr <- lapply(1:(length(pars_yr)), calc_lambda)
 names(lambdas_yr) <- years_v
 
 
-## Comparing the year-specific lambdas
+# Comparing the year-specific lambdas
 year_kern <- function(i) {
   return(kernel(pars_yr[[i]])$k_yx)
 }
@@ -871,24 +945,22 @@ proj_pop <- function(i) {
 
 projected_pop_ns  <- sapply(1:(length(years_v)), proj_pop)
 
-pop_counts_update <- 
-  pop_counts %>%
+pop_counts_update <- pop_counts %>%
   mutate(proj_n_t1 = projected_pop_ns) %>%
   mutate(proj_pgr  = proj_n_t1/n_t0)
 
-mod_vs_obs <- 
-  ggplot(pop_counts_update) +
+g_mod_vs_obs <- ggplot(pop_counts_update) +
   geom_point( aes(x = lambda,   y = obs_pgr), color = 'brown') +
   geom_point( aes(x = proj_pgr, y = obs_pgr), color = 'red') +
   geom_abline(aes(intercept = 0, slope = 1)) +
   labs(title    = 'Lambda vs pgr',
-       subtitle = paste(script_prefix, species),
+       subtitle = v_ggp_suffix,
        x        = 'Modeled lambda',
        y        = 'Observed population growth rate') +
   theme_classic()
 
-ggsave(paste0(result_dir, '/5_years_lamda_mod_vs_obs.png'), 
-       plot = mod_vs_obs,
+ggsave(paste0(dir_result, '/5_years_lamda_mod_vs_obs', v_suffix, '.png'), 
+       plot = g_mod_vs_obs,
        width = 4, height = 3, dpi = 150)
 
 
@@ -896,11 +968,11 @@ ggsave(paste0(result_dir, '/5_years_lamda_mod_vs_obs.png'),
 # all of our varying and constant parameters into a single list
 all_pars <- c(pars_cons_wide, pars_var_wide)
 # add the index of the best model to the parameter
-all_pars[['su_mod_ys_bestfit_index']] <- su_mod_ys_bestfit_index
-all_pars[['gr_mod_ys_bestfit_index']] <- gr_mod_ys_bestfit_index
+all_pars[['mod_su_index']] <- v_mod_su_index
+all_pars[['mod_gr_index']] <- v_mod_gr_index
 
 write.csv(all_pars, 
-          paste0(data_dir, '/all_pars.csv'), 
+          paste0(dir_data, '/all_pars', v_suffix, '.csv'), 
           row.names = F)
 
 # proto-IPM with '_yr' suffix
@@ -914,15 +986,15 @@ proto_ipm_yr <- init_ipm(sim_gen   = 'simple',
     formula          = s_yr * g_yr,
     s_yr             = plogis(
       surv_b0_yr + 
-        (if (su_mod_ys_bestfit_index >= 1) surv_b1_yr * size_1   else 0) +
-        (if (su_mod_ys_bestfit_index >= 2) surv_b2_yr * size_1^2 else 0) +
-        (if (su_mod_ys_bestfit_index >= 3) surv_b3_yr * size_1^3 else 0)),
+        (if (mod_su_index >= 1) surv_b1_yr * size_1   else 0) +
+        (if (mod_su_index >= 2) surv_b2_yr * size_1^2 else 0) +
+        (if (mod_su_index >= 3) surv_b3_yr * size_1^3 else 0)),
     
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
     mu_g_yr          = grow_b0_yr + 
-      (if (gr_mod_ys_bestfit_index >= 1) grow_b1_yr * size_1   else 0) +
-      (if (gr_mod_ys_bestfit_index >= 2) grow_b2_yr * size_1^2 else 0) +
-      (if (gr_mod_ys_bestfit_index >= 3) grow_b3_yr * size_1^3 else 0),
+      (if (mod_gr_index >= 1) grow_b1_yr * size_1   else 0) +
+      (if (mod_gr_index >= 2) grow_b2_yr * size_1^2 else 0) +
+      (if (mod_gr_index >= 3) grow_b3_yr * size_1^3 else 0),
     
     grow_sig         = sqrt(a * exp(b * size_1)),
     data_list        = all_pars,
@@ -983,11 +1055,11 @@ lam_out       <- data.frame(coefficient = names(lam_mean_ipmr),
                             years       = years_v)
 rownames( lam_out) <- 1:(length(years_v))
 write.csv(lam_out, 
-          paste0(data_dir, '/lambdas_yr_vec.csv'), 
+          paste0(dir_data, '/lambdas_yr_vec', v_suffix, '.csv'), 
           row.names = F)
 
 lam_out_wide  <- as.list(pivot_wider(lam_out, names_from = 'coefficient', 
                                      values_from         = 'value'))
 write.csv(lam_out_wide, 
-          paste0(data_dir, '/lambdas_yr.csv'), 
+          paste0(dir_data, '/lambdas_yr', v_suffix, '.csv'), 
           row.names = F)

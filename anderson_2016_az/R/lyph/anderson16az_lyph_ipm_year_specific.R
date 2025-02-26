@@ -5,16 +5,9 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.12.17
+# Date  : 2025.02.26
 
-# Publication: https://doi.org/10.1890/11-2200.1
-
-
-# Comments ---------------------------------------------------------------------
-# 0. !!! Please define all key variables in the in the corresponding section !!!
-# 1. The pipeline runs plant tracker and IPM mean only if needed 
-# 2. Find all the graphics in the result folder of the respective species
-#     and the growth, survival and recruitment data in the data folder
+# Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
 
 
 # Clean up ---------------------------------------------------------------------
@@ -23,27 +16,25 @@
 
 # Key variables ----------------------------------------------------------------
 # Define publication 
-author_year <- 'anderson_2016'
+v_author_year <- c('anderson_2016')
 # Define region abbreviation
-region_abb <- 'az'
+v_region_abb  <- c('az')
 # Define species 
-species <- 'Lycurus phleoides'
+v_species     <- c('Lycurus phleoides')
 
 
-# CHECK -- Adaptions to the models ---------------------------------------------
-# Years:
-#  Removal of certain years if unspecified nothing is removed
-years_re <- c()
-
-# Models:
-#  Going down in complexity of the survival and/or growth model.
-# Survival model, 0 means keep the complexity (takes: 0-2)
-su_complex <- c(0)
-# Growth model, 0 means keep the complexity (takes: 0-2)
-gr_complex <- c(0)
+# CHECK -- Adaptions -----------------------------------------------------------
+# Removal of certain years if unspecified nothing is removed
+v_years_re       <- c()
+# Define size threshold
+v_size_threshold <- c()
+# Set a complexity to the growth and survival model 
+# (NULL = highest AIC / 0 = intercept / 1 = linear / 2 = quadratic / 3 = cubic)
+v_mod_set_gr     <- c()
+v_mod_set_su     <- c()
 
 
-# Main code --------------------------------------------------------------------
+# Main pipeline ----------------------------------------------------------------
 # Run the IPM year specific wrapper function
 source('pipeline/ipm_year_specific.R')
 

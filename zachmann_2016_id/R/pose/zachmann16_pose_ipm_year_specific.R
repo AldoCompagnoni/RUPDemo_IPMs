@@ -5,9 +5,9 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.11.11
+# Date  : 2025.02.26
 
-# Publication : https://doi.org/10.1890/10-0404.1
+# Publication: https://doi.org/10.1890/10-0404.1
 
 
 # Comments ---------------------------------------------------------------------
@@ -18,34 +18,32 @@
 
 
 # Clean up ---------------------------------------------------------------------
-rm(list = ls())
+# rm(list = ls())
 
 
 # Key variables ----------------------------------------------------------------
 # Define publication 
-author_year <- 'zachmann_2016'
+v_author_year <- c('zachmann_2016')
 # Define region abbreviation
-region_abb <- 'id'
+v_region_abb  <- c('id')
 # Define species 
-species <- 'Poa secunda'
+v_species     <- c('Poa secunda')
 
 
-# CHECK -- Adaptions to the models ---------------------------------------------
-# Years:
-#  Removal of certain years if unspecified nothing is removed
-years_re <- c()
-
-# Models:
-#  Going down in complexity of the survival and/or growth model.
-# Survival model, 0 means keep the complexity (takes: 0-2)
-su_complex <- c(0)
-# Growth model, 0 means keep the complexity (takes: 0-2)
-gr_complex <- c(0)
+# CHECK -- Adaptions -----------------------------------------------------------
+# Removal of certain years if unspecified nothing is removed
+v_years_re       <- c()
+# Define size threshold
+v_size_threshold <- c()
+# Set a complexity to the growth and survival model 
+# (NULL = highest AIC / 0 = intercept / 1 = linear / 2 = quadratic / 3 = cubic)
+v_mod_set_gr     <- c()
+v_mod_set_su     <- c()
 
 
-# Main code --------------------------------------------------------------------
+# Main pipeline ----------------------------------------------------------------
 # Run the IPM year specific wrapper function
-source('helper_functions/ipm_year_specific.R')
+source('pipeline/ipm_year_specific.R')
 
 
 

@@ -33,12 +33,10 @@ species <- "Pascopyrum smithii "
 sp_abb  <- 
   tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
                               collapse = "")))
-grow_df <- read.csv(paste0("anderson_2016_mt/data/pasm_growth_df.csv"))
-surv_df <- read.csv(paste0("anderson_2016_mt/data/pasm_survival_df.csv"))
-recr_df <- 
-  read.csv(paste0("anderson_2016_mt/data/pasm_recruitment_df.csv"))
-df      <- 
-  read.csv(paste0("anderson_2016_mt/data/data_df.csv"))
+grow_df <- read.csv(paste0("anderson_2016_mt/data/pasm/pasm_growth_df.csv"))
+surv_df <- read.csv(paste0("anderson_2016_mt/data/pasm/pasm_survival_df.csv"))
+recr_df <- read.csv(paste0("anderson_2016_mt/data/pasm/pasm_recruitment_df.csv"))
+df      <- read.csv(paste0("anderson_2016_mt/data/pasm/data_df.csv"))
 
 df_long <- 
   pivot_longer(df, cols = c(logsize_t0, logsize_t1 ), 
@@ -105,7 +103,7 @@ survival <-
   labs(x = expression('log(size)'[t0]),
        y = expression('Survival to time t1'))
 
-ggsave(paste0("anderson_2016_mt/results/years_survival.png"), 
+ggsave(paste0("anderson_2016_mt/results/pasm/years_survival.png"), 
        plot = survival,
        width = 4, height = 9, dpi = 150)
 
@@ -136,7 +134,7 @@ growth <-
   labs(x = expression('log(size) '[t0]),
        y = expression('log(size) '[t1]))
 
-ggsave(paste0("anderson_2016_mt/results/years_growth.png"), 
+ggsave(paste0("anderson_2016_mt/results/pasm/years_growth.png"), 
        plot = growth,
        width = 4, height = 9, dpi = 150)
 
@@ -173,7 +171,7 @@ recruits <-
   labs(x = expression('Number of adults '[ t0]),
        y = expression('Number of recruits '[ t1]))
 
-ggsave(paste0("anderson_2016_mt/results/years_recruits.png"), 
+ggsave(paste0("anderson_2016_mt/results/pasm/years_recruits.png"), 
        plot = recruits,
        width = 4, height = 9, dpi = 150)
 
@@ -194,7 +192,7 @@ hist(rec_size$logsize_t0)
 
 
 
-ggsave(paste0("anderson_2016_mt/results/years_recruitment_size.png"), 
+ggsave(paste0("anderson_2016_mt/results/pasm/years_recruitment_size.png"), 
        plot = recruitment_size,
        width = 4, height = 9, dpi = 150)
 
@@ -296,7 +294,8 @@ surv_yr_plots <- function(i) {
 surv_yrs   <- lapply(1:length(surv_bin_yrs), surv_yr_plots)
 surv_years <- wrap_plots(surv_yrs) + plot_layout(ncol = 4)
 
-ggsave(paste0("anderson_2016_mt/results/years_surv_logsize", su_mod_yr_bestfit_index, ".png"), 
+ggsave(paste0("anderson_2016_mt/results/years_surv_logsize", 
+              su_mod_yr_bestfit_index, ".png"), 
        plot  = surv_years,
        width = 4, height = 9, dpi = 150)
 
@@ -370,7 +369,8 @@ grow_yr_plots <- function(i){
 grow_yrs   <- lapply(sort(unique(grow_df$year)), grow_yr_plots)
 grow_years <- wrap_plots(grow_yrs) + plot_layout(ncol = 4)
 
-ggsave(paste0("anderson_2016_mt/results/years_growth_logsize", gr_mod_yr_bestfit_index, ".png"), 
+ggsave(paste0("anderson_2016_mt/results/pasm/years_growth_logsize", 
+              gr_mod_yr_bestfit_index, ".png"), 
        plot = grow_years,
        width = 4, height = 9, dpi = 150)
 
@@ -381,7 +381,6 @@ gr_var <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))
 
 
 # Recruitment model
-
 recr_nona_nr_quad <- recr_df %>% filter(!is.na(nr_quad))
 
 rec_mod <- glmer.nb(nr_quad ~ (1 | year), data = recr_nona_nr_quad)
@@ -423,7 +422,7 @@ recruitment <-
        y = "Predicted per capita recruitment") +
   theme_bw()
 
-ggsave(paste0("anderson_2016_mt/results/years_recruitment.png"), 
+ggsave(paste0("anderson_2016_mt/results/pasm/years_recruitment.png"), 
        plot = recruitment,
        width = 6, height = 4, dpi = 150)
 
@@ -459,7 +458,7 @@ surv_out_yr <- Reduce(rbind, su_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(surv_out_yr, 
-          paste0("anderson_2016_mt/data/2.surv_pars.csv"), 
+          paste0("anderson_2016_mt/data/pasm/2.surv_pars.csv"), 
           row.names = F)
 
 
@@ -492,7 +491,7 @@ grow_out_yr <- Reduce(function(...) rbind(...), gr_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(grow_out_yr, 
-          paste0("anderson_2016_mt/data/2.grow_pars.csv"), 
+          paste0("anderson_2016_mt/data/pasm/2.grow_pars.csv"), 
           row.names = F)
 
 
@@ -508,7 +507,7 @@ recr_out_yr <- Reduce(function(...) rbind(...), list(rc_pc, rc_sz)) %>%
   mutate(coefficient = as.character(coefficient))
 
 write.csv(recr_out_yr, 
-          paste0("anderson_2016_mt/data/2.recr_pars.csv"), 
+          paste0("anderson_2016_mt/data/pasm/2.recr_pars.csv"), 
           row.names = F)
 
 
@@ -550,7 +549,7 @@ pars_cons_wide <- as.list(pivot_wider(pars_cons, names_from = "coefficient",
                                       values_from = "value"))
 
 write.csv(pars_cons_wide, 
-          paste0("anderson_2016_mt/data/2.pars_cons.csv"), 
+          paste0("anderson_2016_mt/data/pasm/2.pars_cons.csv"), 
           row.names = F)
 
 
@@ -685,19 +684,17 @@ lambda_ipm <- function(i) {
 }
 
 
+# change standard deviation so that it spans at least a single size "bin"
+pars_mean$recr_sd <- 0.01
+  
+#Fmat_test <- kernel(pars_mean)$Fmat
 
-Fmat_test <- kernel(pars_mean)$Fmat
-
-print(summary(Fmat_test))  # Shows min, max, NA, etc.
-print(any(is.na(Fmat_test)))  # TRUE means there are NA values
-
-# All attempts to figure this out starts to go in circles. The solution is # # likely/maybe will come from figuring out the recruitment sizes.
-
+#print(summary(Fmat_test))  # Shows min, max, NA, etc.
+#print(any(is.na(Fmat_test)))  # TRUE means there are NA values
 
 
 lam_mean <- lambda_ipm(pars_mean)
 lam_mean
-
 
 
 
@@ -750,11 +747,11 @@ prep_pars <- function(i, num_surv_params, num_grow_params) {
   return(pars_year)
 }
 
+
 pars_yr <- lapply(1:length(years_v), 
                   num_surv_params = su_mod_yr_bestfit_index, 
                   num_grow_params = gr_mod_yr_bestfit_index, 
                   prep_pars)
-
 
 # Identify which years contain parameters with numeric(0)
 contains_numeric0 <- sapply(pars_yr, function(regular_list) {
@@ -772,6 +769,13 @@ years_v <- years_v[-which_contains_numeric0]
 calc_lambda <- function(i) {
   lam <- Re(eigen(kernel(pars_yr[[i]])$k_yx)$value[1])
   return(lam)
+}
+
+# Loop through each element in pars_yr and update recruitment size SD
+for (i in seq_along(pars_yr)) {
+  if (!is.null(pars_yr[[i]]$recr_sd)) {
+    pars_yr[[i]]$recr_sd[pars_yr[[i]]$recr_sd == 0] <- 0.1
+  }
 }
 
 lambdas_yr <- lapply(1:(length(pars_yr)), calc_lambda)
@@ -982,9 +986,24 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
   )
 
 
+#debuggig
+print(proto_ipm_yr$params$recr_sd)
+
+proto_ipm_yr$params[[1]]$recr_sd <- 0.1
+
+any(is.na(unlist(proto_ipm_yr$params)))
+print(proto_ipm_yr$params$grow_sig)
+print(proto_ipm_yr$params$a)
+print(proto_ipm_yr$params$b)
+
+print(proto_ipm_yr$P_33)
+
+str(proto_ipm_yr)
+
 # Make a dataframe
 ipmr_yr       <- make_ipm(proto_ipm  = proto_ipm_yr,
                           iterations = 200)
+
 lam_mean_ipmr <- lambda(ipmr_yr)
 lam_out       <- data.frame(coefficient = names(lam_mean_ipmr), 
                             value       = lam_mean_ipmr)

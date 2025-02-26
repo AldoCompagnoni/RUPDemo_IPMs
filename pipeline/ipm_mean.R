@@ -129,7 +129,8 @@ g_inv_plot_per_year <- df %>%
   theme_bw() +
   labs(title    = 'Sampling inventory',
        subtitle = v_ggp_suffix) +
-  theme(axis.text.y = element_text(size = 5))
+  theme(axis.text.y = element_text(size = 5)) +
+  theme(plot.subtitle = element_text(size = 8))
 g_inv_plot_per_year
 
 ggsave(paste0(dir_result, '/0.0_quad_per_year', v_suffix,'', v_suffix,'.png'), 
@@ -195,7 +196,8 @@ g_hist_t0 <- ggplot(
        subtitle = v_ggp_suffix, 
        x        = 'Size at time t0') +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(plot.subtitle = element_text(size = 8))
 g_hist_t1 <- ggplot(
   df, aes(x = logsize_t1)) +
   geom_histogram(binwidth = 0.2, fill = 'white', color = 'black') +
@@ -229,7 +231,8 @@ g_surv_overall <- ggplot(
   labs(title    = 'Survival',
        subtitle = v_ggp_suffix,
        x        = expression('log(size)'[t0]),
-       y        = expression('Survival to time t1'))
+       y        = expression('Survival to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
 
 # Save the survival plot to a file
 ggsave(paste0(dir_result, '/1.1_overall_surv', v_suffix,'.png'), 
@@ -247,7 +250,8 @@ g_gr_overall <- ggplot(
   labs(title    = 'Growth',
        subtitle = v_ggp_suffix,
        x        = expression('log(size) ' [t0]),
-       y        = expression('log(size)  '[t1]))
+       y        = expression('log(size)  '[t1])) +
+  theme(plot.subtitle = element_text(size = 8))
 
 ggsave(paste0(dir_result, '/1.2_overall_gr', v_suffix,'.png'), 
        plot = g_gr_overall, 
@@ -263,7 +267,8 @@ g_rec_overall <- ggplot(
   labs(title    = 'Recruitment',
        subtitle = v_ggp_suffix,
        x        = expression('Total parent plant area '[t0]),   
-       y        = expression('Number of recruits '     [t1]))  
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
 
 # Save the recruitment plot as a PNG file
 ggsave(paste0(dir_result, '/1.3_overall_rec', v_suffix,'.png'), 
@@ -322,7 +327,8 @@ g_grow_line <- ggplot(
                 lwd = 2) +
   theme_bw() + 
   labs(title    = 'Growth prediction',
-       subtitle = v_ggp_suffix)
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
 
 # Plot predicted versus observed size at time t1
 g_grow_pred <- ggplot(
@@ -407,23 +413,25 @@ g_surv_line <- ggplot() +
             lwd   = 2) +  
   theme_bw() + 
   labs(title    = 'Survival prediction',
-       subtitle = v_ggp_suffix)
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
 
 # Plot binned survival proportions with error bars
 g_surv_bin <- ggplot() +
-  geom_point(data =  plot_binned_prop(df, 10, 
-                                      logsize_t0, survives), 
+  geom_point(data =  plot_binned_prop(
+    df, 10, logsize_t0, survives), 
              aes(x = logsize_t0, 
                  y = survives) ) +
-  geom_errorbar(data =  plot_binned_prop(df, 10, 
-                                         logsize_t0, survives), 
+  geom_errorbar(data =  plot_binned_prop(
+    df, 10, logsize_t0, survives), 
                 aes(x = logsize_t0, 
                     ymin = lwr,
                     ymax = upr) ) +
   geom_line(data = surv_pred_df, aes(x = logsize_t0, 
                                      y = survives),
             color = 'red', lwd   = 2) + 
-  theme_bw()
+  theme_bw() +
+  ylim(0, 1)
 
 # Combine survival plots
 g_surv_overall_pred <- g_surv_line + g_surv_bin + plot_layout()
@@ -750,3 +758,4 @@ lam_out_wide  <- as.list(pivot_wider(lam_out,
 
 write.csv(lam_out_wide, row.names = F, paste0(
   dir_data, '/', v_script_prefix, '_',v_sp_abb, '_lambda.csv'))
+

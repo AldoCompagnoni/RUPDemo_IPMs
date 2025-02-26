@@ -121,7 +121,8 @@ g_hist_logsizes_years <- df_long %>%
        x        = 'log(size)',
        y        = 'Frequency') +
   theme_bw() +
-  theme(axis.text.y = element_text(size = 5))
+  theme(axis.text.y = element_text(size = 5)) +
+  theme(plot.subtitle = element_text(size = 8))
 
 ggsave(
   paste0(dir_result, '/3.1_years_hist_logsizes_years', v_suffix, '.png'),  
@@ -148,7 +149,7 @@ g_survival <- ggplot(
   geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +
   geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr), 
                 width = 0.25, linewidth = 0.1) +
-  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+  scale_y_continuous(breaks = c(0, 0.5, 1)) +
   # split in panels
   facet_wrap(.~ transition, ncol = 4) +
   theme_bw() +
@@ -158,11 +159,12 @@ g_survival <- ggplot(
         strip.text.x = element_text(
           size = 5, margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit( '0.5', unit = 'mm' ),
-        panel.spacing         = unit( '0.5', unit = 'mm' )) +
+        panel.spacing         = unit( '0.5', unit = 'mm' ),
+        plot.subtitle = element_text(size = 8)) +
   labs(title    = 'Survival',
        subtitle = v_ggp_suffix,
        x        = expression('log(size)'[t0]),
-       y        = expression('Survival to time t1'))
+       y        = expression('Survival to time t1')) 
 
 ggsave(paste0(dir_result, '/3.2_years_survival', v_suffix, '.png'), 
        plot = g_survival,
@@ -189,7 +191,8 @@ g_growth <- ggplot(
         strip.text.x = element_text(size = 8, 
                                     margin = margin( 0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit('0.5', unit = 'mm'),
-        panel.spacing         = unit('0.5', unit = 'mm')) +
+        panel.spacing         = unit('0.5', unit = 'mm'),
+        plot.subtitle = element_text(size = 8)) +
   labs(title    = 'Growth',
        subtitle = v_ggp_suffix,
        x        =  expression('log(size) '[t0]),
@@ -227,7 +230,8 @@ g_recruits <- repr_yr %>%
         strip.text.x = element_text(size = 8, 
                                     margin = margin(0.5, 0.5, 0.5, 0.5, 'mm')),
         strip.switch.pad.wrap = unit('0.5', unit = 'mm'),
-        panel.spacing         = unit('0.5', unit = 'mm')) +
+        panel.spacing         = unit('0.5', unit = 'mm'),
+        plot.subtitle = element_text(size = 8)) +
   labs(title    = 'Recruits',
        subtitle = v_ggp_suffix,
        x        = expression('Number of adults '[ t0]),
@@ -249,7 +253,8 @@ g_recruitment_size <- rec_size %>%
   labs(title    = 'Recruitment size',
        subtitle = v_ggp_suffix,
        x        = expression('log(size)'[t0]),
-       y        = 'Frequency')
+       y        = 'Frequency') +
+  theme(plot.subtitle = element_text(size = 8))
 
 ggsave(paste0(dir_result, '/3.4_v_years_recruitment_size', v_suffix, '.png'), 
        plot = g_recruitment_size,
@@ -364,7 +369,7 @@ g_surv_years <- wrap_plots(surv_yrs) +
     title = "Survival year specific",  # Set the grand title
     subtitle = v_ggp_suffix,  # Set the grand subtitle
     theme = theme(plot.title = element_text(size = 13, face = "bold"),
-                  plot.subtitle = element_text(size = 11)))
+                  plot.subtitle = element_text(size = 8)))
 
 ggsave(paste0(
   dir_result, '/4.1_years_surv_logsize', v_suffix, '.png'), 
@@ -457,7 +462,7 @@ g_grow_years <- wrap_plots(grow_yrs) +
     title = "Growth - year specific",  
     subtitle = v_ggp_suffix,  
     theme = theme(plot.title = element_text(size = 13, face = "bold"),
-                  plot.subtitle = element_text(size = 11)))
+                  plot.subtitle = element_text(size = 9)))
 
 ggsave(paste0(
   dir_result, '/4.2_years_growth_logsize', v_suffix, '.png'), 
@@ -512,7 +517,8 @@ g_recruitment <- repr_pc_yr %>%
        subtitle = v_ggp_suffix,
        x        = 'Observed per capita recruitment',
        y        = 'Predicted per capita recruitment') +
-  theme_bw()
+  theme_bw() +
+  theme(plot.subtitle = element_text(size = 8))
 
 ggsave(paste0(dir_result, '/4.3_v_years_recruitment', v_suffix, '.png'), 
        plot = g_recruitment,

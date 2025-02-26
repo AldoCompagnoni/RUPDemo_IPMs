@@ -24,9 +24,9 @@ sp_list         <- read.csv( paste0(dat_dir,"species_list.csv") ) %>%
 sp_list %>% dplyr::arrange( desc(density) ) %>% head(20)
 target_spec     <- sp_list %>% 
   dplyr::arrange( desc(density) ) %>% 
-  .[c(1),]
+  .[c(2),]
 # Define the species variable
-species <- 'Pascopyrum smithii'
+species <- 'Sphaeralcea coccinea'
 sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
                                        collapse = "")))
 
@@ -62,6 +62,8 @@ datTrackSpp <- trackSpp(dat_target_spec,
                         buffGenet = 0.05,
                         aggByGenet = TRUE,
                         flagSuspects = TRUE)
+
+#AreaGenet values in the output table are identical, at least in new recruits.
 
 
 # create folder

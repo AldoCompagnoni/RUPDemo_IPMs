@@ -30,7 +30,7 @@ library(ipmr)
 
 # Data -------------------------------------------------------------------------
 # Specify the species
-species <- 'Pascopyrum smithii' 
+species <- 'Pascopyrum smithii'
 # Create a unique species abbreviation for file naming
 pas_smi  <- tolower(
   gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
@@ -131,7 +131,7 @@ recr_df <- left_join(cover_df, recr_df)
   #dir.create(paste0("anderson_2016_mt/data/", pas_smi))}
 
 write.csv(df,      paste0("anderson_2016_mt/data/pasm/pasm_data_df.csv"))
-write.csv(surv_df, paste0("anderson_2016_mt/data/pasm/pasm_survival_df.csv"))
+write.csv(surv_df, paste0("anderson_2016_mt/data/pasm/passm_survival_df.csv"))
 write.csv(grow_df, paste0("anderson_2016_mt/data/pasm/pasm_growth_df.csv"))
 write.csv(recr_df, paste0("anderson_2016_mt/data/pasm/pasm_recruitment_df.csv"))
 

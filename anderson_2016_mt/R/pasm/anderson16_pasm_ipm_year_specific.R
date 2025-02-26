@@ -36,7 +36,7 @@ sp_abb  <-
 grow_df <- read.csv(paste0("anderson_2016_mt/data/pasm/pasm_growth_df.csv"))
 surv_df <- read.csv(paste0("anderson_2016_mt/data/pasm/pasm_survival_df.csv"))
 recr_df <- read.csv(paste0("anderson_2016_mt/data/pasm/pasm_recruitment_df.csv"))
-df      <- read.csv(paste0("anderson_2016_mt/data/pasm/data_df.csv"))
+df      <- read.csv(paste0("anderson_2016_mt/data/pasm/pasm_data_df.csv"))
 
 df_long <- 
   pivot_longer(df, cols = c(logsize_t0, logsize_t1 ), 

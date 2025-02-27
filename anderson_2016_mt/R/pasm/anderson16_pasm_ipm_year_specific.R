@@ -139,6 +139,7 @@ ggsave(paste0("anderson_2016_mt/results/pasm/years_growth.png"),
        width = 4, height = 9, dpi = 150)
 
 ## Recruits
+
 indiv_qd <- surv_df %>%
   group_by(quad) %>%
   count(year) %>% 
@@ -685,7 +686,9 @@ lambda_ipm <- function(i) {
 
 
 # change standard deviation so that it spans at least a single size "bin"
-pars_cons_wide$recr_sd <- 0.01
+pars_cons_wide$recr_sd <- 0.01
+pars_mean$recr_sd <- 0.01
+str(pars_cons_wide)
   
 #Fmat_test <- kernel(pars_mean)$Fmat
 
@@ -772,11 +775,11 @@ calc_lambda <- function(i) {
 }
 
 # Loop through each element in pars_yr and update recruitment size SD
-for (i in seq_along(pars_yr)) {
-  if (!is.null(pars_yr[[i]]$recr_sd)) {
-    pars_yr[[i]]$recr_sd[pars_yr[[i]]$recr_sd == 0] <- 0.1
-  }
-}
+#for (i in seq_along(pars_yr)) {
+ # if (!is.null(pars_yr[[i]]$recr_sd)) {
+  #  pars_yr[[i]]$recr_sd[pars_yr[[i]]$recr_sd == 0] <- 0.1
+  #}
+#}
 
 lambdas_yr <- lapply(1:(length(pars_yr)), calc_lambda)
 names(lambdas_yr) <- years_v
@@ -985,24 +988,11 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     n_size_yr = rep(1 / 200, 200)
   )
 
-
-#debuggig.. didn't get passed this
-print(proto_ipm_yr$params$recr_sd)
-
-proto_ipm_yr$params[[1]]$recr_sd <- 0.1
-
-any(is.na(unlist(proto_ipm_yr$params)))
-print(proto_ipm_yr$params$grow_sig)
-print(proto_ipm_yr$params$a)
-print(proto_ipm_yr$params$b)
-
-print(proto_ipm_yr$P_33)
-
-str(proto_ipm_yr)
-
+#Cannot fix this so far
 # Make a dataframe
 ipmr_yr       <- make_ipm(proto_ipm  = proto_ipm_yr,
                           iterations = 200)
+
 
 lam_mean_ipmr <- lambda(ipmr_yr)
 lam_out       <- data.frame(coefficient = names(lam_mean_ipmr), 

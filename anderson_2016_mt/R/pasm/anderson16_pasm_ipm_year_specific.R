@@ -685,7 +685,7 @@ lambda_ipm <- function(i) {
 
 
 # change standard deviation so that it spans at least a single size "bin"
-pars_mean$recr_sd <- 0.01
+pars_cons_wide$recr_sd <- 0.01
   
 #Fmat_test <- kernel(pars_mean)$Fmat
 
@@ -986,7 +986,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
   )
 
 
-#debuggig
+#debuggig.. didn't get passed this
 print(proto_ipm_yr$params$recr_sd)
 
 proto_ipm_yr$params[[1]]$recr_sd <- 0.1

@@ -30,7 +30,7 @@ library(ipmr)
 
 # Data -------------------------------------------------------------------------
 # Specify the species
-species <- 'Pascopyrum smithii'
+species <- 'Pascopyrum smithii' 
 # Create a unique species abbreviation for file naming
 pas_smi  <- tolower(
   gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 

@@ -189,26 +189,22 @@ recruitment_size <-
        y = "Frequency")
 
 
-hist(rec_size$logsize_t0)
-
-
-
 ggsave(paste0("anderson_2016_mt/results/pasm/years_recruitment_size.png"), 
        plot = recruitment_size,
        width = 4, height = 9, dpi = 150)
 
 
 # # Removing year with too few data ----------------------------------------------
-# 
-# years_re <- c(32:46, 58, 59)
-# df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
-# surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
-# grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
-# recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% years_re))
-# surv_yrs     <- data.frame(year = surv_df$year %>% unique %>% sort)
-# surv_bin_yrs <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
-#                        logsize_t0, survives, surv_yrs)
-# surv_bin_yrs <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
+
+#years_re <- c(32:34)
+#df      <- df      %>% filter(!is.na(year) & !(year %in% years_re))
+#surv_df <- surv_df %>% filter(!is.na(year) & !(year %in% years_re))
+#grow_df <- grow_df %>% filter(!is.na(year) & !(year %in% years_re))
+#recr_df <- recr_df %>% filter(!is.na(year) & !(year %in% years_re))
+#surv_yrs     <- data.frame(year = surv_df$year %>% unique %>% sort)
+#surv_bin_yrs <- lapply(1:nrow(surv_yrs), df_binned_prop_year, df, 15,
+ #                       logsize_t0, survives, surv_yrs)
+#surv_bin_yrs <- Filter(function(df) nrow(df) > 0, surv_bin_yrs)
 years_v      <- sort(unique(df$year))
 
 
@@ -919,25 +915,9 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     name             = "P_yr",
     family           = "CC",
     formula          = s_yr * g_yr,
-    s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1), 
+    s_yr             = plogis(surv_b0_yr + surv_b1_yr * size_1),
     g_yr             = dnorm(size_2, mu_g_yr, grow_sig),
-    mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + 
-      grow_b2_yr * size_1^2,
-    
-    # # Dynamically build s_yr based on num_surv_params
-    # s_yr = plogis(
-    #   surv_b0_yr + 
-    #     surv_b1_yr * size_1 + 
-    #     if (num_surv_params >= 2) surv_b2_yr * size_1^2 else 0 + 
-    #     if (num_surv_params == 3) surv_b3_yr * size_1^3 else 0
-    # ), 
-    # 
-    # # Dynamically build mu_g_yr based on num_grow_params
-    # mu_g_yr = grow_b0_yr + 
-    #   grow_b1_yr * size_1 + 
-    #   if (num_grow_params >= 2) grow_b2_yr * size_1^2 else 0 + 
-    #   if (num_grow_params == 3) grow_b3_yr * size_1^3 else 0,
-    # 
+    mu_g_yr          = grow_b0_yr + grow_b1_yr * size_1 + grow_b2_yr * size_1^2 + grow_b3_yr * size_1^3,
     
     grow_sig         = sqrt(a * exp(b * size_1)),
     data_list        = all_pars,
@@ -951,7 +931,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     evict_cor        = TRUE,
     evict_fun        = truncated_distributions(fun    = 'norm',
                                                target = 'g_yr')
-  ) %>% 
+  ) %>%
   
   define_kernel(
     name             = 'F_yr',
@@ -964,7 +944,7 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     par_set_indices  = list(yr = years_v),
     evict_cor        = TRUE,
     evict_fun        = truncated_distributions("norm", "r_d")
-  ) %>% 
+  ) %>%
   
   define_impl(
     make_impl_args_list(
@@ -973,7 +953,17 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
       state_start  = rep("size", 2),
       state_end    = rep("size", 2)
     )
-  ) %>% 
+  ) %>%
+  
+  # define_impl(
+  #   make_impl_args_list(
+  #     kernel_names = c(  "F_yr"),
+  #     int_rule     = rep("midpoint", 1),
+  #     state_start  = rep("size", 1),
+  #     state_end    = rep("size", 1)
+  #   )
+  # ) %>% 
+  
   
   define_domains(
     size = c(all_pars$L,
@@ -988,11 +978,8 @@ proto_ipm_yr <- init_ipm(sim_gen   = "simple",
     n_size_yr = rep(1 / 200, 200)
   )
 
-#Cannot fix this so far
 # Make a dataframe
-ipmr_yr       <- make_ipm(proto_ipm  = proto_ipm_yr,
-                          iterations = 200)
-
+ipmr_yr <- make_ipm(proto_ipm = proto_ipm_yr, iterations = 200)
 
 lam_mean_ipmr <- lambda(ipmr_yr)
 lam_out       <- data.frame(coefficient = names(lam_mean_ipmr), 

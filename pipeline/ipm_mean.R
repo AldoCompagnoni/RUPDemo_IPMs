@@ -1,11 +1,11 @@
-# IPM mean to padrino pipeline
+# IPM for Author yyyy; State(or region); 
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.02.21
+# Date  : 2025.02.27
 
 # reading in, and cleaning the data
 #  exploring the overall-years rates
@@ -31,6 +31,7 @@ v_sp_abb  <- tolower(
   gsub(' ', '', paste(
     substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
 # Define script prefix
+
 v_script_prefix <- str_c(
   str_extract(v_author_year, "^[^_]+"),
   str_sub(str_extract(v_author_year, "_\\d+$"), -2, -1))

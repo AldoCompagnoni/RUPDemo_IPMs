@@ -28,3 +28,6 @@ spp_count <- dat %>%
 
 # Check which species are most abundant
 spp_count %>% View
+
+
+write.csv(spp_count,      paste0("anderson_2016_mt/data/spp_abundance_overview.csv"))

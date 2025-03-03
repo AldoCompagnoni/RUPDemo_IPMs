@@ -5,7 +5,7 @@
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.02.21
+# Date  : 2025.03.03
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
@@ -20,9 +20,9 @@
 
 # Key variables ----------------------------------------------------------------
 # Define publication 
-v_author_year <- c('adler_2007')
+v_author_year <- c('anderson_2016')
 # Define region abbreviation
-v_region_abb  <- c('ks')
+v_region_abb  <- c('mt')
 # Define species 
 v_species     <- c('Bouteloua gracilis')
 
@@ -31,7 +31,7 @@ v_species     <- c('Bouteloua gracilis')
 # Removal of certain years if unspecified nothing is removed
 v_years_re       <- c()
 # Define size threshold
-v_size_threshold <- c(-12.7)
+v_size_threshold <- c()
 # Set a complexity to the growth and survival model 
 # (NULL = highest AIC / 0 = intercept / 1 = linear / 2 = quadratic / 3 = cubic)
 v_mod_set_gr     <- c()

@@ -25,9 +25,9 @@ sp_list         <- read.csv( paste0(dat_dir,"species_list.csv") ) %>%
 sp_list %>% dplyr::arrange(desc(cover), desc(density)) %>% head(20)
 target_spec     <- sp_list %>% 
   dplyr::arrange(desc(cover), desc(density)) %>% 
-  .[c(7),]
+  .[c(8),]
 # Define the species variable
-species <- 'Artemisia frigida'
+species <- 'Nassella viridula'
 sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
                                        collapse = "")))
 

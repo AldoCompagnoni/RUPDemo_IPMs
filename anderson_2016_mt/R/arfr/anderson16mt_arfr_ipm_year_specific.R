@@ -1,4 +1,4 @@
-# IPM year specific - Anderson 2016 Montana - Schedonnardus paniculatus
+# IPM year specific - Anderson 2016 Montana - Artemisia frigida
 
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
@@ -20,12 +20,12 @@ v_author_year <- c('anderson_2016')
 # Define region abbreviation
 v_region_abb  <- c('mt')
 # Define species 
-v_species     <- c('Schedonnardus paniculatus')
+v_species     <- c('Artemisia frigida')
 
 
 # CHECK -- Adaptions -----------------------------------------------------------
 # Removal of certain years if unspecified nothing is removed
-v_years_re       <- c()
+v_years_re       <- c(32-39)
 # Define size threshold
 v_size_threshold <- c()
 # Set a complexity to the growth and survival model 
@@ -36,7 +36,7 @@ v_mod_set_su     <- c()
 
 # Main pipeline ----------------------------------------------------------------
 # Run the IPM year specific wrapper function
-source('pipeline/ipm_year_specific.R')
+source('pipeline/arfr_ipm_year_specific.R')
 
 
 # Data -------------------------------------------------------------------------
@@ -59,10 +59,10 @@ skim(pop_counts)
 
 # Models -----------------------------------------------------------------------
 # Survival 
-list(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
+list(su_mod_yr, su_mod_yr_2)
 
 # Growth
-list(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
+list(gr_mod_yr, gr_mod_yr_2)
 
 # Growth variation
 gr_var

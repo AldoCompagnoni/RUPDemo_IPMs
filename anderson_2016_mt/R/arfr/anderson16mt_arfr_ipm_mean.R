@@ -29,7 +29,7 @@ v_species     <- c('Artemisia frigida')
 
 # CHECK -- Adaptions -----------------------------------------------------------
 # Removal of certain years if unspecified nothing is removed
-v_years_re       <- c()
+v_years_re       <- c(32-39)
 # Define size threshold
 v_size_threshold <- c()
 # Set a complexity to the growth and survival model 

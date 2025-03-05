@@ -1,0 +1,2 @@
+Anderson 2016; Montana; Carex filifolia
+- cubic model for survial removed (su_mod_yr_3) as no data to fit the model

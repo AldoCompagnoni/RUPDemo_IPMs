@@ -1,0 +1,4 @@
+Anderson 2016; Montana; Artemisia frigida 
+- mean IPM with years 32-39 removed due to small amount of data
+- year specific IPM with years 32-39 removed due to small amount of data
+- cubic model for survial removed (su_mod_yr_3) as no data to fit the model

@@ -285,10 +285,10 @@ su_mod_yr   <- glmer(
 su_mod_yr_2 <- glmer(
   survives ~ logsize_t0 + logsize_t0_2 + (1 | year), 
   data = surv_df, family = binomial)
-su_mod_yr_3 <- glmer(
-  survives ~ logsize_t0 + logsize_t0_2 +  logsize_t0_3 + (1 | year), 
-  data = surv_df, family = binomial)
-su_mods     <- list(su_mod_yr_0, su_mod_yr, su_mod_yr_2, su_mod_yr_3)
+#su_mod_yr_3 <- glmer(
+ # survives ~ logsize_t0 + logsize_t0_2 +  logsize_t0_3 + (1 | year), 
+  #data = surv_df, family = binomial)
+su_mods     <- list(su_mod_yr_0, su_mod_yr, su_mod_yr_2)
 
 #Error in eval(ei, envir) : 
 #(maxstephalfit) PIRLS step-halvings failed to reduce deviance in pwrssUpdate

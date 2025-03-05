@@ -62,10 +62,10 @@ skim(pop_counts)
 
 # Models -----------------------------------------------------------------------
 # Survival 
-list(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
+list(su_mod_yr, su_mod_yr_2)
 
 # Growth
-list(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
+list(gr_mod_yr, gr_mod_yr_2)
 
 # Growth variation
 gr_var

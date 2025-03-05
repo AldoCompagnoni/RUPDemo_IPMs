@@ -290,14 +290,26 @@ su_mod_yr_3 <- glmer(
   data = surv_df, family = binomial)
 su_mods     <- list(su_mod_yr_0, su_mod_yr, su_mod_yr_2, su_mod_yr_3)
 
+#Error in eval(ei, envir) : 
+#(maxstephalfit) PIRLS step-halvings failed to reduce deviance in pwrssUpdate
+#In addition: Warning messages:
+ # 1: Removed 58 rows containing non-finite outside the scale range (`stat_bin()`). 
+#2: In checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,  :
+                  #Model is nearly unidentifiable: large eigenvalue ratio
+                #- Rescale variables?
+
+
 
 # Check collinearity using
 #library(car)
 #vif(lm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = surv_df))
 # every VIF > 10, remove or orthogonalize the variables?
 
+
 #extreme values?
 #surv_df <- surv_df[surv_df$logsize_t0 > min_threshold & surv_df$logsize_t0 < max_threshold, ]
+
+
 
 
 # Assign the best model to the variable

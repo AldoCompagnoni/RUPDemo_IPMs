@@ -5,7 +5,7 @@
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.03.04
+# Date  : 2025.03.06
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
@@ -36,7 +36,9 @@ v_mod_set_su     <- c()
 
 # Main pipeline ----------------------------------------------------------------
 # Run the IPM year specific wrapper function
+# Seperate ipm_year_specific script created for cafi with su_mod_yr_3 being removed
 source('pipeline/cafi_ipm_year_specific.R')
+
 
 #Error in eval(ei, envir) : 
 #(maxstephalfit) PIRLS step-halvings failed to reduce deviance in pwrssUpdate

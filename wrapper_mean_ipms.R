@@ -80,7 +80,7 @@ lapply( track_path, function(x) source(x) )
 mean_paths  <- paste0( 'anderson_2016_mt/R/', spp_codes, 
                        '/anderson16mt_', spp_codes, '_ipm_mean.R' )
 
-lapply( mean_paths, function(x) source(x) )
+lapply( mean_paths, function(x){print(paste0(x));source(x)} )
 
 
 

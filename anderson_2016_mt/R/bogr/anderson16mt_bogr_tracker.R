@@ -80,6 +80,6 @@ datTrackSpp %>%
                  survives_tplus1, age, size_tplus1,
                  nearEdge, Suspect) %>% 
   write.csv( paste0('anderson_2016_mt/data/',
-                    sp_abb,'/mt_',sp_abb,'.csv'), 
+                    sp_abb,'/anderson16mt_',sp_abb,'.csv'), 
              row.names = F )
 

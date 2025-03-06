@@ -3,7 +3,7 @@
 
 # Author: Diana Spurite
 # Email: diana.spurite@posteo.de
-# Date: 13.02.2025
+# Date: 06.03.2025
 
 # Process plant growth data to explore vital rates for 
 # the species: Pascopyrum smithii and 

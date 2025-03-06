@@ -21,10 +21,11 @@ quote_bare <- function( ... ){
 sp_list         <- read.csv( paste0(dat_dir,"species_list.csv") ) %>% 
   mutate( species = paste(species,X) ) %>% 
   dplyr::select(-X)
-sp_list %>% dplyr::arrange( desc(density) ) %>% head(20)
+#arrange species by density and cover (deeded in anderson_mt for precision)
+sp_list %>% dplyr::arrange(desc(cover), desc(density)) %>% head(50)
 target_spec     <- sp_list %>% 
-  dplyr::arrange( desc(density) ) %>% 
-  .[c(1),]
+  dplyr::arrange(desc(cover), desc(density)) %>% 
+  .[c(28),]
 # Define the species variable
 species <- 'Pascopyrum smithii'
 sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
@@ -34,7 +35,7 @@ sp_abb  <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1,
 quad_inv        <- read.csv(paste0(dat_dir,"quad_inventory.csv"),
                             sep=',') 
 #%>% 
-  #dplyr::select(-Year)
+#dplyr::select(-Year)
 
 
 quad_inv <- read.csv(paste0(dat_dir,"quad_inventory.csv"), sep=',', stringsAsFactors = FALSE)
@@ -63,7 +64,6 @@ datTrackSpp <- trackSpp(dat_target_spec,
                         aggByGenet = TRUE,
                         flagSuspects = TRUE)
 
-#AreaGenet values in the output table are identical, at least in new recruits.
 
 
 # create folder
@@ -79,6 +79,5 @@ datTrackSpp %>%
                  survives_tplus1, age, size_tplus1,
                  nearEdge, Suspect) %>% 
   write.csv( paste0('anderson_2016_mt/data/',
-                    sp_abb,'/mt_',sp_abb,'.csv'), 
+                    sp_abb,'/anderson16mt_',sp_abb,'.csv'), 
              row.names = F )
-

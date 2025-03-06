@@ -5,7 +5,7 @@
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.03.03
+# Date  : 2025.03.06
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
@@ -91,3 +91,4 @@ lam_mean_overall
 # Building the IPM with ipmr ---------------------------------------------------
 ipmr_p 
 plot(ipmr_p)
+

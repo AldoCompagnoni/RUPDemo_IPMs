@@ -73,6 +73,7 @@ dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
 dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
 dir_result <- file.path(dir_pub, 'results', v_sp_abb)
 
+# create R, data, and results directory if they do not exist 
 if (!dir.exists(paste0(dir_pub, '/R'))) {
   dir.create(paste0(dir_pub, '/R'))}
 if (!dir.exists(paste0(dir_pub, '/data'))) {
@@ -80,6 +81,7 @@ if (!dir.exists(paste0(dir_pub, '/data'))) {
 if (!dir.exists(paste0(dir_pub, '/results'))) {
   dir.create(paste0(dir_pub, '/results'))}
 
+# create species-specific directories if they do not exist
 if (!dir.exists(dir_R     )) {dir.create(dir_R     )}
 if (!dir.exists(dir_data  )) {dir.create(dir_data  )}
 if (!dir.exists(dir_result)) {dir.create(dir_result)}

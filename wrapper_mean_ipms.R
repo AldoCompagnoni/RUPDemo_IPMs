@@ -63,3 +63,24 @@ run_mean_models <- function( ii ){
   
 }
 
+
+# TEMPORARY - test Anderson Montana data ---------------------------------------
+
+# get species codes
+only_scrips <- list.files( 'anderson_2016_mt/R/' ) %>% grep('.R',.)
+spp_codes   <- list.files( 'anderson_2016_mt/R/' )[-only_scrips]
+
+# tracker scripts 
+track_path  <- paste0( 'anderson_2016_mt/R/', spp_codes, 
+                       '/anderson16mt_', spp_codes, '_tracker.R' )
+
+lapply( track_path, function(x) source(x) )
+
+# mean IPM  scripts
+mean_paths  <- paste0( 'anderson_2016_mt/R/', spp_codes, 
+                       '/anderson16mt_', spp_codes, '_ipm_mean.R' )
+
+lapply( mean_paths, function(x) source(x) )
+
+
+

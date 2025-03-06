@@ -5,7 +5,7 @@
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.03.04
+# Date  : 2025.03.06
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
@@ -38,6 +38,7 @@ v_mod_set_su     <- c()
 # Run the IPM year specific wrapper function
 source('pipeline/ipm_year_specific.R')
 
+help('isSingular')
 
 # Data -------------------------------------------------------------------------
 

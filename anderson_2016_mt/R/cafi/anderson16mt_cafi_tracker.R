@@ -22,7 +22,7 @@ sp_list         <- read.csv( paste0(dat_dir,"species_list.csv") ) %>%
   mutate( species = paste(species,X) ) %>% 
   dplyr::select(-X)
 #arrange species by density and cover (deeded in anderson_mt for precision)
-sp_list %>% dplyr::arrange(desc(cover), desc(density)) %>% head(20)
+sp_list %>% dplyr::arrange(desc(cover), desc(density)) %>% head(50)
 target_spec     <- sp_list %>% 
   dplyr::arrange(desc(cover), desc(density)) %>% 
   .[c(5),]

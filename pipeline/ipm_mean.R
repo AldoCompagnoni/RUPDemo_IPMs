@@ -227,7 +227,7 @@ g_surv_overall <- ggplot(
   geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
                 size = 0.5, width = 0.5) +
   scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
-  ylim(0, 1) +
+  ylim(0, 1.01) +
   theme_bw() +
   theme(axis.text = element_text(size = 8),
         title     = element_text(size = 10)) +

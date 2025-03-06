@@ -1,11 +1,11 @@
 # IPM year specific pipeline
 
-# Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Author: Diana Spurite
+# Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.11.11
+# Date  : 2024.03.06
 
 
 # Setting the stage ------------------------------------------------------------
@@ -288,29 +288,10 @@ su_mod_yr_2 <- glmer(
 #su_mod_yr_3 <- glmer(
 #  survives ~ logsize_t0 + logsize_t0_2 +  logsize_t0_3 + (1 | year), 
  # data = surv_df, family = binomial)
-su_mods     <- list(su_mod_yr_0, su_mod_yr, su_mod_yr_2, su_mod_yr_3)
+su_mods     <- list(su_mod_yr_0, su_mod_yr, su_mod_yr_2)
 
 #Error in eval(ei, envir) : 
 #(maxstephalfit) PIRLS step-halvings failed to reduce deviance in pwrssUpdate
-#In addition: Warning messages:
- # 1: Removed 58 rows containing non-finite outside the scale range (`stat_bin()`). 
-#2: In checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,  :
-                  #Model is nearly unidentifiable: large eigenvalue ratio
-                #- Rescale variables?
-
-
-
-# Check collinearity using
-#library(car)
-#vif(lm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = surv_df))
-# every VIF > 10, remove or orthogonalize the variables?
-
-
-#extreme values?
-#surv_df <- surv_df[surv_df$logsize_t0 > min_threshold & surv_df$logsize_t0 < max_threshold, ]
-
-
-
 
 # Assign the best model to the variable
 su_dAIC_values    <- AICtab(su_mods, weights = T, sort = F)$dAIC
@@ -403,16 +384,20 @@ ggsave(paste0(
 gr_mod_yr_0 <- lmer(
   logsize_t1 ~ 1 + (logsize_t0 | year), 
   data = grow_df)
+#In checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv,  :
+#Model failed to converge with max|grad| = 0.0100411 (tol = 0.002, component 1)
 gr_mod_yr   <- lmer(
   logsize_t1 ~ logsize_t0 + (logsize_t0 | year), 
        data = grow_df)
+#Model failed to converge with max|grad| = 0.0184035 (tol = 0.002, component 1)
 gr_mod_yr_2 <- lmer(
   logsize_t1 ~ logsize_t0 + logsize_t0_2 + (logsize_t0 | year), 
        data = grow_df)
-# Model failed to converge with max|grad| = 0.0297295
+#Model failed to converge with max|grad| = 0.0106173 (tol = 0.002, component 1)
 gr_mod_yr_3 <- lmer(
   logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + (logsize_t0 | year), 
        data = grow_df)
+#Model failed to converge with max|grad| = 0.00249799 (tol = 0.002, component 1)
 
 gr_mods <- list(gr_mod_yr_0, gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 # Assign the best model
@@ -1091,3 +1076,4 @@ lam_out_wide  <- as.list(pivot_wider(lam_out, names_from = 'coefficient',
 write.csv(lam_out_wide, 
           paste0(dir_data, '/lambdas_yr', v_suffix, '.csv'), 
           row.names = F)
+

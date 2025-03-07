@@ -1,11 +1,11 @@
-# IPM mean - Anderson 2016 Montana - Hesperostipa comata
+# IPM mean - Anderson 2016 Montana - Artemisia frigida
 
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.03.06
+# Date  : 2025.03.07
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
@@ -24,12 +24,12 @@ v_author_year <- c('anderson_2016')
 # Define region abbreviation
 v_region_abb  <- c('mt')
 # Define species 
-v_species     <- c('Hesperostipa comata')
+v_species     <- c('Artemisia frigida')
 
 
 # CHECK -- Adaptions -----------------------------------------------------------
 # Removal of certain years if unspecified nothing is removed
-v_years_re       <- c()
+v_years_re       <- c(32-39)
 # Define size threshold
 v_size_threshold <- c()
 # Set a complexity to the growth and survival model 

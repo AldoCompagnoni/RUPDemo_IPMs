@@ -1,13 +1,17 @@
-# IPM year specific - Anderson 2016 Montana - Schedonnardus paniculatus
+# IPM mean - Anderson 2016 Montana - Schedonnardus paniculatus
 
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.03.04
+# Date  : 2025.03.07
 
 # Publication: https://doi.org/10.1890/11-0193.1
+
+# Read in and clean the data, explore the overall-years rates,
+#  set up the vital rate data-frames for the year specific,
+#  build the ipm from scratch, build the ipm with `ipmr`
 
 
 # Clean up ---------------------------------------------------------------------
@@ -25,7 +29,7 @@ v_species     <- c('Schedonnardus paniculatus')
 
 # CHECK -- Adaptions -----------------------------------------------------------
 # Removal of certain years if unspecified nothing is removed
-v_years_re       <- c()
+v_years_re       <- c(36-41)
 # Define size threshold
 v_size_threshold <- c()
 # Set a complexity to the growth and survival model 
@@ -35,48 +39,44 @@ v_mod_set_su     <- c()
 
 
 # Main pipeline ----------------------------------------------------------------
-# Run the IPM year specific wrapper function
-source('pipeline/ipm_year_specific.R')
+# Run the ipm mean wraper function
+source('pipeline/ipm_mean.R')
 
 
-# Data -------------------------------------------------------------------------
-
-# Dataframe
+# Data 1 -----------------------------------------------------------------------
+# Raw
 skim(df)
 
 # Survival
 skim(surv_df)
 
-# Grow_df
+# Growth
 skim(grow_df)
 
-# Recruitment 
+# Recruitment
 skim(recr_df)
-
-# Population counts
-skim(pop_counts)
 
 
 # Models -----------------------------------------------------------------------
 # Survival 
-list(su_mod_yr, su_mod_yr_2, su_mod_yr_3)
+list(su_mod_mean, su_mod_mean_2, su_mod_mean_3)
 
 # Growth
-list(gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
+list(gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
 
 # Growth variation
-gr_var
+gr_var_m
 
 # Recruitment
-rec_mod
+rec_mod_mean
 
 
 # Building the IPM from scratch ------------------------------------------------
-# All parameters
-head(skim(all_pars))
+# Parameters
+tibble(parameter = names(pars), value = unlist(pars))
 
 # Mean population growth rate
-lam_mean_yr
+lam_mean
 
 # Observed population growth rate
 skim(pop_counts) 
@@ -85,12 +85,10 @@ skim(pop_counts)
 lam_mean_count 
 
 # Overall (aggregated) population growth rate
-lam_mean_overall
-
-# Mean lambda 
-lam_mean_kern
+lam_mean_overall 
 
 
 # Building the IPM with ipmr ---------------------------------------------------
-ipmr_yr 
+ipmr_p 
+plot(ipmr_p)
 

@@ -66,6 +66,9 @@ run_mean_models <- function( ii ){
 
 # TEMPORARY - test Anderson Montana data ---------------------------------------
 
+# species to remove (keep directory to show work that lead to removal)
+spp_rm      <- c('spca', 'arca')
+
 # get species codes
 only_scrips <- list.files( 'anderson_2016_mt/R/' ) %>% grep('.R',.)
 spp_codes   <- list.files( 'anderson_2016_mt/R/' )[-only_scrips]

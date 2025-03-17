@@ -40,7 +40,7 @@ surv_age_threshold <- c(1)
 
 
 # MPM pipeline -- with model comparison -- -------------------------------------
-source('pipeline/anderson16mt_mpm_year_specific.R')
+source('pipeline/mpm_year_specific.R')
 
 
 # Output -----------------------------------------------------------------------

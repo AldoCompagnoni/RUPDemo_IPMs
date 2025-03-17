@@ -16,7 +16,7 @@ sp_abb  <- tolower(gsub(' ', '', paste(substr(
   strsplit(species, ' ')[[1]], 1, 2), collapse = '')))
 
 # Directory 2
-if (gr_form == 'forb') {
+if ((gr_form == 'forb' | gr_form == 'shrub')) {
   folder_suffix <- paste0(sp_abb, '_mpm')
   R_dir      <- file.path(pub_dir, 'R', folder_suffix)
   data_dir   <- file.path(pub_dir, 'data', folder_suffix)

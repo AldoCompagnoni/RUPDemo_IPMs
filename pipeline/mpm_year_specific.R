@@ -39,7 +39,7 @@ data_dir      <- file.path(pub_dir, 'data',    folder_suffix)
 result_dir    <- file.path(pub_dir, 'results', folder_suffix)
 
 
-# Plant tracker if its not already exists
+# Plant tracker if it does not already exist
 if (!file.exists(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv'))) {
   source(paste0(R_dir, '/', script_prefix, '_', sp_abb, '_tracker.R'))
 }

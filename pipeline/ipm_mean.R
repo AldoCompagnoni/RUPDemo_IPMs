@@ -599,6 +599,7 @@ fy <- function(y, pars, h){
 
 # Kernel
 kernel <- function(pars) {
+  
   # number of bins over which to integrate
   n   <- pars$mat_siz 
   # lower limit of integration

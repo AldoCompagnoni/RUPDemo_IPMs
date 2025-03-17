@@ -1,11 +1,11 @@
-# MPM year specific - Anderson 2016 Montana - Sphaeralcea coccinea
+# MPM year specific - Anderson 2016 Montana - Carex filifolia
 
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
+# Date  : 2024.03.17
 
 # Publication : https://doi.org/10.1890/11-0193.1
 
@@ -24,7 +24,7 @@ author_year <- 'anderson_2016'
 # Define region abbreviation
 region_abb  <- 'mt'
 # Define the species variable
-species     <- 'Sphaeralcea coccinea'
+species     <- 'Carex filifolia'
 # Type of population model
 mod_type    <- 'mpm'
 
@@ -63,5 +63,6 @@ summary(yesno_mod)
 # Recruit2: per-capita recruitment (pcr) *conditional* on recruitment happening
 summary(pcr_mod)
 
-# Recruit3: per capita recruitment *unconditinoal*
+# Recruit3: per capita recruitment *unconditinal*
 summary(pcr_uc_mod)
+

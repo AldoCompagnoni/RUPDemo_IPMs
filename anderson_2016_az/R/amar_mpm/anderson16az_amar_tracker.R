@@ -9,7 +9,7 @@
 
 # Publication : https://doi.org/10.1890/11-2200.1
 
-rm(list = ls())
+# rm(list = ls())
 
 # Data -------------------------------------------------------------------------
 # Define publication 

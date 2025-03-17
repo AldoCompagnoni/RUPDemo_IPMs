@@ -5,7 +5,7 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.11.15
+# Date  : 2024.03.14
 
 # Original models from https://doi.org/10.1111/j.1365-2745.2009.01585.x
 #  check the appendices for details on model fitting!
@@ -40,12 +40,12 @@ result_dir    <- file.path(pub_dir, 'results', folder_suffix)
 
 
 # Plant tracker if it does not already exist
-if (!file.exists(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv'))) {
+if (!file.exists(paste0(data_dir, '/', script_prefix, region_abb, '_', sp_abb, '.csv'))) {
   source(paste0(R_dir, '/', script_prefix, '_', sp_abb, '_tracker.R'))
 }
 
 # Species data frame
-df <- read.csv(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv')) %>% 
+df <- read.csv(paste0(data_dir, '/', script_prefix, region_abb, '_', sp_abb, '.csv')) %>% 
   filter(Species == species) %>%
   select(-c(Suspect, nearEdge, Site)) %>% # geometry, 
   mutate(across(c(Quad), as.factor)) %>% 

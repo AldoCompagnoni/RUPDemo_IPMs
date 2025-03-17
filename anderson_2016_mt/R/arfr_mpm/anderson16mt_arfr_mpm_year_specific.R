@@ -24,7 +24,7 @@ author_year <- 'anderson_2016'
 # Define region abbreviation
 region_abb  <- 'mt'
 # Define the species variable
-species     <- 'Allium textile'
+species     <- 'Artemisia frigida'
 # Type of population model
 mod_type    <- 'mpm'
 

@@ -26,7 +26,7 @@ source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
 head(sp_list)
-target_spec <- sp_list %>% .[c(1),]  
+target_spec <- sp_list %>% .[c(2),]  
 
 source('pipeline/plant_tracker_02.R')
 

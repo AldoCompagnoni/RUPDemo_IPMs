@@ -1,0 +1,103 @@
+---
+title: "Archbold - *Crotalaria avonensis*"
+subtitle: "Supplement"
+date: "2025-02-16"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: hide
+---
+#### Authors:
+
+Niklas Neisse ([neisse.n@protonmail.com](mailto:neisse.n@protonmail.com)),
+Aspen Workman, 
+Diāna Spurīte,
+**Aldo Compagnoni** ([aldo.compagnoni@idiv.de](mailto:aldo.compagnoni@idiv.de))
+
+
+# Introducion
+This is the supplementary of the archbold *Crotalaria avonensis*
+
+The GIS and Data Management program at [Archbold Biological Station](https://www.archbold-station.org/gis-and-data-mgmt/) holds a comprehensive range of ecological and environmental data collected through numerous research initiatives and ongoing long-term monitoring efforts. A key platform of this data is the Archbold Biological Station's [Ecological Data Inventory (EDI)](https://portal.edirepository.org/nis/home.jsp), which holds extensive datasets on biodiversity, land cover, climate, and ecological patterns. 
+
+Here, we utilized 20-years of demographic data on the endangered legume [*Crotalaria avonensis*](https://portal.edirepository.org/nis/mapbrowse?packageid=edi.219.1) in a IPM. This data set has been used before by [Menges et al. 2016](https://bioone.org/journals/southeastern-naturalist/volume-15/issue-3/058.015.0318/Ecology-and-Conservation-of-the-Endangered-Legume-Crotalaria-avonensis-in/10.1656/058.015.0318.short).
+
+
+### Setup
+
+We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom`, `bbmle`
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Packages
+packages <- c('tidyverse', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle')
+lapply(packages, library, character.only = TRUE)
+
+
+# Specification 
+# Define head-directory 
+v_head <- c('archbold')
+# Define species
+v_species <- c('Crotalaria avonensis')
+# Customized delimiter for `read_delim` function, comma is predefined
+custom_delimiter <- c()
+
+# Create a unique species abbreviation for file naming
+v_sp_abb  <- tolower(
+  gsub(' ', '', paste(
+    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
+# Define script prefix
+v_script_prefix <- str_c(v_head)
+
+
+# Directory 
+dir_wd     <- file.path('C:', 'code', 'RUPDemo_IPMs')
+dir_pub    <- file.path(dir_wd, paste0(v_head))
+dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
+dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
+dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+```
+
+
+# Data
+
+This dataset provides demographic information from a long-term study of *Crotalaria avonensis*, an endangered small perennial herbaceous legume native to the Lake Wales Ridge in central Florida. The [study](https://portal.edirepository.org/nis/metadataviewer?packageid=edi.219.1) spans from 1998 to 2017 and monthly during the growing season tracks individual plant survival, size, and reproduction, recorded within permanent quadrats - 25 cm radius circles in stratified random positions within subjectively located belt transects. Additionally, the dataset contains information on fires, herbivory reduction through caging, and other events that might be of effect. Individuals were defined as groups of stems separated by 5 cm or more and marked with plastic toothpicks. Transplant data suggests this species has clonal growth. 
+
+```{r data ab crav}
+df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>% 
+  janitor::clean_names() %>%
+  mutate(across(c(5, 6, 11:length(.)), ~ na_if(., 9999))) %>%
+  mutate(
+    plant_id = paste(site, quad, plant, sep = "_"),
+    year     = substr(date, 1, 4),  
+    month    = substr(date, 6, 7)) %>%
+  arrange(site, quad, plant, year, month)
+
+df_meta <- data.frame(variable = colnames(df)) %>% 
+  mutate(definition = c(
+    'study site', 'quadrat number',	'macroplot number',	
+    'plant number (within quad)', 'direction within circular quad',	
+    'distance from quad center',	'was quad caged from 2012 onward',	
+    'vegetation type', 'year quadrat was initiated', 
+    'year-month of observation',	'fire severity Dec. 2014 or Jan. 2015',
+    'fire severity Aug. 2005',	'fire severity May/June 2009',
+    "fire severity B's ridge 2016", 'fire severity Feb. 2017',
+    'fire severity Oct. 2017', 'survival code for month', 'number of stems',
+    'number of branch tips', 'number of flowers (corolla showing)', 
+    'number of developing fruits', 'number of mature fruits', 'herbivory code',
+    'plant identification', 'sample year', 'sample month'))
+```
+
+Expand to skim the raw dataframe
+<details>
+```{r data ab crav skim}
+skimr::skim(df)
+```
+
+
+# Data exploration
+
+Disclaimer: As by 2025, March, we are not in contact with the corresponding author. 

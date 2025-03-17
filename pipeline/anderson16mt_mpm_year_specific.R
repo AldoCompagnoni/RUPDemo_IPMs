@@ -24,13 +24,25 @@ load_packages(tidyverse, patchwork, skimr, lme4, ggthemes, boot)
 # Data -------------------------------------------------------------------------
 # Species abbreviation
 sp_abb  <- tolower(
-  gsub(' ', '', paste(substr(unlist(strsplit(species, ' ')), 1, 2), 
-                      collapse = '')))
+  gsub(' ', '', paste(
+    substr(unlist(strsplit(species, ' ')), 1, 2), collapse = '')))
 # Suffix for the folder structure
 folder_suffix <- paste0(sp_abb, '_', mod_type)
 # Prefix for the script name
-script_prefix <- str_c(str_extract(author_year, '^[^_]+'), 
-                       str_sub(str_extract(author_year, '_\\d+$'), -2, -1))
+script_prefix <- str_c(
+  str_extract(author_year, "^[^_]+"),
+  str_sub(str_extract(author_year, "_\\d+$"), -2, -1))
+# Define prefix for two of the same author and year
+if (
+  length(
+    list.dirs(
+      full.names = TRUE, recursive = FALSE)[grepl(
+        paste0("^", author_year), basename(
+          list.dirs(full.names = TRUE, recursive = FALSE)))]
+  ) > 1) {
+  script_prefix <- paste0(script_prefix, region_abb)
+}
+
 
 # Directories 
 pub_dir       <- file.path(paste0(author_year, '_', region_abb))

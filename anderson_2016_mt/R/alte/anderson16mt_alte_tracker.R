@@ -1,4 +1,4 @@
-# plantTracker - Anderson 2016 Montana - Carex filifolia
+# plantTracker - Anderson 2016 Montana - Allium textile
 
 
 # Author: Diana Spurite
@@ -6,9 +6,9 @@
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.12.03
+# Date  : 2024.03.18
 
-# Publication: ...
+# Publication: https://doi.org/10.1890/11-0193.1
 
 # rm(list = ls())
 

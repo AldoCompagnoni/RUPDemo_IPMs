@@ -158,15 +158,19 @@ df_mean_og <- df %>%
 # Base mean dataframe
 df_mean <- df_mean_og %>% 
   group_by(site, quad, plant, plant_id) %>% 
+  # Handle survival based on previous dormancy status
+  # If the current status is dead or NA
+  # Check if survived in the previous 1, 2, or 3 years
+  # Check if survives in the next 1, 2, or 3 years
   mutate(
-    # Handle survival based on previous dormancy status
     survives = if_else(
-      # If the current status is dead or NA
       (survives == 0 | is.na(survives)) & 
-        # Check if survived in the previous 1, 2, or 3 years
-        (lag(survives, 1) == 1 | lag(survives, 2) == 1 | lag(survives, 3) == 1) & 
-        # Check if survives in the next 1, 2, or 3 years
-        (lead(survives, 1) == 1 | lead(survives, 2) == 1 | lead(survives, 3) == 1), 
+        (lag(survives, 1) %in% c(1, 3, 5) | 
+           lag(survives, 2) %in% c(1, 3, 5) | 
+           lag(survives, 3) %in% c(1, 3, 5)) & 
+        (lead(survives, 1) %in% c(1, 3, 5) | 
+           lead(survives, 2) %in% c(1, 3, 5) | 
+           lead(survives, 3) %in% c(1, 3, 5)),
       1,  
       survives
     ),
@@ -188,7 +192,13 @@ df_mean <- df_mean_og %>%
       survives == 1 & is.na(size_t0) ~ 1,
       size_t0  >  0                  ~ 0, 
       TRUE ~ NA_real_ 
-    )
+    ),
+    # Generate a new column 'dormancy_count' that counts consecutive 1s
+    dormancy_count = case_when(
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 0 ~ 2,
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 ~ 3,
+      dormancy == 1 ~ 1,
+      TRUE ~ dormancy)
   ) %>% 
   
   # Define recruits
@@ -254,6 +264,17 @@ df_mean <- df_mean_og %>%
   
   ungroup()
 
+df_issue <- df_mean[c(932:950,
+                      1397:1406,
+                      1418:1425,
+                      1749:1759,
+                      1768:1778,
+                      2461:2470,
+                      2902:2907,
+                      3003:3019,
+                      3432:3438,
+                      3906:3912),]
+
 
 # Histogram of recruit size (at age 1)
 ggplot(df_mean %>% filter(recruit == 1), aes(x = size_t0)) +
@@ -264,9 +285,12 @@ ggplot(df_mean %>% filter(recruit == 1), aes(x = size_t0)) +
 ggplot(df_mean, aes(x = age, y = logsize_t0)) +
   geom_jitter(width = 0.1, height = 0.1, alpha = 0.6) +  
   theme_minimal() + 
-  labs(x = "Age", y = "Log Size at Time 0", title = "Log Size vs Age of Recruits") + 
-  theme(
-    plot.title = element_text(hjust = 0.5))
+  labs(x = "Age", y = "Log Size", title = "Log Size vs Age of Recruits") + 
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_x_continuous(
+    limits = c(0, 12),
+    breaks = seq(0, 12, by = 1))
+
 
 # Histogram of size after leaving dormancy
 ggplot(df_mean %>% filter(dormancy == 1), aes(x = size_t1)) +

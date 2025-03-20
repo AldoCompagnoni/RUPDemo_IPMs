@@ -16,7 +16,7 @@
 # 2.1 and the survival and recruitment data in its respective folder
 
 
-rm(list = ls())
+# rm(list = ls())
 
 # Data -------------------------------------------------------------------------
 # Define publication 

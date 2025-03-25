@@ -45,6 +45,14 @@ v_sp_abb  <- tolower(
 # Define script prefix
 v_script_prefix <- str_c(v_head)
 
+# Plot subtitle
+v_ggp_suffix    <- paste(
+  tools::toTitleCase(v_head), '-', v_species)
+
+
+# Models
+v_mod_set_gr <- c()
+v_mod_set_su <- c()
 
 # Directory --------------------------------------------------------------------
 dir_pub    <- file.path(paste0(v_head))
@@ -69,9 +77,16 @@ df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>%
   janitor::clean_names() %>%
   mutate(across(c(5, 6, 11:length(.)), ~ na_if(., 9999))) %>%
   mutate(
-    plant_id = paste(site, quad, plant, sep = "_"),
-    year     = substr(date, 1, 4),  
-    month    = substr(date, 6, 7)) %>%
+    plant_id = as.factor(paste(site, quad, plant, sep = "_")),
+    quad_id  = as.factor(paste(site, quad, sep = "_")),
+    year     = as.numeric(substr(date, 1, 4)),  
+    month    = as.numeric(substr(date, 6, 7)),
+    site     = as.factor(site),
+    quad     = as.factor(quad),
+    mp       = as.factor(mp),
+    plant    = as.factor(plant),
+    caged    = as.factor(caged),
+    veg      = as.factor(veg)) %>%
   arrange(site, quad, plant, year, month)
 
 df_meta <- data.frame(variable = colnames(df)) %>% 
@@ -86,7 +101,8 @@ df_meta <- data.frame(variable = colnames(df)) %>%
     'fire severity Oct. 2017', 'survival code for month', 'number of stems',
     'number of branch tips', 'number of flowers (corolla showing)', 
     'number of developing fruits', 'number of mature fruits', 'herbivory code',
-    'plant identification', 'sample year', 'sample month'))
+    'plant identification', 'quadrat identification', 'sample year', 
+    'sample month'))
 
 skimr::skim(df)
   
@@ -443,13 +459,6 @@ ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
 
 
 
-
-
-
-
-
-
-
 # Individuals to check out because of certains flags ---------------------------
 #   1, 1, 23, 2017
 # size t0 after recruit
@@ -459,95 +468,243 @@ ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
 #   1, 2, 22, 2010, 1, 19, 1, 8
 
 
-# Model df's -------------------------------------------------------------------
-# Survival data frame
-surv_df <- df_mean_dor %>% 
-  filter(!is.na(survives))
-  # subset(df_mean_dor, !is.na(survives)) %>%
-  # subset(size_t0 != 0) %>%
-  # select(quad, track_id, year, size_t0, survives, size_t1,
-  #        logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
-
-# Growth data frame
-grow_df <- df_mean_dor %>% 
-  filter(!is.na(size_t0))
-
-# # Total area data frame
-# quad_df <- df %>%  
-#   group_by (quad, year) %>% 
-#   summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
-#   ungroup
-# 
-# group_df <- quad_df %>% 
-#   group_by (year) %>% 
-#   summarise(g_cov = mean(tot_p_area)) %>% 
-#   ungroup
-# 
-# cover_df <- left_join(quad_df, group_df) %>%
-#   mutate(year = year + 1) %>% 
-#   mutate(year = as.integer(year)) %>% 
-#   drop_na()
-# 
-# # Recruitment data frame
-# recr_df <- df %>%
-#   group_by (year, quad) %>% 
-#   summarise(nr_quad = sum(recruit, na.rm = T)) %>% 
-#   ungroup
-# 
-# recr_df <- left_join(cover_df, recr_df)
+# Data Processes ---------------------------------------------------------------
+names(df_mean)
+# Growth
+df_grow <- df_mean %>% 
+  subset(size_t0 != 0) %>%
+  subset(size_t1 != 0) %>% 
+  select(plant_id, year, size_t0, size_t1, age,
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 
-
-
-##########################################
-# Size t0 and t1 Histogram
-g_hist_t0 <- ggplot(
-  df_mean_dor, aes(x = logsize_t0)) +
-  geom_histogram(binwidth = 0.2, fill = 'grey', color = 'black') +
-  # labs(title    = 'Histogram',
-  #      subtitle = v_ggp_suffix, 
-  #      x        = 'Size at time t0') +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  theme(plot.subtitle = element_text(size = 8))
-g_hist_t1 <- ggplot(
-  df_mean_dor, aes(x = logsize_t1)) +
-  geom_histogram(binwidth = 0.2, fill = 'white', color = 'black') +
-  labs(x = 'Size at time t1') +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5))
-
-g_hist_sizes_log <- g_hist_t0 + g_hist_t1
-
-
-# Graphical exploration - Growth
-g_gr_overall <- ggplot(
-  data  = grow_df, aes( x = logsize_t0, y = logsize_t1)) +
+ggplot(
+  data  = df_grow, aes(x = logsize_t0, y = logsize_t1)) +
   geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') +
   theme_bw() +
   theme(axis.text = element_text(size = 8),
         title     = element_text(size = 10)) +
-  # labs(title    = 'Growth',
-  #      subtitle = v_ggp_suffix,
-  #      x        = expression('log(size) ' [t0]),
-  #      y        = expression('log(size)  '[t1])) +
+  labs(title    = 'Growth',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size) ' [t0]),
+       y        = expression('log(size)  '[t1])) +
   theme(plot.subtitle = element_text(size = 8))
 
 
 
-# Survival analysis
-# Load custom function for plotting binned proportions
-source('helper_functions/plot_binned_prop.R')
-# plot_binned_prop(df_mean_dor, 10, size_t0, survives)
+# Survival
+df_surv <- df_mean %>% 
+  filter(!is.na(survives)) %>%
+  filter(size_t0 != 0) %>%
+  select(plant_id, year, size_t0, survives, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
-# Generate a plot for overall survival based on size at t0
-g_surv_overall <- ggplot(
-  data = df_mean) +
-  geom_point(aes(x = size_t0, 
-                 y = survives),
-             alpha = 1, pch = 16, color = 'red' ) +
-  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
-  ylim(0, 1) +
+# source('helper_functions/plot_binned_prop.R')
+# 
+# g_surv_overall <- ggplot(
+#   data = plot_binned_prop(df_mean, 10, logsize_t0, survives)) +
+#   geom_point(aes(x = logsize_t0, 
+#                  y = survives),
+#              alpha = 1, pch = 16, color = 'red' ) +
+#   geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+#                 size = 0.5, width = 0.5) +
+#   scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+#   ylim(0, 1.01) +
+#   theme_bw() +
+#   theme(axis.text = element_text(size = 8),
+#         title     = element_text(size = 10)) +
+#   labs(title    = 'Survival',
+#        subtitle = v_ggp_suffix,
+#        x        = expression('log(size)'[t0]),
+#        y        = expression('Survival to time t1')) +
+#   theme(plot.subtitle = element_text(size = 8))
+
+
+ggplot(data = df_surv) +
+  geom_jitter(aes(x = logsize_t0, y = survives), 
+              position = position_jitter(width = 0.1, height = 0.3)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Survival',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size) ' [t0]),
+       y        = expression('Survival to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
+
+
+# Recruitment
+df_quad <- df_mean %>%  
+  group_by (year, site, quad) %>% 
+  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
+  ungroup
+
+df_group <- df_quad %>% 
+  group_by (year) %>% 
+  summarise(g_cov = mean(tot_p_area)) %>% 
+  ungroup
+
+df_cover <- left_join(df_quad, df_group) %>%
+  mutate(year = year + 1) %>% 
+  mutate(year = as.integer(year)) %>% 
+  drop_na()
+
+df_recr <- df_mean %>%
+  group_by (year, site, quad) %>% 
+  summarise(nr_quad = sum(recruit, na.rm = T)) %>% 
+  ungroup
+
+df_recr <- left_join(df_cover, df_recr)
+
+
+ggplot(
+  df_recr, aes(x = tot_p_area, y = nr_quad)) + 
+  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
+  theme_bw() + 
+  labs(title    = 'Recruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
+
+
+
+# Models -----------------------------------------------------------------------
+# Growth model -----------------------------------------------------------------
+mod_gr_0 <- lm(logsize_t1 ~ 1, 
+               data = df_grow)
+# Linear model
+mod_gr_1   <- lm(logsize_t1 ~ logsize_t0, 
+                 data = df_grow)
+# Quadratic model
+mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, 
+               data = df_grow)  
+# Cubic model
+mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, 
+               data = df_grow)
+
+mods_gr      <- list(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
+mods_gr_dAIC <- AICtab(mods_gr, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_gr_sorted <- order(mods_gr_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_gr) == 0) {
+  mod_gr_index_bestfit <- mods_gr_sorted[1]
+  v_mod_gr_index       <- mod_gr_index_bestfit - 1 
+} else {
+  mod_gr_index_bestfit <- v_mod_set_gr +1
+  v_mod_gr_index       <- v_mod_set_gr
+}
+
+mod_gr_bestfit         <- mods_gr[[mod_gr_index_bestfit]]
+mod_gr_ranef           <- coef(mod_gr_bestfit)
+
+# Predict size at time t1 using the mean growth model
+df_grow$pred <- predict(mod_gr_bestfit, type = 'response')
+
+source('helper_functions/line_color_pred_fun.R')
+source('helper_functions/predictor_fun.R')
+
+g_grow_line <- ggplot(
+  df_grow, aes(x = logsize_t0, y = logsize_t1)) +
+  # Plot observed data
+  geom_point() +
+  geom_function(fun = function(x) predictor_fun(x, mod_gr_ranef), 
+                color = line_color_pred_fun(mod_gr_ranef), 
+                lwd = 2) +
+  theme_bw() + 
+  labs(title    = 'Growth prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+g_grow_pred <- ggplot(
+  df_grow, aes(x = pred, y = logsize_t1)) +
+  geom_point() +  
+  geom_abline(aes(intercept = 0, slope = 1),  
+              color = 'red', lwd = 2) + 
   theme_bw()
 
+g_grow_overall_pred <- g_grow_line + g_grow_pred + plot_layout() 
+g_grow_overall_pred
 
+
+# Survival model ---------------------------------------------------------------
+# Logistic regression
+mod_su_0 <- glm(survives ~ 1,
+                data = df_surv, family = 'binomial') 
+# Logistic regression
+mod_su_1 <- glm(survives ~ logsize_t0,
+                data = df_surv, family = 'binomial') 
+# Quadratic logistic model
+mod_su_2 <- glm(survives ~ logsize_t0 + logsize_t0_2,
+                data = df_surv, family = 'binomial')  
+# Cubic logistic model
+mod_su_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+                data = df_surv, family = 'binomial')  
+
+
+# Compare models using AIC
+mods_su      <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
+mods_su_dAIC <- AICtab(mods_su, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_su_sorted <- order(mods_su_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_su) == 0) {
+  mod_su_index_bestfit <- mods_su_sorted[1]
+  v_mod_su_index       <- mod_su_index_bestfit - 1 
+} else {
+  mod_su_index_bestfit <- v_mod_set_su +1
+  v_mod_su_index       <- v_mod_set_su
+}
+
+
+mod_su_bestfit   <- mods_su[[mod_su_index_bestfit]]
+mod_su_ranef         <- coef(mod_su_bestfit)
+
+# Generate predictions for survival across a range of sizes
+mod_su_x <- seq(
+  min(df_surv$logsize_t0, na.rm = T),
+  max(df_surv$logsize_t0, na.rm = T), length.out = 100)
+
+# Prepare data for survival plot
+df_surv_pred <- predictor_fun(mod_su_x, mod_su_ranef) %>% 
+  # Inverse logit for predictions
+  boot::inv.logit() %>% 
+  data.frame(logsize_t0 = mod_su_x, survives = .)
+
+g_surv_line <- ggplot() +
+  geom_jitter(data = df_surv, aes(x = logsize_t0, 
+                                  y = survives),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_surv_pred, aes(x = logsize_t0, 
+                                     y = survives),
+            color = line_color_pred_fun(mod_su_ranef), 
+            lwd   = 2) +  
+  theme_bw() + 
+  labs(title    = 'Survival prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+g_surv_bin <- ggplot() +
+  geom_point(data =  plot_binned_prop(
+    df_mean, 10, logsize_t0, survives), 
+    aes(x = logsize_t0, 
+        y = survives) ) +
+  geom_errorbar(data =  plot_binned_prop(
+    df_mean, 10, logsize_t0, survives), 
+    aes(x = logsize_t0, 
+        ymin = lwr,
+        ymax = upr) ) +
+  geom_line(data = surv_pred_df, aes(x = logsize_t0, 
+                                     y = survives),
+            color = 'red', lwd   = 2) + 
+  theme_bw() +
+  ylim(0, 1)
+
+# Combine survival plots
+g_surv_overall_pred <- g_surv_line + g_surv_bin + plot_layout()
+g_surv_overall_pred

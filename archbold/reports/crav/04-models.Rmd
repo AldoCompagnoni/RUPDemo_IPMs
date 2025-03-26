@@ -1,0 +1,7 @@
+# Models {#models}
+
+For this IPM we will model the following processes:
+
+1. Fruiting (negative binomial)
+2. Flowering (binomial)
+3. Recruiting (binomial)

@@ -1,0 +1,184 @@
+# Data {#data}
+
+This dataset provides demographic information from a long-term study of *Crotalaria avonensis*, an endangered small perennial herbaceous legume native to the Lake Wales Ridge in central Florida. The [study](https://portal.edirepository.org/nis/metadataviewer?packageid=edi.219.1) spans from 1998 to 2017 and monthly during the growing season tracks individual plant survival, size, and reproduction, recorded within permanent quadrats - 25 cm radius circles in stratified random positions within subjectively located belt transects. Additionally, the dataset contains information on fires, herbivory reduction through caging, and other events that might be of effect. Individuals were defined as groups of stems separated by 5 cm or more and marked with plastic toothpicks. Transplant data suggests this species has clonal growth. 
+
+```{r data ab crav}
+df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>% 
+  janitor::clean_names() %>%
+  mutate(across(c(5, 6, 11:length(.)), ~ na_if(., 9999))) %>%
+  mutate(
+    plant_id = paste(site, quad, plant, sep = "_"),
+    year     = substr(date, 1, 4),  
+    month    = substr(date, 6, 7)) %>%
+  arrange(site, quad, plant, year, month)
+
+df_meta <- data.frame(variable = colnames(df)) %>% 
+  mutate(definition = c(
+    'study site', 'quadrat number',	'macroplot number',	
+    'plant number (within quad)', 'direction within circular quad',	
+    'distance from quad center',	'was quad caged from 2012 onward',	
+    'vegetation type', 'year quadrat was initiated', 
+    'year-month of observation',	'fire severity Dec. 2014 or Jan. 2015',
+    'fire severity Aug. 2005',	'fire severity May/June 2009',
+    "fire severity B's ridge 2016", 'fire severity Feb. 2017',
+    'fire severity Oct. 2017', 'survival code for month', 'number of stems',
+    'number of branch tips', 'number of flowers (corolla showing)', 
+    'number of developing fruits', 'number of mature fruits', 'herbivory code',
+    'plant identification', 'sample year', 'sample month'))
+```
+
+<details>
+<summary>Expand to skim the raw dataframe</summary>
+```{r data ab crav skim}
+skimr::skim(df)
+```
+</details>
+
+## Data exploration
+
+Each year recorded in the dataset includes multiple months of observations per individual. For the purpose of modeling population dynamics, we condensed the data to provide a single observation per individual for size, recruits, survival, flowering, fruiting, and fire exposure for each year. The data were condensed as follows:
+
+1. Size was measured as the number of branch tips, and following the recommendations of Menges et al. (2016), we focused on the maximum size observed in each year.
+2. & 3. Recruits and survival were recorded as binary variables, indicating whether the event occurred in a given year.
+
+**The treatment of flowering, fruiting, and fire exposure is still undecided as of** ***March 19, 2025*****.**
+
+
+```{r data mean original}
+df_mean_og <- df %>%
+  filter(s < 6 | is.na(s)) %>%
+  group_by(site, quad, plant, plant_id, year) %>%
+  summarise(
+    survives = if_else(all(is.na(s )), NA_real_, max(s,  na.rm = TRUE)),
+    size_t0 =  if_else(all(is.na(br)), NA_real_, max(br, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>% 
+  ungroup()
+```
+
+<details>
+<summary>Expand to skim the condenced raw dataframe</summary> 
+```{r}
+skimr::skim(df_mean_og)
+```
+</details>
+
+## Work dataframe/ adjustments
+Disclaimer: As of March 2025, we have not been in contact with the corresponding author.
+
+During our exploration of the dataset, we found that the survival variable was coded as a factor. In addition to the obvious values indicating survival (1) and non-survival (0), dataset includes values that we interpret as follows: birth (3), birth after fire exposure (5), and missing observations (6). We excluded the missing observations (6) from the dataset entirely. For the **survival** variable, we re-coded the birth entries (3 and 5), assigning a survival value of 1 if the individual survived and 0 if the individual did not survive.
+
+
+The species is known to exhibit dormancy, and this is reflected in the dataset. The longest dormancy period recorded was 3 years. We included **dormancy** as a new variable in the dataset. However, it is important to note that for a 3-year period close to the beginning or end of the records, we cannot be certain of an individuals true birth or death. In these cases, the dormancy, survival, and birth variables were marked as NA.
+
+Additionally, we included the **size of individuals in the subsequent** year as a variable. In cases where dormancy was recorded, the size variable was marked as NA. Upon the conclusion of dormancy, the individual's size was recorded for the following year.
+
+For individuals whose true birth could be determined (i.e., those born at least 4 years after the start of the records), we classified them as **recruits** and included an **age** variable, which increased through periods of dormancy.
+
+
+```{r data mean updated}
+df_mean <- df_mean_og %>% 
+  group_by(site, quad, plant, plant_id) %>% 
+  mutate(
+    # Handle survival based on previous dormancy status
+    survives = if_else(
+      # If the current status is dead or NA
+      (survives == 0 | is.na(survives)) & 
+        # Check if survived in the previous 1, 2, or 3 years
+        (lag(survives, 1) == 1 | lag(survives, 2) == 1 | lag(survives, 3) == 1) & 
+        # Check if survives in the next 1, 2, or 3 years
+        (lead(survives, 1) == 1 | lead(survives, 2) == 1 | lead(survives, 3) == 1), 
+      1,  
+      survives
+    ),
+    
+    # Set survival to 0 if plant dies after 3 consecutive years of dormancy
+    survives = if_else(
+      survives == 1 & 
+        lead(survives, 1) == 0 & 
+        lead(survives, 2) == 0 & 
+        lead(survives, 3) == 0, 
+      0,  
+      survives
+    )
+  ) %>%
+  
+  # Define dormancy
+  mutate(
+    dormancy = case_when(
+      survives == 1 & is.na(size_t0) ~ 1,
+      size_t0  >  0                  ~ 0, 
+      TRUE ~ NA_real_ 
+    )
+  ) %>% 
+  
+  # Define recruits
+  mutate(
+    recruit = case_when(
+      (survives == 3 | survives == 5) ~ 1, 
+      TRUE ~ NA_real_  
+    )
+  ) %>% 
+  
+  mutate(
+    # Make sure that no survival value exceeds 1
+    survives = if_else(survives > 1, 1, survives), 
+    
+    # Handle missing size_t0 for dead plants by setting NA in survival column
+    survives = if_else(survives == 0 & is.na(size_t0), NA, survives)
+  ) %>% 
+  
+  ungroup() %>% 
+  arrange(site, quad, plant, year) %>%
+  group_by(site, quad, plant, plant_id) %>%
+  
+  # Set size_t1 based on survival; propagate size_t0 if survives, otherwise set to NA
+  mutate(
+    size_t1 = case_when(
+      survives == 1 ~ lead(size_t0), 
+      TRUE ~ NA_real_  
+    )
+  ) %>%
+  
+  ungroup() %>% 
+  
+  # Compute log-transformed sizes and their powers for modeling
+  mutate(
+    logsize_t0   = log(size_t0),     
+    logsize_t1   = log(size_t1),    
+    logsize_t0_2 = logsize_t0^2,     
+    logsize_t0_3 = logsize_t0^3      
+  ) %>%
+  group_by(site, quad, plant, plant_id) %>%
+  mutate(age = NA_real_) %>%  # Initialize age as NA for all
+  
+  # Apply for loop to calculate age
+  mutate(age = {
+    # Initialize age vector
+    age_vector <- rep(NA_real_, n())
+    
+    # Iterate over each row in the group (each site, quad, and plant combination)
+    for (i in 1:n()) {
+      if (!is.na(recruit[i]) && recruit[i] == 1) {
+        age_vector[i] <- 1  # Set age to 1 for recruits
+      } else if (!is.na(dormancy[i]) && dormancy[i] >= 0) {
+        # If plant survives, increment the age based on previous value
+        if (i > 1 && !is.na(age_vector[i - 1])) {
+          age_vector[i] <- age_vector[i - 1] + 1
+        }
+      }
+    }
+    
+    # Return the computed age vector
+    age_vector
+  }) %>%
+  
+  ungroup()
+```
+
+<details>
+<summary>Expand to skim the working dataframe</summary>
+```{r}
+skimr::skim(df_mean)
+```
+</details>

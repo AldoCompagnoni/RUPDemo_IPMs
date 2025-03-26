@@ -1,0 +1,16 @@
+tab:unnamed-chunk-2
+tab:unnamed-chunk-3
+intro
+setup
+data
+data-exploration
+work-dataframe-adjustments
+investigation
+issue-1.---size-of-recruits
+issue-2---size-after-dormancy
+issue-3---flagged
+modeling-growth-of-the-flags
+issue-4---fires
+issue-5---spatial-relationship
+models
+bugs

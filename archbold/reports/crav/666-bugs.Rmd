@@ -1,0 +1,26 @@
+# BUGS {#bugs}
+
+Unfortunately we have the following bugs:
+
+1. The survival variable seems to fail for some observations. 
+
+<details>
+<summary>Expand to see the bug-dataframe</summary>
+```{r bugs}
+# 1_4_17 has a problem
+df_issue <- df_mean[c(932:950,
+                      1397:1406,
+                      1418:1425,
+                      1749:1759,
+                      1768:1778,
+                      2461:2470,
+                      2348:2354,
+                      2902:2907,
+                      3003:3019,
+                      3432:3438,
+                      3906:3912),]
+
+print(df_issue[, 4:10], n = 113)
+
+```
+</details>

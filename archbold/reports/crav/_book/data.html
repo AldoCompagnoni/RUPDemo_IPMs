@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>2 Data | Archbold Crotalaria avonensis summary</title>
+  <meta name="description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  <meta name="generator" content="bookdown 0.42 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="2 Data | Archbold Crotalaria avonensis summary" />
+  <meta property="og:type" content="book" />
+  
+  <meta property="og:description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="2 Data | Archbold Crotalaria avonensis summary" />
+  
+  <meta name="twitter:description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  
+
+
+
+<meta name="date" content="2025-03-26" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="intro.html"/>
+<link rel="next" href="investigation.html"/>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/codefolding-lua-1.1/codefolding-lua.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+
+
+<style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+<style type="text/css">
+  
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li class="chapter" data-level="1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>1</b> Introduction</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="intro.html"><a href="intro.html#setup"><i class="fa fa-check"></i><b>1.1</b> Setup</a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="data.html"><a href="data.html"><i class="fa fa-check"></i><b>2</b> Data</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="data.html"><a href="data.html#data-exploration"><i class="fa fa-check"></i><b>2.1</b> Data exploration</a></li>
+<li class="chapter" data-level="2.2" data-path="data.html"><a href="data.html#work-dataframe-adjustments"><i class="fa fa-check"></i><b>2.2</b> Work dataframe/ adjustments</a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="investigation.html"><a href="investigation.html"><i class="fa fa-check"></i><b>3</b> Investigations</a>
+<ul>
+<li class="chapter" data-level="3.1" data-path="investigation.html"><a href="investigation.html#issue-1.---size-of-recruits"><i class="fa fa-check"></i><b>3.1</b> Issue 1. - Size of recruits</a></li>
+<li class="chapter" data-level="3.2" data-path="investigation.html"><a href="investigation.html#issue-2---size-after-dormancy"><i class="fa fa-check"></i><b>3.2</b> Issue 2 - Size after Dormancy</a></li>
+<li class="chapter" data-level="3.3" data-path="investigation.html"><a href="investigation.html#issue-3---flagged"><i class="fa fa-check"></i><b>3.3</b> Issue 3 - Flagged</a>
+<ul>
+<li class="chapter" data-level="3.3.1" data-path="investigation.html"><a href="investigation.html#modeling-growth-of-the-flags"><i class="fa fa-check"></i><b>3.3.1</b> Modeling Growth of the Flags</a></li>
+</ul></li>
+<li class="chapter" data-level="3.4" data-path="investigation.html"><a href="investigation.html#issue-4---fires"><i class="fa fa-check"></i><b>3.4</b> Issue 4 - Fires</a></li>
+<li class="chapter" data-level="3.5" data-path="investigation.html"><a href="investigation.html#issue-5---spatial-relationship"><i class="fa fa-check"></i><b>3.5</b> Issue 5 - Spatial relationship</a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="models.html"><a href="models.html"><i class="fa fa-check"></i><b>4</b> Models</a></li>
+<li class="chapter" data-level="5" data-path="bugs.html"><a href="bugs.html"><i class="fa fa-check"></i><b>5</b> BUGS</a></li>
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Archbold Crotalaria avonensis summary</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="data" class="section level1 hasAnchor" number="2">
+<h1><span class="header-section-number">2</span> Data<a href="data.html#data" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<p>This dataset provides demographic information from a long-term study of <em>Crotalaria avonensis</em>, an endangered small perennial herbaceous legume native to the Lake Wales Ridge in central Florida. The <a href="https://portal.edirepository.org/nis/metadataviewer?packageid=edi.219.1">study</a> spans from 1998 to 2017 and monthly during the growing season tracks individual plant survival, size, and reproduction, recorded within permanent quadrats - 25 cm radius circles in stratified random positions within subjectively located belt transects. Additionally, the dataset contains information on fires, herbivory reduction through caging, and other events that might be of effect. Individuals were defined as groups of stems separated by 5 cm or more and marked with plastic toothpicks. Transplant data suggests this species has clonal growth.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="data.html#cb1-1" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="fu">file.path</span>(dir_data, <span class="st">&#39;crotalaria_avonensis_data.csv&#39;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-2"><a href="data.html#cb1-2" tabindex="-1"></a>  janitor<span class="sc">::</span><span class="fu">clean_names</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb1-3"><a href="data.html#cb1-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">6</span>, <span class="dv">11</span><span class="sc">:</span><span class="fu">length</span>(.)), <span class="sc">~</span> <span class="fu">na_if</span>(., <span class="dv">9999</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb1-4"><a href="data.html#cb1-4" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb1-5"><a href="data.html#cb1-5" tabindex="-1"></a>    <span class="at">plant_id =</span> <span class="fu">paste</span>(site, quad, plant, <span class="at">sep =</span> <span class="st">&quot;_&quot;</span>),</span>
+<span id="cb1-6"><a href="data.html#cb1-6" tabindex="-1"></a>    <span class="at">year     =</span> <span class="fu">substr</span>(date, <span class="dv">1</span>, <span class="dv">4</span>),  </span>
+<span id="cb1-7"><a href="data.html#cb1-7" tabindex="-1"></a>    <span class="at">month    =</span> <span class="fu">substr</span>(date, <span class="dv">6</span>, <span class="dv">7</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb1-8"><a href="data.html#cb1-8" tabindex="-1"></a>  <span class="fu">arrange</span>(site, quad, plant, year, month)</span>
+<span id="cb1-9"><a href="data.html#cb1-9" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="data.html#cb1-10" tabindex="-1"></a>df_meta <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">variable =</span> <span class="fu">colnames</span>(df)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-11"><a href="data.html#cb1-11" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">definition =</span> <span class="fu">c</span>(</span>
+<span id="cb1-12"><a href="data.html#cb1-12" tabindex="-1"></a>    <span class="st">&#39;study site&#39;</span>, <span class="st">&#39;quadrat number&#39;</span>, <span class="st">&#39;macroplot number&#39;</span>, </span>
+<span id="cb1-13"><a href="data.html#cb1-13" tabindex="-1"></a>    <span class="st">&#39;plant number (within quad)&#39;</span>, <span class="st">&#39;direction within circular quad&#39;</span>, </span>
+<span id="cb1-14"><a href="data.html#cb1-14" tabindex="-1"></a>    <span class="st">&#39;distance from quad center&#39;</span>,    <span class="st">&#39;was quad caged from 2012 onward&#39;</span>,  </span>
+<span id="cb1-15"><a href="data.html#cb1-15" tabindex="-1"></a>    <span class="st">&#39;vegetation type&#39;</span>, <span class="st">&#39;year quadrat was initiated&#39;</span>, </span>
+<span id="cb1-16"><a href="data.html#cb1-16" tabindex="-1"></a>    <span class="st">&#39;year-month of observation&#39;</span>,    <span class="st">&#39;fire severity Dec. 2014 or Jan. 2015&#39;</span>,</span>
+<span id="cb1-17"><a href="data.html#cb1-17" tabindex="-1"></a>    <span class="st">&#39;fire severity Aug. 2005&#39;</span>,  <span class="st">&#39;fire severity May/June 2009&#39;</span>,</span>
+<span id="cb1-18"><a href="data.html#cb1-18" tabindex="-1"></a>    <span class="st">&quot;fire severity B&#39;s ridge 2016&quot;</span>, <span class="st">&#39;fire severity Feb. 2017&#39;</span>,</span>
+<span id="cb1-19"><a href="data.html#cb1-19" tabindex="-1"></a>    <span class="st">&#39;fire severity Oct. 2017&#39;</span>, <span class="st">&#39;survival code for month&#39;</span>, <span class="st">&#39;number of stems&#39;</span>,</span>
+<span id="cb1-20"><a href="data.html#cb1-20" tabindex="-1"></a>    <span class="st">&#39;number of branch tips&#39;</span>, <span class="st">&#39;number of flowers (corolla showing)&#39;</span>, </span>
+<span id="cb1-21"><a href="data.html#cb1-21" tabindex="-1"></a>    <span class="st">&#39;number of developing fruits&#39;</span>, <span class="st">&#39;number of mature fruits&#39;</span>, <span class="st">&#39;herbivory code&#39;</span>,</span>
+<span id="cb1-22"><a href="data.html#cb1-22" tabindex="-1"></a>    <span class="st">&#39;plant identification&#39;</span>, <span class="st">&#39;sample year&#39;</span>, <span class="st">&#39;sample month&#39;</span>))</span></code></pre></div>
+</details>
+<details>
+<summary>
+Expand to skim the raw dataframe
+</summary>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="data.html#cb2-1" tabindex="-1"></a>skimr<span class="sc">::</span><span class="fu">skim</span>(df)</span></code></pre></div>
+</details>
+<table>
+<caption>(#tab:data ab crav skim)Data summary</caption>
+<tbody>
+<tr class="odd">
+<td align="left">Name</td>
+<td align="left">df</td>
+</tr>
+<tr class="even">
+<td align="left">Number of rows</td>
+<td align="left">86165</td>
+</tr>
+<tr class="odd">
+<td align="left">Number of columns</td>
+<td align="left">26</td>
+</tr>
+<tr class="even">
+<td align="left">_______________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Column type frequency:</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">character</td>
+<td align="left">4</td>
+</tr>
+<tr class="odd">
+<td align="left">numeric</td>
+<td align="left">22</td>
+</tr>
+<tr class="even">
+<td align="left">________________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Group variables</td>
+<td align="left">None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: character</strong></p>
+<table>
+<colgroup>
+<col width="19%" />
+<col width="13%" />
+<col width="19%" />
+<col width="5%" />
+<col width="5%" />
+<col width="8%" />
+<col width="12%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">min</th>
+<th align="right">max</th>
+<th align="right">empty</th>
+<th align="right">n_unique</th>
+<th align="right">whitespace</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">date</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">7</td>
+<td align="right">7</td>
+<td align="right">0</td>
+<td align="right">95</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">plant_id</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">5</td>
+<td align="right">12</td>
+<td align="right">0</td>
+<td align="right">906</td>
+<td align="right">0</td>
+</tr>
+<tr class="odd">
+<td align="left">year</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">4</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">19</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">month</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">8</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: numeric</strong></p>
+<table>
+<colgroup>
+<col width="16%" />
+<col width="11%" />
+<col width="16%" />
+<col width="9%" />
+<col width="8%" />
+<col width="5%" />
+<col width="5%" />
+<col width="5%" />
+<col width="5%" />
+<col width="7%" />
+<col width="7%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">p0</th>
+<th align="right">p25</th>
+<th align="right">p50</th>
+<th align="right">p75</th>
+<th align="right">p100</th>
+<th align="left">hist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">site</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">6.80</td>
+<td align="right">4.98</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">12</td>
+<td align="right">18</td>
+<td align="left">▇▂▃▅▁</td>
+</tr>
+<tr class="even">
+<td align="left">quad</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">53.32</td>
+<td align="right">45.87</td>
+<td align="right">1</td>
+<td align="right">12</td>
+<td align="right">48</td>
+<td align="right">86</td>
+<td align="right">204</td>
+<td align="left">▇▅▃▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">mp</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">9.91</td>
+<td align="right">6.74</td>
+<td align="right">1</td>
+<td align="right">3</td>
+<td align="right">10</td>
+<td align="right">16</td>
+<td align="right">22</td>
+<td align="left">▇▅▅▃▅</td>
+</tr>
+<tr class="even">
+<td align="left">plant</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">79.00</td>
+<td align="right">792.23</td>
+<td align="right">1</td>
+<td align="right">3</td>
+<td align="right">7</td>
+<td align="right">14</td>
+<td align="right">16102</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">bearing</td>
+<td align="right">1425</td>
+<td align="right">0.98</td>
+<td align="right">178.26</td>
+<td align="right">103.27</td>
+<td align="right">0</td>
+<td align="right">90</td>
+<td align="right">180</td>
+<td align="right">270</td>
+<td align="right">360</td>
+<td align="left">▇▇▇▇▇</td>
+</tr>
+<tr class="even">
+<td align="left">distance</td>
+<td align="right">1330</td>
+<td align="right">0.98</td>
+<td align="right">16.29</td>
+<td align="right">6.85</td>
+<td align="right">0</td>
+<td align="right">11</td>
+<td align="right">17</td>
+<td align="right">22</td>
+<td align="right">52</td>
+<td align="left">▅▇▆▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">caged</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">0.36</td>
+<td align="right">0.48</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="left">▇▁▁▁▅</td>
+</tr>
+<tr class="even">
+<td align="left">veg</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">1.85</td>
+<td align="right">0.85</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">2</td>
+<td align="right">3</td>
+<td align="right">3</td>
+<td align="left">▇▁▅▁▅</td>
+</tr>
+<tr class="odd">
+<td align="left">quadyr</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">2000.55</td>
+<td align="right">2.82</td>
+<td align="right">1998</td>
+<td align="right">1998</td>
+<td align="right">2001</td>
+<td align="right">2002</td>
+<td align="right">2009</td>
+<td align="left">▇▆▁▂▁</td>
+</tr>
+<tr class="even">
+<td align="left">burn_a</td>
+<td align="right">86140</td>
+<td align="right">0.00</td>
+<td align="right">2.60</td>
+<td align="right">0.50</td>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">3</td>
+<td align="right">3</td>
+<td align="right">3</td>
+<td align="left">▅▁▁▁▇</td>
+</tr>
+<tr class="odd">
+<td align="left">burn_b</td>
+<td align="right">85411</td>
+<td align="right">0.01</td>
+<td align="right">0.49</td>
+<td align="right">0.93</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">3</td>
+<td align="left">▇▁▁▂▁</td>
+</tr>
+<tr class="even">
+<td align="left">burn_c</td>
+<td align="right">85320</td>
+<td align="right">0.01</td>
+<td align="right">0.27</td>
+<td align="right">0.83</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">4</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">burn_d</td>
+<td align="right">86146</td>
+<td align="right">0.00</td>
+<td align="right">0.79</td>
+<td align="right">0.92</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">3</td>
+<td align="left">▇▅▁▂▁</td>
+</tr>
+<tr class="even">
+<td align="left">burn_e</td>
+<td align="right">86149</td>
+<td align="right">0.00</td>
+<td align="right">0.81</td>
+<td align="right">0.98</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="left">▇▁▁▁▅</td>
+</tr>
+<tr class="odd">
+<td align="left">burn_f</td>
+<td align="right">85274</td>
+<td align="right">0.01</td>
+<td align="right">0.03</td>
+<td align="right">0.20</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">2</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">s</td>
+<td align="right">41528</td>
+<td align="right">0.52</td>
+<td align="right">0.39</td>
+<td align="right">0.61</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">st</td>
+<td align="right">70291</td>
+<td align="right">0.18</td>
+<td align="right">2.28</td>
+<td align="right">2.09</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">2</td>
+<td align="right">3</td>
+<td align="right">33</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">br</td>
+<td align="right">70293</td>
+<td align="right">0.18</td>
+<td align="right">4.22</td>
+<td align="right">5.39</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">2</td>
+<td align="right">5</td>
+<td align="right">85</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">fl</td>
+<td align="right">70283</td>
+<td align="right">0.18</td>
+<td align="right">0.25</td>
+<td align="right">1.30</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">43</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">dv</td>
+<td align="right">70449</td>
+<td align="right">0.18</td>
+<td align="right">0.04</td>
+<td align="right">0.47</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">30</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">fr</td>
+<td align="right">70449</td>
+<td align="right">0.18</td>
+<td align="right">0.02</td>
+<td align="right">0.26</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">15</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">h</td>
+<td align="right">70093</td>
+<td align="right">0.19</td>
+<td align="right">0.16</td>
+<td align="right">0.56</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">6</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+</tbody>
+</table>
+</details>
+<div id="data-exploration" class="section level2 hasAnchor" number="2.1">
+<h2><span class="header-section-number">2.1</span> Data exploration<a href="data.html#data-exploration" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Each year recorded in the dataset includes multiple months of observations per individual. For the purpose of modeling population dynamics, we condensed the data to provide a single observation per individual for size, recruits, survival, flowering, fruiting, and fire exposure for each year. The data were condensed as follows:</p>
+<ol style="list-style-type: decimal">
+<li>Size was measured as the number of branch tips, and following the recommendations of Menges et al. (2016), we focused on the maximum size observed in each year.</li>
+<li>&amp; 3. Recruits and survival were recorded as binary variables, indicating whether the event occurred in a given year.</li>
+</ol>
+<p><strong>The treatment of flowering, fruiting, and fire exposure is still undecided as of</strong> <strong><em>March 19, 2025</em>.</strong></p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="data.html#cb3-1" tabindex="-1"></a>df_mean_og <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb3-2"><a href="data.html#cb3-2" tabindex="-1"></a>  <span class="fu">filter</span>(s <span class="sc">&lt;</span> <span class="dv">6</span> <span class="sc">|</span> <span class="fu">is.na</span>(s)) <span class="sc">%&gt;%</span></span>
+<span id="cb3-3"><a href="data.html#cb3-3" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, plant, plant_id, year) <span class="sc">%&gt;%</span></span>
+<span id="cb3-4"><a href="data.html#cb3-4" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb3-5"><a href="data.html#cb3-5" tabindex="-1"></a>    <span class="at">survives =</span> <span class="fu">if_else</span>(<span class="fu">all</span>(<span class="fu">is.na</span>(s )), <span class="cn">NA_real_</span>, <span class="fu">max</span>(s,  <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
+<span id="cb3-6"><a href="data.html#cb3-6" tabindex="-1"></a>    <span class="at">size_t0 =</span>  <span class="fu">if_else</span>(<span class="fu">all</span>(<span class="fu">is.na</span>(br)), <span class="cn">NA_real_</span>, <span class="fu">max</span>(br, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
+<span id="cb3-7"><a href="data.html#cb3-7" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb3-8"><a href="data.html#cb3-8" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-9"><a href="data.html#cb3-9" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span></code></pre></div>
+</details>
+<details>
+<summary>
+Expand to skim the condenced raw dataframe
+</summary>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="data.html#cb4-1" tabindex="-1"></a>skimr<span class="sc">::</span><span class="fu">skim</span>(df_mean_og)</span></code></pre></div>
+</details>
+<table>
+<caption><span id="tab:unnamed-chunk-2">Table 2.1: </span>Data summary</caption>
+<tbody>
+<tr class="odd">
+<td align="left">Name</td>
+<td align="left">df_mean_og</td>
+</tr>
+<tr class="even">
+<td align="left">Number of rows</td>
+<td align="left">17214</td>
+</tr>
+<tr class="odd">
+<td align="left">Number of columns</td>
+<td align="left">7</td>
+</tr>
+<tr class="even">
+<td align="left">_______________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Column type frequency:</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">character</td>
+<td align="left">2</td>
+</tr>
+<tr class="odd">
+<td align="left">numeric</td>
+<td align="left">5</td>
+</tr>
+<tr class="even">
+<td align="left">________________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Group variables</td>
+<td align="left">None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: character</strong></p>
+<table>
+<colgroup>
+<col width="19%" />
+<col width="13%" />
+<col width="19%" />
+<col width="5%" />
+<col width="5%" />
+<col width="8%" />
+<col width="12%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">min</th>
+<th align="right">max</th>
+<th align="right">empty</th>
+<th align="right">n_unique</th>
+<th align="right">whitespace</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">plant_id</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">5</td>
+<td align="right">12</td>
+<td align="right">0</td>
+<td align="right">906</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">year</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">4</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">19</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: numeric</strong></p>
+<table>
+<colgroup>
+<col width="17%" />
+<col width="12%" />
+<col width="17%" />
+<col width="7%" />
+<col width="8%" />
+<col width="3%" />
+<col width="5%" />
+<col width="5%" />
+<col width="5%" />
+<col width="7%" />
+<col width="7%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">p0</th>
+<th align="right">p25</th>
+<th align="right">p50</th>
+<th align="right">p75</th>
+<th align="right">p100</th>
+<th align="left">hist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">site</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">6.80</td>
+<td align="right">4.98</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">6</td>
+<td align="right">12</td>
+<td align="right">18</td>
+<td align="left">▇▂▃▅▁</td>
+</tr>
+<tr class="even">
+<td align="left">quad</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">53.28</td>
+<td align="right">45.88</td>
+<td align="right">1</td>
+<td align="right">12</td>
+<td align="right">48</td>
+<td align="right">86</td>
+<td align="right">204</td>
+<td align="left">▇▅▃▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">plant</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">79.08</td>
+<td align="right">792.68</td>
+<td align="right">1</td>
+<td align="right">3</td>
+<td align="right">7</td>
+<td align="right">14</td>
+<td align="right">16102</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">survives</td>
+<td align="right">7816</td>
+<td align="right">0.55</td>
+<td align="right">0.53</td>
+<td align="right">0.68</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">5</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">size_t0</td>
+<td align="right">12843</td>
+<td align="right">0.25</td>
+<td align="right">5.48</td>
+<td align="right">6.70</td>
+<td align="right">1</td>
+<td align="right">2</td>
+<td align="right">3</td>
+<td align="right">7</td>
+<td align="right">85</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+</tbody>
+</table>
+</details>
+</div>
+<div id="work-dataframe-adjustments" class="section level2 hasAnchor" number="2.2">
+<h2><span class="header-section-number">2.2</span> Work dataframe/ adjustments<a href="data.html#work-dataframe-adjustments" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Disclaimer: As of March 2025, we have not been in contact with the corresponding author.</p>
+<p>During our exploration of the dataset, we found that the survival variable was coded as a factor. In addition to the obvious values indicating survival (1) and non-survival (0), dataset includes values that we interpret as follows: birth (3), birth after fire exposure (5), and missing observations (6). We excluded the missing observations (6) from the dataset entirely. For the <strong>survival</strong> variable, we re-coded the birth entries (3 and 5), assigning a survival value of 1 if the individual survived and 0 if the individual did not survive.</p>
+<p>The species is known to exhibit dormancy, and this is reflected in the dataset. The longest dormancy period recorded was 3 years. We included <strong>dormancy</strong> as a new variable in the dataset. However, it is important to note that for a 3-year period close to the beginning or end of the records, we cannot be certain of an individuals true birth or death. In these cases, the dormancy, survival, and birth variables were marked as NA.</p>
+<p>Additionally, we included the <strong>size of individuals in the subsequent</strong> year as a variable. In cases where dormancy was recorded, the size variable was marked as NA. Upon the conclusion of dormancy, the individual’s size was recorded for the following year.</p>
+<p>For individuals whose true birth could be determined (i.e., those born at least 4 years after the start of the records), we classified them as <strong>recruits</strong> and included an <strong>age</strong> variable, which increased through periods of dormancy.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="data.html#cb5-1" tabindex="-1"></a>df_mean <span class="ot">&lt;-</span> df_mean_og <span class="sc">%&gt;%</span> </span>
+<span id="cb5-2"><a href="data.html#cb5-2" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, plant, plant_id) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-3"><a href="data.html#cb5-3" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb5-4"><a href="data.html#cb5-4" tabindex="-1"></a>    <span class="co"># Handle survival based on previous dormancy status</span></span>
+<span id="cb5-5"><a href="data.html#cb5-5" tabindex="-1"></a>    <span class="at">survives =</span> <span class="fu">if_else</span>(</span>
+<span id="cb5-6"><a href="data.html#cb5-6" tabindex="-1"></a>      <span class="co"># If the current status is dead or NA</span></span>
+<span id="cb5-7"><a href="data.html#cb5-7" tabindex="-1"></a>      (survives <span class="sc">==</span> <span class="dv">0</span> <span class="sc">|</span> <span class="fu">is.na</span>(survives)) <span class="sc">&amp;</span> </span>
+<span id="cb5-8"><a href="data.html#cb5-8" tabindex="-1"></a>        <span class="co"># Check if survived in the previous 1, 2, or 3 years</span></span>
+<span id="cb5-9"><a href="data.html#cb5-9" tabindex="-1"></a>        (<span class="fu">lag</span>(survives, <span class="dv">1</span>) <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> <span class="fu">lag</span>(survives, <span class="dv">2</span>) <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> <span class="fu">lag</span>(survives, <span class="dv">3</span>) <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">&amp;</span> </span>
+<span id="cb5-10"><a href="data.html#cb5-10" tabindex="-1"></a>        <span class="co"># Check if survives in the next 1, 2, or 3 years</span></span>
+<span id="cb5-11"><a href="data.html#cb5-11" tabindex="-1"></a>        (<span class="fu">lead</span>(survives, <span class="dv">1</span>) <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> <span class="fu">lead</span>(survives, <span class="dv">2</span>) <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> <span class="fu">lead</span>(survives, <span class="dv">3</span>) <span class="sc">==</span> <span class="dv">1</span>), </span>
+<span id="cb5-12"><a href="data.html#cb5-12" tabindex="-1"></a>      <span class="dv">1</span>,  </span>
+<span id="cb5-13"><a href="data.html#cb5-13" tabindex="-1"></a>      survives</span>
+<span id="cb5-14"><a href="data.html#cb5-14" tabindex="-1"></a>    ),</span>
+<span id="cb5-15"><a href="data.html#cb5-15" tabindex="-1"></a>    </span>
+<span id="cb5-16"><a href="data.html#cb5-16" tabindex="-1"></a>    <span class="co"># Set survival to 0 if plant dies after 3 consecutive years of dormancy</span></span>
+<span id="cb5-17"><a href="data.html#cb5-17" tabindex="-1"></a>    <span class="at">survives =</span> <span class="fu">if_else</span>(</span>
+<span id="cb5-18"><a href="data.html#cb5-18" tabindex="-1"></a>      survives <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> </span>
+<span id="cb5-19"><a href="data.html#cb5-19" tabindex="-1"></a>        <span class="fu">lead</span>(survives, <span class="dv">1</span>) <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> </span>
+<span id="cb5-20"><a href="data.html#cb5-20" tabindex="-1"></a>        <span class="fu">lead</span>(survives, <span class="dv">2</span>) <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> </span>
+<span id="cb5-21"><a href="data.html#cb5-21" tabindex="-1"></a>        <span class="fu">lead</span>(survives, <span class="dv">3</span>) <span class="sc">==</span> <span class="dv">0</span>, </span>
+<span id="cb5-22"><a href="data.html#cb5-22" tabindex="-1"></a>      <span class="dv">0</span>,  </span>
+<span id="cb5-23"><a href="data.html#cb5-23" tabindex="-1"></a>      survives</span>
+<span id="cb5-24"><a href="data.html#cb5-24" tabindex="-1"></a>    )</span>
+<span id="cb5-25"><a href="data.html#cb5-25" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb5-26"><a href="data.html#cb5-26" tabindex="-1"></a>  </span>
+<span id="cb5-27"><a href="data.html#cb5-27" tabindex="-1"></a>  <span class="co"># Define dormancy</span></span>
+<span id="cb5-28"><a href="data.html#cb5-28" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb5-29"><a href="data.html#cb5-29" tabindex="-1"></a>    <span class="at">dormancy =</span> <span class="fu">case_when</span>(</span>
+<span id="cb5-30"><a href="data.html#cb5-30" tabindex="-1"></a>      survives <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> <span class="fu">is.na</span>(size_t0) <span class="sc">~</span> <span class="dv">1</span>,</span>
+<span id="cb5-31"><a href="data.html#cb5-31" tabindex="-1"></a>      size_t0  <span class="sc">&gt;</span>  <span class="dv">0</span>                  <span class="sc">~</span> <span class="dv">0</span>, </span>
+<span id="cb5-32"><a href="data.html#cb5-32" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="cn">NA_real_</span> </span>
+<span id="cb5-33"><a href="data.html#cb5-33" tabindex="-1"></a>    )</span>
+<span id="cb5-34"><a href="data.html#cb5-34" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-35"><a href="data.html#cb5-35" tabindex="-1"></a>  </span>
+<span id="cb5-36"><a href="data.html#cb5-36" tabindex="-1"></a>  <span class="co"># Define recruits</span></span>
+<span id="cb5-37"><a href="data.html#cb5-37" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb5-38"><a href="data.html#cb5-38" tabindex="-1"></a>    <span class="at">recruit =</span> <span class="fu">case_when</span>(</span>
+<span id="cb5-39"><a href="data.html#cb5-39" tabindex="-1"></a>      (survives <span class="sc">==</span> <span class="dv">3</span> <span class="sc">|</span> survives <span class="sc">==</span> <span class="dv">5</span>) <span class="sc">~</span> <span class="dv">1</span>, </span>
+<span id="cb5-40"><a href="data.html#cb5-40" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="cn">NA_real_</span>  </span>
+<span id="cb5-41"><a href="data.html#cb5-41" tabindex="-1"></a>    )</span>
+<span id="cb5-42"><a href="data.html#cb5-42" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-43"><a href="data.html#cb5-43" tabindex="-1"></a>  </span>
+<span id="cb5-44"><a href="data.html#cb5-44" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb5-45"><a href="data.html#cb5-45" tabindex="-1"></a>    <span class="co"># Make sure that no survival value exceeds 1</span></span>
+<span id="cb5-46"><a href="data.html#cb5-46" tabindex="-1"></a>    <span class="at">survives =</span> <span class="fu">if_else</span>(survives <span class="sc">&gt;</span> <span class="dv">1</span>, <span class="dv">1</span>, survives), </span>
+<span id="cb5-47"><a href="data.html#cb5-47" tabindex="-1"></a>    </span>
+<span id="cb5-48"><a href="data.html#cb5-48" tabindex="-1"></a>    <span class="co"># Handle missing size_t0 for dead plants by setting NA in survival column</span></span>
+<span id="cb5-49"><a href="data.html#cb5-49" tabindex="-1"></a>    <span class="at">survives =</span> <span class="fu">if_else</span>(survives <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="fu">is.na</span>(size_t0), <span class="cn">NA</span>, survives)</span>
+<span id="cb5-50"><a href="data.html#cb5-50" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-51"><a href="data.html#cb5-51" tabindex="-1"></a>  </span>
+<span id="cb5-52"><a href="data.html#cb5-52" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb5-53"><a href="data.html#cb5-53" tabindex="-1"></a>  <span class="fu">arrange</span>(site, quad, plant, year) <span class="sc">%&gt;%</span></span>
+<span id="cb5-54"><a href="data.html#cb5-54" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, plant, plant_id) <span class="sc">%&gt;%</span></span>
+<span id="cb5-55"><a href="data.html#cb5-55" tabindex="-1"></a>  </span>
+<span id="cb5-56"><a href="data.html#cb5-56" tabindex="-1"></a>  <span class="co"># Set size_t1 based on survival; propagate size_t0 if survives, otherwise set to NA</span></span>
+<span id="cb5-57"><a href="data.html#cb5-57" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb5-58"><a href="data.html#cb5-58" tabindex="-1"></a>    <span class="at">size_t1 =</span> <span class="fu">case_when</span>(</span>
+<span id="cb5-59"><a href="data.html#cb5-59" tabindex="-1"></a>      survives <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> <span class="fu">lead</span>(size_t0), </span>
+<span id="cb5-60"><a href="data.html#cb5-60" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="cn">NA_real_</span>  </span>
+<span id="cb5-61"><a href="data.html#cb5-61" tabindex="-1"></a>    )</span>
+<span id="cb5-62"><a href="data.html#cb5-62" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb5-63"><a href="data.html#cb5-63" tabindex="-1"></a>  </span>
+<span id="cb5-64"><a href="data.html#cb5-64" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb5-65"><a href="data.html#cb5-65" tabindex="-1"></a>  </span>
+<span id="cb5-66"><a href="data.html#cb5-66" tabindex="-1"></a>  <span class="co"># Compute log-transformed sizes and their powers for modeling</span></span>
+<span id="cb5-67"><a href="data.html#cb5-67" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb5-68"><a href="data.html#cb5-68" tabindex="-1"></a>    <span class="at">logsize_t0   =</span> <span class="fu">log</span>(size_t0),     </span>
+<span id="cb5-69"><a href="data.html#cb5-69" tabindex="-1"></a>    <span class="at">logsize_t1   =</span> <span class="fu">log</span>(size_t1),    </span>
+<span id="cb5-70"><a href="data.html#cb5-70" tabindex="-1"></a>    <span class="at">logsize_t0_2 =</span> logsize_t0<span class="sc">^</span><span class="dv">2</span>,     </span>
+<span id="cb5-71"><a href="data.html#cb5-71" tabindex="-1"></a>    <span class="at">logsize_t0_3 =</span> logsize_t0<span class="sc">^</span><span class="dv">3</span>      </span>
+<span id="cb5-72"><a href="data.html#cb5-72" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb5-73"><a href="data.html#cb5-73" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, plant, plant_id) <span class="sc">%&gt;%</span></span>
+<span id="cb5-74"><a href="data.html#cb5-74" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">age =</span> <span class="cn">NA_real_</span>) <span class="sc">%&gt;%</span>  <span class="co"># Initialize age as NA for all</span></span>
+<span id="cb5-75"><a href="data.html#cb5-75" tabindex="-1"></a>  </span>
+<span id="cb5-76"><a href="data.html#cb5-76" tabindex="-1"></a>  <span class="co"># Apply for loop to calculate age</span></span>
+<span id="cb5-77"><a href="data.html#cb5-77" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">age =</span> {</span>
+<span id="cb5-78"><a href="data.html#cb5-78" tabindex="-1"></a>    <span class="co"># Initialize age vector</span></span>
+<span id="cb5-79"><a href="data.html#cb5-79" tabindex="-1"></a>    age_vector <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="cn">NA_real_</span>, <span class="fu">n</span>())</span>
+<span id="cb5-80"><a href="data.html#cb5-80" tabindex="-1"></a>    </span>
+<span id="cb5-81"><a href="data.html#cb5-81" tabindex="-1"></a>    <span class="co"># Iterate over each row in the group (each site, quad, and plant combination)</span></span>
+<span id="cb5-82"><a href="data.html#cb5-82" tabindex="-1"></a>    <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">n</span>()) {</span>
+<span id="cb5-83"><a href="data.html#cb5-83" tabindex="-1"></a>      <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.na</span>(recruit[i]) <span class="sc">&amp;&amp;</span> recruit[i] <span class="sc">==</span> <span class="dv">1</span>) {</span>
+<span id="cb5-84"><a href="data.html#cb5-84" tabindex="-1"></a>        age_vector[i] <span class="ot">&lt;-</span> <span class="dv">1</span>  <span class="co"># Set age to 1 for recruits</span></span>
+<span id="cb5-85"><a href="data.html#cb5-85" tabindex="-1"></a>      } <span class="cf">else</span> <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.na</span>(dormancy[i]) <span class="sc">&amp;&amp;</span> dormancy[i] <span class="sc">&gt;=</span> <span class="dv">0</span>) {</span>
+<span id="cb5-86"><a href="data.html#cb5-86" tabindex="-1"></a>        <span class="co"># If plant survives, increment the age based on previous value</span></span>
+<span id="cb5-87"><a href="data.html#cb5-87" tabindex="-1"></a>        <span class="cf">if</span> (i <span class="sc">&gt;</span> <span class="dv">1</span> <span class="sc">&amp;&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(age_vector[i <span class="sc">-</span> <span class="dv">1</span>])) {</span>
+<span id="cb5-88"><a href="data.html#cb5-88" tabindex="-1"></a>          age_vector[i] <span class="ot">&lt;-</span> age_vector[i <span class="sc">-</span> <span class="dv">1</span>] <span class="sc">+</span> <span class="dv">1</span></span>
+<span id="cb5-89"><a href="data.html#cb5-89" tabindex="-1"></a>        }</span>
+<span id="cb5-90"><a href="data.html#cb5-90" tabindex="-1"></a>      }</span>
+<span id="cb5-91"><a href="data.html#cb5-91" tabindex="-1"></a>    }</span>
+<span id="cb5-92"><a href="data.html#cb5-92" tabindex="-1"></a>    </span>
+<span id="cb5-93"><a href="data.html#cb5-93" tabindex="-1"></a>    <span class="co"># Return the computed age vector</span></span>
+<span id="cb5-94"><a href="data.html#cb5-94" tabindex="-1"></a>    age_vector</span>
+<span id="cb5-95"><a href="data.html#cb5-95" tabindex="-1"></a>  }) <span class="sc">%&gt;%</span></span>
+<span id="cb5-96"><a href="data.html#cb5-96" tabindex="-1"></a>  </span>
+<span id="cb5-97"><a href="data.html#cb5-97" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span></code></pre></div>
+</details>
+<details>
+<summary>
+Expand to skim the working dataframe
+</summary>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="data.html#cb6-1" tabindex="-1"></a>skimr<span class="sc">::</span><span class="fu">skim</span>(df_mean)</span></code></pre></div>
+</details>
+<table>
+<caption><span id="tab:unnamed-chunk-3">Table 2.2: </span>Data summary</caption>
+<tbody>
+<tr class="odd">
+<td align="left">Name</td>
+<td align="left">df_mean</td>
+</tr>
+<tr class="even">
+<td align="left">Number of rows</td>
+<td align="left">17214</td>
+</tr>
+<tr class="odd">
+<td align="left">Number of columns</td>
+<td align="left">15</td>
+</tr>
+<tr class="even">
+<td align="left">_______________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Column type frequency:</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">character</td>
+<td align="left">2</td>
+</tr>
+<tr class="odd">
+<td align="left">numeric</td>
+<td align="left">13</td>
+</tr>
+<tr class="even">
+<td align="left">________________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Group variables</td>
+<td align="left">None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: character</strong></p>
+<table>
+<colgroup>
+<col width="19%" />
+<col width="13%" />
+<col width="19%" />
+<col width="5%" />
+<col width="5%" />
+<col width="8%" />
+<col width="12%" />
+<col width="15%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">min</th>
+<th align="right">max</th>
+<th align="right">empty</th>
+<th align="right">n_unique</th>
+<th align="right">whitespace</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">plant_id</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">5</td>
+<td align="right">12</td>
+<td align="right">0</td>
+<td align="right">906</td>
+<td align="right">0</td>
+</tr>
+<tr class="even">
+<td align="left">year</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">4</td>
+<td align="right">4</td>
+<td align="right">0</td>
+<td align="right">19</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: numeric</strong></p>
+<table>
+<colgroup>
+<col width="16%" />
+<col width="11%" />
+<col width="16%" />
+<col width="6%" />
+<col width="8%" />
+<col width="3%" />
+<col width="6%" />
+<col width="6%" />
+<col width="6%" />
+<col width="10%" />
+<col width="6%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">p0</th>
+<th align="right">p25</th>
+<th align="right">p50</th>
+<th align="right">p75</th>
+<th align="right">p100</th>
+<th align="left">hist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">site</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">6.80</td>
+<td align="right">4.98</td>
+<td align="right">1</td>
+<td align="right">1.00</td>
+<td align="right">6.00</td>
+<td align="right">12.00</td>
+<td align="right">18.00</td>
+<td align="left">▇▂▃▅▁</td>
+</tr>
+<tr class="even">
+<td align="left">quad</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">53.28</td>
+<td align="right">45.88</td>
+<td align="right">1</td>
+<td align="right">12.00</td>
+<td align="right">48.00</td>
+<td align="right">86.00</td>
+<td align="right">204.00</td>
+<td align="left">▇▅▃▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">plant</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">79.08</td>
+<td align="right">792.68</td>
+<td align="right">1</td>
+<td align="right">3.00</td>
+<td align="right">7.00</td>
+<td align="right">14.00</td>
+<td align="right">16102.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">survives</td>
+<td align="right">13115</td>
+<td align="right">0.24</td>
+<td align="right">0.91</td>
+<td align="right">0.29</td>
+<td align="right">0</td>
+<td align="right">1.00</td>
+<td align="right">1.00</td>
+<td align="right">1.00</td>
+<td align="right">1.00</td>
+<td align="left">▁▁▁▁▇</td>
+</tr>
+<tr class="odd">
+<td align="left">size_t0</td>
+<td align="right">12843</td>
+<td align="right">0.25</td>
+<td align="right">5.48</td>
+<td align="right">6.70</td>
+<td align="right">1</td>
+<td align="right">2.00</td>
+<td align="right">3.00</td>
+<td align="right">7.00</td>
+<td align="right">85.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">dormancy</td>
+<td align="right">12707</td>
+<td align="right">0.26</td>
+<td align="right">0.03</td>
+<td align="right">0.17</td>
+<td align="right">0</td>
+<td align="right">0.00</td>
+<td align="right">0.00</td>
+<td align="right">0.00</td>
+<td align="right">1.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">recruit</td>
+<td align="right">16935</td>
+<td align="right">0.02</td>
+<td align="right">1.00</td>
+<td align="right">0.00</td>
+<td align="right">1</td>
+<td align="right">1.00</td>
+<td align="right">1.00</td>
+<td align="right">1.00</td>
+<td align="right">1.00</td>
+<td align="left">▁▁▇▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">size_t1</td>
+<td align="right">13723</td>
+<td align="right">0.20</td>
+<td align="right">5.96</td>
+<td align="right">7.02</td>
+<td align="right">1</td>
+<td align="right">2.00</td>
+<td align="right">4.00</td>
+<td align="right">7.00</td>
+<td align="right">85.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">logsize_t0</td>
+<td align="right">12843</td>
+<td align="right">0.25</td>
+<td align="right">1.22</td>
+<td align="right">0.95</td>
+<td align="right">0</td>
+<td align="right">0.69</td>
+<td align="right">1.10</td>
+<td align="right">1.95</td>
+<td align="right">4.44</td>
+<td align="left">▇▆▅▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">logsize_t1</td>
+<td align="right">13723</td>
+<td align="right">0.20</td>
+<td align="right">1.32</td>
+<td align="right">0.94</td>
+<td align="right">0</td>
+<td align="right">0.69</td>
+<td align="right">1.39</td>
+<td align="right">1.95</td>
+<td align="right">4.44</td>
+<td align="left">▇▇▆▂▁</td>
+</tr>
+<tr class="odd">
+<td align="left">logsize_t0_2</td>
+<td align="right">12843</td>
+<td align="right">0.25</td>
+<td align="right">2.39</td>
+<td align="right">2.84</td>
+<td align="right">0</td>
+<td align="right">0.48</td>
+<td align="right">1.21</td>
+<td align="right">3.79</td>
+<td align="right">19.74</td>
+<td align="left">▇▂▁▁▁</td>
+</tr>
+<tr class="even">
+<td align="left">logsize_t0_3</td>
+<td align="right">12843</td>
+<td align="right">0.25</td>
+<td align="right">5.43</td>
+<td align="right">9.07</td>
+<td align="right">0</td>
+<td align="right">0.33</td>
+<td align="right">1.33</td>
+<td align="right">7.37</td>
+<td align="right">87.69</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td align="left">age</td>
+<td align="right">16320</td>
+<td align="right">0.05</td>
+<td align="right">2.94</td>
+<td align="right">2.03</td>
+<td align="right">1</td>
+<td align="right">1.00</td>
+<td align="right">2.00</td>
+<td align="right">4.00</td>
+<td align="right">12.00</td>
+<td align="left">▇▂▁▁▁</td>
+</tr>
+</tbody>
+</table>
+</details>
+
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="intro.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="investigation.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": false,
+"facebook": true,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": null,
+"text": null
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": null,
+"search": {
+"engine": "fuse",
+"options": null
+},
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+</body>
+
+</html>

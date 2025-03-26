@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>3 Investigations | Archbold Crotalaria avonensis summary</title>
+  <meta name="description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  <meta name="generator" content="bookdown 0.42 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="3 Investigations | Archbold Crotalaria avonensis summary" />
+  <meta property="og:type" content="book" />
+  
+  <meta property="og:description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="3 Investigations | Archbold Crotalaria avonensis summary" />
+  
+  <meta name="twitter:description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  
+
+
+
+<meta name="date" content="2025-03-26" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="data.html"/>
+<link rel="next" href="models.html"/>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/codefolding-lua-1.1/codefolding-lua.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+
+
+<style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+<style type="text/css">
+  
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li class="chapter" data-level="1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>1</b> Introduction</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="intro.html"><a href="intro.html#setup"><i class="fa fa-check"></i><b>1.1</b> Setup</a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="data.html"><a href="data.html"><i class="fa fa-check"></i><b>2</b> Data</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="data.html"><a href="data.html#data-exploration"><i class="fa fa-check"></i><b>2.1</b> Data exploration</a></li>
+<li class="chapter" data-level="2.2" data-path="data.html"><a href="data.html#work-dataframe-adjustments"><i class="fa fa-check"></i><b>2.2</b> Work dataframe/ adjustments</a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="investigation.html"><a href="investigation.html"><i class="fa fa-check"></i><b>3</b> Investigations</a>
+<ul>
+<li class="chapter" data-level="3.1" data-path="investigation.html"><a href="investigation.html#issue-1.---size-of-recruits"><i class="fa fa-check"></i><b>3.1</b> Issue 1. - Size of recruits</a></li>
+<li class="chapter" data-level="3.2" data-path="investigation.html"><a href="investigation.html#issue-2---size-after-dormancy"><i class="fa fa-check"></i><b>3.2</b> Issue 2 - Size after Dormancy</a></li>
+<li class="chapter" data-level="3.3" data-path="investigation.html"><a href="investigation.html#issue-3---flagged"><i class="fa fa-check"></i><b>3.3</b> Issue 3 - Flagged</a>
+<ul>
+<li class="chapter" data-level="3.3.1" data-path="investigation.html"><a href="investigation.html#modeling-growth-of-the-flags"><i class="fa fa-check"></i><b>3.3.1</b> Modeling Growth of the Flags</a></li>
+</ul></li>
+<li class="chapter" data-level="3.4" data-path="investigation.html"><a href="investigation.html#issue-4---fires"><i class="fa fa-check"></i><b>3.4</b> Issue 4 - Fires</a></li>
+<li class="chapter" data-level="3.5" data-path="investigation.html"><a href="investigation.html#issue-5---spatial-relationship"><i class="fa fa-check"></i><b>3.5</b> Issue 5 - Spatial relationship</a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="models.html"><a href="models.html"><i class="fa fa-check"></i><b>4</b> Models</a></li>
+<li class="chapter" data-level="5" data-path="bugs.html"><a href="bugs.html"><i class="fa fa-check"></i><b>5</b> BUGS</a></li>
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Archbold Crotalaria avonensis summary</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="investigation" class="section level1 hasAnchor" number="3">
+<h1><span class="header-section-number">3</span> Investigations<a href="investigation.html#investigation" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<p>We will now investigate several key aspects of the data to maximize its utility, given the constraints. Specifically, we aim to address the following questions:</p>
+<ol style="list-style-type: decimal">
+<li>How does the size of recruits develop over time?</li>
+<li>What is the size trajectory following the exit from dormancy?</li>
+<li>Is it possible to distinguish between true recruits and individuals exiting dormancy when their first appearance coincides with the beginning of the observation period?</li>
+<li>Fires</li>
+<li>Spatial relationships between sites or plots</li>
+</ol>
+<div id="issue-1.---size-of-recruits" class="section level2 hasAnchor" number="3.1">
+<h2><span class="header-section-number">3.1</span> Issue 1. - Size of recruits<a href="investigation.html#issue-1.---size-of-recruits" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>To understand how the plants develop over time, we first examine the size at their first appearance. We can confidently identify this as their first appearance only if there is a record of three consecutive years with no presence prior to that year.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="investigation.html#cb7-1" tabindex="-1"></a>i1_hist <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_mean <span class="sc">%&gt;%</span> <span class="fu">filter</span>(recruit <span class="sc">==</span> <span class="dv">1</span>), <span class="fu">aes</span>(<span class="at">x =</span> size_t0)) <span class="sc">+</span></span>
+<span id="cb7-2"><a href="investigation.html#cb7-2" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">1</span>, <span class="at">fill =</span> <span class="st">&quot;lightgray&quot;</span>, <span class="at">color =</span> <span class="st">&quot;black&quot;</span>) <span class="sc">+</span></span>
+<span id="cb7-3"><a href="investigation.html#cb7-3" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span>
+<span id="cb7-4"><a href="investigation.html#cb7-4" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="investigation.html#cb7-5" tabindex="-1"></a>df_mean_r <span class="ot">&lt;-</span> df_mean <span class="sc">%&gt;%</span></span>
+<span id="cb7-6"><a href="investigation.html#cb7-6" tabindex="-1"></a>  <span class="fu">filter</span>(plant_id <span class="sc">%in%</span> df_mean<span class="sc">$</span>plant_id[df_mean<span class="sc">$</span>recruit <span class="sc">==</span> <span class="dv">1</span>]) <span class="sc">%&gt;%</span> </span>
+<span id="cb7-7"><a href="investigation.html#cb7-7" tabindex="-1"></a>  <span class="co"># 1_4_17 has a problem</span></span>
+<span id="cb7-8"><a href="investigation.html#cb7-8" tabindex="-1"></a>  <span class="fu">filter</span>(plant_id <span class="sc">!=</span> <span class="st">&#39;1_4_17&#39;</span>)</span>
+<span id="cb7-9"><a href="investigation.html#cb7-9" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="investigation.html#cb7-10" tabindex="-1"></a>mod_i1_glm_size_age_quad <span class="ot">&lt;-</span> <span class="fu">lmer</span>(logsize_t0 <span class="sc">~</span> age <span class="sc">+</span> <span class="fu">I</span>(age<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span> plant_id), <span class="at">data =</span> df_mean_r)</span>
+<span id="cb7-11"><a href="investigation.html#cb7-11" tabindex="-1"></a>df_mean_r<span class="sc">$</span>pred_glm_size_age_quad <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_i1_glm_size_age_quad, <span class="at">newdata =</span> df_mean_r, <span class="at">re.form =</span> <span class="cn">NULL</span>)</span>
+<span id="cb7-12"><a href="investigation.html#cb7-12" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="investigation.html#cb7-13" tabindex="-1"></a>mod_i1_lm_size_age_quad  <span class="ot">&lt;-</span> <span class="fu">lm</span>  (logsize_t0 <span class="sc">~</span> age <span class="sc">+</span> <span class="fu">I</span>(age<span class="sc">^</span><span class="dv">2</span>), <span class="at">data =</span> df_mean_r)</span>
+<span id="cb7-14"><a href="investigation.html#cb7-14" tabindex="-1"></a>df_mean_r<span class="sc">$</span>pred_lm_size_age_quad <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_i1_lm_size_age_quad, <span class="at">newdata =</span> df_mean_r, <span class="at">re.form =</span> <span class="cn">NULL</span>)</span>
+<span id="cb7-15"><a href="investigation.html#cb7-15" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="investigation.html#cb7-16" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="investigation.html#cb7-17" tabindex="-1"></a>i1_size_age <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_mean_r, <span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> logsize_t0)) <span class="sc">+</span></span>
+<span id="cb7-18"><a href="investigation.html#cb7-18" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="fu">aes</span>(<span class="at">color =</span> plant_id), <span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">height =</span> <span class="fl">0.1</span>, <span class="at">alpha =</span> <span class="fl">0.6</span>) <span class="sc">+</span>  </span>
+<span id="cb7-19"><a href="investigation.html#cb7-19" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> pred_glm_size_age_quad   , <span class="at">color =</span> plant_id), <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span>  </span>
+<span id="cb7-20"><a href="investigation.html#cb7-20" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> pred_lm_size_age_quad), <span class="at">alpha =</span> <span class="dv">1</span>, <span class="at">color =</span> <span class="st">&#39;black&#39;</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span>  </span>
+<span id="cb7-21"><a href="investigation.html#cb7-21" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span> </span>
+<span id="cb7-22"><a href="investigation.html#cb7-22" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Age&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Log Size&quot;</span>, <span class="at">title =</span> <span class="st">&quot;Log Size vs Age of Recruits&quot;</span>) <span class="sc">+</span> </span>
+<span id="cb7-23"><a href="investigation.html#cb7-23" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>)) <span class="sc">+</span> </span>
+<span id="cb7-24"><a href="investigation.html#cb7-24" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(</span>
+<span id="cb7-25"><a href="investigation.html#cb7-25" tabindex="-1"></a>    <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">12</span>),</span>
+<span id="cb7-26"><a href="investigation.html#cb7-26" tabindex="-1"></a>    <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">12</span>, <span class="at">by =</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb7-27"><a href="investigation.html#cb7-27" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>)</span>
+<span id="cb7-28"><a href="investigation.html#cb7-28" tabindex="-1"></a></span>
+<span id="cb7-29"><a href="investigation.html#cb7-29" tabindex="-1"></a></span>
+<span id="cb7-30"><a href="investigation.html#cb7-30" tabindex="-1"></a><span class="co"># Combine the plots</span></span>
+<span id="cb7-31"><a href="investigation.html#cb7-31" tabindex="-1"></a><span class="fu">grid.arrange</span>(i1_hist, i1_size_age, </span>
+<span id="cb7-32"><a href="investigation.html#cb7-32" tabindex="-1"></a>             <span class="at">ncol =</span> <span class="dv">2</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/i1%20plots-1.png" width="960" /></p>
+</div>
+<div id="issue-2---size-after-dormancy" class="section level2 hasAnchor" number="3.2">
+<h2><span class="header-section-number">3.2</span> Issue 2 - Size after Dormancy<a href="investigation.html#issue-2---size-after-dormancy" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>This plot shows the distribution of size_t1 for dormant individuals. Most certainly, there are very large individuals that go into dormancy Unfortunately we don’t find any clear pattern that sets the dormant individuals apart form recruits.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="investigation.html#cb8-1" tabindex="-1"></a>i2_hist <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_mean <span class="sc">%&gt;%</span> <span class="fu">filter</span>(dormancy <span class="sc">==</span> <span class="dv">1</span>), <span class="fu">aes</span>(<span class="at">x =</span> size_t1)) <span class="sc">+</span></span>
+<span id="cb8-2"><a href="investigation.html#cb8-2" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">1</span>, <span class="at">fill =</span> <span class="st">&quot;lightgray&quot;</span>, <span class="at">color =</span> <span class="st">&quot;black&quot;</span>) <span class="sc">+</span></span>
+<span id="cb8-3"><a href="investigation.html#cb8-3" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Histogram of Size After Dormancy&quot;</span>, <span class="at">x =</span> <span class="st">&quot;Size&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Frequency&quot;</span>) <span class="sc">+</span></span>
+<span id="cb8-4"><a href="investigation.html#cb8-4" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb8-5"><a href="investigation.html#cb8-5" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;text&quot;</span>, <span class="at">x =</span> <span class="cn">Inf</span>, <span class="at">y =</span> <span class="cn">Inf</span>, <span class="at">label =</span> <span class="fu">paste</span>(<span class="st">&quot;n:&quot;</span>, <span class="fu">nrow</span>(df_mean <span class="sc">%&gt;%</span> </span>
+<span id="cb8-6"><a href="investigation.html#cb8-6" tabindex="-1"></a>                                                                  <span class="fu">filter</span>(dormancy <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb8-7"><a href="investigation.html#cb8-7" tabindex="-1"></a>                                                                  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(size_t1)))), </span>
+<span id="cb8-8"><a href="investigation.html#cb8-8" tabindex="-1"></a>           <span class="at">hjust =</span> <span class="dv">2</span>, <span class="at">vjust =</span> <span class="dv">2</span>, <span class="at">size =</span> <span class="dv">4</span>, <span class="at">color =</span> <span class="st">&quot;black&quot;</span>) <span class="sc">+</span></span>
+<span id="cb8-9"><a href="investigation.html#cb8-9" tabindex="-1"></a>  <span class="fu">xlim</span>(<span class="dv">0</span>, <span class="dv">41</span>) <span class="sc">+</span> </span>
+<span id="cb8-10"><a href="investigation.html#cb8-10" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>, <span class="dv">41</span>) </span>
+<span id="cb8-11"><a href="investigation.html#cb8-11" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="investigation.html#cb8-12" tabindex="-1"></a><span class="co"># Create a vector to store the size values before dormancy == 1</span></span>
+<span id="cb8-13"><a href="investigation.html#cb8-13" tabindex="-1"></a>size_before_dormancy <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb8-14"><a href="investigation.html#cb8-14" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="investigation.html#cb8-15" tabindex="-1"></a><span class="co"># Loop through the rows and capture the size value before dormancy == 1</span></span>
+<span id="cb8-16"><a href="investigation.html#cb8-16" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span><span class="fu">nrow</span>(df_mean)) {</span>
+<span id="cb8-17"><a href="investigation.html#cb8-17" tabindex="-1"></a>  <span class="cf">if</span>(<span class="sc">!</span><span class="fu">is.na</span>(df_mean<span class="sc">$</span>dormancy[i]) <span class="sc">&amp;&amp;</span> df_mean<span class="sc">$</span>dormancy[i] <span class="sc">==</span> <span class="dv">1</span>) {</span>
+<span id="cb8-18"><a href="investigation.html#cb8-18" tabindex="-1"></a>    size_before_dormancy <span class="ot">&lt;-</span> <span class="fu">c</span>(size_before_dormancy, df_mean<span class="sc">$</span>size_t0[i <span class="sc">-</span> <span class="dv">1</span>])</span>
+<span id="cb8-19"><a href="investigation.html#cb8-19" tabindex="-1"></a>  }</span>
+<span id="cb8-20"><a href="investigation.html#cb8-20" tabindex="-1"></a>}</span>
+<span id="cb8-21"><a href="investigation.html#cb8-21" tabindex="-1"></a></span>
+<span id="cb8-22"><a href="investigation.html#cb8-22" tabindex="-1"></a><span class="co"># Convert to a data frame for ggplot</span></span>
+<span id="cb8-23"><a href="investigation.html#cb8-23" tabindex="-1"></a>df_size_before_dormancy <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">size_t0 =</span> size_before_dormancy)</span>
+<span id="cb8-24"><a href="investigation.html#cb8-24" tabindex="-1"></a></span>
+<span id="cb8-25"><a href="investigation.html#cb8-25" tabindex="-1"></a><span class="co"># Create ggplot histogram</span></span>
+<span id="cb8-26"><a href="investigation.html#cb8-26" tabindex="-1"></a>i2_hist_1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_size_before_dormancy, <span class="fu">aes</span>(<span class="at">x =</span> size_t0)) <span class="sc">+</span></span>
+<span id="cb8-27"><a href="investigation.html#cb8-27" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">1</span>, <span class="at">fill =</span> <span class="st">&quot;lightgray&quot;</span>, <span class="at">color =</span> <span class="st">&quot;black&quot;</span>) <span class="sc">+</span></span>
+<span id="cb8-28"><a href="investigation.html#cb8-28" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Histogram of Size Before Dormancy&quot;</span>, <span class="at">x =</span> <span class="st">&quot;Size&quot;</span>, <span class="at">y =</span> <span class="st">&quot;Frequency&quot;</span>) <span class="sc">+</span></span>
+<span id="cb8-29"><a href="investigation.html#cb8-29" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb8-30"><a href="investigation.html#cb8-30" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">&quot;text&quot;</span>, <span class="at">x =</span> <span class="cn">Inf</span>, <span class="at">y =</span> <span class="cn">Inf</span>, <span class="at">label =</span> <span class="fu">paste</span>(<span class="st">&quot;n:&quot;</span>, <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(size_before_dormancy))), </span>
+<span id="cb8-31"><a href="investigation.html#cb8-31" tabindex="-1"></a>           <span class="at">hjust =</span> <span class="dv">2</span>, <span class="at">vjust =</span> <span class="dv">2</span>, <span class="at">size =</span> <span class="dv">4</span>, <span class="at">color =</span> <span class="st">&quot;black&quot;</span>) <span class="sc">+</span></span>
+<span id="cb8-32"><a href="investigation.html#cb8-32" tabindex="-1"></a>  <span class="fu">xlim</span>(<span class="dv">0</span>, <span class="dv">41</span>) <span class="sc">+</span> </span>
+<span id="cb8-33"><a href="investigation.html#cb8-33" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>, <span class="dv">41</span>) </span>
+<span id="cb8-34"><a href="investigation.html#cb8-34" tabindex="-1"></a></span>
+<span id="cb8-35"><a href="investigation.html#cb8-35" tabindex="-1"></a><span class="co"># Combine the plots</span></span>
+<span id="cb8-36"><a href="investigation.html#cb8-36" tabindex="-1"></a><span class="fu">grid.arrange</span>(i2_hist_1, i2_hist,  </span>
+<span id="cb8-37"><a href="investigation.html#cb8-37" tabindex="-1"></a>             <span class="at">ncol =</span> <span class="dv">2</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/i2%20plots-1.png" width="960" /></p>
+<details>
+<summary>
+Expand to see the mean dataframe of the very large individuals after dormancy
+</summary>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="investigation.html#cb9-1" tabindex="-1"></a><span class="fu">print</span>(df_mean <span class="sc">%&gt;%</span> </span>
+<span id="cb9-2"><a href="investigation.html#cb9-2" tabindex="-1"></a>  <span class="fu">filter</span>(plant_id <span class="sc">==</span>  df_mean <span class="sc">%&gt;%</span> </span>
+<span id="cb9-3"><a href="investigation.html#cb9-3" tabindex="-1"></a>  <span class="fu">filter</span>(dormancy <span class="sc">==</span> <span class="dv">1</span>, size_t1 <span class="sc">&gt;</span> <span class="dv">15</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-4"><a href="investigation.html#cb9-4" tabindex="-1"></a>  <span class="fu">select</span>(plant_id) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-5"><a href="investigation.html#cb9-5" tabindex="-1"></a>  .[[<span class="dv">1</span>]]) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-6"><a href="investigation.html#cb9-6" tabindex="-1"></a>    <span class="fu">select</span>(plant_id, size_t0), <span class="at">n =</span> <span class="dv">100</span>)</span></code></pre></div>
+</details>
+<pre><code>## # A tibble: 18 × 2
+##    plant_id size_t0
+##    &lt;chr&gt;      &lt;dbl&gt;
+##  1 1_11_9         5
+##  2 1_11_9        17
+##  3 1_11_9        NA
+##  4 1_11_9         2
+##  5 1_11_9         1
+##  6 1_11_9         1
+##  7 1_11_9        NA
+##  8 1_11_9        NA
+##  9 1_11_9        NA
+## 10 4_19_1         1
+## 11 4_19_1         5
+## 12 4_19_1         4
+## 13 4_19_1        NA
+## 14 4_19_1        40
+## 15 4_19_1        NA
+## 16 4_19_1        NA
+## 17 4_19_1        NA
+## 18 4_19_1        NA</code></pre>
+<details>
+<summary>
+Expand to see the full dataframe of the very large individuals after dormancy
+</summary>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="investigation.html#cb11-1" tabindex="-1"></a><span class="fu">print</span>(df <span class="sc">%&gt;%</span> </span>
+<span id="cb11-2"><a href="investigation.html#cb11-2" tabindex="-1"></a>  <span class="fu">filter</span>(plant_id <span class="sc">==</span>  df_mean <span class="sc">%&gt;%</span> </span>
+<span id="cb11-3"><a href="investigation.html#cb11-3" tabindex="-1"></a>  <span class="fu">filter</span>(dormancy <span class="sc">==</span> <span class="dv">1</span>, size_t1 <span class="sc">&gt;</span> <span class="dv">15</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb11-4"><a href="investigation.html#cb11-4" tabindex="-1"></a>  <span class="fu">select</span>(plant_id) <span class="sc">%&gt;%</span> </span>
+<span id="cb11-5"><a href="investigation.html#cb11-5" tabindex="-1"></a>  .[[<span class="dv">1</span>]]) <span class="sc">%&gt;%</span> </span>
+<span id="cb11-6"><a href="investigation.html#cb11-6" tabindex="-1"></a>    <span class="fu">select</span>(plant_id, br), <span class="at">n =</span> <span class="dv">100</span>)</span></code></pre></div>
+</details>
+<pre><code>## # A tibble: 94 × 2
+##    plant_id    br
+##    &lt;chr&gt;    &lt;dbl&gt;
+##  1 1_11_9      NA
+##  2 1_11_9      NA
+##  3 1_11_9       5
+##  4 1_11_9      NA
+##  5 1_11_9      NA
+##  6 1_11_9      NA
+##  7 1_11_9       3
+##  8 1_11_9      12
+##  9 1_11_9      NA
+## 10 1_11_9      NA
+## 11 1_11_9      NA
+## 12 1_11_9      NA
+## 13 1_11_9      NA
+## 14 1_11_9      NA
+## 15 1_11_9      NA
+## 16 1_11_9      NA
+## 17 1_11_9      NA
+## 18 1_11_9      NA
+## 19 1_11_9      NA
+## 20 1_11_9      NA
+## 21 1_11_9      NA
+## 22 1_11_9      NA
+## 23 1_11_9       1
+## 24 1_11_9      NA
+## 25 1_11_9       1
+## 26 1_11_9      NA
+## 27 1_11_9      NA
+## 28 1_11_9       1
+## 29 1_11_9      NA
+## 30 1_11_9      NA
+## 31 1_11_9      NA
+## 32 1_11_9      NA
+## 33 1_11_9      NA
+## 34 1_11_9      NA
+## 35 1_11_9      NA
+## 36 1_11_9      NA
+## 37 1_11_9      NA
+## 38 1_11_9      NA
+## 39 1_11_9      NA
+## 40 1_11_9      NA
+## 41 1_11_9      NA
+## 42 1_11_9      NA
+## 43 1_11_9      NA
+## 44 1_11_9      NA
+## 45 1_11_9      NA
+## 46 1_11_9      NA
+## 47 1_11_9      NA
+## 48 4_19_1      NA
+## 49 4_19_1      NA
+## 50 4_19_1       1
+## 51 4_19_1      NA
+## 52 4_19_1       1
+## 53 4_19_1       5
+## 54 4_19_1       5
+## 55 4_19_1       5
+## 56 4_19_1      NA
+## 57 4_19_1       1
+## 58 4_19_1      NA
+## 59 4_19_1      NA
+## 60 4_19_1       4
+## 61 4_19_1       1
+## 62 4_19_1       4
+## 63 4_19_1      NA
+## 64 4_19_1      NA
+## 65 4_19_1      NA
+## 66 4_19_1      NA
+## 67 4_19_1      NA
+## 68 4_19_1      NA
+## 69 4_19_1       1
+## 70 4_19_1       3
+## 71 4_19_1      NA
+## 72 4_19_1       6
+## 73 4_19_1      NA
+## 74 4_19_1      NA
+## 75 4_19_1      NA
+## 76 4_19_1      NA
+## 77 4_19_1      NA
+## 78 4_19_1      NA
+## 79 4_19_1      NA
+## 80 4_19_1      NA
+## 81 4_19_1      NA
+## 82 4_19_1      NA
+## 83 4_19_1      NA
+## 84 4_19_1      NA
+## 85 4_19_1      NA
+## 86 4_19_1      NA
+## 87 4_19_1      NA
+## 88 4_19_1      NA
+## 89 4_19_1      NA
+## 90 4_19_1      NA
+## 91 4_19_1      NA
+## 92 4_19_1      NA
+## 93 4_19_1      NA
+## 94 4_19_1      NA</code></pre>
+</details>
+</div>
+<div id="issue-3---flagged" class="section level2 hasAnchor" number="3.3">
+<h2><span class="header-section-number">3.3</span> Issue 3 - Flagged<a href="investigation.html#issue-3---flagged" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>To facilitate direct comparison of observations, we create a new data frame that flags entries based on two criteria. First, individuals with missing size_t0 values for the years 1999, 2000, or 2001 are flagged. Second, individuals with non-missing size_t1 values for any of these years (1999, 2000, or 2001) are also flagged. After applying these flags, we assign an age to each individual.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="investigation.html#cb13-1" tabindex="-1"></a>df_mean_f <span class="ot">&lt;-</span> df_mean <span class="sc">%&gt;%</span></span>
+<span id="cb13-2"><a href="investigation.html#cb13-2" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, plant, plant_id) <span class="sc">%&gt;%</span></span>
+<span id="cb13-3"><a href="investigation.html#cb13-3" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-4"><a href="investigation.html#cb13-4" tabindex="-1"></a>    <span class="at">flag_1 =</span> <span class="fu">if_else</span>(</span>
+<span id="cb13-5"><a href="investigation.html#cb13-5" tabindex="-1"></a>      <span class="fu">any</span>(year <span class="sc">==</span> <span class="dv">1999</span> <span class="sc">&amp;</span> <span class="fu">is.na</span>(size_t0)) <span class="sc">|</span></span>
+<span id="cb13-6"><a href="investigation.html#cb13-6" tabindex="-1"></a>        (<span class="fu">any</span>(year <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1999</span>, <span class="dv">2000</span>)) <span class="sc">&amp;</span> <span class="fu">all</span>(<span class="fu">is.na</span>(size_t0[year <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1999</span>, <span class="dv">2000</span>)]))) <span class="sc">|</span></span>
+<span id="cb13-7"><a href="investigation.html#cb13-7" tabindex="-1"></a>        (<span class="fu">any</span>(year <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1999</span>, <span class="dv">2000</span>, <span class="dv">2001</span>)) <span class="sc">&amp;</span> <span class="fu">all</span>(<span class="fu">is.na</span>(size_t0[year <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1999</span>, <span class="dv">2000</span>, <span class="dv">2001</span>)]))),</span>
+<span id="cb13-8"><a href="investigation.html#cb13-8" tabindex="-1"></a>      <span class="dv">1</span>, <span class="dv">0</span></span>
+<span id="cb13-9"><a href="investigation.html#cb13-9" tabindex="-1"></a>    ),</span>
+<span id="cb13-10"><a href="investigation.html#cb13-10" tabindex="-1"></a>    <span class="at">flag_2 =</span> <span class="fu">if_else</span>(<span class="fu">any</span>(year <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">1999</span>, <span class="dv">2000</span>, <span class="dv">2001</span>) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(size_t1)), <span class="dv">1</span>, <span class="dv">0</span>)</span>
+<span id="cb13-11"><a href="investigation.html#cb13-11" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb13-12"><a href="investigation.html#cb13-12" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb13-13"><a href="investigation.html#cb13-13" tabindex="-1"></a>  <span class="fu">filter</span>(flag_1 <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> flag_2 <span class="sc">==</span> <span class="dv">1</span>) </span>
+<span id="cb13-14"><a href="investigation.html#cb13-14" tabindex="-1"></a></span>
+<span id="cb13-15"><a href="investigation.html#cb13-15" tabindex="-1"></a><span class="co"># Initialize the age column</span></span>
+<span id="cb13-16"><a href="investigation.html#cb13-16" tabindex="-1"></a>df_mean_f<span class="sc">$</span>age <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb13-17"><a href="investigation.html#cb13-17" tabindex="-1"></a></span>
+<span id="cb13-18"><a href="investigation.html#cb13-18" tabindex="-1"></a><span class="co"># Loop through each unique combination of site, quad, and plant</span></span>
+<span id="cb13-19"><a href="investigation.html#cb13-19" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_mean_f)) {</span>
+<span id="cb13-20"><a href="investigation.html#cb13-20" tabindex="-1"></a>  </span>
+<span id="cb13-21"><a href="investigation.html#cb13-21" tabindex="-1"></a>  current_site <span class="ot">&lt;-</span> df_mean_f<span class="sc">$</span>site[i]</span>
+<span id="cb13-22"><a href="investigation.html#cb13-22" tabindex="-1"></a>  current_quad <span class="ot">&lt;-</span> df_mean_f<span class="sc">$</span>quad[i]</span>
+<span id="cb13-23"><a href="investigation.html#cb13-23" tabindex="-1"></a>  current_plant <span class="ot">&lt;-</span> df_mean_f<span class="sc">$</span>plant[i]</span>
+<span id="cb13-24"><a href="investigation.html#cb13-24" tabindex="-1"></a>  </span>
+<span id="cb13-25"><a href="investigation.html#cb13-25" tabindex="-1"></a>  <span class="co"># Subset the data for the current combination of site, quad, and plant</span></span>
+<span id="cb13-26"><a href="investigation.html#cb13-26" tabindex="-1"></a>  group_data <span class="ot">&lt;-</span> df_mean_f <span class="sc">%&gt;%</span></span>
+<span id="cb13-27"><a href="investigation.html#cb13-27" tabindex="-1"></a>    <span class="fu">filter</span>(site <span class="sc">==</span> current_site, quad <span class="sc">==</span> current_quad, plant <span class="sc">==</span> current_plant) <span class="sc">%&gt;%</span></span>
+<span id="cb13-28"><a href="investigation.html#cb13-28" tabindex="-1"></a>    <span class="fu">arrange</span>(year)  <span class="co"># Ensure the rows are ordered by year</span></span>
+<span id="cb13-29"><a href="investigation.html#cb13-29" tabindex="-1"></a>  </span>
+<span id="cb13-30"><a href="investigation.html#cb13-30" tabindex="-1"></a>  <span class="co"># Initialize the current age starting at NA</span></span>
+<span id="cb13-31"><a href="investigation.html#cb13-31" tabindex="-1"></a>  current_age <span class="ot">&lt;-</span> <span class="dv">1</span>  <span class="co"># We will start at 1 when the first non-NA size_t0 is found</span></span>
+<span id="cb13-32"><a href="investigation.html#cb13-32" tabindex="-1"></a>  </span>
+<span id="cb13-33"><a href="investigation.html#cb13-33" tabindex="-1"></a>  <span class="co"># Loop through the rows within this group</span></span>
+<span id="cb13-34"><a href="investigation.html#cb13-34" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(group_data)) {</span>
+<span id="cb13-35"><a href="investigation.html#cb13-35" tabindex="-1"></a>    <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.na</span>(group_data<span class="sc">$</span>size_t0[j])) {</span>
+<span id="cb13-36"><a href="investigation.html#cb13-36" tabindex="-1"></a>      <span class="co"># If the size_t0 is not NA, assign the current age</span></span>
+<span id="cb13-37"><a href="investigation.html#cb13-37" tabindex="-1"></a>      df_mean_f<span class="sc">$</span>age[df_mean_f<span class="sc">$</span>site <span class="sc">==</span> current_site <span class="sc">&amp;</span> </span>
+<span id="cb13-38"><a href="investigation.html#cb13-38" tabindex="-1"></a>                      df_mean_f<span class="sc">$</span>quad <span class="sc">==</span> current_quad <span class="sc">&amp;</span> </span>
+<span id="cb13-39"><a href="investigation.html#cb13-39" tabindex="-1"></a>                      df_mean_f<span class="sc">$</span>plant <span class="sc">==</span> current_plant <span class="sc">&amp;</span> </span>
+<span id="cb13-40"><a href="investigation.html#cb13-40" tabindex="-1"></a>                      df_mean_f<span class="sc">$</span>year <span class="sc">==</span> group_data<span class="sc">$</span>year[j]] <span class="ot">&lt;-</span> current_age</span>
+<span id="cb13-41"><a href="investigation.html#cb13-41" tabindex="-1"></a>      <span class="co"># Increment the age for the next year</span></span>
+<span id="cb13-42"><a href="investigation.html#cb13-42" tabindex="-1"></a>      current_age <span class="ot">&lt;-</span> current_age <span class="sc">+</span> <span class="dv">1</span></span>
+<span id="cb13-43"><a href="investigation.html#cb13-43" tabindex="-1"></a>    } <span class="cf">else</span> <span class="cf">if</span> (j <span class="sc">&gt;</span> <span class="dv">1</span>) {</span>
+<span id="cb13-44"><a href="investigation.html#cb13-44" tabindex="-1"></a>      <span class="co"># If size_t0 is NA, carry the age from the previous row</span></span>
+<span id="cb13-45"><a href="investigation.html#cb13-45" tabindex="-1"></a>      previous_year_age <span class="ot">&lt;-</span> df_mean_f<span class="sc">$</span>age[df_mean_f<span class="sc">$</span>site <span class="sc">==</span> current_site <span class="sc">&amp;</span></span>
+<span id="cb13-46"><a href="investigation.html#cb13-46" tabindex="-1"></a>                                           df_mean_f<span class="sc">$</span>quad <span class="sc">==</span> current_quad <span class="sc">&amp;</span></span>
+<span id="cb13-47"><a href="investigation.html#cb13-47" tabindex="-1"></a>                                           df_mean_f<span class="sc">$</span>plant <span class="sc">==</span> current_plant <span class="sc">&amp;</span></span>
+<span id="cb13-48"><a href="investigation.html#cb13-48" tabindex="-1"></a>                                           df_mean_f<span class="sc">$</span>year <span class="sc">==</span> group_data<span class="sc">$</span>year[j <span class="sc">-</span> <span class="dv">1</span>]]</span>
+<span id="cb13-49"><a href="investigation.html#cb13-49" tabindex="-1"></a>      df_mean_f<span class="sc">$</span>age[df_mean_f<span class="sc">$</span>site <span class="sc">==</span> current_site <span class="sc">&amp;</span> </span>
+<span id="cb13-50"><a href="investigation.html#cb13-50" tabindex="-1"></a>                      df_mean_f<span class="sc">$</span>quad <span class="sc">==</span> current_quad <span class="sc">&amp;</span> </span>
+<span id="cb13-51"><a href="investigation.html#cb13-51" tabindex="-1"></a>                      df_mean_f<span class="sc">$</span>plant <span class="sc">==</span> current_plant <span class="sc">&amp;</span> </span>
+<span id="cb13-52"><a href="investigation.html#cb13-52" tabindex="-1"></a>                      df_mean_f<span class="sc">$</span>year <span class="sc">==</span> group_data<span class="sc">$</span>year[j]] <span class="ot">&lt;-</span> previous_year_age</span>
+<span id="cb13-53"><a href="investigation.html#cb13-53" tabindex="-1"></a>    }</span>
+<span id="cb13-54"><a href="investigation.html#cb13-54" tabindex="-1"></a>  }</span>
+<span id="cb13-55"><a href="investigation.html#cb13-55" tabindex="-1"></a>}</span></code></pre></div>
+</details>
+<p>The following plots display key patterns in the data: 1. Histogram of Size at t0 showing the distribution of size_t0 for plants at age 1, with bins of width 1. 2. Scatter Plot of Log Size at t0 vs Age visualizing the relationship between age and log size.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="investigation.html#cb14-1" tabindex="-1"></a>i3_hist <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_mean_f <span class="sc">%&gt;%</span> <span class="fu">filter</span>(age <span class="sc">==</span> <span class="dv">1</span>), <span class="fu">aes</span>(<span class="at">x =</span> size_t0)) <span class="sc">+</span></span>
+<span id="cb14-2"><a href="investigation.html#cb14-2" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">1</span>, <span class="at">fill =</span> <span class="st">&quot;lightgray&quot;</span>, <span class="at">color =</span> <span class="st">&quot;black&quot;</span>) <span class="sc">+</span></span>
+<span id="cb14-3"><a href="investigation.html#cb14-3" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span>
+<span id="cb14-4"><a href="investigation.html#cb14-4" tabindex="-1"></a></span>
+<span id="cb14-5"><a href="investigation.html#cb14-5" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="investigation.html#cb14-6" tabindex="-1"></a>i3_size_age <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb14-7"><a href="investigation.html#cb14-7" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(</span>
+<span id="cb14-8"><a href="investigation.html#cb14-8" tabindex="-1"></a>    <span class="at">data =</span> df_mean_f, </span>
+<span id="cb14-9"><a href="investigation.html#cb14-9" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> logsize_t0)) <span class="sc">+</span></span>
+<span id="cb14-10"><a href="investigation.html#cb14-10" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span>
+<span id="cb14-11"><a href="investigation.html#cb14-11" tabindex="-1"></a></span>
+<span id="cb14-12"><a href="investigation.html#cb14-12" tabindex="-1"></a></span>
+<span id="cb14-13"><a href="investigation.html#cb14-13" tabindex="-1"></a><span class="co"># Combine the plots</span></span>
+<span id="cb14-14"><a href="investigation.html#cb14-14" tabindex="-1"></a><span class="fu">grid.arrange</span>(i3_hist, i3_size_age, </span>
+<span id="cb14-15"><a href="investigation.html#cb14-15" tabindex="-1"></a>             <span class="at">ncol =</span> <span class="dv">2</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/i3%20plots1-1.png" width="960" /></p>
+<div id="modeling-growth-of-the-flags" class="section level3 hasAnchor" number="3.3.1">
+<h3><span class="header-section-number">3.3.1</span> Modeling Growth of the Flags<a href="investigation.html#modeling-growth-of-the-flags" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>In this section, we fit four different linear mixed models to examine the relationship between age and log size at time zero (logsize_t0), incorporating random effects to account for variability among individual plant IDs.</p>
+<ol style="list-style-type: decimal">
+<li>Linear Model: The first model uses a linear relationship between age and log size, with a random intercept for plant-id.</li>
+<li>Quadratic Model: The second model introduces a quadratic term for log size to capture potential non-linear effects of age on log size</li>
+<li>Linear Model with Age: The third model reverses the dependent and independent variables, modeling log size as a function of age, with a random intercept for plant-id.</li>
+<li>Quadratic Model with Age: The fourth model extends the third model by including a quadratic term for age.</li>
+</ol>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="investigation.html#cb15-1" tabindex="-1"></a><span class="co"># Fit the first model: logsize_t0 ~ age + (1 | plant_id) (linear model)</span></span>
+<span id="cb15-2"><a href="investigation.html#cb15-2" tabindex="-1"></a>mod_flag_linear <span class="ot">&lt;-</span> <span class="fu">lmer</span>(age <span class="sc">~</span> logsize_t0 <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">|</span> plant_id), <span class="at">data =</span> df_mean_f)</span>
+<span id="cb15-3"><a href="investigation.html#cb15-3" tabindex="-1"></a><span class="co">#summary(mod_flag_linear)</span></span>
+<span id="cb15-4"><a href="investigation.html#cb15-4" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="investigation.html#cb15-5" tabindex="-1"></a><span class="co"># Predict values using the linear model</span></span>
+<span id="cb15-6"><a href="investigation.html#cb15-6" tabindex="-1"></a>df_mean_f<span class="sc">$</span>predicted_linear <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_flag_linear, <span class="at">newdata =</span> df_mean_f, <span class="at">re.form =</span> <span class="cn">NULL</span>)</span>
+<span id="cb15-7"><a href="investigation.html#cb15-7" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="investigation.html#cb15-8" tabindex="-1"></a><span class="co"># Fit the second model: logsize_t0 ~ age + I(age^2) + (1 | plant_id) (quadratic model)</span></span>
+<span id="cb15-9"><a href="investigation.html#cb15-9" tabindex="-1"></a>mod_flag_quad <span class="ot">&lt;-</span> <span class="fu">lmer</span>(age <span class="sc">~</span> logsize_t0 <span class="sc">+</span> <span class="fu">I</span>(logsize_t0<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">|</span> plant_id), <span class="at">data =</span> df_mean_f)</span>
+<span id="cb15-10"><a href="investigation.html#cb15-10" tabindex="-1"></a><span class="co">#summary(mod_flag_quad)</span></span>
+<span id="cb15-11"><a href="investigation.html#cb15-11" tabindex="-1"></a></span>
+<span id="cb15-12"><a href="investigation.html#cb15-12" tabindex="-1"></a><span class="co"># Predict values using the quadratic model</span></span>
+<span id="cb15-13"><a href="investigation.html#cb15-13" tabindex="-1"></a>df_mean_f<span class="sc">$</span>predicted_quad <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_flag_quad, <span class="at">newdata =</span> df_mean_f, <span class="at">re.form =</span> <span class="cn">NULL</span>)</span>
+<span id="cb15-14"><a href="investigation.html#cb15-14" tabindex="-1"></a></span>
+<span id="cb15-15"><a href="investigation.html#cb15-15" tabindex="-1"></a><span class="co"># Fit the third model: logsize_t0 ~ age + (1 | plant_id) (reversed model)</span></span>
+<span id="cb15-16"><a href="investigation.html#cb15-16" tabindex="-1"></a>mod_flag_logsize_age <span class="ot">&lt;-</span> <span class="fu">lmer</span>(logsize_t0 <span class="sc">~</span> age <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">|</span> plant_id), <span class="at">data =</span> df_mean_f)</span>
+<span id="cb15-17"><a href="investigation.html#cb15-17" tabindex="-1"></a><span class="co">#summary(mod_flag_logsize_age)</span></span>
+<span id="cb15-18"><a href="investigation.html#cb15-18" tabindex="-1"></a></span>
+<span id="cb15-19"><a href="investigation.html#cb15-19" tabindex="-1"></a><span class="co"># Predict values using the logsize_t0 ~ age model</span></span>
+<span id="cb15-20"><a href="investigation.html#cb15-20" tabindex="-1"></a>df_mean_f<span class="sc">$</span>predicted_logsize_age <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_flag_logsize_age, <span class="at">newdata =</span> df_mean_f, <span class="at">re.form =</span> <span class="cn">NULL</span>)</span>
+<span id="cb15-21"><a href="investigation.html#cb15-21" tabindex="-1"></a></span>
+<span id="cb15-22"><a href="investigation.html#cb15-22" tabindex="-1"></a><span class="co"># Fit the fourth model: logsize_t0 ~ age + I(age^2) + (1 | plant_id) (quadratic term for age)</span></span>
+<span id="cb15-23"><a href="investigation.html#cb15-23" tabindex="-1"></a>mod_flag_quad_age <span class="ot">&lt;-</span> <span class="fu">lmer</span>(logsize_t0 <span class="sc">~</span> age <span class="sc">+</span> <span class="fu">I</span>(age<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">|</span> plant_id), <span class="at">data =</span> df_mean_f)</span>
+<span id="cb15-24"><a href="investigation.html#cb15-24" tabindex="-1"></a><span class="co">#summary(mod_flag_quad_age)</span></span>
+<span id="cb15-25"><a href="investigation.html#cb15-25" tabindex="-1"></a></span>
+<span id="cb15-26"><a href="investigation.html#cb15-26" tabindex="-1"></a><span class="co"># Predict values using the logsize_t0 ~ age + I(age^2) model</span></span>
+<span id="cb15-27"><a href="investigation.html#cb15-27" tabindex="-1"></a>df_mean_f<span class="sc">$</span>predicted_quad_age <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_flag_quad_age, <span class="at">newdata =</span> df_mean_f, <span class="at">re.form =</span> <span class="cn">NULL</span>)</span>
+<span id="cb15-28"><a href="investigation.html#cb15-28" tabindex="-1"></a></span>
+<span id="cb15-29"><a href="investigation.html#cb15-29" tabindex="-1"></a></span>
+<span id="cb15-30"><a href="investigation.html#cb15-30" tabindex="-1"></a></span>
+<span id="cb15-31"><a href="investigation.html#cb15-31" tabindex="-1"></a>lm_flag_quad_age <span class="ot">&lt;-</span> <span class="fu">lm</span>(logsize_t0 <span class="sc">~</span> age <span class="sc">+</span> <span class="fu">I</span>(age<span class="sc">^</span><span class="dv">2</span>), <span class="at">data =</span> df_mean_f)</span>
+<span id="cb15-32"><a href="investigation.html#cb15-32" tabindex="-1"></a>df_mean_f<span class="sc">$</span>predicted_lm_quad_age <span class="ot">&lt;-</span> <span class="fu">predict</span>(lm_flag_quad_age, <span class="at">newdata =</span> df_mean_f, <span class="at">re.form =</span> <span class="cn">NULL</span>)</span></code></pre></div>
+</details>
+<p>The following plots visualize the relationships captured by the second, third, and fourth models</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="investigation.html#cb16-1" tabindex="-1"></a><span class="co"># Plot the second model (quadratic relationship for logsize_t0 ~ logsize_t0^2)</span></span>
+<span id="cb16-2"><a href="investigation.html#cb16-2" tabindex="-1"></a>p_i3_mod_1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_mean_f, <span class="fu">aes</span>(<span class="at">x =</span> logsize_t0, <span class="at">y =</span> age)) <span class="sc">+</span></span>
+<span id="cb16-3"><a href="investigation.html#cb16-3" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="fu">aes</span>(<span class="at">color =</span> plant_id), <span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">height =</span> <span class="fl">0.1</span>, <span class="at">alpha =</span> <span class="fl">0.6</span>) <span class="sc">+</span>  </span>
+<span id="cb16-4"><a href="investigation.html#cb16-4" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> predicted_quad, <span class="at">color =</span> plant_id), <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span>  </span>
+<span id="cb16-5"><a href="investigation.html#cb16-5" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb16-6"><a href="investigation.html#cb16-6" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Quadratic Model with Random Intercepts: logsize_t0 vs Age&quot;</span>,</span>
+<span id="cb16-7"><a href="investigation.html#cb16-7" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Age&quot;</span>,</span>
+<span id="cb16-8"><a href="investigation.html#cb16-8" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Log Size at t0&quot;</span>) <span class="sc">+</span></span>
+<span id="cb16-9"><a href="investigation.html#cb16-9" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>)</span>
+<span id="cb16-10"><a href="investigation.html#cb16-10" tabindex="-1"></a></span>
+<span id="cb16-11"><a href="investigation.html#cb16-11" tabindex="-1"></a><span class="co"># Plot the third model (logsize_t0 ~ age relationship)</span></span>
+<span id="cb16-12"><a href="investigation.html#cb16-12" tabindex="-1"></a>p_i3_mod_2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_mean_f, <span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> logsize_t0)) <span class="sc">+</span></span>
+<span id="cb16-13"><a href="investigation.html#cb16-13" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="fu">aes</span>(<span class="at">color =</span> plant_id), <span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">height =</span> <span class="fl">0.1</span>, <span class="at">alpha =</span> <span class="fl">0.6</span>) <span class="sc">+</span>  </span>
+<span id="cb16-14"><a href="investigation.html#cb16-14" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> predicted_logsize_age, <span class="at">color =</span> plant_id), <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span>  </span>
+<span id="cb16-15"><a href="investigation.html#cb16-15" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb16-16"><a href="investigation.html#cb16-16" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Log Size Model with Random Intercepts: Age vs Log Size at t0&quot;</span>,</span>
+<span id="cb16-17"><a href="investigation.html#cb16-17" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Log Size at t0&quot;</span>,</span>
+<span id="cb16-18"><a href="investigation.html#cb16-18" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Age&quot;</span>) <span class="sc">+</span></span>
+<span id="cb16-19"><a href="investigation.html#cb16-19" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>)</span>
+<span id="cb16-20"><a href="investigation.html#cb16-20" tabindex="-1"></a></span>
+<span id="cb16-21"><a href="investigation.html#cb16-21" tabindex="-1"></a><span class="co"># Plot the fourth model (logsize_t0 ~ age + I(age^2) relationship)</span></span>
+<span id="cb16-22"><a href="investigation.html#cb16-22" tabindex="-1"></a>p_i3_mod_3 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_mean_f, <span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> logsize_t0)) <span class="sc">+</span></span>
+<span id="cb16-23"><a href="investigation.html#cb16-23" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="fu">aes</span>(<span class="at">color =</span> plant_id), <span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">height =</span> <span class="fl">0.1</span>, <span class="at">alpha =</span> <span class="fl">0.6</span>) <span class="sc">+</span>  </span>
+<span id="cb16-24"><a href="investigation.html#cb16-24" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> predicted_quad_age   , <span class="at">color =</span> plant_id), <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span>  </span>
+<span id="cb16-25"><a href="investigation.html#cb16-25" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> predicted_lm_quad_age), <span class="at">alpha =</span> <span class="dv">1</span>, <span class="at">color =</span> <span class="st">&#39;black&#39;</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span> </span>
+<span id="cb16-26"><a href="investigation.html#cb16-26" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb16-27"><a href="investigation.html#cb16-27" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Quadratic Model with Random Intercepts: Age vs Log Size at t0</span><span class="sc">\n</span><span class="st">and quadratic LM&quot;</span>,</span>
+<span id="cb16-28"><a href="investigation.html#cb16-28" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Log Size at t0&quot;</span>,</span>
+<span id="cb16-29"><a href="investigation.html#cb16-29" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Age&quot;</span>) <span class="sc">+</span></span>
+<span id="cb16-30"><a href="investigation.html#cb16-30" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>)</span>
+<span id="cb16-31"><a href="investigation.html#cb16-31" tabindex="-1"></a></span>
+<span id="cb16-32"><a href="investigation.html#cb16-32" tabindex="-1"></a><span class="fu">grid.arrange</span>(p_i3_mod_1, p_i3_mod_2,</span>
+<span id="cb16-33"><a href="investigation.html#cb16-33" tabindex="-1"></a>             p_i3_mod_3,</span>
+<span id="cb16-34"><a href="investigation.html#cb16-34" tabindex="-1"></a>             <span class="at">ncol =</span> <span class="dv">2</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/i3%20plots2-1.png" width="960" /></p>
+</div>
+</div>
+<div id="issue-4---fires" class="section level2 hasAnchor" number="3.4">
+<h2><span class="header-section-number">3.4</span> Issue 4 - Fires<a href="investigation.html#issue-4---fires" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>The data from Carter Creek Tract, Lake Wales Ridge Wildlife Environmental Area, 1998-2017, includes information on the severity of six fire outbreaks during this time. In the data we found the severity of ´0´ for some of the individuals. We raise the question of what a severity of ´0´ means?</p>
+<p>Once again, as of March 2025, we have not been in contact with the corresponding author.</p>
+</div>
+<div id="issue-5---spatial-relationship" class="section level2 hasAnchor" number="3.5">
+<h2><span class="header-section-number">3.5</span> Issue 5 - Spatial relationship<a href="investigation.html#issue-5---spatial-relationship" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Is there any spatial relationship regarding size, recruits, flowering, fruiting, ect. In the data we have two chategories of sizes, which are <em>site</em> and <em>plot</em>.</p>
+
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="data.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="models.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": false,
+"facebook": true,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": null,
+"text": null
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": null,
+"search": {
+"engine": "fuse",
+"options": null
+},
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+</body>
+
+</html>

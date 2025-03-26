@@ -1,0 +1,45 @@
+# Introduction {#intro}
+
+This supplementary material relates to the  *Crotalaria avonensis* dataset from Archbold Biological Station.
+
+The GIS and Data Management program at [Archbold Biological Station](https://www.archbold-station.org/gis-and-data-mgmt/) maintains a comprehensive collection of ecological and environmental data gathered through various research initiatives and ongoing long-term monitoring projects. One key platform for accessing this data is the Archbold Biological Station' [Ecological Data Inventory (EDI)](https://portal.edirepository.org/nis/home.jsp), which hosts extensive datasets related to biodiversity, land cover, climate, and ecological patterns.
+
+For our model, we utilized 20 years of demographic data on the endangered legume [*Crotalaria avonensis*](https://portal.edirepository.org/nis/mapbrowse?packageid=edi.219.1) using an Integrated Population Model (IPM). This dataset has previously been used in the work of [Menges et al. 2016](https://bioone.org/journals/southeastern-naturalist/volume-15/issue-3/058.015.0318/Ecology-and-Conservation-of-the-Endangered-Legume-Crotalaria-avonensis-in/10.1656/058.015.0318.short).
+
+
+## Setup
+
+We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom`, `bbmle`, `gridExtra`, `lme4`
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Packages
+packages <- c('tidyverse', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 'lme4')
+lapply(packages, library, character.only = TRUE)
+
+
+# Specification 
+# Define head-directory 
+v_head <- c('archbold')
+# Define species
+v_species <- c('Crotalaria avonensis')
+# Customized delimiter for `read_delim` function, comma is predefined
+custom_delimiter <- c()
+
+# Create a unique species abbreviation for file naming
+v_sp_abb  <- tolower(
+  gsub(' ', '', paste(
+    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
+# Define script prefix
+v_script_prefix <- str_c(v_head)
+
+
+# Directory 
+dir_wd     <- file.path('C:', 'code', 'RUPDemo_IPMs')
+dir_pub    <- file.path(dir_wd, paste0(v_head))
+dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
+dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
+dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+```
+

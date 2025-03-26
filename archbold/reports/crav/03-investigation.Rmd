@@ -1,0 +1,304 @@
+# Investigations {#investigation}
+
+We will now investigate several key aspects of the data to maximize its utility, given the constraints. Specifically, we aim to address the following questions:
+
+1. How does the size of recruits develop over time?
+2. What is the size trajectory following the exit from dormancy?
+3. Is it possible to distinguish between true recruits and individuals exiting dormancy when their first appearance coincides with the beginning of the observation period?
+4. Fires
+5. Spatial relationships between sites or plots
+
+## Issue 1. - Size of recruits
+
+To understand how the plants develop over time, we first examine the size at their first appearance. We can confidently identify this as their first appearance only if there is a record of three consecutive years with no presence prior to that year.
+
+```{r i1 plots, fig.width=10, fig.height=4}
+i1_hist <- ggplot(df_mean %>% filter(recruit == 1), aes(x = size_t0)) +
+  geom_histogram(binwidth = 1, fill = "lightgray", color = "black") +
+  theme_minimal()
+
+df_mean_r <- df_mean %>%
+  filter(plant_id %in% df_mean$plant_id[df_mean$recruit == 1]) %>% 
+  # 1_4_17 has a problem
+  filter(plant_id != '1_4_17')
+
+mod_i1_glm_size_age_quad <- lmer(logsize_t0 ~ age + I(age^2) + (1| plant_id), data = df_mean_r)
+df_mean_r$pred_glm_size_age_quad <- predict(mod_i1_glm_size_age_quad, newdata = df_mean_r, re.form = NULL)
+
+mod_i1_lm_size_age_quad  <- lm  (logsize_t0 ~ age + I(age^2), data = df_mean_r)
+df_mean_r$pred_lm_size_age_quad <- predict(mod_i1_lm_size_age_quad, newdata = df_mean_r, re.form = NULL)
+
+
+i1_size_age <- ggplot(df_mean_r, aes(x = age, y = logsize_t0)) +
+  geom_jitter(aes(color = plant_id), width = 0.1, height = 0.1, alpha = 0.6) +  
+  geom_line(aes(y = pred_glm_size_age_quad   , color = plant_id), alpha = 0.5) +  
+  geom_line(aes(y = pred_lm_size_age_quad), alpha = 1, color = 'black', size = 0.8) +  
+  theme_minimal() + 
+  labs(x = "Age", y = "Log Size", title = "Log Size vs Age of Recruits") + 
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  scale_x_continuous(
+    limits = c(0, 12),
+    breaks = seq(0, 12, by = 1)) +
+  theme(legend.position = "none")
+
+
+# Combine the plots
+grid.arrange(i1_hist, i1_size_age, 
+             ncol = 2)
+```
+
+
+## Issue 2 - Size after Dormancy
+This plot shows the distribution of size_t1 for dormant individuals. Most certainly, there are very large individuals that go into dormancy  Unfortunately we don't find any clear pattern that sets the dormant individuals apart form recruits. 
+
+```{r i2 plots, fig.width=10, fig.height=4}
+i2_hist <- ggplot(df_mean %>% filter(dormancy == 1), aes(x = size_t1)) +
+  geom_histogram(binwidth = 1, fill = "lightgray", color = "black") +
+  labs(title = "Histogram of Size After Dormancy", x = "Size", y = "Frequency") +
+  theme_minimal() +
+  annotate("text", x = Inf, y = Inf, label = paste("n:", nrow(df_mean %>% 
+                                                                  filter(dormancy == 1) %>% 
+                                                                  filter(!is.na(size_t1)))), 
+           hjust = 2, vjust = 2, size = 4, color = "black") +
+  xlim(0, 41) + 
+  ylim(0, 41) 
+
+# Create a vector to store the size values before dormancy == 1
+size_before_dormancy <- c()
+
+# Loop through the rows and capture the size value before dormancy == 1
+for(i in 2:nrow(df_mean)) {
+  if(!is.na(df_mean$dormancy[i]) && df_mean$dormancy[i] == 1) {
+    size_before_dormancy <- c(size_before_dormancy, df_mean$size_t0[i - 1])
+  }
+}
+
+# Convert to a data frame for ggplot
+df_size_before_dormancy <- data.frame(size_t0 = size_before_dormancy)
+
+# Create ggplot histogram
+i2_hist_1 <- ggplot(df_size_before_dormancy, aes(x = size_t0)) +
+  geom_histogram(binwidth = 1, fill = "lightgray", color = "black") +
+  labs(title = "Histogram of Size Before Dormancy", x = "Size", y = "Frequency") +
+  theme_minimal() +
+  annotate("text", x = Inf, y = Inf, label = paste("n:", sum(!is.na(size_before_dormancy))), 
+           hjust = 2, vjust = 2, size = 4, color = "black") +
+  xlim(0, 41) + 
+  ylim(0, 41) 
+
+# Combine the plots
+grid.arrange(i2_hist_1, i2_hist,  
+             ncol = 2)
+```
+
+<details>
+<summary>Expand to see the mean dataframe of the very large individuals after dormancy</summary>
+```{r MDFLaAfDo}
+
+print(df_mean %>% 
+  filter(plant_id ==  df_mean %>% 
+  filter(dormancy == 1, size_t1 > 15) %>% 
+  select(plant_id) %>% 
+  .[[1]]) %>% 
+    select(plant_id, size_t0), n = 100)
+
+```
+
+
+
+<details>
+<summary>Expand to see the full dataframe of the very large individuals after dormancy</summary>
+```{r FDFLaAfDo}
+
+print(df %>% 
+  filter(plant_id ==  df_mean %>% 
+  filter(dormancy == 1, size_t1 > 15) %>% 
+  select(plant_id) %>% 
+  .[[1]]) %>% 
+    select(plant_id, br), n = 100)
+
+```
+</details>
+
+
+## Issue 3 - Flagged
+
+To facilitate direct comparison of observations, we create a new data frame that flags entries based on two criteria. First, individuals with missing size_t0 values for the years 1999, 2000, or 2001 are flagged. Second, individuals with non-missing size_t1 values for any of these years (1999, 2000, or 2001) are also flagged. After applying these flags, we assign an age to each individual.
+
+
+```{r i3 data}
+df_mean_f <- df_mean %>%
+  group_by(site, quad, plant, plant_id) %>%
+  mutate(
+    flag_1 = if_else(
+      any(year == 1999 & is.na(size_t0)) |
+        (any(year %in% c(1999, 2000)) & all(is.na(size_t0[year %in% c(1999, 2000)]))) |
+        (any(year %in% c(1999, 2000, 2001)) & all(is.na(size_t0[year %in% c(1999, 2000, 2001)]))),
+      1, 0
+    ),
+    flag_2 = if_else(any(year %in% c(1999, 2000, 2001) & !is.na(size_t1)), 1, 0)
+  ) %>%
+  ungroup() %>% 
+  filter(flag_1 == 1 & flag_2 == 1) 
+
+# Initialize the age column
+df_mean_f$age <- NA
+
+# Loop through each unique combination of site, quad, and plant
+for (i in 1:nrow(df_mean_f)) {
+  
+  current_site <- df_mean_f$site[i]
+  current_quad <- df_mean_f$quad[i]
+  current_plant <- df_mean_f$plant[i]
+  
+  # Subset the data for the current combination of site, quad, and plant
+  group_data <- df_mean_f %>%
+    filter(site == current_site, quad == current_quad, plant == current_plant) %>%
+    arrange(year)  # Ensure the rows are ordered by year
+  
+  # Initialize the current age starting at NA
+  current_age <- 1  # We will start at 1 when the first non-NA size_t0 is found
+  
+  # Loop through the rows within this group
+  for (j in 1:nrow(group_data)) {
+    if (!is.na(group_data$size_t0[j])) {
+      # If the size_t0 is not NA, assign the current age
+      df_mean_f$age[df_mean_f$site == current_site & 
+                      df_mean_f$quad == current_quad & 
+                      df_mean_f$plant == current_plant & 
+                      df_mean_f$year == group_data$year[j]] <- current_age
+      # Increment the age for the next year
+      current_age <- current_age + 1
+    } else if (j > 1) {
+      # If size_t0 is NA, carry the age from the previous row
+      previous_year_age <- df_mean_f$age[df_mean_f$site == current_site &
+                                           df_mean_f$quad == current_quad &
+                                           df_mean_f$plant == current_plant &
+                                           df_mean_f$year == group_data$year[j - 1]]
+      df_mean_f$age[df_mean_f$site == current_site & 
+                      df_mean_f$quad == current_quad & 
+                      df_mean_f$plant == current_plant & 
+                      df_mean_f$year == group_data$year[j]] <- previous_year_age
+    }
+  }
+}
+```
+
+
+The following plots display key patterns in the data: 1. Histogram of Size at t0 showing the distribution of size_t0 for plants at age 1, with bins of width 1. 2. Scatter Plot of Log Size at t0 vs Age visualizing the relationship between age and log size.
+
+```{r i3 plots1, fig.width=10, fig.height=4}
+i3_hist <- ggplot(df_mean_f %>% filter(age == 1), aes(x = size_t0)) +
+  geom_histogram(binwidth = 1, fill = "lightgray", color = "black") +
+  theme_minimal()
+
+
+i3_size_age <- ggplot() +
+  geom_jitter(
+    data = df_mean_f, 
+    aes(x = age, y = logsize_t0)) +
+  theme_minimal()
+
+
+# Combine the plots
+grid.arrange(i3_hist, i3_size_age, 
+             ncol = 2)
+```
+
+
+### Modeling Growth of the Flags
+
+In this section, we fit four different linear mixed models to examine the relationship between age and log size at time zero (logsize_t0), incorporating random effects to account for variability among individual plant IDs.
+
+1. Linear Model: The first model uses a linear relationship between age and log size, with a random intercept for plant-id.
+2. Quadratic Model: The second model introduces a quadratic term for log size to capture potential non-linear effects of age on log size
+3. Linear Model with Age: The third model reverses the dependent and independent variables, modeling log size as a function of age, with a random intercept for plant-id.
+4. Quadratic Model with Age: The fourth model extends the third model by including a quadratic term for age.
+
+```{r i3 models, echo=TRUE, code_folding="none", results='markup'}
+# Fit the first model: logsize_t0 ~ age + (1 | plant_id) (linear model)
+mod_flag_linear <- lmer(age ~ logsize_t0 + (1 | plant_id), data = df_mean_f)
+#summary(mod_flag_linear)
+
+# Predict values using the linear model
+df_mean_f$predicted_linear <- predict(mod_flag_linear, newdata = df_mean_f, re.form = NULL)
+
+# Fit the second model: logsize_t0 ~ age + I(age^2) + (1 | plant_id) (quadratic model)
+mod_flag_quad <- lmer(age ~ logsize_t0 + I(logsize_t0^2) + (1 | plant_id), data = df_mean_f)
+#summary(mod_flag_quad)
+
+# Predict values using the quadratic model
+df_mean_f$predicted_quad <- predict(mod_flag_quad, newdata = df_mean_f, re.form = NULL)
+
+# Fit the third model: logsize_t0 ~ age + (1 | plant_id) (reversed model)
+mod_flag_logsize_age <- lmer(logsize_t0 ~ age + (1 | plant_id), data = df_mean_f)
+#summary(mod_flag_logsize_age)
+
+# Predict values using the logsize_t0 ~ age model
+df_mean_f$predicted_logsize_age <- predict(mod_flag_logsize_age, newdata = df_mean_f, re.form = NULL)
+
+# Fit the fourth model: logsize_t0 ~ age + I(age^2) + (1 | plant_id) (quadratic term for age)
+mod_flag_quad_age <- lmer(logsize_t0 ~ age + I(age^2) + (1 | plant_id), data = df_mean_f)
+#summary(mod_flag_quad_age)
+
+# Predict values using the logsize_t0 ~ age + I(age^2) model
+df_mean_f$predicted_quad_age <- predict(mod_flag_quad_age, newdata = df_mean_f, re.form = NULL)
+
+
+
+lm_flag_quad_age <- lm(logsize_t0 ~ age + I(age^2), data = df_mean_f)
+df_mean_f$predicted_lm_quad_age <- predict(lm_flag_quad_age, newdata = df_mean_f, re.form = NULL)
+
+
+
+```
+
+
+The following plots visualize the relationships captured by the second, third, and fourth models
+
+```{r i3 plots2, fig.width=10, fig.height=8}
+# Plot the second model (quadratic relationship for logsize_t0 ~ logsize_t0^2)
+p_i3_mod_1 <- ggplot(df_mean_f, aes(x = logsize_t0, y = age)) +
+  geom_jitter(aes(color = plant_id), width = 0.1, height = 0.1, alpha = 0.6) +  
+  geom_line(aes(y = predicted_quad, color = plant_id), alpha = 0.5) +  
+  theme_minimal() +
+  labs(title = "Quadratic Model with Random Intercepts: logsize_t0 vs Age",
+       y = "Age",
+       x = "Log Size at t0") +
+  theme(legend.position = "none")
+
+# Plot the third model (logsize_t0 ~ age relationship)
+p_i3_mod_2 <- ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
+  geom_jitter(aes(color = plant_id), width = 0.1, height = 0.1, alpha = 0.6) +  
+  geom_line(aes(y = predicted_logsize_age, color = plant_id), alpha = 0.5) +  
+  theme_minimal() +
+  labs(title = "Log Size Model with Random Intercepts: Age vs Log Size at t0",
+       y = "Log Size at t0",
+       x = "Age") +
+  theme(legend.position = "none")
+
+# Plot the fourth model (logsize_t0 ~ age + I(age^2) relationship)
+p_i3_mod_3 <- ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
+  geom_jitter(aes(color = plant_id), width = 0.1, height = 0.1, alpha = 0.6) +  
+  geom_line(aes(y = predicted_quad_age   , color = plant_id), alpha = 0.5) +  
+  geom_line(aes(y = predicted_lm_quad_age), alpha = 1, color = 'black', size = 0.8) + 
+  theme_minimal() +
+  labs(title = "Quadratic Model with Random Intercepts: Age vs Log Size at t0\nand quadratic LM",
+       y = "Log Size at t0",
+       x = "Age") +
+  theme(legend.position = "none")
+
+grid.arrange(p_i3_mod_1, p_i3_mod_2,
+             p_i3_mod_3,
+             ncol = 2)
+```
+
+## Issue 4 - Fires
+The data from Carter Creek Tract, Lake Wales Ridge Wildlife Environmental Area, 1998-2017, includes information on the severity of six fire outbreaks during this time. In the data we found the severity of ´0´ for some of the individuals. We raise the question of what a severity of ´0´ means? 
+
+Once again, as of March 2025, we have not been in contact with the corresponding author. 
+
+
+## Issue 5 - Spatial relationship
+
+Is there any spatial relationship regarding size, recruits, flowering, fruiting, ect. In the data we have two chategories of sizes, which are *site* and *plot*.

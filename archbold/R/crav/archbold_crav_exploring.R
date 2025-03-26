@@ -72,6 +72,11 @@ if (!dir.exists(dir_data  )) {dir.create(dir_data  )}
 if (!dir.exists(dir_result)) {dir.create(dir_result)}
 
 
+# Functions --------------------------------------------------------------------
+# function to plot your survival data "binned" (instead of "jittered")
+source('helper_functions/plot_binned_prop.R')
+
+
 # Data -------------------------------------------------------------------------
 df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>% 
   janitor::clean_names() %>%
@@ -158,20 +163,21 @@ df_filtered <- df %>%
 ###  and make a new column with age 1
 
 
-# Original year mean dataframe
+# Original year mean dataframe -------------------------------------------------
 df_mean_og <- df %>%
   filter(s < 6 | is.na(s)) %>%
   group_by(site, quad, plant, plant_id, year) %>%
   summarise(
-    survives = if_else(all(is.na(s )), NA_real_, max(s,  na.rm = TRUE)),
-    size_t0 =  if_else(all(is.na(br)), NA_real_, max(br, na.rm = TRUE)),
-    .groups = "drop"
+    survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
+    size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
+    fruit    = if_else(all(is.na(fr)), NA_real_, mean(fr, na.rm = TRUE)),
+    .groups  = "drop"
   ) %>% 
   ungroup()
 
 
 
-# Base mean dataframe
+# Base mean dataframe ----------------------------------------------------------
 df_mean <- df_mean_og %>% 
   group_by(site, quad, plant, plant_id) %>% 
   # Handle survival based on previous dormancy status
@@ -277,9 +283,12 @@ df_mean <- df_mean_og %>%
     # Return the computed age vector
     age_vector
   }) %>%
-  
   ungroup()
 
+
+
+
+# BUGs to fix ------------------------------------------------------------------
 df_issue <- df_mean[c(932:950,
                       1397:1406,
                       1418:1425,
@@ -470,7 +479,7 @@ ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
 
 # Data Processes ---------------------------------------------------------------
 names(df_mean)
-# Growth
+# Growth data ------------------------------------------------------------------
 df_grow <- df_mean %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
@@ -492,33 +501,32 @@ ggplot(
 
 
 
-# Survival
+# Survival data ----------------------------------------------------------------
 df_surv <- df_mean %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
   select(plant_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
-# source('helper_functions/plot_binned_prop.R')
-# 
-# g_surv_overall <- ggplot(
-#   data = plot_binned_prop(df_mean, 10, logsize_t0, survives)) +
-#   geom_point(aes(x = logsize_t0, 
-#                  y = survives),
-#              alpha = 1, pch = 16, color = 'red' ) +
-#   geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
-#                 size = 0.5, width = 0.5) +
-#   scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
-#   ylim(0, 1.01) +
-#   theme_bw() +
-#   theme(axis.text = element_text(size = 8),
-#         title     = element_text(size = 10)) +
-#   labs(title    = 'Survival',
-#        subtitle = v_ggp_suffix,
-#        x        = expression('log(size)'[t0]),
-#        y        = expression('Survival to time t1')) +
-#   theme(plot.subtitle = element_text(size = 8))
-
+ 
+g_surv_overall <- ggplot(
+  data = plot_binned_prop(df_mean, 10, logsize_t0, survives)) +
+  geom_point(aes(x = logsize_t0,
+                 y = survives),
+             alpha = 1, pch = 16, color = 'red' ) +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                size = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+  ylim(0, 1.01) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Survival',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size)'[t0]),
+       y        = expression('Survival to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
+g_surv_overall
 
 ggplot(data = df_surv) +
   geom_jitter(aes(x = logsize_t0, y = survives), 
@@ -533,7 +541,7 @@ ggplot(data = df_surv) +
   theme(plot.subtitle = element_text(size = 8))
 
 
-# Recruitment
+# Recruitment data -------------------------------------------------------------
 df_quad <- df_mean %>%  
   group_by (year, site, quad) %>% 
   summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
@@ -566,6 +574,30 @@ ggplot(
        x        = expression('Total parent plant area '[t0]),   
        y        = expression('Number of recruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8))
+
+
+# Fruiting data ----------------------------------------------------------------
+df_quad <- df_mean %>%  
+  group_by (year, site, quad) %>% 
+  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
+  ungroup
+
+df_group <- df_quad %>% 
+  group_by (year) %>% 
+  summarise(g_cov = mean(tot_p_area)) %>% 
+  ungroup
+
+df_cover <- left_join(df_quad, df_group) %>%
+  mutate(year = year + 1) %>% 
+  mutate(year = as.integer(year)) %>% 
+  drop_na()
+
+hist(df$fl)
+
+df_fruit <- df_mean %>%
+  group_by (year, site, quad) %>% 
+  summarise(nr_quad = sum(fruit, na.rm = T)) %>% 
+  ungroup
 
 
 
@@ -694,12 +726,12 @@ g_surv_bin <- ggplot() +
     df_mean, 10, logsize_t0, survives), 
     aes(x = logsize_t0, 
         y = survives) ) +
-  geom_errorbar(data =  plot_binned_prop(
-    df_mean, 10, logsize_t0, survives), 
+  geom_errorbar(
+    data = plot_binned_prop(df_mean, 10, logsize_t0, survives), 
     aes(x = logsize_t0, 
         ymin = lwr,
         ymax = upr) ) +
-  geom_line(data = surv_pred_df, aes(x = logsize_t0, 
+  geom_line(data = df_surv_pred, aes(x = logsize_t0, 
                                      y = survives),
             color = 'red', lwd   = 2) + 
   theme_bw() +
@@ -708,3 +740,34 @@ g_surv_bin <- ggplot() +
 # Combine survival plots
 g_surv_overall_pred <- g_surv_line + g_surv_bin + plot_layout()
 g_surv_overall_pred
+
+
+# Recruitment model ------------------------------------------------------------
+df_recr_nona_nr_quad <- df_recr %>% filter(!is.na(nr_quad))
+# Fit a negative binomial model for recruitment
+mod_rec <- MASS::glm.nb(nr_quad ~ 1, data = df_recr_nona_nr_quad)
+
+# Generate predictions for recruitment
+df_recr_nona_nr_quad <- df_recr_nona_nr_quad %>% 
+  mutate(mod_pred = predict(mod_rec, type = 'response')) 
+
+# Summarize total number of recruits and predictions
+df_rec_sums_m <- df_recr_nona_nr_quad %>%
+  summarize(nr_quad = sum(nr_quad),
+            mod_pred = sum(mod_pred))
+
+# Count number of adult individuals
+indiv_m <- df_surv %>%
+  summarize(n_adults = n())
+
+# Calculate reproduction per capita (both observed and predicted)
+repr_pc_m <- indiv_m %>%
+  bind_cols(df_rec_sums_m) %>%
+  mutate(repr_pc_mean = mod_pred / n_adults) %>%
+  mutate(repr_pc_obs = nr_quad / n_adults) %>%
+  drop_na 
+
+
+# Fruting model ----------------------------------------------------------------
+
+

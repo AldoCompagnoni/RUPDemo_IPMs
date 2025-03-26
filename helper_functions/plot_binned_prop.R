@@ -35,8 +35,8 @@ plot_binned_prop <- function(df, n_bins, siz_var, rsp_var){
   
   binned_prop <- function(lwr_x, upr_x, response, lwr_upr ){
     
-    id  <- which(df[,size_var] > lwr_x & df[,size_var] < upr_x) 
-    tmp <- df[id,]
+    id  <- which(df[,size_var] >= lwr_x & df[,size_var] < upr_x) 
+    tmp <- as.data.frame(df[id,])
     
     if( response == 'prob' ){   return( sum(tmp[,resp_var],na.rm=T) / nrow(tmp) ) }
     if( response == 'n_size' ){ return( nrow(tmp) ) }

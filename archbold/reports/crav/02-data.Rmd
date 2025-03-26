@@ -38,8 +38,9 @@ skimr::skim(df)
 
 Each year recorded in the dataset includes multiple months of observations per individual. For the purpose of modeling population dynamics, we condensed the data to provide a single observation per individual for size, recruits, survival, flowering, fruiting, and fire exposure for each year. The data were condensed as follows:
 
-1. Size was measured as the number of branch tips, and following the recommendations of Menges et al. (2016), we focused on the maximum size observed in each year.
+1. Size was measured as the number of branch tips, and following the recommendations of Menges *et al.* (2016), we focused on the maximum size observed in each year.
 2. & 3. Recruits and survival were recorded as binary variables, indicating whether the event occurred in a given year.
+4. Without recommendation of Menges *et al.* (2016), we decided to take the mean count of **fruits** as our estimation of how many fruits were produced by each plant individual per year.
 
 **The treatment of flowering, fruiting, and fire exposure is still undecided as of** ***March 19, 2025*****.**
 

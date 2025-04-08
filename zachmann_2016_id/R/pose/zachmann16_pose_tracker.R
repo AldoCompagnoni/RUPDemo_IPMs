@@ -9,23 +9,25 @@
 
 # Publication : https://doi.org/10.1890/10-0404.1
 
-rm(list = ls())
+# rm(list = ls())
 
 # Data -------------------------------------------------------------------------
 # Define publication 
 author_year <- 'zachmann_2016'
 # Define region abbreviation
 region_abb <- 'id'
-# Define growth form (grass, forb, shrub)
+# Define growth form (grass, forb, shrub, c4)
 gr_form    <- 'grass'
+# Customized delimiter for `read_delim` function, comma is predefined
+custom_delimiter <- c(',')
 
-source('helper_functions/plant_tracker_01.R')
+source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list)
+head(sp_list, 7)
 target_spec <- sp_list %>% .[c(2),]  
 
-source('helper_functions/plant_tracker_02.R')
+source('pipeline/plant_tracker_02.R')
 
 # Exploration ------------------------------------------------------------------
 # Quadrat inventory

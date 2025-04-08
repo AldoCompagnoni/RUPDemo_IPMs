@@ -1,4 +1,4 @@
-# plantTracker - Anderson 2016 Arizona -
+# plantTracker - Anderson 2016 Arizona - Arnica fulgens
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Aldo Compagnoni
@@ -9,15 +9,15 @@
 
 # Publication : https://doi.org/10.1890/10-0404.1
 
-rm(list = ls())
+# rm(list = ls())
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'anderson_2016'
+author_year <- 'zachmann_2016'
 # Define region abbreviation
-region_abb <- 'az'
+region_abb <- 'id'
 # Define growth form (grass, forb, shrub, c4)
-gr_form    <- 'grass'
+gr_form    <- 'forb'
 # Customized delimiter for `read_delim` function, comma is predefined
 custom_delimiter <- c(',')
 

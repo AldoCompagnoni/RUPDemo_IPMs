@@ -352,9 +352,9 @@ ggsave(paste0(dir_result, '/2.1_overall_grow_pred_logs', v_suffix, '.png'),
 
 # Fit a model to assess variance in growth
 # Fitted values from growth model
-x         <- fitted(gr_mod_mean)  
+x         <- fitted(gr_mod_bestfit)  
 # Squared residuals
-y         <- resid(gr_mod_mean)^2  
+y         <- resid(gr_mod_bestfit)^2  
 # Non-linear model for variance
 gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0),
                  control = nls.control(maxiter = 1000, 

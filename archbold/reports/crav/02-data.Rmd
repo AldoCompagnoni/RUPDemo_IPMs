@@ -40,9 +40,10 @@ Each year recorded in the dataset includes multiple months of observations per i
 
 1. Size was measured as the number of branch tips, and following the recommendations of Menges *et al.* (2016), we focused on the maximum size observed in each year.
 2. & 3. Recruits and survival were recorded as binary variables, indicating whether the event occurred in a given year.
-4. Without recommendation of Menges *et al.* (2016), we decided to take the mean count of **fruits** as our estimation of how many fruits were produced by each plant individual per year.
+4. Without recommendation of Menges *et al.* (2016), we decided to take the mean count of **fruits** as our estimation of how many fruits were produced by each plant individual per year. Maybe we need to revisit this, as fruits may be more short-lived than expected. If the fruits do not carry over into the next month, maybe the sum of all produced fruits is more appropriate. 
+5. As for the production of **flowers**, it seems they to not carry over into the next month. See plant ID 1_1_5, in March 2005 this individual produced 20 flowers, and in April they didn't find any. At the same time, how is this possible that this individual produced 100 flowers over 20 years, but not a single fruit!? Actually, given that we model flowering with a binomial distribution, it is not the sum of the flowers but just yes or no.
 
-**The treatment of flowering, fruiting, and fire exposure is still undecided as of** ***March 19, 2025*****.**
+**The treatment of fire exposure is still undecided as of** ***March 19, 2025*****.**
 
 
 ```{r data mean original}

@@ -53,6 +53,7 @@ v_ggp_suffix    <- paste(
 # Models
 v_mod_set_gr <- c()
 v_mod_set_su <- c()
+v_mod_set_fl <- c()
 
 # Directory --------------------------------------------------------------------
 dir_pub    <- file.path(paste0(v_head))
@@ -171,6 +172,7 @@ df_mean_og <- df %>%
     survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
     size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
     fruit    = if_else(all(is.na(fr)), NA_real_, mean(fr, na.rm = TRUE)),
+    flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),
     .groups  = "drop"
   ) %>% 
   ungroup()
@@ -508,7 +510,6 @@ df_surv <- df_mean %>%
   select(plant_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
- 
 g_surv_overall <- ggplot(
   data = plot_binned_prop(df_mean, 10, logsize_t0, survives)) +
   geom_point(aes(x = logsize_t0,
@@ -599,6 +600,58 @@ df_fruit <- df_mean %>%
   summarise(nr_quad = sum(fruit, na.rm = T)) %>% 
   ungroup
 
+df_fruit <- left_join(df_cover, df_fruit)
+
+ggplot(
+  df_fruit, aes(x = tot_p_area, y = nr_quad)) + 
+  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
+  theme_bw() + 
+  labs(title    = 'Fruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of fruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
+
+
+# Flowering data ---------------------------------------------------------------
+df_flower <- df_mean %>% 
+  filter(!is.na(flower)) %>%
+  filter(size_t0 != 0) %>%
+  select(plant_id, year, size_t0, flower, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3) %>% 
+  mutate(flower = if_else(flower > 0, 1, flower))
+
+g_flower_overall <- ggplot(
+  data = plot_binned_prop(df_flower, 10, logsize_t0, flower)) +
+  geom_point(aes(x = logsize_t0,
+                 y = flower),
+             alpha = 1, pch = 16, color = 'red' ) +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                size = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+  ylim(0, 1.01) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Flowering',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size)'[t0]),
+       y        = expression('Flowering to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
+g_flower_overall
+
+ggplot(data = df_flower) +
+  geom_jitter(aes(x = logsize_t0, y = flower), 
+              position = position_jitter(width = 0.1, height = 0.3)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Flowering',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size) ' [t0]),
+       y        = expression('Flowering to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
+
 
 
 # Models -----------------------------------------------------------------------
@@ -660,6 +713,17 @@ g_grow_pred <- ggplot(
 
 g_grow_overall_pred <- g_grow_line + g_grow_pred + plot_layout() 
 g_grow_overall_pred
+
+
+# Fit a model to assess variance in growth
+# Fitted values from growth model
+mod_gr_x   <- fitted(mod_gr_bestfit)  
+# Squared residuals
+mod_gr_y   <- resid(mod_gr_bestfit)^2  
+# Non-linear model for variance
+mod_gr_var <- nls(
+  mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
+  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE) ) 
 
 
 # Survival model ---------------------------------------------------------------
@@ -768,6 +832,319 @@ repr_pc_m <- indiv_m %>%
   drop_na 
 
 
-# Fruting model ----------------------------------------------------------------
+# Fruiting model ----------------------------------------------------------------
+df_fruit_nona_nr_quad <- df_fruit %>% filter(!is.na(nr_quad))
+# Fit a negative binomial model
+mod_fru <- MASS::glm.nb(nr_quad ~ 1, data = df_fruit_nona_nr_quad)
+
+# Generate predictions
+df_fruit_nona_nr_quad <- df_fruit_nona_nr_quad %>% 
+  mutate(mod_pred = predict(mod_fru, type = 'response')) 
+
+# Summarize total number of fruits and predictions
+df_fruit_sums_m <- df_fruit_nona_nr_quad %>%
+  summarize(nr_quad = sum(nr_quad),
+            mod_pred = sum(mod_pred))
+
+# Count number of adult individuals
+indiv_m <- df_surv %>%
+  summarize(n_adults = n())
+
+# Calculate reproduction per capita (both observed and predicted)
+fruit_pc_m <- indiv_m %>%
+  bind_cols(df_fruit_sums_m) %>%
+  mutate(fruit_pc_mean = mod_pred / n_adults) %>%
+  mutate(fruit_pc_obs  = nr_quad  / n_adults) %>%
+  drop_na 
 
 
+# Flowering model --------------------------------------------------------------
+# Logistic regression
+mod_fl_0 <- glm(flower ~ 1,
+                data = df_flower, family = 'binomial') 
+# Logistic regression
+mod_fl_1 <- glm(flower ~ logsize_t0,
+                data = df_flower, family = 'binomial') 
+# Quadratic logistic model
+mod_fl_2 <- glm(flower ~ logsize_t0 + logsize_t0_2,
+                data = df_flower, family = 'binomial')  
+# Cubic logistic model
+mod_fl_3 <- glm(flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+                data = df_flower, family = 'binomial')  
+
+
+# Compare models using AIC
+mods_fl      <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
+mods_fl_dAIC <- AICtab(mods_fl, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_fl_sorted <- order(mods_fl_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_fl) == 0) {
+  mod_fl_index_bestfit <- mods_fl_sorted[1]
+  v_mod_fl_index       <- mod_fl_index_bestfit - 1 
+} else {
+  mod_fl_index_bestfit <- v_mod_set_fl +1
+  v_mod_fl_index       <- v_mod_set_fl
+}
+
+
+mod_fl_bestfit   <- mods_fl[[mod_fl_index_bestfit]]
+mod_fl_ranef     <- coef(mod_fl_bestfit)
+
+# Generate predictions for survival across a range of sizes
+mod_fl_x <- seq(
+  min(df_flower$logsize_t0, na.rm = T),
+  max(df_flower$logsize_t0, na.rm = T), length.out = 100)
+
+# Prepare data for survival plot
+df_flow_pred <- predictor_fun(mod_fl_x, mod_fl_ranef) %>% 
+  # Inverse logit for predictions
+  boot::inv.logit() %>% 
+  data.frame(logsize_t0 = mod_fl_x, flower = .)
+
+g_flow_line <- ggplot() +
+  geom_jitter(data = df_flower, 
+              aes(x = logsize_t0, y = flower),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_flow_pred, 
+            aes(x = logsize_t0, y = flower),
+            color = line_color_pred_fun(mod_fl_ranef), 
+            lwd   = 2) +  
+  theme_bw() + 
+  labs(title    = 'Survival prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+g_flow_bin <- ggplot() +
+  geom_point(data =  plot_binned_prop(
+    df_flower, 10, logsize_t0, flower), 
+    aes(x = logsize_t0, y = flower) ) +
+  geom_errorbar(
+    data = plot_binned_prop(df_flower, 10, logsize_t0, flower), 
+    aes(x = logsize_t0, ymin = lwr, ymax = upr) ) +
+  geom_line(data = df_flow_pred, 
+            aes(x = logsize_t0, y = flower),
+            color = 'red', lwd   = 2) + 
+  theme_bw() +
+  ylim(0, 1)
+
+# Combine survival plots
+g_flow_overall_pred <- g_flow_line + g_flow_bin + plot_layout()
+g_flow_overall_pred
+
+
+
+# Exporting parameter estimates ------------------------------------------------
+# Growth
+grow_fe  <- data.frame(coefficient = names(coef(mod_gr_bestfit)),
+                       value       = coef(mod_gr_bestfit))
+grow_var <- data.frame(coefficient = names(coef(mod_gr_var)),
+                       value       = coef(mod_gr_var))
+
+grow_out <- Reduce(function(...) rbind(...), list(grow_fe, grow_var)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# write.csv(grow_out, row.names = F, paste0(
+#   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_grow_pars_mean.csv'))
+
+
+# Survival
+surv_fe  <- data.frame(coefficient = names(coef(mod_su_bestfit)),
+                       value       = coef(mod_su_bestfit))
+
+surv_out <- Reduce(function(...) rbind(...), list(surv_fe)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# write.csv(surv_out, row.names = F, paste0(
+#   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_surv_pars_mean.csv'))
+
+
+# Flower
+flwr_fe  <- data.frame(coefficient = names(coef(mod_fl_bestfit)),
+                       value       = coef(mod_fl_bestfit))
+
+flwr_out <- Reduce(function(...) rbind(...), list(flwr_fe)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# write.csv(flwr_out, row.names = F, paste0(
+#   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_surv_pars_mean.csv'))
+
+# Recruitment 
+rec_size <- df_mean %>% subset(recruit == 1)
+fru_size <- df_mean %>% subset(fruit   == 1)
+
+others   <- data.frame(coefficient = c('rec_siz', 'rec_sd', 
+                                       'fru_siz', 'fru_sd', 
+                                       'max_siz', 'min_siz',
+                                       'fecu_b0',
+                                       'frui_b0'),
+                       value       = c(mean(log(rec_size$size_t0), na.rm = T), 
+                                       sd(  log(rec_size$size_t0), na.rm = T),
+                                       mean(log(fru_size$size_t0), na.rm = T), 
+                                       sd(  log(fru_size$size_t0), na.rm = T),
+                                       df_grow$logsize_t0 %>% max, 
+                                       df_grow$logsize_t0 %>% min,
+                                       repr_pc_m$repr_pc_mean,
+                                       fruit_pc_m$fruit_pc_mean))
+
+# write.csv(others, row.names = F, paste0(
+#   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_other_pars_mean.csv'))
+
+
+
+# Building the IPM from scratch ------------------------------------------------
+extr_value <- function(x, field){
+  subset(x, coefficient == field)$value
+}
+
+pars <- Filter(function(x) length(x) > 0, list(
+  prefix  = v_script_prefix,
+  species = v_species,
+  grow_b0 = extr_value(grow_out, 'b0'),
+  grow_b1 = extr_value(grow_out, 'logsize_t0'),
+  grow_b2 = extr_value(grow_out, 'logsize_t0_2'),
+  grow_b3 = extr_value(grow_out, 'logsize_t0_3'),
+  a       = extr_value(grow_out, 'a'),
+  b       = extr_value(grow_out, 'b'),
+  surv_b0 = extr_value(surv_out, 'b0'),
+  surv_b1 = extr_value(surv_out, 'logsize_t0'),
+  surv_b2 = extr_value(surv_out, 'logsize_t0_2'),
+  surv_b3 = extr_value(surv_out, 'logsize_t0_3'),
+  flwr_b0 = extr_value(flwr_out, 'b0'),
+  flwr_b1 = extr_value(flwr_out, 'logsize_t0'),
+  flwr_b2 = extr_value(flwr_out, 'logsize_t0_2'),
+  flwr_b3 = extr_value(flwr_out, 'logsize_t0_3'),
+  fecu_b0 = extr_value(others, 'fecu_b0'),
+  recr_sz = extr_value(others, 'rec_siz'),
+  recr_sd = extr_value(others, 'rec_sd'),
+  frui_b0 = extr_value(others, 'frui_b0'),
+  frui_sz = extr_value(others, 'fru_siz'),
+  frui_sd = extr_value(others, 'fru_sd'),
+  L       = extr_value(others, 'min_siz'),
+  U       = extr_value(others, 'max_siz'),
+  mat_siz = 200,
+  mod_gr_index = v_mod_gr_index,
+  mod_su_index = v_mod_su_index
+))
+
+# write.csv(pars, row.names = F, paste0(
+#   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_pars.csv'))
+
+# Function describing standard deviation of growth model
+grow_sd <- function(x, pars) {
+  pars$a * (exp(pars$b* x)) %>% sqrt 
+}
+
+# Growth from size x to size y
+gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
+  mean_value <- 0
+  for (i in 0:num_pars) {
+    param_name <- paste0('grow_b', i)
+    if (!is.null(pars[[param_name]])) {
+      mean_value <- mean_value + pars[[param_name]] * x^i
+    }
+  }
+  sd_value <- grow_sd(x, pars)
+  return(dnorm(y, mean = mean_value, sd = sd_value))
+}
+
+
+# Function describing the invert logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, num_pars = v_mod_su_index) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_pars) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
+}
+
+# Function describing the transition kernel
+pxy <- function(x, y, pars) {
+  return(sx(x, pars) * gxy(x, y, pars))
+}
+
+# Function describing the recruitment 
+fy <- function(y, pars, h){
+  n_recr  <- pars$fecu_b0
+  recr_y  <- dnorm(y, pars$recr_sz, pars$recr_sd) * h
+  recr_y  <- recr_y / sum(recr_y)
+  f       <- n_recr * recr_y
+  return(f)
+}
+
+
+# Kernel
+kernel <- function(pars) {
+  
+  # number of bins over which to integrate
+  n   <- pars$mat_siz 
+  # lower limit of integration
+  L   <- pars$L  
+  # upper limit of integration
+  U   <- pars$U       
+  # bin size
+  h   <- (U - L) / n  
+  # lower boundaries of bins
+  b   <- L + c(0:n) * h             
+  # midpoints of bins
+  y   <- 0.5 * (b[1:n] + b[2:(n + 1)]) 
+  
+  # Fertility matrix
+  Fmat        <- matrix(0, n, n)
+  Fmat[]      <- matrix(fy(y, pars, h), n, n)
+  
+  # Survival vector
+  Smat   <- c()
+  Smat   <- sx(y, pars)
+  
+  # Growth matrix
+  Gmat   <- matrix(0, n, n)
+  Gmat[] <- t(outer(y, y, gxy, pars)) * h
+  
+  # Growth/survival transition matrix
+  Tmat   <- matrix(0, n, n)
+  
+  # Correct for eviction of offspring
+  for(i in 1:(n / 2)) {
+    Gmat[1,i] <- Gmat[1,i] + 1 - sum(Gmat[,i])
+    Tmat[,i]  <- Gmat[,i] * Smat[i]
+  }
+  
+  # Correct eviction of large adults
+  for(i in (n / 2 + 1):n) {
+    Gmat[n,i] <- Gmat[n,i] + 1 - sum(Gmat[,i])
+    Tmat[,i]  <- Gmat[,i] * Smat[i]
+  }
+  
+  # Full Kernel is simply a summation of fertility and transition matrices
+  k_yx <- Fmat + Tmat
+  
+  return(list(k_yx    = k_yx,
+              Fmat    = Fmat,
+              Tmat    = Tmat,
+              Gmat    = Gmat,
+              meshpts = y))
+}
+
+lambda_ipm <- function(i) {
+  return(Re(eigen(kernel(i)$k_yx)$value[1]))
+}
+
+# mean population growth rate
+lam_mean <- lambda_ipm(pars)
+lam_mean

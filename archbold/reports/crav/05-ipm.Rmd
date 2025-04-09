@@ -1,0 +1,180 @@
+# IPM from Scratch {#ipm_scratch}
+
+## !!!-Question-!!!
+
+Let me try to put this into words. To begin, here are the direct questions:
+
+1. *How do I implement* **flowering** *into the kernel?*
+2. *How do I implement* **fruiting** *into the kernel?*
+
+I reviewed the kernel again to better understand its structure. From what I gather, we have three key components that we focus on:
+
+1. The **Survival vector** is the easiest to explain. It is defined in the 200th dimension (as are the others), with each bin representing a size class. This vector indicates the probability of survival for individuals within each respective size class.
+2. The **Growth matrix** represents the probability or rate of size change between bins.
+3. The **Fertility matrix** is the rate or probability at which individuals in a particular size class contribute to the next size class through recruits. In this case, it essentially functions as a vector, since the probability of contributing to lower size classes is constant across all size classes, while it decreases for larger classes at the same rate.
+
+4. The **Transition matrix** combines the Growth matrix and the Survival vector in a multiplicative manner and corrects for eviction.
+
+Together, these components make up the **Kernel**, which is the sum of the Transition matrix and the Fertility matrix.
+
+Now, regarding how to incorporate the other two processes (flowering and fruiting), I briefly considered that these processes would likely need to alter the fertility component. However, I realized that I would need more information to proceed. While I could have researched how others have approached this (for the extra glory), I believe it is just the best to ask for your input, especially since the models I have developed based on your suggestions regarding distribution only build on what I already knew from the other models and so I am not sure if this is what we are aming for.
+
+Thus, could you maybe first go over the models and then let me know how to proceed? 
+
+Cheers!
+
+
+## Building the IPM
+
+This is the IPM without the flowers or fruits.
+
+```{r}
+extr_value <- function(x, field){
+  subset(x, coefficient == field)$value
+}
+
+pars <- Filter(function(x) length(x) > 0, list(
+  prefix  = v_script_prefix,
+  species = v_species,
+  grow_b0 = extr_value(grow_out, 'b0'),
+  grow_b1 = extr_value(grow_out, 'logsize_t0'),
+  grow_b2 = extr_value(grow_out, 'logsize_t0_2'),
+  grow_b3 = extr_value(grow_out, 'logsize_t0_3'),
+  a       = extr_value(grow_out, 'a'),
+  b       = extr_value(grow_out, 'b'),
+  surv_b0 = extr_value(surv_out, 'b0'),
+  surv_b1 = extr_value(surv_out, 'logsize_t0'),
+  surv_b2 = extr_value(surv_out, 'logsize_t0_2'),
+  surv_b3 = extr_value(surv_out, 'logsize_t0_3'),
+  flwr_b0 = extr_value(flwr_out, 'b0'),
+  flwr_b1 = extr_value(flwr_out, 'logsize_t0'),
+  flwr_b2 = extr_value(flwr_out, 'logsize_t0_2'),
+  flwr_b3 = extr_value(flwr_out, 'logsize_t0_3'),
+  fecu_b0 = extr_value(others, 'fecu_b0'),
+  recr_sz = extr_value(others, 'rec_siz'),
+  recr_sd = extr_value(others, 'rec_sd'),
+  frui_b0 = extr_value(others, 'frui_b0'),
+  frui_sz = extr_value(others, 'fru_siz'),
+  frui_sd = extr_value(others, 'fru_sd'),
+  L       = extr_value(others, 'min_siz'),
+  U       = extr_value(others, 'max_siz'),
+  mat_siz = 200,
+  mod_gr_index = v_mod_gr_index,
+  mod_su_index = v_mod_su_index
+))
+
+# write.csv(pars, row.names = F, paste0(
+#   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_pars.csv'))
+
+# Function describing standard deviation of growth model
+grow_sd <- function(x, pars) {
+  pars$a * (exp(pars$b* x)) %>% sqrt 
+}
+
+# Growth from size x to size y
+gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
+  mean_value <- 0
+  for (i in 0:num_pars) {
+    param_name <- paste0('grow_b', i)
+    if (!is.null(pars[[param_name]])) {
+      mean_value <- mean_value + pars[[param_name]] * x^i
+    }
+  }
+  sd_value <- grow_sd(x, pars)
+  return(dnorm(y, mean = mean_value, sd = sd_value))
+}
+
+
+# Function describing the invert logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, num_pars = v_mod_su_index) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_pars) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
+}
+
+# Function describing the transition kernel
+pxy <- function(x, y, pars) {
+  return(sx(x, pars) * gxy(x, y, pars))
+}
+
+# Function describing the recruitment 
+fy <- function(y, pars, h){
+  n_recr  <- pars$fecu_b0
+  recr_y  <- dnorm(y, pars$recr_sz, pars$recr_sd) * h
+  recr_y  <- recr_y / sum(recr_y)
+  f       <- n_recr * recr_y
+  return(f)
+}
+
+
+# Kernel
+kernel <- function(pars) {
+  
+  # number of bins over which to integrate
+  n   <- pars$mat_siz 
+  # lower limit of integration
+  L   <- pars$L  
+  # upper limit of integration
+  U   <- pars$U       
+  # bin size
+  h   <- (U - L) / n  
+  # lower boundaries of bins
+  b   <- L + c(0:n) * h             
+  # midpoints of bins
+  y   <- 0.5 * (b[1:n] + b[2:(n + 1)]) 
+  
+  # Fertility matrix
+  Fmat        <- matrix(0, n, n)
+  Fmat[]      <- matrix(fy(y, pars, h), n, n)
+  
+  # Survival vector
+  Smat   <- c()
+  Smat   <- sx(y, pars)
+  
+  # Growth matrix
+  Gmat   <- matrix(0, n, n)
+  Gmat[] <- t(outer(y, y, gxy, pars)) * h
+  
+  # Growth/survival transition matrix
+  Tmat   <- matrix(0, n, n)
+  
+  # Correct for eviction of offspring
+  for(i in 1:(n / 2)) {
+    Gmat[1,i] <- Gmat[1,i] + 1 - sum(Gmat[,i])
+    Tmat[,i]  <- Gmat[,i] * Smat[i]
+  }
+  
+  # Correct eviction of large adults
+  for(i in (n / 2 + 1):n) {
+    Gmat[n,i] <- Gmat[n,i] + 1 - sum(Gmat[,i])
+    Tmat[,i]  <- Gmat[,i] * Smat[i]
+  }
+  
+  # Full Kernel is simply a summation of fertility and transition matrices
+  k_yx <- Fmat + Tmat
+  
+  return(list(k_yx    = k_yx,
+              Fmat    = Fmat,
+              Tmat    = Tmat,
+              Gmat    = Gmat,
+              meshpts = y))
+}
+
+lambda_ipm <- function(i) {
+  return(Re(eigen(kernel(i)$k_yx)$value[1]))
+}
+
+# mean population growth rate
+lam_mean <- lambda_ipm(pars)
+lam_mean
+```
+

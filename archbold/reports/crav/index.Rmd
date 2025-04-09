@@ -12,7 +12,7 @@ documentclass: book
 # link-citations: yes
 # github-repo: rstudio/bookdown-demo
 description: "This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation. "
-rmd_files: ["index.Rmd", "01-intro.Rmd", "02-data.Rmd", "03-investigation.Rmd", "666-bug.Rmd"]
+rmd_files: ["index.Rmd", "01-intro.Rmd", "02-data.Rmd", "03-investigation.Rmd", "04-models.Rmd", "05-ipm", "666-bug.Rmd"]
 ---
 
 **Authors:**

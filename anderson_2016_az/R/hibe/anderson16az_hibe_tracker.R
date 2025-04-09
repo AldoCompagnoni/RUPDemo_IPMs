@@ -13,11 +13,11 @@
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'anderson_2016'
+author_year <- c('anderson_2016')
 # Define region abbreviation
-region_abb <- 'az'
+region_abb <- c('az')
 # Define growth form (grass, forb, shrub, c4)
-gr_form    <- 'grass'
+gr_form    <- c('grass')
 # Customized delimiter for `read_delim` function, comma is predefined
 custom_delimiter <- c(',')
 

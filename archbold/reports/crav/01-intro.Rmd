@@ -27,12 +27,24 @@ v_species <- c('Crotalaria avonensis')
 # Customized delimiter for `read_delim` function, comma is predefined
 custom_delimiter <- c()
 
+
 # Create a unique species abbreviation for file naming
 v_sp_abb  <- tolower(
   gsub(' ', '', paste(
     substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
+
 # Define script prefix
 v_script_prefix <- str_c(v_head)
+
+# Plot subtitle
+v_ggp_suffix    <- paste(
+  tools::toTitleCase(v_head), '-', v_species)
+
+
+# Models
+v_mod_set_gr <- c()
+v_mod_set_su <- c()
+v_mod_set_fl <- c()
 
 
 # Directory 
@@ -41,5 +53,15 @@ dir_pub    <- file.path(dir_wd, paste0(v_head))
 dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
 dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
 dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+dir_func   <- file.path(dir_wd, 'helper_functions')
+
+
+# Functions
+# plot your survival data "binned" (instead of "jittered")
+source(file.path(dir_func, 'plot_binned_prop.R'))
+# 
+source(file.path(dir_func, 'line_color_pred_fun.R'))
+# 
+source(file.path(dir_func, 'predictor_fun.R'))
 ```
 

@@ -22,7 +22,7 @@
 
 
 
-<meta name="date" content="2025-03-26" />
+<meta name="date" content="2025-04-09" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -156,8 +156,32 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="3.4" data-path="investigation.html"><a href="investigation.html#issue-4---fires"><i class="fa fa-check"></i><b>3.4</b> Issue 4 - Fires</a></li>
 <li class="chapter" data-level="3.5" data-path="investigation.html"><a href="investigation.html#issue-5---spatial-relationship"><i class="fa fa-check"></i><b>3.5</b> Issue 5 - Spatial relationship</a></li>
 </ul></li>
-<li class="chapter" data-level="4" data-path="models.html"><a href="models.html"><i class="fa fa-check"></i><b>4</b> Models</a></li>
-<li class="chapter" data-level="5" data-path="bugs.html"><a href="bugs.html"><i class="fa fa-check"></i><b>5</b> BUGS</a></li>
+<li class="chapter" data-level="4" data-path="models.html"><a href="models.html"><i class="fa fa-check"></i><b>4</b> Models</a>
+<ul>
+<li class="chapter" data-level="4.1" data-path="models.html"><a href="models.html#data-preparation"><i class="fa fa-check"></i><b>4.1</b> Data preparation</a>
+<ul>
+<li class="chapter" data-level="4.1.1" data-path="models.html"><a href="models.html#growth"><i class="fa fa-check"></i><b>4.1.1</b> Growth</a></li>
+<li class="chapter" data-level="4.1.2" data-path="models.html"><a href="models.html#survival"><i class="fa fa-check"></i><b>4.1.2</b> Survival</a></li>
+<li class="chapter" data-level="4.1.3" data-path="models.html"><a href="models.html#recruits"><i class="fa fa-check"></i><b>4.1.3</b> Recruits</a></li>
+<li class="chapter" data-level="4.1.4" data-path="models.html"><a href="models.html#fruting"><i class="fa fa-check"></i><b>4.1.4</b> Fruting</a></li>
+<li class="chapter" data-level="4.1.5" data-path="models.html"><a href="models.html#flowering"><i class="fa fa-check"></i><b>4.1.5</b> Flowering</a></li>
+</ul></li>
+<li class="chapter" data-level="4.2" data-path="models.html"><a href="models.html#models-1"><i class="fa fa-check"></i><b>4.2</b> Models</a>
+<ul>
+<li class="chapter" data-level="4.2.1" data-path="models.html"><a href="models.html#growth-1"><i class="fa fa-check"></i><b>4.2.1</b> Growth</a></li>
+<li class="chapter" data-level="4.2.2" data-path="models.html"><a href="models.html#survival-1"><i class="fa fa-check"></i><b>4.2.2</b> Survival</a></li>
+<li class="chapter" data-level="4.2.3" data-path="models.html"><a href="models.html#recruits-1"><i class="fa fa-check"></i><b>4.2.3</b> Recruits</a></li>
+<li class="chapter" data-level="4.2.4" data-path="models.html"><a href="models.html#fruting-1"><i class="fa fa-check"></i><b>4.2.4</b> Fruting</a></li>
+<li class="chapter" data-level="4.2.5" data-path="models.html"><a href="models.html#flowering-1"><i class="fa fa-check"></i><b>4.2.5</b> Flowering</a></li>
+</ul></li>
+<li class="chapter" data-level="4.3" data-path="models.html"><a href="models.html#parameter-estimates"><i class="fa fa-check"></i><b>4.3</b> Parameter estimates</a></li>
+</ul></li>
+<li class="chapter" data-level="5" data-path="ipm_scratch.html"><a href="ipm_scratch.html"><i class="fa fa-check"></i><b>5</b> IPM from Scratch</a>
+<ul>
+<li class="chapter" data-level="5.1" data-path="ipm_scratch.html"><a href="ipm_scratch.html#question-"><i class="fa fa-check"></i><b>5.1</b> !!!-Question-!!!</a></li>
+<li class="chapter" data-level="5.2" data-path="ipm_scratch.html"><a href="ipm_scratch.html#building-the-ipm"><i class="fa fa-check"></i><b>5.2</b> Building the IPM</a></li>
+</ul></li>
+<li class="chapter" data-level="6" data-path="bugs.html"><a href="bugs.html"><i class="fa fa-check"></i><b>6</b> BUGS</a></li>
 </ul>
 
       </nav>
@@ -281,7 +305,7 @@ Expand to see the mean dataframe of the very large individuals after dormancy
 </details>
 <pre><code>## # A tibble: 18 × 2
 ##    plant_id size_t0
-##    &lt;chr&gt;      &lt;dbl&gt;
+##    &lt;fct&gt;      &lt;dbl&gt;
 ##  1 1_11_9         5
 ##  2 1_11_9        17
 ##  3 1_11_9        NA
@@ -314,7 +338,7 @@ Expand to see the full dataframe of the very large individuals after dormancy
 </details>
 <pre><code>## # A tibble: 94 × 2
 ##    plant_id    br
-##    &lt;chr&gt;    &lt;dbl&gt;
+##    &lt;fct&gt;    &lt;dbl&gt;
 ##  1 1_11_9      NA
 ##  2 1_11_9      NA
 ##  3 1_11_9       5
@@ -577,6 +601,11 @@ Expand to see the full dataframe of the very large individuals after dormancy
 <h2><span class="header-section-number">3.4</span> Issue 4 - Fires<a href="investigation.html#issue-4---fires" class="anchor-section" aria-label="Anchor link to header"></a></h2>
 <p>The data from Carter Creek Tract, Lake Wales Ridge Wildlife Environmental Area, 1998-2017, includes information on the severity of six fire outbreaks during this time. In the data we found the severity of ´0´ for some of the individuals. We raise the question of what a severity of ´0´ means?</p>
 <p>Once again, as of March 2025, we have not been in contact with the corresponding author.</p>
+<p>Menges et al. (2016) describe how fire affects Avon Park Harebells, emphasizing the plant’s ability to resprout and thrive after fire. They hypothesize that the plant’s long taproot helps them readily resprout post-fire, supported by their observation of high survival and growth after fire and mechanical disturbances (Menges and Kohfeldt 1995). Fire is crucial for maintaining the biodiversity of Florida scrub and sandhill ecosystems, which rely on periodic fires at intervals of 5 to 60 years (Menges 2007, Menges and Gordon 2010).</p>
+<p>Menges suggests that protected sites, which are managed with fire, have more positive population trends compared to unprotected sites that do not use fire management (Menges 1999). For example, the Rosemary Path population underwent a prescribed burn in 2005, and fire did not negatively affect initial <strong>survival</strong>. In fact, survival rates were higher in burned quadrats in 2006-2007 (95.6%) compared to control quadrats (71.4%), and continued to be better in the treated areas in the following years.</p>
+<p><strong>Growth</strong> was influenced by fire and mechanical treatments, with the combination of Gyro-Trac and fire producing higher initial growth than fire alone or the control.</p>
+<p>Fire also helped with <strong>recruitment</strong>, increasing germination speed, although herbivory had a negative effect. Avon Park Harebells are strong resprouters after fire, herbivory, and mechanical disturbances that remove their aboveground parts. Menges recommends management practices that encourage pollinators, such as prescribed fire.</p>
+<p>Unfortunately, neither Menges’ publication nor the data webpage provide information on how fire severity was measured, leaving the level 0 severity fire a mystery, for now.</p>
 </div>
 <div id="issue-5---spatial-relationship" class="section level2 hasAnchor" number="3.5">
 <h2><span class="header-section-number">3.5</span> Issue 5 - Spatial relationship<a href="investigation.html#issue-5---spatial-relationship" class="anchor-section" aria-label="Anchor link to header"></a></h2>

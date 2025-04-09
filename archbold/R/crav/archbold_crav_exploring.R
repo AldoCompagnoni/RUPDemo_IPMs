@@ -167,21 +167,24 @@ df_filtered <- df %>%
 # Original year mean dataframe -------------------------------------------------
 df_mean_og <- df %>%
   filter(s < 6 | is.na(s)) %>%
-  group_by(site, quad, plant, plant_id, year) %>%
+  group_by(site, quad, quad_id, plant, plant_id, year) %>%
   summarise(
     survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
     size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
     fruit    = if_else(all(is.na(fr)), NA_real_, mean(fr, na.rm = TRUE)),
     flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),
+    fire_sev = if_else(
+      all(is.na(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),
+      NA_real_, 
+      mean(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f), na.rm = TRUE)),
     .groups  = "drop"
   ) %>% 
   ungroup()
 
 
-
 # Base mean dataframe ----------------------------------------------------------
 df_mean <- df_mean_og %>% 
-  group_by(site, quad, plant, plant_id) %>% 
+  group_by(site, quad, quad_id, plant, plant_id) %>% 
   # Handle survival based on previous dormancy status
   # If the current status is dead or NA
   # Check if survived in the previous 1, 2, or 3 years
@@ -286,8 +289,6 @@ df_mean <- df_mean_og %>%
     age_vector
   }) %>%
   ungroup()
-
-
 
 
 # BUGs to fix ------------------------------------------------------------------
@@ -477,6 +478,20 @@ ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
 #   1, 1, 37, 2014, 1, 13
 #   1, 4, 17, 2012, 1, NA
 #   1, 2, 22, 2010, 1, 19, 1, 8
+
+
+
+# Investigation: Fire ----------------------------------------------------------
+names(df_mean)
+df_mean %>% 
+  group_by(quad_id, year) %>% 
+  summarise(sum(fire_sev, na.rm = T))
+
+ggplot() +
+  
+
+
+
 
 
 # Data Processes ---------------------------------------------------------------

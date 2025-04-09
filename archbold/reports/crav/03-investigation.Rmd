@@ -298,6 +298,16 @@ The data from Carter Creek Tract, Lake Wales Ridge Wildlife Environmental Area, 
 
 Once again, as of March 2025, we have not been in contact with the corresponding author. 
 
+Menges et al. (2016) describe how fire affects Avon Park Harebells, emphasizing the plant’s ability to resprout and thrive after fire. They hypothesize that the plant’s long taproot helps them readily resprout post-fire, supported by their observation of high survival and growth after fire and mechanical disturbances (Menges and Kohfeldt 1995). Fire is crucial for maintaining the biodiversity of Florida scrub and sandhill ecosystems, which rely on periodic fires at intervals of 5 to 60 years (Menges 2007, Menges and Gordon 2010).
+
+Menges suggests that protected sites, which are managed with fire, have more positive population trends compared to unprotected sites that do not use fire management (Menges 1999). For example, the Rosemary Path population underwent a prescribed burn in 2005, and fire did not negatively affect initial **survival**. In fact, survival rates were higher in burned quadrats in 2006-2007 (95.6%) compared to control quadrats (71.4%), and continued to be better in the treated areas in the following years.
+
+**Growth** was influenced by fire and mechanical treatments, with the combination of Gyro-Trac and fire producing higher initial growth than fire alone or the control. 
+
+Fire also helped with **recruitment**, increasing germination speed, although herbivory had a negative effect. Avon Park Harebells are strong resprouters after fire, herbivory, and mechanical disturbances that remove their aboveground parts. Menges recommends management practices that encourage pollinators, such as prescribed fire.
+
+Unfortunately, neither Menges' publication nor the data webpage provide information on how fire severity was measured, leaving the level 0 severity fire a mystery, for now.
+
 
 ## Issue 5 - Spatial relationship
 

@@ -7,9 +7,16 @@ df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>%
   janitor::clean_names() %>%
   mutate(across(c(5, 6, 11:length(.)), ~ na_if(., 9999))) %>%
   mutate(
-    plant_id = paste(site, quad, plant, sep = "_"),
-    year     = substr(date, 1, 4),  
-    month    = substr(date, 6, 7)) %>%
+    plant_id = as.factor(paste(site, quad, plant, sep = "_")),
+    quad_id  = as.factor(paste(site, quad, sep = "_")),
+    year     = as.numeric(substr(date, 1, 4)),  
+    month    = as.numeric(substr(date, 6, 7)),
+    site     = as.factor(site),
+    quad     = as.factor(quad),
+    mp       = as.factor(mp),
+    plant    = as.factor(plant),
+    caged    = as.factor(caged),
+    veg      = as.factor(veg)) %>%
   arrange(site, quad, plant, year, month)
 
 df_meta <- data.frame(variable = colnames(df)) %>% 
@@ -24,7 +31,8 @@ df_meta <- data.frame(variable = colnames(df)) %>%
     'fire severity Oct. 2017', 'survival code for month', 'number of stems',
     'number of branch tips', 'number of flowers (corolla showing)', 
     'number of developing fruits', 'number of mature fruits', 'herbivory code',
-    'plant identification', 'sample year', 'sample month'))
+    'plant identification', 'quadrat identification', 'sample year', 
+    'sample month'))
 ```
 
 <details>
@@ -51,9 +59,15 @@ df_mean_og <- df %>%
   filter(s < 6 | is.na(s)) %>%
   group_by(site, quad, plant, plant_id, year) %>%
   summarise(
-    survives = if_else(all(is.na(s )), NA_real_, max(s,  na.rm = TRUE)),
-    size_t0 =  if_else(all(is.na(br)), NA_real_, max(br, na.rm = TRUE)),
-    .groups = "drop"
+    survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
+    size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
+    fruit    = if_else(all(is.na(fr)), NA_real_, mean(fr, na.rm = TRUE)),
+    flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),
+    fire_sev = if_else(
+      all(is.na(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),
+      NA_real_, 
+      mean(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f), na.rm = TRUE)),
+    .groups  = "drop"
   ) %>% 
   ungroup()
 ```
@@ -81,15 +95,19 @@ For individuals whose true birth could be determined (i.e., those born at least 
 ```{r data mean updated}
 df_mean <- df_mean_og %>% 
   group_by(site, quad, plant, plant_id) %>% 
+  # Handle survival based on previous dormancy status
+  # If the current status is dead or NA
+  # Check if survived in the previous 1, 2, or 3 years
+  # Check if survives in the next 1, 2, or 3 years
   mutate(
-    # Handle survival based on previous dormancy status
     survives = if_else(
-      # If the current status is dead or NA
       (survives == 0 | is.na(survives)) & 
-        # Check if survived in the previous 1, 2, or 3 years
-        (lag(survives, 1) == 1 | lag(survives, 2) == 1 | lag(survives, 3) == 1) & 
-        # Check if survives in the next 1, 2, or 3 years
-        (lead(survives, 1) == 1 | lead(survives, 2) == 1 | lead(survives, 3) == 1), 
+        (lag(survives, 1) %in% c(1, 3, 5) | 
+           lag(survives, 2) %in% c(1, 3, 5) | 
+           lag(survives, 3) %in% c(1, 3, 5)) & 
+        (lead(survives, 1) %in% c(1, 3, 5) | 
+           lead(survives, 2) %in% c(1, 3, 5) | 
+           lead(survives, 3) %in% c(1, 3, 5)),
       1,  
       survives
     ),
@@ -111,7 +129,13 @@ df_mean <- df_mean_og %>%
       survives == 1 & is.na(size_t0) ~ 1,
       size_t0  >  0                  ~ 0, 
       TRUE ~ NA_real_ 
-    )
+    ),
+    # Generate a new column 'dormancy_count' that counts consecutive 1s
+    dormancy_count = case_when(
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 0 ~ 2,
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 ~ 3,
+      dormancy == 1 ~ 1,
+      TRUE ~ dormancy)
   ) %>% 
   
   # Define recruits
@@ -174,7 +198,6 @@ df_mean <- df_mean_og %>%
     # Return the computed age vector
     age_vector
   }) %>%
-  
   ungroup()
 ```
 

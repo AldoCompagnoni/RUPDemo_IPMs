@@ -15,28 +15,42 @@
 source('helper_functions/load_packages.R')
 load_packages(sf, plantTracker, tidyverse, readr)
 
-# Data -------------------------------------------------------------------------
-# Directory 1
-pub_dir <- file.path(paste0(author_year, '_', region_abb))
-dat_dir <- file.path(pub_dir, 'data', 'quadrat_data', sep='')  
-if (!dir.exists(dat_dir)) {
-  dat_dir <- file.path(pub_dir, 'data', 'quad_data')
+
+# Specifications ---------------------------------------------------------------
+# Directories
+dir_pub <- file.path(paste0(author_year, '_', region_abb))
+dir_qud <- file.path(dir_pub, 'data', 'quadrat_data', sep='')  
+if (!dir.exists(dir_qud)) {
+  dir_qud <- file.path(dir_qud, 'data', 'quad_data')
 }
+
+# Key varibales
 # Prefix for the script name
-script_prefix <- str_c(str_extract(author_year, '^[^_]+'), 
+v_script_prefix <- str_c(str_extract(author_year, '^[^_]+'), 
                        str_sub(str_extract(author_year, '_\\d+$'), -2, -1))
 # Define prefix for two of the same author and year
 if (
   length(
     list.dirs(
       full.names = TRUE, recursive = FALSE)[grepl(
-        paste0("^", author_year), basename(
+        paste0('^', author_year), basename(
           list.dirs(full.names = TRUE, recursive = FALSE)))]
   ) > 1) {
-  script_prefix <- paste0(script_prefix, region_abb)
+  v_script_prefix <- paste0(v_script_prefix, region_abb)
+}
+
+# Set the default delimiter (comma)
+v_default_delimiter <- c(',')
+
+# Check if a custom delimiter is defined (for example, it could be passed as a function argument or set elsewhere)
+v_delimiter <- if (exists('custom_delimiter') && !is.null(custom_delimiter)) {
+  custom_delimiter  # Use the custom delimiter if defined
+} else {
+  v_default_delimiter # Use the default delimiter (comma) if no custom delimiter is set
 }
 
 
+# Function ---------------------------------------------------------------------
 # Function to quote bare names for tidy evaluation
 quote_bare <- function(...){
   # creates a list of the arguments, but keeps their expressions unevaluated
@@ -49,35 +63,27 @@ quote_bare <- function(...){
     sapply(deparse)  
 }
 
-# Set the default delimiter (comma)
-default_delimiter <- ','
 
-# Check if a custom delimiter is defined (for example, it could be passed as a function argument or set elsewhere)
-delimiter <- if (exists('custom_delimiter') && !is.null(custom_delimiter)) {
-  custom_delimiter  # Use the custom delimiter if defined
-} else {
-  default_delimiter # Use the default delimiter (comma) if no custom delimiter is set
-}
-
+# Data -------------------------------------------------------------------------
 # Read species list and filter for target species
-sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'), 
-                      delim = delimiter, escape_double = FALSE, 
+sp_list <- read_delim(paste0(dir_qud, '/species_list.csv'), 
+                      delim = v_delimiter, escape_double = FALSE, 
                       trim_ws = TRUE) %>% 
   as.data.frame()  %>%
   { 
     # Rename 'type' or 'form' to 'growthForm' if they exist
-    if("type" %in% colnames(.)) {
+    if('type' %in% colnames(.)) {
       . <- rename(., growthForm = type)
     }
-    if("form" %in% colnames(.)) {
+    if('form' %in% colnames(.)) {
       . <- rename(., growthForm = form)
     }
     .
   } %>% 
   filter(
-    if(tolower(gr_form) == "grass") {
+    if(tolower(gr_form) == 'grass') {
       # If 'grass' is specified, include 'grass', 'c3', 'c4'
-      tolower(growthForm) %in% c("grass", "c3", "c4", "shortgrass")  
+      tolower(growthForm) %in% c('grass', 'c3', 'c4', 'shortgrass')  
     } else {
       # Otherwise, filter exactly by the specified growthForm
       tolower(growthForm) == tolower(gr_form)  
@@ -94,4 +100,3 @@ sp_list <- read_delim(paste0(dat_dir, '/species_list.csv'),
       }
     }
   }
-

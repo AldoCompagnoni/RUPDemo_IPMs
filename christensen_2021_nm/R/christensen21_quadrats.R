@@ -1,5 +1,5 @@
 # Using plantTracker to convert chart quadrat data from SGS LTER to demographic data for IPMs
-# Aspen Workman, fall 2023
+# Aspen Workman, fall 2023 - Modified by Niklas Neiße, Spring 2025
 #
 #
 # Outline

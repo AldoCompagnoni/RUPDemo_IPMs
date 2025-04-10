@@ -22,7 +22,7 @@
 
 
 
-<meta name="date" content="2025-04-09" />
+<meta name="date" content="2025-04-10" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -160,19 +160,19 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <ul>
 <li class="chapter" data-level="4.1" data-path="models.html"><a href="models.html#data-preparation"><i class="fa fa-check"></i><b>4.1</b> Data preparation</a>
 <ul>
-<li class="chapter" data-level="4.1.1" data-path="models.html"><a href="models.html#growth"><i class="fa fa-check"></i><b>4.1.1</b> Growth</a></li>
-<li class="chapter" data-level="4.1.2" data-path="models.html"><a href="models.html#survival"><i class="fa fa-check"></i><b>4.1.2</b> Survival</a></li>
-<li class="chapter" data-level="4.1.3" data-path="models.html"><a href="models.html#recruits"><i class="fa fa-check"></i><b>4.1.3</b> Recruits</a></li>
+<li class="chapter" data-level="4.1.1" data-path="models.html"><a href="models.html#survival"><i class="fa fa-check"></i><b>4.1.1</b> Survival</a></li>
+<li class="chapter" data-level="4.1.2" data-path="models.html"><a href="models.html#growth"><i class="fa fa-check"></i><b>4.1.2</b> Growth</a></li>
+<li class="chapter" data-level="4.1.3" data-path="models.html"><a href="models.html#flowering"><i class="fa fa-check"></i><b>4.1.3</b> Flowering</a></li>
 <li class="chapter" data-level="4.1.4" data-path="models.html"><a href="models.html#fruting"><i class="fa fa-check"></i><b>4.1.4</b> Fruting</a></li>
-<li class="chapter" data-level="4.1.5" data-path="models.html"><a href="models.html#flowering"><i class="fa fa-check"></i><b>4.1.5</b> Flowering</a></li>
+<li class="chapter" data-level="4.1.5" data-path="models.html"><a href="models.html#recruits"><i class="fa fa-check"></i><b>4.1.5</b> Recruits</a></li>
 </ul></li>
 <li class="chapter" data-level="4.2" data-path="models.html"><a href="models.html#models-1"><i class="fa fa-check"></i><b>4.2</b> Models</a>
 <ul>
-<li class="chapter" data-level="4.2.1" data-path="models.html"><a href="models.html#growth-1"><i class="fa fa-check"></i><b>4.2.1</b> Growth</a></li>
-<li class="chapter" data-level="4.2.2" data-path="models.html"><a href="models.html#survival-1"><i class="fa fa-check"></i><b>4.2.2</b> Survival</a></li>
-<li class="chapter" data-level="4.2.3" data-path="models.html"><a href="models.html#recruits-1"><i class="fa fa-check"></i><b>4.2.3</b> Recruits</a></li>
+<li class="chapter" data-level="4.2.1" data-path="models.html"><a href="models.html#survival-1"><i class="fa fa-check"></i><b>4.2.1</b> Survival</a></li>
+<li class="chapter" data-level="4.2.2" data-path="models.html"><a href="models.html#growth-1"><i class="fa fa-check"></i><b>4.2.2</b> Growth</a></li>
+<li class="chapter" data-level="4.2.3" data-path="models.html"><a href="models.html#flowering-1"><i class="fa fa-check"></i><b>4.2.3</b> Flowering</a></li>
 <li class="chapter" data-level="4.2.4" data-path="models.html"><a href="models.html#fruting-1"><i class="fa fa-check"></i><b>4.2.4</b> Fruting</a></li>
-<li class="chapter" data-level="4.2.5" data-path="models.html"><a href="models.html#flowering-1"><i class="fa fa-check"></i><b>4.2.5</b> Flowering</a></li>
+<li class="chapter" data-level="4.2.5" data-path="models.html"><a href="models.html#recruits-1"><i class="fa fa-check"></i><b>4.2.5</b> Recruits</a></li>
 </ul></li>
 <li class="chapter" data-level="4.3" data-path="models.html"><a href="models.html#parameter-estimates"><i class="fa fa-check"></i><b>4.3</b> Parameter estimates</a></li>
 </ul></li>
@@ -695,11 +695,15 @@ Expand to skim the raw dataframe
 <span id="cb3-4"><a href="data.html#cb3-4" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
 <span id="cb3-5"><a href="data.html#cb3-5" tabindex="-1"></a>    <span class="at">survives =</span> <span class="fu">if_else</span>(<span class="fu">all</span>(<span class="fu">is.na</span>(s )), <span class="cn">NA_real_</span>, <span class="fu">max</span> (s,  <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
 <span id="cb3-6"><a href="data.html#cb3-6" tabindex="-1"></a>    <span class="at">size_t0  =</span> <span class="fu">if_else</span>(<span class="fu">all</span>(<span class="fu">is.na</span>(br)), <span class="cn">NA_real_</span>, <span class="fu">max</span> (br, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
-<span id="cb3-7"><a href="data.html#cb3-7" tabindex="-1"></a>    <span class="at">fruit    =</span> <span class="fu">if_else</span>(<span class="fu">all</span>(<span class="fu">is.na</span>(fr)), <span class="cn">NA_real_</span>, <span class="fu">mean</span>(fr, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
-<span id="cb3-8"><a href="data.html#cb3-8" tabindex="-1"></a>    <span class="at">flower   =</span> <span class="fu">if_else</span>(<span class="fu">all</span>(<span class="fu">is.na</span>(fl)), <span class="cn">NA_real_</span>, <span class="fu">sum</span> (fl, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
-<span id="cb3-9"><a href="data.html#cb3-9" tabindex="-1"></a>    <span class="at">.groups  =</span> <span class="st">&quot;drop&quot;</span></span>
-<span id="cb3-10"><a href="data.html#cb3-10" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
-<span id="cb3-11"><a href="data.html#cb3-11" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span></code></pre></div>
+<span id="cb3-7"><a href="data.html#cb3-7" tabindex="-1"></a>    <span class="at">flower   =</span> <span class="fu">if_else</span>(<span class="fu">all</span>(<span class="fu">is.na</span>(fl)), <span class="cn">NA_real_</span>, <span class="fu">sum</span> (fl, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
+<span id="cb3-8"><a href="data.html#cb3-8" tabindex="-1"></a>    <span class="at">fruit    =</span> <span class="fu">if_else</span>(<span class="fu">all</span>(<span class="fu">is.na</span>(fr)), <span class="cn">NA_real_</span>, <span class="fu">mean</span>(fr, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
+<span id="cb3-9"><a href="data.html#cb3-9" tabindex="-1"></a>    <span class="at">fire_sev =</span> <span class="fu">if_else</span>(</span>
+<span id="cb3-10"><a href="data.html#cb3-10" tabindex="-1"></a>      <span class="fu">all</span>(<span class="fu">is.na</span>(<span class="fu">c</span>(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),</span>
+<span id="cb3-11"><a href="data.html#cb3-11" tabindex="-1"></a>      <span class="cn">NA_real_</span>, </span>
+<span id="cb3-12"><a href="data.html#cb3-12" tabindex="-1"></a>      <span class="fu">mean</span>(<span class="fu">c</span>(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f), <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
+<span id="cb3-13"><a href="data.html#cb3-13" tabindex="-1"></a>    <span class="at">.groups  =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb3-14"><a href="data.html#cb3-14" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-15"><a href="data.html#cb3-15" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span></code></pre></div>
 </details>
 <details>
 <summary>
@@ -721,7 +725,7 @@ Expand to skim the condenced raw dataframe
 </tr>
 <tr class="odd">
 <td align="left">Number of columns</td>
-<td align="left">9</td>
+<td align="left">10</td>
 </tr>
 <tr class="even">
 <td align="left">_______________________</td>
@@ -737,7 +741,7 @@ Expand to skim the condenced raw dataframe
 </tr>
 <tr class="odd">
 <td align="left">numeric</td>
-<td align="left">5</td>
+<td align="left">6</td>
 </tr>
 <tr class="even">
 <td align="left">________________________</td>
@@ -875,6 +879,19 @@ Expand to skim the condenced raw dataframe
 <td align="left">▇▁▁▁▁</td>
 </tr>
 <tr class="even">
+<td align="left">flower</td>
+<td align="right">12840</td>
+<td align="right">0.25</td>
+<td align="right">0.91</td>
+<td align="right">3.01</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">71</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
 <td align="left">fruit</td>
 <td align="right">12845</td>
 <td align="right">0.25</td>
@@ -887,17 +904,17 @@ Expand to skim the condenced raw dataframe
 <td align="right">5</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
-<tr class="odd">
-<td align="left">flower</td>
-<td align="right">12840</td>
-<td align="right">0.25</td>
-<td align="right">0.91</td>
-<td align="right">3.01</td>
+<tr class="even">
+<td align="left">fire_sev</td>
+<td align="right">14709</td>
+<td align="right">0.15</td>
+<td align="right">0.27</td>
+<td align="right">0.77</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
 <td align="right">0</td>
-<td align="right">71</td>
+<td align="right">4</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
 </tbody>
@@ -1039,7 +1056,7 @@ Expand to skim the working dataframe
 </tr>
 <tr class="odd">
 <td align="left">Number of columns</td>
-<td align="left">18</td>
+<td align="left">19</td>
 </tr>
 <tr class="even">
 <td align="left">_______________________</td>
@@ -1055,7 +1072,7 @@ Expand to skim the working dataframe
 </tr>
 <tr class="odd">
 <td align="left">numeric</td>
-<td align="left">14</td>
+<td align="left">15</td>
 </tr>
 <tr class="even">
 <td align="left">________________________</td>
@@ -1193,19 +1210,6 @@ Expand to skim the working dataframe
 <td align="left">▇▁▁▁▁</td>
 </tr>
 <tr class="even">
-<td align="left">fruit</td>
-<td align="right">12845</td>
-<td align="right">0.25</td>
-<td align="right">0.02</td>
-<td align="right">0.14</td>
-<td align="right">0</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">0.00</td>
-<td align="right">5.00</td>
-<td align="left">▇▁▁▁▁</td>
-</tr>
-<tr class="odd">
 <td align="left">flower</td>
 <td align="right">12840</td>
 <td align="right">0.25</td>
@@ -1218,7 +1222,33 @@ Expand to skim the working dataframe
 <td align="right">71.00</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
+<tr class="odd">
+<td align="left">fruit</td>
+<td align="right">12845</td>
+<td align="right">0.25</td>
+<td align="right">0.02</td>
+<td align="right">0.14</td>
+<td align="right">0</td>
+<td align="right">0.00</td>
+<td align="right">0.00</td>
+<td align="right">0.00</td>
+<td align="right">5.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
 <tr class="even">
+<td align="left">fire_sev</td>
+<td align="right">14709</td>
+<td align="right">0.15</td>
+<td align="right">0.27</td>
+<td align="right">0.77</td>
+<td align="right">0</td>
+<td align="right">0.00</td>
+<td align="right">0.00</td>
+<td align="right">0.00</td>
+<td align="right">4.00</td>
+<td align="left">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
 <td align="left">dormancy</td>
 <td align="right">12699</td>
 <td align="right">0.26</td>
@@ -1231,7 +1261,7 @@ Expand to skim the working dataframe
 <td align="right">1.00</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">dormancy_count</td>
 <td align="right">12699</td>
 <td align="right">0.26</td>
@@ -1244,7 +1274,7 @@ Expand to skim the working dataframe
 <td align="right">3.00</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">recruit</td>
 <td align="right">16935</td>
 <td align="right">0.02</td>
@@ -1257,7 +1287,7 @@ Expand to skim the working dataframe
 <td align="right">1.00</td>
 <td align="left">▁▁▇▁▁</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">size_t1</td>
 <td align="right">13716</td>
 <td align="right">0.20</td>
@@ -1270,7 +1300,7 @@ Expand to skim the working dataframe
 <td align="right">85.00</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">logsize_t0</td>
 <td align="right">12843</td>
 <td align="right">0.25</td>
@@ -1283,7 +1313,7 @@ Expand to skim the working dataframe
 <td align="right">4.44</td>
 <td align="left">▇▆▅▁▁</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">logsize_t1</td>
 <td align="right">13716</td>
 <td align="right">0.20</td>
@@ -1296,7 +1326,7 @@ Expand to skim the working dataframe
 <td align="right">4.44</td>
 <td align="left">▇▇▆▂▁</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">logsize_t0_2</td>
 <td align="right">12843</td>
 <td align="right">0.25</td>
@@ -1309,7 +1339,7 @@ Expand to skim the working dataframe
 <td align="right">19.74</td>
 <td align="left">▇▂▁▁▁</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">logsize_t0_3</td>
 <td align="right">12843</td>
 <td align="right">0.25</td>
@@ -1322,7 +1352,7 @@ Expand to skim the working dataframe
 <td align="right">87.69</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">age</td>
 <td align="right">16294</td>
 <td align="right">0.05</td>

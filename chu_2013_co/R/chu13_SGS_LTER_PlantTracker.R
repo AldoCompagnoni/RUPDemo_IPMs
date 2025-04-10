@@ -1,5 +1,5 @@
 # Using plantTracker to convert chart quadrat data from SGS LTER to demographic data for IPMs
-# Aspen Workman, fall 2023
+# Aspen Workman, fall 2023 - Modified by Niklas Neiße, spring 2025
 #
 # Data sets were provided by the Shortgrass Steppe Long Term Ecological Research group,
 # a partnership between Colorado State University, United States Department of Agriculture,
@@ -28,29 +28,38 @@
 # to convert this chart quadrat data to demographic data that will be used to parameterize vital
 # rate models for the construction of integral projection models (IPMs) of the perennial grasses.
 #
-#
-#
-# Setup
-#
+
+
+# Packages ---------------------------------------------------------------------
 library(sf) #ver 1.0-1.2
 library(plantTracker) #ver 1.1.0
 library(tidyverse)
-
-base_dir <- ('chu_2013_co')
-dat_dir <- paste(base_dir, "/data/quadrat_data/", sep="")
-shp_dir <- paste(base_dir, "/data/quadrat_data/shapefiles/", sep="")
+library(janitor)
 
 
+# Directories ------------------------------------------------------------------
+dir_pub <- file.path('chu_2013_co')
+dir_dat <- file.path(dir_pub, 'data')
+dir_qud <- file.path(dir_dat, 'quadrat_data')
+dir_shp <- file.path(dir_qud, 'shapefiles')
+
+
+# Data -------------------------------------------------------------------------
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list <- read.delim(paste0(dat_dir, "species_list.csv"))
-sp_name_changes <- read.csv(paste0(dat_dir, "species_name_changes.csv")) 
-#  will use to check names later on
-grasses <- subset(sp_list, growthForm=="grass" & longevity=="P" & cover>100 & species!="Carex spp.")
+sp_list <- read.delim(file.path(dir_qud, "species_list.csv"))
+sp_name_changes <- read.csv(file.path(dir_qud, "species_name_changes.csv")) 
+
+
+
+# #  will use to check names later on
+# grasses <- subset(sp_list, growthForm=="grass" & longevity=="P" & cover>100 & species!="Carex spp.")
+
+
 
 # Read in quad inventory to use as 'inv' list in plantTracker
-quad_inv <- read.delim(paste0(dat_dir, "quad_inventory.csv"))
+quad_inv <- read.delim(file.path(dir_qud, "quad_inventory.csv"))
 quadInv_list <- as.list(quad_inv)
 quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
 inv_sgs <- quadInv_list
@@ -58,20 +67,20 @@ inv_sgs <- quadInv_list
 # Read in shapefiles to create sf dataframe to use as 'dat' in plantTracker
 # Adapted from plantTracker How to (Stears et al. 2022)
 # Create list of quad names
-quadNames <- list.files(paste0(dat_dir, 'shapefiles'))
+quadNames <- list.files(file.path(dir_qud, 'shapefiles'))
 # Use for loop to download data from each quad folder
 for(i in 1:length(quadNames)){
   quadNow <- quadNames[i]
   quadYears <- unlist(strsplit(list.files(
-    paste0(shp_dir,quadNow,"/"),
+    file.path(dir_shp, quadNow),
     pattern = ".shp$"), split = ".shp"))
   for (j in 1:length(quadYears)) {
     quadYearNow <- quadYears[j]
-    shapeNow <- sf::st_read(dsn = paste0(shp_dir,quadNow),
+    shapeNow <- sf::st_read(dsn = paste0(dir_shp,quadNow),
                             layer = quadYearNow)
-    shapeNow$Site <- "CO"
-    shapeNow$Quad <- quadNow
-    shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][4])
+    shapeNow$site <- "co"
+    shapeNow$quad <- quadNow
+    shapeNow$year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][4])
     if (grepl(quadYearNow, pattern = "pnt")) {
       shapeNow <- shapeNow[,!(names(shapeNow)
                               %in% c("coords_x1", "coords_x2", "coords_x1_", "coords_x2_", "coords_x1.1", "coords_x2.1"))]
@@ -91,14 +100,14 @@ for(i in 1:length(quadNames)){
 }
 
 # Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat, file = paste0(dat_dir, "SGS_LTER_plantTracker_full.rds"))
-dat <- readRDS(file = paste0(dat_dir, "SGS_LTER_plantTracker_full.rds"))
+saveRDS(dat, file = paste0(dir_qud, "SGS_LTER_plantTracker_full.rds"))
+dat <- readRDS(file = paste0(dir_qud, "SGS_LTER_plantTracker_full.rds"))
 
 # # Subset to the species of interest
 # dat2 <- dat[dat$Species %in% grasses$species,]
 # 
 # # And save the subsetted file, too
-# saveRDS(dat2, file = paste0(dat_dir, "SGS_LTER_plantTracker_grasses.rds"))
+# saveRDS(dat2, file = paste0(dir_qud, "SGS_LTER_plantTracker_grasses.rds"))
 
 # Check the inv and dat arguments
 checkDat(dat, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
@@ -186,7 +195,7 @@ drop_rows2 <- c(
 dat03 <- dat03[!(row.names(dat03) %in% drop_rows2),]
 checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-saveRDS(dat03, file = paste0(dat_dir, "SGS_LTER_plantTracker_all_filtered.rds"))
+saveRDS(dat03, file = paste0(dir_qud, "SGS_LTER_plantTracker_all_filtered.rds"))
 
 # # Now the data are ready for the trackSpp function
 # datTrackSpp <- trackSpp(dat02,

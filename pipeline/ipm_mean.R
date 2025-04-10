@@ -1,7 +1,7 @@
-# IPM for Author yyyy; State(or region); 
+# IPM for Author yyyy; State(or region);
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
@@ -96,16 +96,14 @@ if(!file.exists(paste0(dir_data, '/',v_script_prefix, '_',v_sp_abb, '.csv'))) {
 # Data -------------------------------------------------------------------------
 # Read and clean the species data
 df <- read.csv(paste0(dir_data, '/',v_script_prefix, '_',v_sp_abb, '.csv')) %>% 
-  filter(Species == v_species) %>%
-  select(-c(Suspect, nearEdge, Site)) %>%
-  mutate(across(c(Quad), as.factor)) %>%
-  rename(species  = Species, 
-         size_t0  = basalArea_genet,
+  clean_names() %>% 
+  filter(species == v_species) %>%
+  select(-c(suspect, near_edge, site)) %>%
+  mutate(across(c(quad), as.factor)) %>%
+  rename(size_t0  = basal_area_genet,
          size_t1  = size_tplus1,
          survives = survives_tplus1,
-         year     = Year,
-         quad     = Quad,
-         track_id = trackID) %>%
+         track_id = track_id) %>%
   mutate(logsize_t0   = log(size_t0),
          logsize_t1   = log(size_t1),
          logsize_t0_2 = logsize_t0^2,

@@ -28,7 +28,7 @@ Cheers!
 
 This is the IPM without the flowers or fruits.
 
-```{r}
+```{r pars}
 extr_value <- function(x, field){
   subset(x, coefficient == field)$value
 }
@@ -36,26 +36,26 @@ extr_value <- function(x, field){
 pars <- Filter(function(x) length(x) > 0, list(
   prefix  = v_script_prefix,
   species = v_species,
+  surv_b0 = extr_value(surv_out, 'b0'),
+  surv_b1 = extr_value(surv_out, 'logsize_t0'),
+  surv_b2 = extr_value(surv_out, 'logsize_t0_2'),
+  surv_b3 = extr_value(surv_out, 'logsize_t0_3'),
   grow_b0 = extr_value(grow_out, 'b0'),
   grow_b1 = extr_value(grow_out, 'logsize_t0'),
   grow_b2 = extr_value(grow_out, 'logsize_t0_2'),
   grow_b3 = extr_value(grow_out, 'logsize_t0_3'),
   a       = extr_value(grow_out, 'a'),
   b       = extr_value(grow_out, 'b'),
-  surv_b0 = extr_value(surv_out, 'b0'),
-  surv_b1 = extr_value(surv_out, 'logsize_t0'),
-  surv_b2 = extr_value(surv_out, 'logsize_t0_2'),
-  surv_b3 = extr_value(surv_out, 'logsize_t0_3'),
   flwr_b0 = extr_value(flwr_out, 'b0'),
   flwr_b1 = extr_value(flwr_out, 'logsize_t0'),
   flwr_b2 = extr_value(flwr_out, 'logsize_t0_2'),
   flwr_b3 = extr_value(flwr_out, 'logsize_t0_3'),
-  fecu_b0 = extr_value(others, 'fecu_b0'),
-  recr_sz = extr_value(others, 'rec_siz'),
-  recr_sd = extr_value(others, 'rec_sd'),
   frui_b0 = extr_value(others, 'frui_b0'),
   frui_sz = extr_value(others, 'fru_siz'),
   frui_sd = extr_value(others, 'fru_sd'),
+  fecu_b0 = extr_value(others, 'fecu_b0'),
+  recr_sz = extr_value(others, 'rec_siz'),
+  recr_sd = extr_value(others, 'rec_sd'),
   L       = extr_value(others, 'min_siz'),
   U       = extr_value(others, 'max_siz'),
   mat_siz = 200,
@@ -65,8 +65,31 @@ pars <- Filter(function(x) length(x) > 0, list(
 
 # write.csv(pars, row.names = F, paste0(
 #   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_pars.csv'))
+```
 
-# Function describing standard deviation of growth model
+
+```{r func}
+# General 
+# Invert logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+
+# Survival
+# x-sized individual to time t1
+sx <- function(x, pars, num_pars = v_mod_su_index) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_pars) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
+}
+
+
+# Growth
+# Standard deviation of growth model
 grow_sd <- function(x, pars) {
   pars$a * (exp(pars$b* x)) %>% sqrt 
 }
@@ -85,27 +108,13 @@ gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
 }
 
 
-# Function describing the invert logit
-inv_logit <- function(x) {exp(x) / (1 + exp(x))}
-
-
-# Survival of x-sized individual to time t1
-sx <- function(x, pars, num_pars = v_mod_su_index) {
-  survival_value <- pars$surv_b0
-  for (i in 1:num_pars) {
-    param_name <- paste0('surv_b', i)
-    if (!is.null(pars[[param_name]])) {
-      survival_value <- survival_value + pars[[param_name]] * x^(i)
-    }
-  }
-  return(inv_logit(survival_value))
-}
-
 # Function describing the transition kernel
 pxy <- function(x, y, pars) {
   return(sx(x, pars) * gxy(x, y, pars))
 }
 
+
+# Recruits
 # Function describing the recruitment 
 fy <- function(y, pars, h){
   n_recr  <- pars$fecu_b0
@@ -132,10 +141,6 @@ kernel <- function(pars) {
   # midpoints of bins
   y   <- 0.5 * (b[1:n] + b[2:(n + 1)]) 
   
-  # Fertility matrix
-  Fmat        <- matrix(0, n, n)
-  Fmat[]      <- matrix(fy(y, pars, h), n, n)
-  
   # Survival vector
   Smat   <- c()
   Smat   <- sx(y, pars)
@@ -159,8 +164,12 @@ kernel <- function(pars) {
     Tmat[,i]  <- Gmat[,i] * Smat[i]
   }
   
+  # Fertility matrix
+  Fmat        <- matrix(0, n, n)
+  Fmat[]      <- matrix(fy(y, pars, h), n, n)
+  
   # Full Kernel is simply a summation of fertility and transition matrices
-  k_yx <- Fmat + Tmat
+  k_yx <- Tmat + Fmat 
   
   return(list(k_yx    = k_yx,
               Fmat    = Fmat,

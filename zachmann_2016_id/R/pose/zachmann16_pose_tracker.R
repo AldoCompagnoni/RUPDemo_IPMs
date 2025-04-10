@@ -1,33 +1,36 @@
 # plantTracker - Zachmann 2016 Idaho - Poa secunda
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.12.03
+# Date  : 2024.10.24
 
-# Publication : https://doi.org/10.1890/10-0404.1
+# Publication: https://doi.org/10.1890/10-0404.1
 
 # rm(list = ls())
 
-# Data -------------------------------------------------------------------------
+# Specifications ---------------------------------------------------------------
 # Define publication 
-author_year <- 'zachmann_2016'
+v_author_year      <- c('zachmann_2016')
 # Define region abbreviation
-region_abb <- 'id'
+v_region_abb       <- c('id')
 # Define growth form (grass, forb, shrub, c4)
-gr_form    <- 'grass'
+v_gr_form          <- c('grass')
 # Customized delimiter for `read_delim` function, comma is predefined
-custom_delimiter <- c(',')
+v_custom_delimiter <- c()
 
+
+# Main pipelines ---------------------------------------------------------------
 source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list, 7)
+head(sp_list)
 target_spec <- sp_list %>% .[c(2),]  
 
 source('pipeline/plant_tracker_02.R')
+
 
 # Exploration ------------------------------------------------------------------
 # Quadrat inventory
@@ -36,4 +39,4 @@ quad_inv
 dat_target_spec
 # Buffer size - regular and genet
 st_bbox(dat_target_spec)
-buff
+v_buff

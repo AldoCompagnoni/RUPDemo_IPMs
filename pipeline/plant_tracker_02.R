@@ -1,7 +1,7 @@
 # Second part of the plant tracker pipeline
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
@@ -19,7 +19,7 @@ v_sp_abb  <- tolower(gsub(' ', '', paste(substr(
 
 
 # Directory --------------------------------------------------------------------
-if ((gr_form == 'forb' | gr_form == 'shrub')) {
+if ((v_gr_form == 'forb' | v_gr_form == 'shrub')) {
   v_folder_suffix <- paste0(v_sp_abb, '_mpm')
   dir_R      <- file.path(dir_pub, 'R', v_folder_suffix)
   dir_data   <- file.path(dir_pub, 'data', v_folder_suffix)
@@ -54,19 +54,19 @@ names(inv) <- gsub('\\.','-',names(inv))
 data <- {
     # Check for files ending with '_quadrats_filtered.rds' in the specified directory
     rds_files <- list.files( 
-      dir_qud, pattern = "_quadrats_filtered\\.rds$", full.names = TRUE)
+      dir_qud, pattern = '_quadrats_filtered\\.rds$', full.names = TRUE)
     # If files matching the pattern are found, read the first one
     if (length(rds_files) > 0) {
       readRDS(file = rds_files[1])
     } else {
       # If not fallback to the default file
       readRDS(file = list.files(
-        dir_qud, pattern = "all_filtered\\.rds$", full.names = TRUE)[1])
+        dir_qud, pattern = 'all_filtered\\.rds$', full.names = TRUE)[1])
     }
     
   } %>%
   # Remove the 'type' column
-  select(-any_of(c("type"))) %>% 
+  select(-any_of(c('type'))) %>% 
   clean_names()
 
 # Subset data for the target species
@@ -74,15 +74,15 @@ dat_target_spec <- data %>%
   subset(species %in% target_spec$species) %>% 
   # Exclude certain samples
   filter(
-    if (exists("mod_plot") && length(mod_plot) > 0) !(quad %in% mod_plot) 
+    if (exists('mod_plot') && length(mod_plot) > 0) !(quad %in% mod_plot) 
     else TRUE
   )
 
 # set the buffer to 0.05 or 5 depending on the unit of measure used in GIS file
-v_buff    <- if_else(st_bbox(dat_target_spec)[3] < 1.1, 0.05, 5)
+buff <- v_buff    <- if_else(st_bbox(dat_target_spec)[3] < 1.1, 0.05, 5)
 
 # Forbs are not "clonal"; we assume non-forbs are clonal.
-v_clonal  <- if_else(gr_form == 'forb', F, T)
+v_clonal  <- if_else(v_gr_form == 'forb', F, T)
 
 # Prepare data for the trackSpp function
 datTrackSpp <- trackSpp(

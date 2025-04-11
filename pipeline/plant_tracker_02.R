@@ -67,7 +67,9 @@ data <- {
   } %>%
   # Remove the 'type' column
   select(-any_of(c('type'))) %>% 
-  clean_names()
+  clean_names() #%>%   
+  # This is to accommodate older versions of 'quadrat' scripts
+  #set_names(c('species', 'site', 'quad', 'year', 'geometry'))
 
 # Subset data for the target species
 dat_target_spec <- data %>% 

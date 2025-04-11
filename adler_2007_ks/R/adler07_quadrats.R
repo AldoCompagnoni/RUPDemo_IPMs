@@ -35,7 +35,6 @@ sp_list <- read_delim(
   delim = v_delimiter, escape_double = FALSE, trim_ws = TRUE) %>% 
   clean_names()
   
-
 # Read in quad inventory to use as 'inv' list in plantTracker
 quad_inv      <- read_delim(
   file.path(dir_qud, "quadrat_inventory.csv"),
@@ -49,6 +48,7 @@ names(inv_ks) <- gsub( '\\.','-',names(inv_ks) )
 # Adapted from plantTracker How to (Stears et al. 2022)
 # Create list of quad names
 quadNames <- list.files(dir_shp)
+
 # Use for loop to download data from each quad folder
 for(i in 1:length(quadNames)){
   
@@ -72,7 +72,8 @@ for(i in 1:length(quadNames)){
     shapeNow$year <- quad_yr_name %>% 
       gsub(quadNow,'',.) %>% 
       gsub('.e00','',.) %>%
-      unlist
+      unlist %>% 
+      as.numeric()
     
     # start final data frame
     if(i == 1 & j == 1) {
@@ -85,11 +86,8 @@ for(i in 1:length(quadNames)){
 }
 
 # Save the output file so that it doesn't need to be recreated ever again
-
-
 saveRDS(dat,   file.path(dir_qud, 'adler07_quadrats_full.rds'))
 dat <- readRDS(file.path(dir_qud, 'adler07_quadrats_full.rds'))
-# dat <- dat %>% mutate(Year = as.numeric(Year))
 
 
 # Clean data -------------------------------------------------------------------

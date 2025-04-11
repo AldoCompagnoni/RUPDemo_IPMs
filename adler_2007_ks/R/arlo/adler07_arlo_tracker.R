@@ -1,40 +1,36 @@
 # plantTracker - Adler 2007 Kansas - Aristida longiseta
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.12.03
+# Date  : 2024.12.11
 
 # Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
 
 # rm(list = ls())
 
-
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'adler_2007'
+v_author_year      <- c('adler_2007')
 # Define region abbreviation
-region_abb <- 'ks'
-# Define growth form (grass - including c4, c3 and short grasses-, forb, shrub)
-gr_form    <- 'grass'
+v_region_abb       <- c('ks')
+# Define growth form (grass, forb, shrub, c4)
+v_gr_form          <- c('grass')
 # Customized delimiter for `read_delim` function, comma is predefined
-custom_delimiter <- c()
+v_custom_delimiter <- c(',')
 
+
+# Main pipelines ---------------------------------------------------------------
 source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list, 20)
+head(sp_list)
 target_spec <- sp_list %>% .[c(8),]  
 
-
-# Modifications to the data structure ------------------------------------------
-# Specific plots to exclude, a list of plots
-mod_plot <- c()
-
-
 source('pipeline/plant_tracker_02.R')
+
 
 # Exploration ------------------------------------------------------------------
 # Quadrat inventory
@@ -43,3 +39,4 @@ quad_inv
 dat_target_spec
 # Buffer size - regular and genet
 st_bbox(dat_target_spec)
+v_buff

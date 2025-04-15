@@ -59,14 +59,10 @@ if (!file.exists(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv'))) {
 
 # Species data frame
 df <- read.csv(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv')) %>% 
-  filter(Species == species) %>%
-  select(-c(Suspect, nearEdge, Site)) %>% # geometry, 
-  mutate(across(c(Quad), as.factor)) %>% 
-  rename(species  = Species, 
-         survives = survives_tplus1,
-         year     = Year,
-         quad     = Quad,
-         track_id = trackID)
+  filter(species == species) %>%
+  select(-c(suspect, near_edge, site)) %>% # geometry, 
+  mutate(across(c(quad), as.factor)) %>% 
+  rename(survives = survives_tplus1)
 
 # first look at the data
 skim(df)

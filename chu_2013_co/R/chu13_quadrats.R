@@ -48,18 +48,14 @@ dir_shp <- file.path(dir_qud, 'shapefiles')
 # Read in species list, species name changes, and subset species list to perennial grasses
 # with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
 # species with the lowest cover later.
-sp_list <- read.delim(file.path(dir_qud, "species_list.csv"))
-sp_name_changes <- read.csv(file.path(dir_qud, "species_name_changes.csv")) 
-
-
-
-# #  will use to check names later on
-# grasses <- subset(sp_list, growthForm=="grass" & longevity=="P" & cover>100 & species!="Carex spp.")
-
+sp_list <- read.delim(file.path(dir_qud, 'species_list.csv')) %>% 
+  clean_names()
+# sp_name_changes <- read.csv(file.path(dir_qud, 'species_name_changes.csv')) %>% 
+#   clean_names()
 
 
 # Read in quad inventory to use as 'inv' list in plantTracker
-quad_inv <- read.delim(file.path(dir_qud, "quad_inventory.csv"))
+quad_inv <- read.delim(file.path(dir_qud, 'quad_inventory.csv'))
 quadInv_list <- as.list(quad_inv)
 quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
 inv_sgs <- quadInv_list
@@ -70,48 +66,57 @@ inv_sgs <- quadInv_list
 quadNames <- list.files(file.path(dir_qud, 'shapefiles'))
 # Use for loop to download data from each quad folder
 for(i in 1:length(quadNames)){
+  
   quadNow <- quadNames[i]
   quadYears <- unlist(strsplit(list.files(
-    file.path(dir_shp, quadNow),
-    pattern = ".shp$"), split = ".shp"))
+    file.path(dir_shp, quadNow), pattern = '.shp$'), split = '.shp'))
+  
   for (j in 1:length(quadYears)) {
+    
     quadYearNow <- quadYears[j]
-    shapeNow <- sf::st_read(dsn = paste0(dir_shp,quadNow),
-                            layer = quadYearNow)
-    shapeNow$site <- "co"
+    shapeNow <- sf::st_read(
+      dsn = file.path(dir_shp,quadNow), layer = quadYearNow)
+    shapeNow$site <- 'co'
     shapeNow$quad <- quadNow
-    shapeNow$year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][4])
-    if (grepl(quadYearNow, pattern = "pnt")) {
-      shapeNow <- shapeNow[,!(names(shapeNow)
-                              %in% c("coords_x1", "coords_x2", "coords_x1_", "coords_x2_", "coords_x1.1", "coords_x2.1"))]
+    shapeNow$year <- as.numeric(strsplit(quadYearNow, split = '_')[[1]][4])
+    
+    if (grepl(quadYearNow, pattern = 'pnt')) {
+      shapeNow <- shapeNow[,!(
+        names(shapeNow) %in% c(
+          'coords_x1', 'coords_x2', 'coords_x1_', 
+          'coords_x2_', 'coords_x1.1', 'coords_x2.1'))]
       shapeNow <- sf::st_buffer(x = shapeNow, dist = .0025)
-      shapeNow$type <- "point"
-    } else {
-      shapeNow <- shapeNow[,!(names(shapeNow) %in% c("SP_ID", "SP_ID_1", "area", "x", "y"))]
+      shapeNow$type <- 'point'
+    
       
-      shapeNow$type <- "polygon"
+      } else {
+      shapeNow <- shapeNow[,!(names(shapeNow) %in% c(
+        'SP_ID', 'SP_ID_1', 'area', 'x', 'y'))]
+      
+      shapeNow$type <- 'polygon'
     }
     if (i == 1 & j == 1) {
       dat <- shapeNow
-    } else {
+    
+      } else {
       dat <- rbind(dat, shapeNow)
     }
   }
 }
 
-# Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat, file = paste0(dir_qud, "SGS_LTER_plantTracker_full.rds"))
-dat <- readRDS(file = paste0(dir_qud, "SGS_LTER_plantTracker_full.rds"))
+dat <- dat %>% clean_names()
 
-# # Subset to the species of interest
-# dat2 <- dat[dat$Species %in% grasses$species,]
-# 
-# # And save the subsetted file, too
-# saveRDS(dat2, file = paste0(dir_qud, "SGS_LTER_plantTracker_grasses.rds"))
+# # Save the output file so that it doesn't need to be recreated ever again
+# saveRDS(dat, file = paste0(dir_qud, 'SGS_LTER_plantTracker_full.rds'))
+# dat <- readRDS(file = paste0(dir_qud, 'SGS_LTER_plantTracker_full.rds'))
+# Save the output file so that it doesn't need to be recreated ever again
+saveRDS(dat,   file.path(dir_qud, 'chu13_quadrats_full.rds'))
+dat <- readRDS(file.path(dir_qud, 'chu13_quadrats_full.rds'))
+
 
 # Check the inv and dat arguments
-checkDat(dat, inv_sgs, species = "species", site = "site", quad = "quad", 
-         year = "year", geometry = "geometry")
+checkDat(dat, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 # Some rows had invalid geometry, so we fix the geometries
 invalid_geom <- c(
   2311, 2347, 2649, 2929, 3229, 3301, 3874, 3877, 3879, 3933, 4008, 4012, 4163, 
@@ -139,12 +144,16 @@ invalid_geom <- c(
   70375, 70435, 70468, 70470, 70493, 70503, 70552, 70663, 70912, 71118, 74592, 
   75064, 75067, 75433, 75800, 75962, 76001, 76473, 77872, 78722, 79486, 79550, 
   80555, 82966, 83268, 83403, 83447, 83746)
+
 dat01 <- dat
+
 for(i in 1:length(invalid_geom)){
   dat01[invalid_geom[i],6] <- st_make_valid(dat01[invalid_geom[i],6])
 }
 
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
+
 invalid_geom3 <- c(
   84097, 84276, 84278, 84284, 84287, 84788, 84790, 84797, 84891, 84983, 85272, 
   85308, 85432, 85722, 85915, 86004, 86006, 86136, 86855, 87068, 87679, 87700, 
@@ -160,11 +169,13 @@ invalid_geom3 <- c(
   119220, 119562, 119792, 120299, 120302, 120726, 120873, 121031, 121034, 
   121039, 121411, 121461, 121544, 121691, 121805, 121887
 )
+
 for(i in 1:length(invalid_geom3)){
   dat01[invalid_geom3[i],6] <- st_make_valid(dat01[invalid_geom3[i],6])
 }
 
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 invalid_geom4 <- c(
   123325, 123790, 123984, 124009, 124070, 124334, 124681, 125120, 125129, 
   125839, 126288, 130048, 130659, 130935, 130961, 131130, 131281, 131344, 
@@ -176,9 +187,13 @@ for(i in 1:length(invalid_geom4)){
   dat01[invalid_geom4[i],6] <- st_make_valid(dat01[invalid_geom4[i],6])
 }
 
-checkDat(dat01, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
-dat02 <- dat01[!is.na(dat01$Species), ]
-checkDat(dat02, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
+
+dat02 <- dat01[!is.na(dat01$species), ]
+
+checkDat(dat02, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 
 # Still have a couple of repeated rows, somehow, so we will drop those
 drop_rows <- c(
@@ -186,7 +201,9 @@ drop_rows <- c(
   55089)
 
 dat03 <- dat02[!(row.names(dat02) %in% drop_rows),]
-checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
+
+checkDat(dat03, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 
 # Still have a couple of repeated rows, somehow, so we will drop those
 drop_rows2 <- c(
@@ -194,97 +211,10 @@ drop_rows2 <- c(
   128419)
 
 dat03 <- dat03[!(row.names(dat03) %in% drop_rows2),]
-checkDat(dat03, inv_sgs, species = "Species", site = "Site", quad = "Quad", year = "Year", geometry = "geometry")
 
-saveRDS(dat03, file = paste0(dir_qud, "SGS_LTER_plantTracker_all_filtered.rds"))
+checkDat(dat03, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 
-# # Now the data are ready for the trackSpp function
-# datTrackSpp <- trackSpp(dat02,
-#                         inv_sgs,
-#                         dorm=1,
-#                         buff=0.05,
-#                         clonal=TRUE,
-#                         buffGenet = 0.05,
-#                         aggByGenet = TRUE,
-#                         flagSuspects = TRUE)
-# 
-# 
-# saveRDS(datTrackSpp,file="SGS_LTER_plantTracker_tracked.rds")
-# 
-# # Playing around with the data
-# 
-# all_spp <- datTrackSpp
-# for(i in 1:7552){
-#   all_spp$Treatment[i] <- str_split(all_spp$Quad[i],"_")[[1]][1]
-#   all_spp$Pasture[i] <- str_split(all_spp$Quad[i],"_")[[1]][2]
-# }
-# 
-# Ari_lon <- all_spp[all_spp$Species == "Aristida longiseta",] # 337 occurrences
-# Bou_gra <- all_spp[all_spp$Species == "Bouteloua gracilis",] # 3547 occurrences
-# Buc_dac <- all_spp[all_spp$Species == "Buchloe dactyloides",] # 999 occurrences
-# Sit_hys <- all_spp[all_spp$Species == "Sitanion hystrix",] # 471 occurrences
-# Spo_cry <- all_spp[all_spp$Species == "Sporobolus cryptandrus",] # 1256 occurrences
-# Sti_com <- all_spp[all_spp$Species == "Stipa comata",] # 880 occurrences
-# 
-# 
-# ggplot(Bou_gra) +
-#   geom_point(aes( x = log(basalArea_genet),y = survives_tplus1,group=Treatment, color=Treatment))
-# 
-# do.call( cbind, list( Bou_gra$Treatment,
-#                       Bou_gra$Year
-#                       ) ) %>% 
-#   as.data.frame %>% 
-#   count(V1,V2) %>% 
-#   arrange(V2,V1)
-# 
-# Bou_gra_df <- Bou_gra %>% st_drop_geometry()
-# Bou_gra_df$logsize <- log(Bou_gra_df$basalArea_genet)
-# write.csv(Bou_gra_df,"Bou_gra.csv")
-# 
-# Bou_gra_unun <- Bou_gra_df[Bou_gra_df$Treatment=="unun",]
-# Bou_gra_ungz <- Bou_gra_df[Bou_gra_df$Treatment=="ungz",]
-# Bou_gra_gzgz <- Bou_gra_df[Bou_gra_df$Treatment=="gzgz",]
-# Bou_gra_gzun <- Bou_gra_df[Bou_gra_df$Treatment=="gzun",]
-# 
-# Bou_gra_binned_unun <- plot_binned_prop(Bou_gra_unun,20,logsize,survives_tplus1)
-# Bou_gra_binned_ungz <- plot_binned_prop(Bou_gra_ungz,20,logsize,survives_tplus1)
-# Bou_gra_binned_gzgz <- plot_binned_prop(Bou_gra_gzgz,20,logsize,survives_tplus1)
-# Bou_gra_binned_gzun <- plot_binned_prop(Bou_gra_gzun,20,logsize,survives_tplus1)
-# 
-# Bou_gra_binned_trt <- data.frame(matrix(vector(), 80, 4,
-#                        dimnames=list(c(), c("binned_logsize", "binned_survival_t1", "treatment","n"))),
-#                 stringsAsFactors=F)
-# 
-# Bou_gra_binned_trt$binned_logsize[1:20] <- Bou_gra_binned_gzgz$x_binned
-# Bou_gra_binned_trt$binned_survival_t1[1:20] <- Bou_gra_binned_gzgz$y_binned
-# Bou_gra_binned_trt$treatment[1:20] <- "gzgz"
-# Bou_gra_binned_trt$n[1:20] <- Bou_gra_binned_gzgz$n_s
-# 
-# Bou_gra_binned_trt$binned_logsize[21:40] <- Bou_gra_binned_gzun$x_binned
-# Bou_gra_binned_trt$binned_survival_t1[21:40] <- Bou_gra_binned_gzun$y_binned
-# Bou_gra_binned_trt$treatment[21:40] <- "gzun"
-# Bou_gra_binned_trt$n[21:40] <- Bou_gra_binned_gzun$n_s
-# 
-# Bou_gra_binned_trt$binned_logsize[41:60] <- Bou_gra_binned_unun$x_binned
-# Bou_gra_binned_trt$binned_survival_t1[41:60] <- Bou_gra_binned_unun$y_binned
-# Bou_gra_binned_trt$treatment[41:60] <- "unun"
-# Bou_gra_binned_trt$n[41:60] <- Bou_gra_binned_unun$n_s
-# 
-# Bou_gra_binned_trt$binned_logsize[61:80] <- Bou_gra_binned_ungz$x_binned
-# Bou_gra_binned_trt$binned_survival_t1[61:80] <- Bou_gra_binned_ungz$y_binned
-# Bou_gra_binned_trt$treatment[61:80] <- "ungz"
-# Bou_gra_binned_trt$n[61:80] <- Bou_gra_binned_ungz$n_s
-# 
-# 
-# ggplot(Bou_gra_binned_trt) +
-#   geom_point(aes(x=binned_logsize,y=binned_survival_t1,group=treatment,color=treatment))
-# 
-# 
-# Spo_cry_df <- Spo_cry %>% st_drop_geometry()
-# Spo_cry_df$logsize <- log(Spo_cry_df$basalArea_genet)
-# write.csv(Spo_cry_df,"Spo_cry.csv")
-#               
-# 
-# Buc_dac_df <- Buc_dac %>% st_drop_geometry()
-# Buc_dac_df$logsize <- log(Buc_dac_df$basalArea_genet)
-# write.csv(Buc_dac_df,"Buc_dac.csv")
+
+# Save the data
+saveRDS(dat03, file.path(dir_qud,'chu13_quadrats_filtered.rds'))

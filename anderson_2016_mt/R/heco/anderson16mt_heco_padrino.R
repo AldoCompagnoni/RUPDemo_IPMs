@@ -1,4 +1,4 @@
-# Populating padrino - Anderson 2016 Arizona - Allium textile
+# Populating padrino - Anderson 2016 Arizona - Hesperostipa comata
 
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
@@ -31,10 +31,10 @@ species     <- 'Hesperostipa comata'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'hco166'
+ipm_id      <- 'hco16'
 
 # IPM-Type: 'year_specific' or 'mean'?
-ipm_type    <- 'year_mean'
+ipm_type    <- 'year_specific'
 
 
 # Taxonomic information --------------------------------------------------------

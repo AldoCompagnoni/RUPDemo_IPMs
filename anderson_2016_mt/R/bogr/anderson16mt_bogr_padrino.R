@@ -1,5 +1,4 @@
-# Populating padrino - Anderson 2016 Arizona - Allium textile
-
+# Populating padrino - Anderson 2016 Arizona - Bouteloua gracilis
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
 # Email : diana.spurite@posteo.de

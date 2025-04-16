@@ -1,4 +1,4 @@
-# Populating padrino - Anderson 2016 Arizona - Sphaeralcea coccinea
+# Populating padrino - Anderson 2016 Arizona - Hesperostipa comata
 
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
@@ -27,14 +27,14 @@ author_year <- 'anderson_2016'
 # Define region abbreviation
 region_abb  <- 'mt'
 # Define species 
-species     <- 'Sphaeralcea coccinea'
+species     <- 'Hesperostipa comata'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'sco169'
+ipm_id      <- 'hco166'
 
 # IPM-Type: 'year_specific' or 'mean'?
-ipm_type    <- 'year_mean'
+ipm_type    <- 'year_specific'
 
 
 # Taxonomic information --------------------------------------------------------
@@ -43,9 +43,9 @@ species_accepted <- gsub(' ', '_', species)
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family
-tax_family <- 'Malvaceae'
+tax_family <- 'Poaceae'
 # The accepted order
-tax_order  <- 'Malvales' 
+tax_order  <- 'Poales' 
 # The accepted class
 tax_class  <- 'Magnoliopsida'
 # The accepted phylum
@@ -60,7 +60,7 @@ kingdom    <- 'Plantae'
 organism_type <- 'Herbaceous' 
 # Whether the species is a dicotyledon or a monocotyledon 
 #  (only applies to plants)
-dicot_monocot <- 'Dicot'
+dicot_monocot <- 'Monocot'
 # Whether the species is a angiosperm or a gymosperm (only applies to plants)
 angio_gymno   <- 'angio'
 

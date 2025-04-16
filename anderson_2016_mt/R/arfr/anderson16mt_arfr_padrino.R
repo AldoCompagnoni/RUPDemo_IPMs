@@ -1,4 +1,4 @@
-# Populating padrino - Anderson 2016 Arizona - Sphaeralcea coccinea
+# Populating padrino - Anderson 2016 Arizona - Artemisia frigida
 
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
@@ -27,11 +27,11 @@ author_year <- 'anderson_2016'
 # Define region abbreviation
 region_abb  <- 'mt'
 # Define species 
-species     <- 'Sphaeralcea coccinea'
+species     <- 'Artemisia frigida'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'sco169'
+ipm_id      <- 'afr162'
 
 # IPM-Type: 'year_specific' or 'mean'?
 ipm_type    <- 'year_mean'
@@ -43,9 +43,9 @@ species_accepted <- gsub(' ', '_', species)
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family
-tax_family <- 'Malvaceae'
+tax_family <- 'Asteraceae'
 # The accepted order
-tax_order  <- 'Malvales' 
+tax_order  <- 'Asterales' 
 # The accepted class
 tax_class  <- 'Magnoliopsida'
 # The accepted phylum

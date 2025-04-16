@@ -1,249 +1,167 @@
-# Populating padrino - adler 2007 kansas Bouteloua hirsuta
+# Populating padrino - Anderson 2016 Arizona - Sphaeralcea coccinea
 
-# Niklas Neisse
-# 2024.17.10
+# Author: Diana Spurite
+# Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
+# Email : diana.spurite@posteo.de
+# Main  : aldo.compagnoni@idiv.de
+# Web   : https://aldocompagnoni.weebly.com/
+# Date  : 2025.03.18
 
-#
+# Publication: https://doi.org/10.1890/11-0193.1
+
+
+# Comments ---------------------------------------------------------------------
+# 1. the pipeline runs plant tracker and IPM mean if the data does not exist
+# 2. find all the graphics in the result folder of the respective species
+# 2.1 and the data in their respective folder
 
 
 # Setting the stage ------------------------------------------------------------
 # Remove all objects in the global environment
 # rm(list = ls()) 
-# Set seed for reproducibility
-set.seed(100)
-options(stringsAsFactors = F)
-
-
-# Packages ---------------------------------------------------------------------
-# Define CRAN packages
-.cran_packages <- c("tidyverse","ipmr","readxl", "writexl", "remotes") 
-# Check if CRAN packages are installed
-.inst <- .cran_packages %in% installed.packages() 
-if(any(!.inst)) {
-  # Install missing CRAN packages
-  install.packages(.cran_packages[!.inst]) 
-}
-# Load required packages
-sapply(.cran_packages, require, character.only = TRUE) 
-
-# remotes::install_github("padrinoDB/pdbDigitUtils",force = TRUE)
-library(pdbDigitUtils)
-
-rm( list = ls() )
-options( stringsAsFactors = F )
 
 
 # Data -------------------------------------------------------------------------
-# Define the species variable
-species        <- "Bouteloua hirsuta"
-sp_abb         <- tolower(gsub(" ", "", paste(substr(unlist(strsplit(species, " ")), 1, 2), 
-                                              collapse = "")))
-ipm_id         <- "nnnnn6"
+# Define publication 
+author_year <- 'anderson_2016'
+# Define region abbreviation
+region_abb  <- 'mt'
+# Define species 
+species     <- 'Sphaeralcea coccinea'
 
-all_pars       <- read.csv(paste0("anderson_2016_mt/data/", sp_abb, "/all_pars.csv"))
-pars_var_wide  <- read.csv(paste0("anderson_2016_mt/data/", sp_abb, "/2.pars_var.csv"))
-lam_mean_ipmr  <- read.csv(paste0("anderson_2016_mt/data/", sp_abb, "/lambdas_yr_vec.csv"))
+# A unique identifier for each model. 
+#  It is 6 alphanumeric characters with no spaces
+ipm_id      <- 'sco169'
 
-
-# Populating the PADRINO database template -------------------------------------
-# Store the PADRINO excel template
-YOUR_PATH   <- "."
-sheet_names <- excel_sheets(paste(YOUR_PATH, "/pdb_template.xlsx", sep = ""))
-pdb         <- lapply(sheet_names, function(x) {
-  as.data.frame(read_excel(paste(YOUR_PATH, "/pdb_template.xlsx", sep = ""), sheet = x))})
-names(pdb)  <- sheet_names
+# IPM-Type: 'year_specific' or 'mean'?
+ipm_type    <- 'year_mean'
 
 
-pdb$Metadata[1,] <- c(
-  ipm_id, 
-  
-  # Taxonomic information
-  "Bouteloua_hirsuta", "Bouteloua_hirsuta", "Bouteloua",
-  "Poaceae", "Poales", "Liliopsida", "Magnoliophyta",
-  "Plantae", "Herbaceous", "Monocot", "angio", 
-  
-  # Publication information
-  "Adler; Tyburczy; Laurenroth",
-  "Ecology", "2007", "10.1890/0012-9658(2007)88[2673%3ALMQFKP]2.0.CO%3B2", "Adler", 
-  "peter.adler@usu.edu (2024)", NA, 
-  "Adler, P. B., Tyburczy, W. R., & Lauenroth, W. K. (2007). LONG‐TERM MAPPED QUADRATS FROM KANSAS PRAIRIE DEMOGRAPHIC INFORMATION FOR HERBACEOUS PLANTS: Ecological Archives E088‐161. Ecology, 88(10), 2673-2673.",
-  "https://figshare.com/collections/LONG-TERM_MAPPED_QUADRATS_FROM_KANSAS_PRAIRIE_DEMOGRAPHIC_INFORMATION_FOR_HERBACEOUS_PLANTS/3299993",
-  
-  # Data collection information
-  40, 1932, 6, 1971, 6, 1, NA, NA, 
-  "38.8", "-99.3", "462", "USA",
-  "n_america", "TGS",
-  
-  # Model information
-  "A", TRUE, "truncated_distributions", NA, NA, FALSE,
-  FALSE, FALSE, FALSE, "", "", ""
-)
-
-pdb$Metadata$eviction_used <- as.logical(pdb$Metadata$eviction_used)
-pdb$Metadata$duration <- as.numeric(pdb$Metadata$duration)
-pdb$Metadata$periodicity <- as.numeric(pdb$Metadata$periodicity)
-
-pdb$StateVariables[1,] <- c(ipm_id, "size", FALSE)
-pdb$StateVariables$discrete <- as.logical(pdb$StateVariables$discrete)
-
-pdb$ContinuousDomains[1,] <- c(ipm_id, 
-                               "size", 
-                               "", 
-                               all_pars$L, 
-                               all_pars$U, 
-                               "P_yr; F_yr", 
-                               "")
-
-pdb$ContinuousDomains$lower <- as.numeric(pdb$ContinuousDomains$lower)
-pdb$ContinuousDomains$upper <- as.numeric(pdb$ContinuousDomains$upper)
-
-pdb$IntegrationRules[1,] <- c(ipm_id,
-                              "size",
-                              "",
-                              all_pars$mat_siz,
-                              "midpoint",
-                              "P_yr; F_yr")
-
-pdb$IntegrationRules$n_meshpoints <- as.numeric(pdb$IntegrationRules$n_meshpoints)
-
-pdb$StateVectors[1,] <- c(ipm_id,
-                          "n_size",
-                          all_pars$mat_siz,
-                          "" )
-pdb$StateVectors$n_bins <- as.numeric(pdb$StateVectors$n_bins)
+# Taxonomic information --------------------------------------------------------
+# The accepted name of the species (here Wikipedia)
+species_accepted <- gsub(' ', '_', species)
+# The accepted genus
+tax_genus  <- sub('_.*', '', species_accepted)
+# The accepted family
+tax_family <- 'Malvaceae'
+# The accepted order
+tax_order  <- 'Malvales' 
+# The accepted class
+tax_class  <- 'Magnoliopsida'
+# The accepted phylum
+tax_phylum <- 'Streptophyta'
+# The kingdom
+kingdom    <- 'Plantae'
+# The type of organism. For plants, this is usually something like 
+#  "Herbaceous perennial", or "Shrub". For animals, this could be, for example, 
+#  "mammal" or "reptile". See here for more details 
+#   (but also do not hesitate to contact me if there instances that 
+#   fall outside of the classification given there)
+organism_type <- 'Herbaceous' 
+# Whether the species is a dicotyledon or a monocotyledon 
+#  (only applies to plants)
+dicot_monocot <- 'Dicot'
+# Whether the species is a angiosperm or a gymosperm (only applies to plants)
+angio_gymno   <- 'angio'
 
 
-# Ipm Kernels
-pdb$IpmKernels[1,] <- c(ipm_id, 
-                        "P_yr", 
-                        "P_yr = s_yr * g_yr * d_size", 
-                        "CC", 
-                        "size", 
-                        "size")
-
-pdb$IpmKernels[2,] <- c(ipm_id, 
-                        "F_yr", 
-                        "F_yr = fy_yr * d_size", 
-                        "CC", 
-                        "size", 
-                        "size")
-
-# Vital rate expressions
-pdb$VitalRateExpr[1,] <- c(ipm_id,
-                           "Survival",
-                           "s_yr = 1 / (1 + exp(-(surv_b0_yr + surv_b1_yr * size_1)))",
-                           "Evaluated",
-                           "P_yr")
-
-pdb$VitalRateExpr[2,] <- c(ipm_id,
-                           "Growth",
-                           "mu_g_yr = grow_b0_yr + grow_b1_yr * size_1 + grow_b2_yr * size_1^2",
-                           "Evaluated",
-                           "P_yr")
-
-pdb$VitalRateExpr[3,] <- c(ipm_id,
-                           "Growth",
-                           "g_yr = Norm(mu_g_yr, sd_g)",
-                           "Substituted",
-                           "P_yr")
-
-pdb$VitalRateExpr[4,] <- c(ipm_id,
-                           "Growth",
-                           "sd_g = sqrt(a * exp(b * size_1))",
-                           "Evaluated",
-                           "P_yr")
-
-pdb$VitalRateExpr[5,] <- c(ipm_id,
-                           "Fecundity",
-                           "fy_yr = fecu_b0_yr * r_d",
-                           "Evaluated",
-                           "F_yr")
-
-pdb$VitalRateExpr[6,] <- c(ipm_id,
-                           "Fecundity",
-                           "r_d = Norm(recr_sz, recr_sd)",
-                           "Substituted",
-                           "F_yr")
+# Publication information ------------------------------------------------------
+# The last names of each author on the manuscript, separated by a semicolon
+authors  <- 'Anderson; Vermeire; Adler'
+# The abbreviated name of the journal that the model appears in. 
+#  This follows the BIOSIS format. 
+#  Exceptions are when the source is not a journal 
+#  (e.g. a PhD/MSc thesis, government report). 
+#  In that case, we use something like "PhD Thesis" and 
+#  then include a link in the remark column
+journal  <- 'Ecology'
+#  The year the article was published
+pub_year <- '2016'
+# The DOI of the publication (NOT THE doi.org URL though!!)
+doi      <- '10.6084/m9.figshare.c.3304113.v1'
+# The last name of the corresponding author
+corresponding_author <- 'Adler'
+# The corresponding author’s email, along with the year of publication 
+#  in parentheses to denote how old (and possibly inaccessible) it is. 
+#  For example, this could levisc8@gmail.com (2020). 
+#  If you are able to find a more recent email address via Google, 
+#  then this can also be used (this isn’t necessarily expected though).
+email_year <- 'peter.adler@usu.edu (2024)'
+# Any qualitative comments you may have on the model. 
+#  These can range from comments to accuracy of GPS coordinates to descriptions 
+#  of the different levels of a treatment that was applied
+remark   <- 'cattle grazing treatments with light, moderate, and heavy stocking rates of 1.24, 0.92, and 0.76 ha/animal-unit-month (two pastures in each)'
+# The full APA style citation for the paper
+apa_citation <- 'Anderson, J., Vermeire, L., & Adler, P. B. (2011). Fourteen years of mapped, permanent quadrats in a northern mixed prairie, USA. Ecology, 92(8), 1703. https://esapubs.org/archive'
+# If there is one, a link to the Electronic Supplementary Material that 
+#  contains further details/parameter values for the model
+demog_appendix_link <- 'https://figshare.com/collections/Fourteen_years_of_mapped_permanent_quadrats_in_a_northern_mixed_prairie_USA/3304113'
 
 
-# Parameter Values
-for(i in 1:(length(pars_var_wide))) {
-  pdb$ParameterValues[i,1] <- ipm_id
-  pdb$ParameterValues[i,3] <- "size"
-  pdb$ParameterValues[i,4] <- names(pars_var_wide)[i]
-  pdb$ParameterValues[i,5] <- as.numeric(pars_var_wide[i])
-  
-  if(grepl("surv", names(pars_var_wide)[i])){
-    pdb$ParameterValues[i,2] <- "Survival"
-  } else {
-    if(grepl("grow", names(pars_var_wide)[i])){
-      pdb$ParameterValues[i,2] <- "Growth"
-    } else {pdb$ParameterValues[i,2] <- "Fecundity"}
-  }
-}
+# Data collection information --------------------------------------------------
+# The year that demographic data collection began. Formatted YYYY (e.g. 1990)
+start_year  <- 1932
+# The month of the year that demographic data collection began. 
+#  This is an integer between 1 and 12, where 1 corresponds to January
+start_month <- NA
+#  The final year of demographic data collection. Formatted YYYY
+end_year    <- 1945
+# The month of the year that demographic data collection concluded
+end_month   <- NA
+# Indicates the time step (periodicity) for which the seasonal, annual, 
+#  or multi-annual IPM was constructed. For example, 1 indicates that 
+#  the IPM iteration period is 1 year; 
+#  0.5 indicates that the IPM iterates once every 0.5 years or 6 months; 
+#  2 indicates that the IPM iteration occurs every 2 years
+periodicity <- 1
+# The name of the population given by the author. 
+#  For example, "Bear Creek", or "Havatselet". 
+#  If the population names are missing, 
+#  use sequential names in alphabetical order (e.g. "A", "B", "C", etc).
+population_name <- NA
+# Sometimes, a population_name may encompass multiple sub-populations that 
+#  are located close by. This integer specifies the number of 
+#  populations/sub-populations that are described by the model.
+number_populations <- NA
+# The decimal latitude of the population. 
+#  Use the dms_deg function from pdbDigitUtils to generate this
+lat         <- '46.4'
+# The decimal longitude of the population. 
+#  Use the dms_deg function from pdbDigitUtils to generate this
+lon         <- '-105.7'
+# The altitude above/below sea level, in meters
+altitude    <- '1250'
+# The ISO3 country code for the country in which the population is located. 
+country     <- 'USA'
+# The continent that the population is located on. 
+#  Options are n_america, s_america, oceania, asia, europe and africa. 
+#  Others may be added as needed
+continent   <- 'n_america'
+# The biome code
+#  https://patrickbarks.shinyapps.io/biomes/
+ecoregion   <- 'DES'
 
-pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- 
-  c(ipm_id,
-    "Growth",
-    "size",
-    "a",
-    all_pars$a)
-pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- 
-  c(ipm_id,
-    "Growth",
-    "size",
-    "b",
-    all_pars$b)                               
-pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- 
-  c(ipm_id,
-    "Fecundity",
-    "size",
-    "recr_sz",
-    all_pars$recr_sz)
-pdb$ParameterValues[nrow(pdb$ParameterValues)+1,] <- 
-  c(ipm_id,
-    "Fecundity",
-    "size",
-    "recr_sd",
-    all_pars$recr_sd)
 
-pdb$ParameterValues$parameter_value <- as.numeric(pdb$ParameterValues$parameter_value)
+# Main code --------------------------------------------------------------------
+source('pipeline/padrino_ipm_type.R')
 
 
-# Environmental variables
-pdb$ParSetIndices[1,] <- c(ipm_id,
-                           "year",
-                           "yr",
-                           "c(35:67,71)",
-                           "P_yr; F_yr",
-                           "")
+# Parameters -------------------------------------------------------------------
+# All parameters of the ipm  
+all_pars
 
-# Test targets
-pdb$TestTargets[1:nrow(lam_mean_ipmr),1] <- ipm_id
-pdb$TestTargets[1:nrow(lam_mean_ipmr),2] <- 1:nrow(lam_mean_ipmr)
-pdb$TestTargets[1:nrow(lam_mean_ipmr),3] <- as.numeric(lam_mean_ipmr$value)
-pdb$TestTargets[1:nrow(lam_mean_ipmr),4] <- 3
+# Year specific lambda -impr- 
+lam_mean_ipmr
 
-pdb$TestTargets$target_value <- as.numeric(pdb$TestTargets$target_value)
-pdb$TestTargets$precision    <- as.numeric(pdb$TestTargets$precision)
+# Padrino entry
+pdb
 
-write_xlsx(pdb, 
-           paste0("anderson_2016_mt/data/", sp_abb, "/", sp_abb, "_yr_pdb.xlsx"))
-pdb_test       <- read_pdb(
-  paste0("anderson_2016_mt/data/", sp_abb, "/", sp_abb, "_yr_pdb.xlsx"))
 
-pdb_test_proto <- pdb_make_proto_ipm(pdb_test, det_stoch = "det")
-print(pdb_test_proto[[ipm_id]])
-bg_ipm_pdb     <- make_ipm(pdb_test_proto[[ipm_id]])
-
+# Run IPM with padrino --------------------------------------------------------- 
+# Deterministic lambda, year specific
 bg_ipm_pdb
 lambda(bg_ipm_pdb)
+plot(lambda(bg_ipm_pdb) ~ lam_mean_ipmr$years)
+
+# Testing the model with padrino
 test_model(pdb_test, id = ipm_id)
-
-lmb_year <- ggplot() +
-  geom_point(aes(x = c(35:67,71), y = lambda(bg_ipm_pdb))) +
-  theme()
-
-ggsave(paste0("anderson_2016_mt/results/", sp_abb, "/years_lmb.png"), 
-       plot = lmb_year, 
-       width = 4, height = 3, units = "in", dpi = 150)

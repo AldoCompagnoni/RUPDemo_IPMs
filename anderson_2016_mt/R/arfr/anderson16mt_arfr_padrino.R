@@ -1,4 +1,4 @@
-# Populating padrino - Anderson 2016 Arizona - Allium textile
+# Populating padrino - Anderson 2016 Arizona - Artemisia frigida
 
 # Author: Diana Spurite
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse

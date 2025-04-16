@@ -42,11 +42,6 @@ v_mod_set_su     <- c()
 # Run the ipm mean wraper function
 source('pipeline/ipm_mean.R')
 
-getwd()
-file_path <- "anderson_2016_mt/data/spco/anderson16mt_spco.csv"  # Replace with your actual file name
-print(file.exists(file_path))
-cat(file_path, "\n")
-
 # Data 1 -----------------------------------------------------------------------
 # Raw
 skim(df)

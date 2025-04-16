@@ -38,7 +38,6 @@ v_mod_set_su     <- c()
 # Run the IPM year specific wrapper function
 source('pipeline/ipm_year_specific.R')
 
-help('isSingular')
 
 # Data -------------------------------------------------------------------------
 

@@ -22,7 +22,7 @@ options(stringsAsFactors = F)
 
 # load packages
 source( 'helper_functions/load_packages.R' )
-load_packages( tidyverse, patchwork, skimr, ipmr, binom, bbmle )
+load_packages( tidyverse, patchwork, skimr, ipmr, binom, bbmle, janitor)
 
 
 # Specification ----------------------------------------------------------------

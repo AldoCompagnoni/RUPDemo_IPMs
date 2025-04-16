@@ -22,7 +22,7 @@ options(stringsAsFactors = F)
 
 # load packages
 source( 'helper_functions/load_packages.R' )
-load_packages( tidyverse, patchwork, skimr, ipmr, binom, bbmle )
+load_packages( tidyverse, patchwork, skimr, ipmr, binom, bbmle, janitor)
 
 
 # Specification ----------------------------------------------------------------
@@ -85,6 +85,10 @@ if (!dir.exists(paste0(dir_pub, '/results'))) {
 if (!dir.exists(dir_R     )) {dir.create(dir_R     )}
 if (!dir.exists(dir_data  )) {dir.create(dir_data  )}
 if (!dir.exists(dir_result)) {dir.create(dir_result)}
+
+
+# Save the suffix --------------------------------------------------------------
+write.csv(v_suffix, file.path(dir_data, 'v_suffix.csv'), row.names = F)
 
 
 # Plant tracker if its not already exists --------------------------------------

@@ -1,8 +1,15 @@
-# Using plantTracker to convert chart quadrat data from SGS LTER to demographic data for IPMs
+# Quadrat data - Moore 2021 Arizona 
+
+# Author: Niklas Neisse
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
+# Email : neisse.n@protonmail.com
+# Main  : aldo.compagnoni@idiv.de
+# Web   : https://aldocompagnoni.weebly.com/
+# Date  : 2025.04.15
 
 # Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
 
-# Outline
+# Using plantTracker to convert chart quadrat data from SGS LTER to demographic data for IPMs
 # This script uses the plantTracker package (Stears et al. 2022, Methods in Ecology & Evolution)
 # to convert this chart quadrat data to demographic data that will be used to parameterize vital
 # rate models for the construction of integral projection models (IPMs) of the perennial grasses.

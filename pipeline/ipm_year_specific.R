@@ -82,6 +82,10 @@ if (!dir.exists(dir_data  )) {dir.create(dir_data  )}
 if (!dir.exists(dir_result)) {dir.create(dir_result)}
 
 
+# Save the suffix --------------------------------------------------------------
+write.csv(v_suffix, file.path(dir_data, 'v_suffix.csv'), row.names = F)
+
+
 # Ipm mean and plant tracker if they not already exists ------------------------
 if (!file.exists(
   paste0(dir_data, '/', v_script_prefix, '_', v_sp_abb, '_data_df.csv'))) {

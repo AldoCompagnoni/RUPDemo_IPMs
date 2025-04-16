@@ -288,6 +288,29 @@ df_mean <- df_mean_og %>%
     # Return the computed age vector
     age_vector
   }) %>%
+  ungroup() %>%
+  arrange(site, quad, plant, plant_id, year) %>%
+  group_by(site, quad, plant, plant_id) %>%
+  mutate(
+    fire_event = ifelse(!is.na(fire_sev) & fire_sev > 0, 1, 0),
+    fire_gap = {
+      gap <- numeric(n())
+      counter <- NA_real_
+      for (i in seq_along(fire_event)) {
+        if (is.na(fire_event[i])) {
+          # Keep NA if we haven't seen a fire yet
+          gap[i] <- counter
+        } else if (fire_event[i] == 1) {
+          counter <- 0
+          gap[i] <- counter
+        } else {
+          counter <- ifelse(is.na(counter), NA_real_, counter + 1)
+          gap[i] <- counter
+        }
+      }
+      gap
+    }
+  ) %>%
   ungroup()
 
 
@@ -483,19 +506,139 @@ ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
 
 # Investigation: Fire ----------------------------------------------------------
 names(df_mean)
-df_mean %>% 
+df_fire1 <- df_mean %>% 
   group_by(quad_id, year) %>% 
-  summarise(sum(fire_sev, na.rm = T))
+  summarise(fire_sev = mean(fire_sev, na.rm = T))
 
-ggplot() +
-  
+ggplot(df_fire1, aes(x = quad_id, y = year, size = fire_sev, color = fire_sev)) +
+  geom_point(alpha = 0.7) +
+  scale_size_continuous(range = c(1, 10), name = "Severity") +
+  scale_color_continuous(name = "") +
+  labs(x = "Quadrat ID", y = "Year", title = "Fire Severity by Year and Plot") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 
+# Fire on Growth
+df_fire_grow <- df_mean %>% 
+  subset(size_t0 != 0) %>%
+  subset(size_t1 != 0) %>% 
+  select(plant_id, year, size_t0, size_t1, age,
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event)
+
+ggplot(
+  data  = df_fire_grow, aes(x = logsize_t0, y = logsize_t1)) +
+  geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') +
+  geom_abline(aes(slope = 1, intercept = 0)) + 
+  geom_smooth(method = 'lm') +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Fire on Growth',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size) ' [t0]),
+       y        = expression('log(size)  '[t1])) +
+  theme(plot.subtitle = element_text(size = 8)) +
+  facet_wrap(~ fire_event)
+
+
+# Fire on survival
+df_fire_surv_0 <- df_mean %>% 
+  filter(!is.na(survives)) %>%
+  filter(size_t0 != 0) %>%
+  select(plant_id, year, size_t0, survives, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event) %>% 
+  filter(fire_event == 0)
+
+df_fire_surv_1 <- df_mean %>% 
+  filter(!is.na(survives)) %>%
+  filter(size_t0 != 0) %>%
+  select(plant_id, year, size_t0, survives, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event) %>% 
+  filter(fire_event == 1)
+
+p_fire_suv_0 <- ggplot(
+  data = plot_binned_prop(df_fire_surv_0, 10, logsize_t0, survives)) +
+  geom_point(aes(x = logsize_t0,
+                 y = survives),
+             alpha = 1, pch = 16, color = 'red' ) +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                size = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+  ylim(0, 1.01) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Fire on Survival',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size)'[t0]),
+       y        = expression('Survival to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
+
+p_fire_suv_1 <- ggplot(
+  data = plot_binned_prop(df_fire_surv_1, 10, logsize_t0, survives)) +
+  geom_point(aes(x = logsize_t0,
+                 y = survives),
+             alpha = 1, pch = 16, color = 'red' ) +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                size = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+  ylim(0, 1.01) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Fire on Survival',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size)'[t0]),
+       y        = expression('Survival to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
+
+p_fire_suv <- p_fire_suv_0 + p_fire_suv_1 + plot_layout()
+p_fire_suv
+
+
+# Fire on Recruits
+df_quad <- df_mean %>%  
+  group_by (year, site, quad) %>% 
+  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
+  ungroup
+
+df_group <- df_quad %>% 
+  group_by (year) %>% 
+  summarise(g_cov = mean(tot_p_area)) %>% 
+  ungroup
+
+df_cover <- left_join(df_quad, df_group) %>%
+  mutate(year = year + 1) %>% 
+  mutate(year = as.integer(year)) %>% 
+  drop_na()
+
+df_fire_recr <- df_mean %>%
+  group_by (year, site, quad) %>% 
+  summarise(nr_quad = sum(recruit, na.rm = T), 
+            fire_event = max(fire_event, na.rm = T)) %>% 
+  ungroup
+
+df_fire_recr <- left_join(df_cover, df_fire_recr) %>% 
+  filter(!is.na(fire_event))
+
+ggplot(
+  df_fire_recr, aes(x = tot_p_area, y = nr_quad)) + 
+  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
+  theme_bw() + 
+  labs(title    = 'Fire on Recruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8)) + 
+  facet_wrap(~ fire_event)
 
 
 # Data Processes ---------------------------------------------------------------
 names(df_mean)
+
+
 # Growth data ------------------------------------------------------------------
 df_grow <- df_mean %>% 
   subset(size_t0 != 0) %>%
@@ -626,6 +769,194 @@ ggplot(
        x        = expression('Total parent plant area '[t0]),   
        y        = expression('Number of fruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8))
+
+
+
+
+# Fertility --------------------------------------------------------------------
+
+df_fert <- df_fruit %>%
+  rename(nr_fruit = nr_quad) %>% 
+  left_join(
+    df_recr %>%
+      mutate(year = year - 1) %>%
+      rename(nr_rec_t1 = nr_quad) %>% 
+      select('year', 'site', 'quad', 'nr_rec_t1'),
+    by = c('year', 'site', 'quad')
+  )
+
+
+ggplot(data = df_fruit %>%
+         rename(nr_fruit = nr_quad) %>% 
+         left_join(
+           df_recr %>%
+             rename(nr_rec_t0 = nr_quad) %>% 
+             select('year', 'site', 'quad', 'nr_rec_t0'),
+           by = c('year', 'site', 'quad')
+         )) +
+  geom_point(aes(x = nr_fruit, y = nr_rec_t0))
+
+
+ggplot(data = df_fert) +
+  geom_point(aes(x = nr_fruit, y = nr_rec_t1))
+
+
+
+ggplot(data = df_fruit %>%
+         rename(nr_fruit = nr_quad) %>% 
+         left_join(
+           df_recr %>%
+             mutate(year = year - 2) %>% 
+             select('year', 'site', 'quad', 'nr_quad'),
+           by = c('year', 'site', 'quad')
+         ) %>% 
+       rename(nr_rec_t2 = nr_quad)
+       ) +
+  geom_point(aes(x = nr_fruit, y = nr_rec_t2))
+
+
+
+df_fert_mod <- df_recr %>%
+  rename(nr_recr = nr_quad) %>% 
+  left_join(
+    df_fruit %>%
+      mutate(year = year + 1) %>% 
+      select('year', 'site', 'quad', 'nr_quad'),
+    by = c('year', 'site', 'quad')
+  ) %>% 
+  rename(nr_fru_t1 = nr_quad) %>% 
+  left_join(
+    df_fruit %>%
+      mutate(year = year + 2) %>% 
+      select('year', 'site', 'quad', 'nr_quad'),
+    by = c('year', 'site', 'quad')
+  ) %>% 
+  rename(nr_fru_t2 = nr_quad) %>% 
+  left_join(
+    df_fruit %>%
+      mutate(year = year + 3) %>% 
+      select('year', 'site', 'quad', 'nr_quad'),
+    by = c('year', 'site', 'quad')
+  ) %>% 
+  rename(nr_fru_t3 = nr_quad) %>% 
+  left_join(
+    df_fruit %>%
+      mutate(year = year + 4) %>% 
+      select('year', 'site', 'quad', 'nr_quad'),
+    by = c('year', 'site', 'quad')
+  ) %>% 
+  rename(nr_fru_t4 = nr_quad)
+
+
+ggplot(df_fert_mod %>%
+         pivot_longer(
+           cols = starts_with("nr_fru_t"),
+           names_to = "fru_type",
+           values_to = "fru_count"
+         ), 
+       aes(x = fru_count, y = nr_recr, color = fru_type)) +
+  geom_smooth(alpha = 0.7) +
+  labs(
+    x = "Number of Fruits",
+    y = "Number of Recruits",
+    color = "Fruit Type",
+    title = "Relationship between Fruit Counts and Recruits"
+  ) +
+  theme_minimal()
+
+
+names(df_fert_mod)
+
+mod_fer <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+              data = df_fert_mod)
+
+summary(mod_fer)
+
+
+
+# Site Level
+df_fert_mod_site <- df_fert_mod %>%
+  group_by(year, site) %>% 
+  summarise(
+    tot_p_area = sum(tot_p_area, na.rm = TRUE),
+    g_cov      = sum(g_cov, na.rm = TRUE),
+    nr_recr    = sum(nr_recr, na.rm = TRUE),
+    nr_fru_t1  = sum(nr_fru_t1, na.rm = TRUE),
+    nr_fru_t2  = sum(nr_fru_t2, na.rm = TRUE),
+    nr_fru_t3  = sum(nr_fru_t3, na.rm = TRUE),
+    nr_fru_t4  = sum(nr_fru_t4, na.rm = TRUE))
+
+
+ggplot(df_fert_mod_site %>%
+         pivot_longer(
+           cols = starts_with("nr_fru_t"),
+           names_to = "fruit_type",
+           values_to = "fruit_count"
+         ), aes(x = fruit_count, y = nr_recr, color = fruit_type)) +
+  geom_smooth(se = FALSE, method = "lm") +
+  geom_jitter() +
+  labs(
+    title = "Relationship between Fruit Counts and Recruits",
+    x = "Fruit Count",
+    y = "Number of Recruits",
+    color = "Fruit Type"
+  ) +
+  theme_minimal()
+
+
+mod_fer_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+                data = df_fert_mod_site)
+summary(mod_fer_s)
+
+
+ggplot(df_fert_mod_site, aes(y = nr_recr, x = nr_fru_t2)) +
+  geom_jitter(width = .25, height = .5) +
+  geom_smooth(method = 'lm')
+
+
+# Year Level
+df_fert_mod_year <- df_fert_mod %>%
+  group_by(year) %>% 
+  summarise(
+    tot_p_area = sum(tot_p_area, na.rm = TRUE),
+    g_cov      = sum(g_cov, na.rm = TRUE),
+    nr_recr    = sum(nr_recr, na.rm = TRUE),
+    nr_fru_t1  = sum(nr_fru_t1, na.rm = TRUE),
+    nr_fru_t2  = sum(nr_fru_t2, na.rm = TRUE),
+    nr_fru_t3  = sum(nr_fru_t3, na.rm = TRUE),
+    nr_fru_t4  = sum(nr_fru_t4, na.rm = TRUE))
+
+
+ggplot(df_fert_mod_year %>%
+         pivot_longer(
+           cols = starts_with("nr_fru_t"),
+           names_to = "fruit_type",
+           values_to = "fruit_count"
+         ), aes(x = fruit_count, y = nr_recr, color = fruit_type)) +
+  geom_smooth(se = FALSE, method = "lm") +
+  geom_jitter() +
+  labs(
+    title = "Relationship between Fruit Counts and Recruits",
+    x = "Fruit Count",
+    y = "Number of Recruits",
+    color = "Fruit Type"
+  ) +
+  theme_minimal()
+
+
+mod_fer_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+                data = df_fert_mod_year)
+summary(mod_fer_s)
+
+
+ggplot(df_fert_mod_year, aes(y = nr_recr, x = nr_fru_t2)) +
+  geom_jitter(width = .25, height = .5) +
+  geom_smooth(method = 'lm')
+
+
+
+
+
 
 
 # Flowering data ---------------------------------------------------------------

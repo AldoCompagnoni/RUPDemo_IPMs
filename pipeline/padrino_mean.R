@@ -18,16 +18,15 @@ options(stringsAsFactors = F)
 
 # load packages
 source('helper_functions/load_packages.R' )
-load_packages(tidyverse, ipmr, readxl, writexl, remotes)
+load_packages(tidyverse, ipmr, readxl, writexl, remotes, janitor)
 # remotes::install_github("padrinoDB/pdbDigitUtils",force = TRUE)
 library(pdbDigitUtils)
 
 
 # Data -------------------------------------------------------------------------
 # Species abbriviation
-sp_abb  <- 
-  tolower(gsub(' ', '', paste(substr(unlist(strsplit(species, ' ')), 1, 2), 
-                              collapse = '')))
+sp_abb  <- tolower(gsub(' ', '', paste(
+  substr(unlist(strsplit(species, ' ')), 1, 2), collapse = '')))
 # Directory 
 pub_dir    <- file.path(paste0(author_year, '_', region_abb))
 R_dir      <- file.path(pub_dir, 'R',       sp_abb)
@@ -37,6 +36,17 @@ result_dir <- file.path(pub_dir, 'results', sp_abb)
 # Prefix for all the files
 script_prefix <- str_c(str_extract(author_year, '^[^_]+'), 
                        str_sub(str_extract(author_year, '_\\d+$'), -2, -1))
+if (
+  length(
+    list.dirs(
+      full.names = TRUE, recursive = FALSE)[grepl(
+        paste0("^", author_year), basename(
+          list.dirs(full.names = TRUE, recursive = FALSE)))]
+  ) > 1) {
+  script_prefix <- paste0(script_prefix, region_abb)
+}
+
+v_suffix <- read.csv(file.path(data_dir, 'v_suffix.csv'))
 
 # Ipm mean and plant tracker if they not already exists
 if (!file.exists(
@@ -48,6 +58,8 @@ pars          <- read.csv(
   paste0(data_dir, '/', script_prefix, '_', sp_abb, '_pars.csv'))
 lam_mean_ipmr <- read.csv(
   paste0(data_dir, '/', script_prefix, '_', sp_abb, '_lambda.csv'))
+
+v_suffix
 
 
 # Populating the PADRINO database template -------------------------------------
@@ -142,11 +154,11 @@ pdb$IpmKernels[2,] <- c(ipm_id,
 # Vital rate expressions
 pdb$VitalRateExpr[1,] <- c(ipm_id,
                            'Survival',
-                           if (pars$su_mod_bestfit_index == 1) {
+                           if (pars$mod_su_index == 1) {
                              s_expr <- paste('s = 1 / (1 + exp(-(surv_b0 + surv_b1 * size_1)))')
-                           } else if (pars$su_mod_bestfit_index == 2) {
+                           } else if (pars$mod_su_index == 2) {
                              s_expr <- paste("s = 1 / (1 + exp(-(surv_b0 + surv_b1 * size_1 + surv_b2 * size_1^2)))")
-                           } else if (pars$su_mod_bestfit_index == 3) {
+                           } else if (pars$mod_su_index == 3) {
                              s_expr <- paste("s = 1 / (1 + exp(-(surv_b0 + surv_b1 * size_1 + surv_b2 * size_1^2 + surv_b3 * size_1^3)))")
                            },
                            'Evaluated',
@@ -154,11 +166,11 @@ pdb$VitalRateExpr[1,] <- c(ipm_id,
 
 pdb$VitalRateExpr[2,] <- c(ipm_id,
                            'Growth',
-                           if (pars$gr_mod_bestfit_index == 1) {
+                           if (pars$mod_gr_index  == 1) {
                              mu_g_expr <- paste("mu_g = grow_b0 + grow_b1 * size_1")
-                           } else if (pars$gr_mod_bestfit_index == 2) {
+                           } else if (pars$mod_gr_index  == 2) {
                              mu_g_expr <- paste("mu_g = grow_b0 + grow_b1 * size_1 + grow_b2 * size_1^2")
-                           } else if (pars$gr_mod_bestfit_index == 3) {
+                           } else if (pars$mod_gr_index  == 3) {
                              mu_g_expr <- paste("mu_g = grow_b0 + grow_b1 * size_1 + grow_b2 * size_1^2 + grow_b3 * size_1^3")
                            },
                            'Evaluated',
@@ -193,9 +205,9 @@ pdb$VitalRateExpr[6,] <- c(ipm_id,
 # Populating grow_ and surv_ dynamically
 for (i in 1:nrow(pars)) {
   
-  # Extract the su_mod_bestfit_index and gr_mod_bestfit_index for this row
-  su_index <- pars$su_mod_bestfit_index[i]
-  gr_index <- pars$gr_mod_bestfit_index[i]
+  # Extract the mod_su_index and mod_gr_index  for this row
+  su_index <- pars$mod_su_index[i]
+  gr_index <- pars$mod_gr_index [i]
   
   # Get the parameters for surv and grow
   surv_param <- paste0("surv_b", su_index)  # E.g., "surv_b1"

@@ -34,7 +34,7 @@ species     <- 'Artemisia frigida'
 ipm_id      <- 'afr162'
 
 # IPM-Type: 'year_specific' or 'mean'?
-ipm_type    <- 'year_mean'
+ipm_type    <- 'mean'
 
 
 # Taxonomic information --------------------------------------------------------
@@ -49,7 +49,7 @@ tax_order  <- 'Asterales'
 # The accepted class
 tax_class  <- 'Magnoliopsida'
 # The accepted phylum
-tax_phylum <- 'Streptophyta'
+tax_phylum <- 'Tracheophyta'
 # The kingdom
 kingdom    <- 'Plantae'
 # The type of organism. For plants, this is usually something like 

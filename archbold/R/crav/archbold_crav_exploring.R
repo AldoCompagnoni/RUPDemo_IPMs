@@ -773,7 +773,7 @@ ggplot(
 
 
 
-# Fertility --------------------------------------------------------------------
+# Fertility data ---------------------------------------------------------------
 
 df_fert <- df_fruit %>%
   rename(nr_fruit = nr_quad) %>% 
@@ -855,7 +855,8 @@ ggplot(df_fert_mod %>%
            values_to = "fru_count"
          ), 
        aes(x = fru_count, y = nr_recr, color = fru_type)) +
-  geom_smooth(alpha = 0.7) +
+  geom_smooth(alpha = 0.2, method = 'lm') +
+  geom_jitter(aes(shape = fru_type)) +
   labs(
     x = "Number of Fruits",
     y = "Number of Recruits",
@@ -894,7 +895,7 @@ ggplot(df_fert_mod_site %>%
            values_to = "fruit_count"
          ), aes(x = fruit_count, y = nr_recr, color = fruit_type)) +
   geom_smooth(se = FALSE, method = "lm") +
-  geom_jitter() +
+  geom_jitter(aes(shape = fruit_type)) +
   labs(
     title = "Relationship between Fruit Counts and Recruits",
     x = "Fruit Count",
@@ -934,7 +935,7 @@ ggplot(df_fert_mod_year %>%
            values_to = "fruit_count"
          ), aes(x = fruit_count, y = nr_recr, color = fruit_type)) +
   geom_smooth(se = FALSE, method = "lm") +
-  geom_jitter() +
+  geom_jitter(aes(shape = fruit_type)) +
   labs(
     title = "Relationship between Fruit Counts and Recruits",
     x = "Fruit Count",
@@ -952,10 +953,6 @@ summary(mod_fer_s)
 ggplot(df_fert_mod_year, aes(y = nr_recr, x = nr_fru_t2)) +
   geom_jitter(width = .25, height = .5) +
   geom_smooth(method = 'lm')
-
-
-
-
 
 
 

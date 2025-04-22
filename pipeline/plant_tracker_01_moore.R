@@ -1,19 +1,20 @@
 # First part of the plant tracker pipeline
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
-
+# Date  : 2025.04.217
 # Code adapted from: https://github.com/aestears/plantTracker
 # Adapted from plantTracker How to (Stears et al. 2022)
+
 
 # Packages ---------------------------------------------------------------------
 # Load packages, verify, and download if needed
 source('helper_functions/load_packages.R')
-load_packages(sf, plantTracker, tidyverse, readr)
+load_packages(sf, plantTracker, tidyverse, readr, janitor)
+
 
 # Data -------------------------------------------------------------------------
 # Directory 1
@@ -50,12 +51,11 @@ delimiter <- if (exists('custom_delimiter') && !is.null(custom_delimiter)) {
 }
 
 # Read species list and filter for target species
-sp_list <- read_delim(file.path(dat_dir, 
-                                paste0(script_prefix, '_species_list.csv')), 
-                      delim = delimiter, escape_double = FALSE, 
-                      trim_ws = TRUE) %>% 
+sp_list <- read_delim(file.path(
+  dat_dir, paste0(script_prefix, '_species_list.csv')),
+  delim = delimiter, escape_double = FALSE, trim_ws = TRUE) %>% 
   as.data.frame() %>% 
-  filter(Type == m_type) %>% 
+  filter(type == m_type) %>% 
   arrange(desc(counts))
 
 

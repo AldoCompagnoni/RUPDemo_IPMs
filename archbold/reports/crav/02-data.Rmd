@@ -53,16 +53,15 @@ Each year recorded in the dataset includes multiple months of observations per i
 
 **The treatment of fire exposure is still undecided as of** ***March 19, 2025*****.**
 
-
 ```{r data mean original}
 df_mean_og <- df %>%
   filter(s < 6 | is.na(s)) %>%
-  group_by(site, quad, plant, plant_id, year) %>%
+  group_by(site, quad, quad_id, plant, plant_id, year) %>%
   summarise(
     survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
     size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
-    flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),
     fruit    = if_else(all(is.na(fr)), NA_real_, mean(fr, na.rm = TRUE)),
+    flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),
     fire_sev = if_else(
       all(is.na(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),
       NA_real_, 
@@ -94,7 +93,7 @@ For individuals whose true birth could be determined (i.e., those born at least 
 
 ```{r data mean updated}
 df_mean <- df_mean_og %>% 
-  group_by(site, quad, plant, plant_id) %>% 
+  group_by(site, quad, quad_id, plant, plant_id) %>% 
   # Handle survival based on previous dormancy status
   # If the current status is dead or NA
   # Check if survived in the previous 1, 2, or 3 years
@@ -198,6 +197,29 @@ df_mean <- df_mean_og %>%
     # Return the computed age vector
     age_vector
   }) %>%
+  ungroup() %>%
+  arrange(site, quad, plant, plant_id, year) %>%
+  group_by(site, quad, plant, plant_id) %>%
+  mutate(
+    fire_event = ifelse(!is.na(fire_sev) & fire_sev > 0, 1, 0),
+    fire_gap = {
+      gap <- numeric(n())
+      counter <- NA_real_
+      for (i in seq_along(fire_event)) {
+        if (is.na(fire_event[i])) {
+          # Keep NA if we haven't seen a fire yet
+          gap[i] <- counter
+        } else if (fire_event[i] == 1) {
+          counter <- 0
+          gap[i] <- counter
+        } else {
+          counter <- ifelse(is.na(counter), NA_real_, counter + 1)
+          gap[i] <- counter
+        }
+      }
+      gap
+    }
+  ) %>%
   ungroup()
 ```
 

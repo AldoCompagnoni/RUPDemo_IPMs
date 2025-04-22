@@ -131,6 +131,8 @@ grid.arrange(p_fl_1.1, p_fl_1.2,
 ```
 
 
+
+
 ### Fruting
 ```{r fr data}
 df_quad <- df_mean %>%  
@@ -220,6 +222,189 @@ ggplot(
        y        = expression('Number of recruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8))
 ```
+
+
+### Fertility
+```{r fe data 1}
+df_fert <- df_fruit %>%
+  rename(nr_fruit = nr_quad) %>% 
+  left_join(
+    df_recr %>%
+      mutate(year = year - 1) %>%
+      rename(nr_rec_t1 = nr_quad) %>% 
+      select('year', 'site', 'quad', 'nr_rec_t1'),
+    by = c('year', 'site', 'quad')
+  )
+```
+
+```{r fe plot 1}
+ggplot(data = df_fert) +
+  geom_point(aes(x = nr_fruit, y = nr_rec_t1))
+```
+
+
+Create time gaps or rather assigning fruiting to recruits over different time gaps, here 1 (fruiting on the recruits next year) to 4 (in 4 years time)
+```{r fe data 2}
+df_fert_mod <- df_recr %>%
+  rename(nr_recr = nr_quad) %>% 
+  left_join(
+    df_fruit %>%
+      mutate(year = year + 1) %>% 
+      select('year', 'site', 'quad', 'nr_quad'),
+    by = c('year', 'site', 'quad')
+  ) %>% 
+  rename(nr_fru_t1 = nr_quad) %>% 
+  left_join(
+    df_fruit %>%
+      mutate(year = year + 2) %>% 
+      select('year', 'site', 'quad', 'nr_quad'),
+    by = c('year', 'site', 'quad')
+  ) %>% 
+  rename(nr_fru_t2 = nr_quad) %>% 
+  left_join(
+    df_fruit %>%
+      mutate(year = year + 3) %>% 
+      select('year', 'site', 'quad', 'nr_quad'),
+    by = c('year', 'site', 'quad')
+  ) %>% 
+  rename(nr_fru_t3 = nr_quad) %>% 
+  left_join(
+    df_fruit %>%
+      mutate(year = year + 4) %>% 
+      select('year', 'site', 'quad', 'nr_quad'),
+    by = c('year', 'site', 'quad')
+  ) %>% 
+  rename(nr_fru_t4 = nr_quad)
+```
+
+
+
+The following plot shows the 4 different time gaps of fruiting on recruits
+```{r fe plot 2}
+ggplot(df_fert_mod %>%
+         pivot_longer(
+           cols = starts_with("nr_fru_t"),
+           names_to = "fru_type",
+           values_to = "fru_count"
+         ), 
+       aes(x = fru_count, y = nr_recr, color = fru_type)) +
+  geom_smooth(alpha = 0.2, method = 'lm') +
+  geom_jitter(aes(shape = fru_type)) +
+  labs(
+    x = "Number of Fruits",
+    y = "Number of Recruits",
+    color = "Fruit Type",
+    title = "Relationship between Fruit Counts and Recruits"
+  ) +
+  theme_minimal()
+
+```
+
+```{r fe mod 2}
+mod_fer <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+              data = df_fert_mod)
+
+summary(mod_fer)
+```
+
+
+#### Fertility on site level
+
+Instead of relating the fruiting and recruits on the plot level we widen the scope to the site level
+```{r fe data 3}
+df_fert_mod_site <- df_fert_mod %>%
+  group_by(year, site) %>% 
+  summarise(
+    tot_p_area = sum(tot_p_area, na.rm = TRUE),
+    g_cov      = sum(g_cov, na.rm = TRUE),
+    nr_recr    = sum(nr_recr, na.rm = TRUE),
+    nr_fru_t1  = sum(nr_fru_t1, na.rm = TRUE),
+    nr_fru_t2  = sum(nr_fru_t2, na.rm = TRUE),
+    nr_fru_t3  = sum(nr_fru_t3, na.rm = TRUE),
+    nr_fru_t4  = sum(nr_fru_t4, na.rm = TRUE))
+```
+
+```{r fe plot 3}
+ggplot(df_fert_mod_site %>%
+         pivot_longer(
+           cols = starts_with("nr_fru_t"),
+           names_to = "fruit_type",
+           values_to = "fruit_count"
+         ), aes(x = fruit_count, y = nr_recr, color = fruit_type)) +
+  geom_smooth(se = FALSE, method = "lm") +
+  geom_jitter(aes(shape = fruit_type)) +
+  labs(
+    title = "Relationship between Fruit Counts and Recruits",
+    x = "Fruit Count",
+    y = "Number of Recruits",
+    color = "Fruit Type"
+  ) +
+  theme_minimal()
+```
+
+```{r fe mod 3}
+mod_fer_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+                data = df_fert_mod_site)
+summary(mod_fer_s)
+```
+
+Following the significant influence of fruiting_t2:
+
+```{r fe plot 3.1}
+ggplot(df_fert_mod_site, aes(y = nr_recr, x = nr_fru_t2)) +
+  geom_jitter(width = .25, height = .5) +
+  geom_smooth(method = 'lm')
+```
+
+
+#### Fertility on year level
+
+```{r fe data 4}
+df_fert_mod_year <- df_fert_mod %>%
+  group_by(year) %>% 
+  summarise(
+    tot_p_area = sum(tot_p_area, na.rm = TRUE),
+    g_cov      = sum(g_cov, na.rm = TRUE),
+    nr_recr    = sum(nr_recr, na.rm = TRUE),
+    nr_fru_t1  = sum(nr_fru_t1, na.rm = TRUE),
+    nr_fru_t2  = sum(nr_fru_t2, na.rm = TRUE),
+    nr_fru_t3  = sum(nr_fru_t3, na.rm = TRUE),
+    nr_fru_t4  = sum(nr_fru_t4, na.rm = TRUE))
+```
+
+
+```{r fe plot 4}
+ggplot(df_fert_mod_year %>%
+         pivot_longer(
+           cols = starts_with("nr_fru_t"),
+           names_to = "fruit_type",
+           values_to = "fruit_count"
+         ), aes(x = fruit_count, y = nr_recr, color = fruit_type)) +
+  geom_smooth(se = FALSE, method = "lm") +
+  geom_jitter(aes(shape = fruit_type)) +
+  labs(
+    title = "Relationship between Fruit Counts and Recruits",
+    x = "Fruit Count",
+    y = "Number of Recruits",
+    color = "Fruit Type"
+  ) +
+  theme_minimal()
+```
+
+
+```{r fe mod 4}
+mod_fer_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+                data = df_fert_mod_year)
+summary(mod_fer_s)
+```
+
+```{r}
+ggplot(df_fert_mod_year, aes(y = nr_recr, x = nr_fru_t2)) +
+  geom_jitter(width = .25, height = .5) +
+  geom_smooth(method = 'lm')
+```
+
+
 
 
 ## Models

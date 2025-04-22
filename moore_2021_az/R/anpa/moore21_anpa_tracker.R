@@ -1,11 +1,11 @@
 # plantTracker - Moore 2021 Arizona - Antennaria parvifolia
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.01.27
+# Date  : 2025.04.17
 
 # Publication: https://doi.org/10.1002/ecy.3661
 
@@ -13,11 +13,11 @@
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'moore_2021'
+author_year      <- c('moore_2021')
 # Define region abbreviation
-region_abb  <- 'az'
+region_abb       <- c('az')
 # Define growth form (density, cover)
-m_type        <- 'Cover'
+m_type           <- c('Cover')
 # Customized delimiter for `read_delim` function, comma is predefined
 custom_delimiter <- c(',')
 

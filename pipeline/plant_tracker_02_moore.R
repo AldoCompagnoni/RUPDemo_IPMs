@@ -71,32 +71,31 @@ dat_target_spec <- data %>%
   )
 
 # set the buffer to 0.05 or 5 depending on the unit of measure used in GIS file
-buff    <- 0.05
+v_buff    <- 0.05
 
 # Forbs are not "clonal"; we assume non-forbs are clonal.
-clonal  <- if_else(m_type == 'Density', F, T)
+v_clonal  <- if_else(m_type == 'Density', F, T)
 
 dat_target_spec %>% 
-  select('species', 'Quadrat', 'Year', 'geometry') %>% 
-  rename(Species = species, 
-         Quad = Quadrat) %>% 
+  select('species', 'quadrat', 'year', 'geometry') %>% 
   mutate(Site = 'az')
 
 # Prepare data for the trackSpp function
 datTrackSpp <- trackSpp(dat_target_spec %>% 
-                          select('species', 'Quadrat', 'Year', 'geometry') %>% 
+                          select('species', 'quadrat', 'year', 'geometry') %>% 
                           rename(Species = species, 
-                                 Quad = Quadrat) %>% 
+                                 Quad = quadrat,
+                                 Year = year) %>% 
                           mutate(Site = 'az'),
                         inv,
                         # Dormancy flag
                         dorm         = 1,
                         # Buffer size
-                        buff         = buff,
+                        buff         = v_buff,
                         # Allow for clonal tracking
-                        clonal       = clonal,
+                        clonal       = v_clonal,
                         # Buffer for genet
-                        buffGenet    = buff,
+                        buffGenet    = v_buff,
                         # Aggregate by genet
                         aggByGenet   = TRUE,
                         # Flag potential issues
@@ -108,9 +107,12 @@ if (!dir.exists(data_dir)) {
 }
 
 # Save the tracked data to a CSV file
-datTrackSpp %>% 
+df <- datTrackSpp %>% 
   as.data.frame %>% 
   dplyr::select(Site, Quad, Species, trackID, Year, basalArea_genet, recruit,
                 survives_tplus1, age, size_tplus1, nearEdge, Suspect) %>%
-  write.csv(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv'), 
-            row.names = FALSE)  
+  clean_names() 
+
+write.csv(df, 
+          file.path(data_dir, paste0(script_prefix, '_', sp_abb, '.csv')), 
+          row.names = FALSE)  

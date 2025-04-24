@@ -38,9 +38,9 @@ ipm_type    <- 'mean'
 
 
 # Taxonomic information --------------------------------------------------------
-# (Wikipedia)
+# The accepted name of the species (https://resolver.globalnames.org)
 # The accepted name of the species 
-species_accepted <- 'Hesperostipa_comata'
+species_accepted <- ''
 # The accepted genus
 tax_genus  <- sub("_.*", "", species_accepted)
 # The accepted family
@@ -50,7 +50,7 @@ tax_order  <- 'Poales'
 # The accepted class
 tax_class  <- 'Liliopsida'
 # The accepted phylum
-tax_phylum <- 'Magnoliophyta' 
+tax_phylum <- 'Tracheophyta' 
 # The kingdom
 kingdom    <- 'Plantae'
 # The type of organism. For plants, this is usually something like 

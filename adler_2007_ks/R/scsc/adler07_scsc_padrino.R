@@ -49,7 +49,7 @@ tax_order  <- 'Poales'
 # The accepted class
 tax_class  <- 'Liliopsida'
 # The accepted phylum
-tax_phylum <- 'Magnoliophyta' 
+tax_phylum <- 'Tracheophyta'
 # The kingdom
 kingdom    <- 'Plantae'
 # The type of organism. For plants, this is usually something like 

@@ -31,15 +31,15 @@ species     <- 'Bouteloua rothrockii'
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
-ipm_id      <- 'nnn302'
+ipm_id      <- 'alte161'
 
 # IPM-Type: 'year_specific' or 'mean'?
 ipm_type    <- 'year_specific'
 
 
 # Taxonomic information --------------------------------------------------------
-# The accepted name of the species (here Wikipedia)
-species_accepted <- 'Bouteloua barbata'
+# The accepted name of the species (https://resolver.globalnames.org)
+species_accepted <- 'Allium textile'
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family
@@ -49,7 +49,7 @@ tax_order  <- 'Poales'
 # The accepted class
 tax_class  <- 'Liliopsida'
 # The accepted phylum
-tax_phylum <- 'Magnoliophyta' 
+tax_phylum <- 'Tracheophyta' 
 # The kingdom
 kingdom    <- 'Plantae'
 # The type of organism. For plants, this is usually something like 

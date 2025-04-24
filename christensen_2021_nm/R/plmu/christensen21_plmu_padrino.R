@@ -38,7 +38,7 @@ ipm_type    <- 'year_specific'
 
 
 # Taxonomic information --------------------------------------------------------
-# The accepted name of the species (here Wikipedia)
+# The accepted name of the species (https://resolver.globalnames.org)
 species_accepted <- 'Hilaria mutica'
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
@@ -49,7 +49,7 @@ tax_order  <- 'Poales'
 # The accepted class
 tax_class  <- 'Liliopsida'
 # The accepted phylum
-tax_phylum <- 'Magnoliophyta' 
+tax_phylum <- 'Tracheophyta' 
 # The kingdom
 kingdom    <- 'Plantae'
 # The type of organism. For plants, this is usually something like 

@@ -12,7 +12,7 @@ documentclass: book
 # link-citations: yes
 # github-repo: rstudio/bookdown-demo
 description: "This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation. "
-rmd_files: ["index.Rmd", "01-intro.Rmd", "02-data.Rmd", "03-investigation.Rmd", "04-models.Rmd", "05-ipm", "666-bug.Rmd"]
+# rmd_files: ["index.Rmd", "01-intro.Rmd", "02-data.Rmd", "03-investigation.Rmd", "04-models.Rmd", "05-ipm", "666-bug.Rmd"]
 ---
 
 **Authors:**
@@ -32,9 +32,9 @@ knitr::write_bib(c(
 ```{r FTS, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 # First time setup:
 # load bookdown
-library(bookdown)
+# library(bookdown)
 # in case the build tab does show in the right upper pannel
 # build the book
-bookdown::render_book("index.Rmd", output_format = "bookdown::gitbook")
+# bookdown::render_book("index.Rmd", output_format = "bookdown::gitbook")
 ```
 

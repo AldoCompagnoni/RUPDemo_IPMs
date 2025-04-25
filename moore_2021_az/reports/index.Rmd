@@ -1,6 +1,10 @@
 --- 
 title: "Reports on Moore 2021"
-author: "Niklas Neiße"
+author: |
+  Niklas Neisse ([neisse.n@protonmail.com](mailto:neisse.n@protonmail.com))  
+  Aspen Workman  
+  Diāna Spurīte  
+  **Aldo Compagnoni** ([aldo.compagnoni@idiv.de](mailto:aldo.compagnoni@idiv.de))
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
 documentclass: book
@@ -9,7 +13,7 @@ documentclass: book
 # cover-image: path to the social sharing image like images/cover.jpg
 description: |
   Reports on Moore et al. 2021 with insights on progess and decition-making towards building species specific IPM's
-link-citations: yes
+# link-citations: yes
 #github-repo: rstudio/bookdown-demo
 ---
 

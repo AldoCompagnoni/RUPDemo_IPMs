@@ -520,7 +520,7 @@ ggplot(df_fire1, aes(x = quad_id, y = year, size = fire_sev, color = fire_sev)) 
 
 
 
-# Fire on Growth
+# Fire on Growth ---------------------------------------------------------------
 df_fire_grow <- df_mean %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
@@ -543,7 +543,7 @@ ggplot(
   facet_wrap(~ fire_event)
 
 
-# Fire on survival
+# Fire on survival -------------------------------------------------------------
 df_fire_surv_0 <- df_mean %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
@@ -598,7 +598,7 @@ p_fire_suv <- p_fire_suv_0 + p_fire_suv_1 + plot_layout()
 p_fire_suv
 
 
-# Fire on Recruits
+# Fire on Recruits -------------------------------------------------------------
 df_quad <- df_mean %>%  
   group_by (year, site, quad) %>% 
   summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
@@ -633,6 +633,53 @@ ggplot(
        y        = expression('Number of recruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8)) + 
   facet_wrap(~ fire_event)
+
+
+# Fire on Flowers --------------------------------------------------------------
+df_fire_fl <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(flower, fire_sev, fire_event, fire_gap) %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(fl_quad = mean(flower, na.rm = T), 
+            fire_gap = max(fire_gap, na.rm = T))
+
+# Plot with counts
+ggplot(data = df_fire_fl, aes(x = as.factor(fire_gap), y = fl_quad)) + 
+  geom_boxplot() +
+  geom_text(data = df_fire_fl %>%
+              group_by(fire_gap) %>%
+              summarise(n = n()), 
+            aes(
+    x = as.factor(fire_gap), 
+    y = max(df_fire_fl$fl_quad, na.rm = TRUE) + 1.5, label = n),
+    inherit.aes = FALSE, size = 3) + 
+  theme_minimal() +
+  labs(y = expression('mean nr flowers per quadrat'),
+       x = expression('year gap after fire'))
+
+
+# Fire on Recruits -------------------------------------------------------------
+df_fire_re <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(recruit, fire_sev, fire_event, fire_gap) %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(re_quad = sum(recruit, na.rm = T), 
+            fire_gap = max(fire_gap, na.rm = T))
+
+# Plot with counts
+ggplot(data = df_fire_re, aes(x = as.factor(fire_gap), y = re_quad)) + 
+  geom_boxplot() +
+  geom_text(data = df_fire_re %>%
+              group_by(fire_gap) %>%
+              summarise(n = n()), 
+            aes(
+              x = as.factor(fire_gap), 
+              y = max(df_fire_re$re_quad, na.rm = TRUE) + 1.5, label = n),
+            inherit.aes = FALSE, size = 3) + 
+  theme_minimal() +
+  labs(y = expression('sum recuits per quadrat'),
+       x = expression('year gap after fire'))
+
 
 
 # Data Processes ---------------------------------------------------------------
@@ -773,9 +820,9 @@ ggplot(
 
 
 
-# Fertility data ---------------------------------------------------------------
+# Fecundity data ---------------------------------------------------------------
 
-df_fert <- df_fruit %>%
+df_fecu <- df_fruit %>%
   rename(nr_fruit = nr_quad) %>% 
   left_join(
     df_recr %>%
@@ -797,7 +844,7 @@ ggplot(data = df_fruit %>%
   geom_point(aes(x = nr_fruit, y = nr_rec_t0))
 
 
-ggplot(data = df_fert) +
+ggplot(data = df_fecu) +
   geom_point(aes(x = nr_fruit, y = nr_rec_t1))
 
 
@@ -816,7 +863,7 @@ ggplot(data = df_fruit %>%
 
 
 
-df_fert_mod <- df_recr %>%
+df_fecu_mod <- df_recr %>%
   rename(nr_recr = nr_quad) %>% 
   left_join(
     df_fruit %>%
@@ -848,7 +895,7 @@ df_fert_mod <- df_recr %>%
   rename(nr_fru_t4 = nr_quad)
 
 
-ggplot(df_fert_mod %>%
+ggplot(df_fecu_mod %>%
          pivot_longer(
            cols = starts_with("nr_fru_t"),
            names_to = "fru_type",
@@ -866,17 +913,43 @@ ggplot(df_fert_mod %>%
   theme_minimal()
 
 
-names(df_fert_mod)
+names(df_fecu_mod)
 
-mod_fer <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
-              data = df_fert_mod)
+mod_fec <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+              data = df_fecu_mod)
 
-summary(mod_fer)
+summary(mod_fec)
 
 
 
-# Site Level
-df_fert_mod_site <- df_fert_mod %>%
+# Fecundity year specific ------------------------------------------------------
+#  fires are highlighted
+
+df_mean %>%
+  group_by(year) %>%
+  summarize(total_fire = sum(fire_sev, na.rm = TRUE)) %>%
+  filter(total_fire > 0)
+
+
+df_fecu_mod %>%
+  mutate(
+    quad_id = paste(site, quad, sep = "_"),
+    year_fire = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal")
+  ) %>%
+  ggplot(aes(x = nr_fru_t1, y = nr_recr, color = year_fire)) +
+  geom_jitter(alpha = 0.7) +
+  facet_wrap(~year) +
+  scale_color_manual(values = c("fire" = "red", "normal" = "gray")) +
+  theme_minimal()
+
+# Model
+mod_fec <- lmer(nr_recr ~ nr_fru_t1 + (1|year), data = df_fecu_mod)
+summary(mod_fec)
+
+
+
+# Fec - site Level -------------------------------------------------------------
+df_fecu_mod_site <- df_fecu_mod %>%
   group_by(year, site) %>% 
   summarise(
     tot_p_area = sum(tot_p_area, na.rm = TRUE),
@@ -888,7 +961,7 @@ df_fert_mod_site <- df_fert_mod %>%
     nr_fru_t4  = sum(nr_fru_t4, na.rm = TRUE))
 
 
-ggplot(df_fert_mod_site %>%
+ggplot(df_fecu_mod_site %>%
          pivot_longer(
            cols = starts_with("nr_fru_t"),
            names_to = "fruit_type",
@@ -905,18 +978,18 @@ ggplot(df_fert_mod_site %>%
   theme_minimal()
 
 
-mod_fer_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
-                data = df_fert_mod_site)
-summary(mod_fer_s)
+mod_fec_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+                data = df_fecu_mod_site)
+summary(mod_fec_s)
 
 
-ggplot(df_fert_mod_site, aes(y = nr_recr, x = nr_fru_t2)) +
+ggplot(df_fecu_mod_site, aes(y = nr_recr, x = nr_fru_t2)) +
   geom_jitter(width = .25, height = .5) +
   geom_smooth(method = 'lm')
 
 
-# Year Level
-df_fert_mod_year <- df_fert_mod %>%
+# Fec- year Level --------------------------------------------------------------
+df_fecu_mod_year <- df_fecu_mod %>%
   group_by(year) %>% 
   summarise(
     tot_p_area = sum(tot_p_area, na.rm = TRUE),
@@ -928,7 +1001,7 @@ df_fert_mod_year <- df_fert_mod %>%
     nr_fru_t4  = sum(nr_fru_t4, na.rm = TRUE))
 
 
-ggplot(df_fert_mod_year %>%
+ggplot(df_fecu_mod_year %>%
          pivot_longer(
            cols = starts_with("nr_fru_t"),
            names_to = "fruit_type",
@@ -945,14 +1018,57 @@ ggplot(df_fert_mod_year %>%
   theme_minimal()
 
 
-mod_fer_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
-                data = df_fert_mod_year)
-summary(mod_fer_s)
+mod_fec_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+                data = df_fecu_mod_year)
+summary(mod_fec_s)
 
 
-ggplot(df_fert_mod_year, aes(y = nr_recr, x = nr_fru_t2)) +
+ggplot(df_fecu_mod_year, aes(y = nr_recr, x = nr_fru_t2)) +
   geom_jitter(width = .25, height = .5) +
   geom_smooth(method = 'lm')
+
+
+
+# Per capita recruits ----------------------------------------------------------
+#  nr recruits t1 / nr reproductive indv t0
+#  maybe on the single quadrat
+
+df_rec_pc <- df_mean %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(rec_nr_t1 = sum(recruit, na.rm = T)) %>% 
+  left_join(df_mean %>%
+              group_by(site, quad_id, plant_id, year) %>%
+              summarise(rep_nr_t0 = as.integer(any(fruit > 0)), .groups = "drop") %>% 
+              ungroup() %>% 
+              group_by(site, quad_id, year) %>% 
+              summarise(rep_nr_t0 = sum(rep_nr_t0, na.rm = T)) %>% 
+              mutate(year = year + 1)
+  , by = c('site', 'quad_id', 'year')) %>% 
+  mutate(rec_pc = rec_nr_t1 / rep_nr_t0,
+         fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal")) %>% 
+  mutate(rec_pc = ifelse(is.nan(rec_pc), 0, rec_pc),
+         fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), "fire_t1", fire_year),
+         fire_year = ifelse(year %in% c(2017), "FIRE", fire_year))
+
+ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
+  geom_jitter() + 
+  facet_wrap('quad_id')
+
+ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
+  geom_jitter() + 
+  facet_wrap('site')
+
+ggplot(data = df_rec_pc, aes(y = rec_pc, x = year, color = fire_year)) +
+  geom_point() + 
+  facet_wrap('quad_id') +
+  scale_color_manual(values = c(
+    "fire" = "red", "normal" = "gray", 'fire_t1' = "pink", 'FIRE' = 'purple')) +
+  theme_minimal() + 
+  labs(y = expression('Per capita recruits'),
+       x = expression('Year'))
+
+
+
 
 
 

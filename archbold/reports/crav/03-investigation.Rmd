@@ -447,3 +447,31 @@ ggplot(
 ## Issue 5 - Spatial relationship
 
 Is there any spatial relationship regarding size, recruits, flowering, fruiting, ect. In the data we have two chategories of sizes, which are *site* and *plot*.
+
+
+
+## Issue 6 - Seed bank
+
+#### Menges et al. (2016): {-}
+
+Fruits are legumes containing multiple hard seeds, typically released upon dehiscence. Each fruit contains between 4 and 18 seeds (mean = 9.3, median = 8, mode = 7). These hard seeds show germination rates ranging from 13% to 56% and contribute to a small but persistent seed bank, with some seeds germinating in the summer of the second year.
+
+In 2004, non-scarified seeds germinated both early (23 seeds within the first two months) and later (3 seeds in the second year), with 37 seeds (11.3%) germinating in the first month.
+
+In 2021, about 6% of seeds that germinated did so after 12 months.
+
+Menges suggest the presence of a seed bank lasting at least three years.
+
+
+#### David et al. (2024): {-}
+
+In Experiment 1, 190 out of 400 seeds germinated over a 10-year period from 2012 to 2022, resulting in a germination rate of 47.5%. In contrast, Experiment 2 had a lower germination rate, with 97 out of 400 seeds (24%) germinating over a 7-year period from 2015 to 2021.
+
+Germination in Experiment 1 was concentrated in the early years, with 96% of all germination occurring within the first three years. Notably, 59% of seeds germinated in the first year (2012). The last seed germinated 8 years post-sowing, in 2020. Non-scarified seeds had delayed responses: only 22% germinated in 2012, and the majority (58%) germinated in 2013.
+
+Similarly, Experiment 2 also showed that most germination occurred early, with 84% of seeds germinating within the first three years (2015–2017). However, its germination period was shorter, with the last seed germinating 6 years post-sowing, in 2021.
+
+*David, A. S., Naccarato, A. M., Smith, S. A., Peterson, C. L., Pence, V. C., Crate, S. J., ... & Menges, E. S. (2024). Evaluating long‐term introduction success of the Florida scrub endemic Crotalaria avonensis (Fabaceae) using a decade of demographic data. Restoration Ecology, 32(3), e14082.*
+
+### Fire on seed bank
+Scarified seeds germinated in the first year after seed production only (Menges 2016, David 2024) and Menges (2016) showed strong effects of scarification in breaking seed dormancy and facilitating rapid germination (mean time of 0.25 months vs. 2.5 months for non-scarified seeds). However, scarification reduced germination percentages (10.1% vs.16.5%)

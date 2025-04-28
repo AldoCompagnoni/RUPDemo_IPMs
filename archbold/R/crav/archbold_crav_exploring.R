@@ -1098,32 +1098,43 @@ df_rec_pc <- df_mean %>%
               summarise(rep_nr_t0 = sum(rep_nr_t0, na.rm = T)) %>% 
               mutate(year = year + 1)
   , by = c('site', 'quad_id', 'year')) %>% 
-  mutate(rec_pc = rec_nr_t1 / rep_nr_t0,
-         fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal")) %>% 
-  mutate(rec_pc = ifelse(is.nan(rec_pc), 0, rec_pc),
-         fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), "fire_t1", fire_year),
-         fire_year = ifelse(year %in% c(2017), "FIRE", fire_year))
+  mutate(
+    rec_pc = rec_nr_t1 / rep_nr_t0,
+    fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal"),
+    rec_pc = ifelse(is.nan(rec_pc) | is.infinite(rec_pc), 0, rec_pc),  # <- key fix
+    fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), "fire_t1", fire_year),
+    fire_year = ifelse(year %in% c(2017), "FIRE", fire_year)
+  )
+  
 
 ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
   geom_jitter() + 
-  facet_wrap('quad_id')
-
-ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
-  geom_jitter() + 
-  facet_wrap('site')
-
-ggplot(data = df_rec_pc, aes(y = rec_pc, x = year, color = fire_year)) +
-  geom_point() + 
   facet_wrap('quad_id') +
-  scale_color_manual(values = c(
-    "fire" = "red", "normal" = "gray", 'fire_t1' = "pink", 'FIRE' = 'purple')) +
-  theme_minimal() + 
+  theme_minimal()
+
+ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
+  geom_jitter() + 
+  facet_wrap('site') +
+  theme_minimal()
+
+
+df_rec_pc <- df_rec_pc %>%
+  mutate(
+    rec_pc = rec_nr_t1 / rep_nr_t0,
+    fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal"),
+    rec_pc = ifelse(is.nan(rec_pc) | is.infinite(rec_pc), 0, rec_pc),  # <- key fix
+    fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), "fire_t1", fire_year),
+    fire_year = ifelse(year %in% c(2017), "FIRE", fire_year)
+  )
+
+
+ggplot(df_rec_pc, aes(x = year, y = rec_pc, color = fire_year)) +
+  geom_point() +
+  facet_wrap('quad_id') +
+  scale_color_manual(values = c("fire" = "red", "normal" = "gray", "fire_t1" = "pink", "FIRE" = "purple")) +
+  theme_minimal() +
   labs(y = expression('Per capita recruits'),
        x = expression('Year'))
-
-
-
-
 
 
 # Flowering data ---------------------------------------------------------------

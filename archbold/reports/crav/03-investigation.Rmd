@@ -308,6 +308,7 @@ Fire also helped with **recruitment**, increasing germination speed, although he
 
 Unfortunately, neither Menges' publication nor the data webpage provide information on how fire severity was measured, leaving the level 0 severity fire a mystery, for now.
 
+### Data
 
 ```{r fire data 1}
 df_fire1 <- df_mean %>% 
@@ -326,6 +327,7 @@ ggplot(df_fire1, aes(x = quad_id, y = year, size = fire_sev, color = fire_sev)) 
 ```
 
 
+### Fire on Growth
 ```{r fire on growth}
 df_fire_grow <- df_mean %>% 
   subset(size_t0 != 0) %>%
@@ -349,6 +351,8 @@ ggplot(
   facet_wrap(~ fire_event)
 ```
 
+
+### Fire on Survival
 ```{r fire on survival}
 df_fire_surv_0 <- df_mean %>% 
   filter(!is.na(survives)) %>%
@@ -405,43 +409,115 @@ p_fire_suv
 ```
 
 
-```{r fire on recruits}
-df_quad <- df_mean %>%  
-  group_by (year, site, quad) %>% 
-  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
-  ungroup
+### Fire on Flowers
+```{r fire on flowers}
+df_fire_fl <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(flower, fire_sev, fire_event, fire_gap) %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(fl_quad = mean(flower, na.rm = T), 
+            fire_gap = max(fire_gap, na.rm = T))
 
-df_group <- df_quad %>% 
-  group_by (year) %>% 
-  summarise(g_cov = mean(tot_p_area)) %>% 
-  ungroup
-
-df_cover <- left_join(df_quad, df_group) %>%
-  mutate(year = year + 1) %>% 
-  mutate(year = as.integer(year)) %>% 
-  drop_na()
-
-df_fire_recr <- df_mean %>%
-  group_by (year, site, quad) %>% 
-  summarise(nr_quad = sum(recruit, na.rm = T), 
-            fire_event = max(fire_event, na.rm = T)) %>% 
-  ungroup
-
-df_fire_recr <- left_join(df_cover, df_fire_recr) %>% 
-  filter(!is.na(fire_event))
-
-ggplot(
-  df_fire_recr, aes(x = tot_p_area, y = nr_quad)) + 
-  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
-  theme_bw() + 
-  labs(title    = 'Fire on Recruitment',
-       subtitle = v_ggp_suffix,
-       x        = expression('Total parent plant area '[t0]),   
-       y        = expression('Number of recruits '     [t1])) +
-  theme(plot.subtitle = element_text(size = 8)) + 
-  facet_wrap(~ fire_event)
+# Plot with counts
+ggplot(data = df_fire_fl, aes(x = as.factor(fire_gap), y = fl_quad)) + 
+  geom_boxplot() +
+  geom_text(data = df_fire_fl %>%
+              group_by(fire_gap) %>%
+              summarise(n = n()), 
+            aes(
+    x = as.factor(fire_gap), 
+    y = max(df_fire_fl$fl_quad, na.rm = TRUE) + 1.5, label = n),
+    inherit.aes = FALSE, size = 3) + 
+  theme_minimal() +
+  labs(y = expression('mean nr flowers per quadrat'),
+       x = expression('year gap after fire'))
 ```
 
+
+### Fire on Fruiting
+```{r fire on fruiting}
+df_fire_fr <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(fruit, fire_sev, fire_event, fire_gap) %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(fr_quad = mean(fruit, na.rm = T), 
+            fire_gap = as.factor(max(fire_gap, na.rm = T)))
+
+# Plot
+ggplot(data = df_fire_fr, aes(x = fire_gap, y = fr_quad)) + 
+  geom_boxplot() +
+  geom_text(data = df_fire_fr %>%
+              group_by(fire_gap) %>%
+              summarise(n = n(),
+                        y_pos = max(fr_quad, na.rm = TRUE) + 0.2), 
+            aes(x = fire_gap, y = y_pos, label = n),
+            inherit.aes = FALSE, size = 3) +
+  theme_minimal() +
+  labs(y = expression('mean nr fruits per quadrat'),
+       x = expression('year gap after fire')) +
+  coord_cartesian(ylim = c(0, max(df_fire_fr$fr_quad, na.rm = TRUE) + 1))
+```
+
+
+
+### Fire on Recruits
+```{r fire on recruits}
+df_fire_re <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(recruit, fire_sev, fire_event, fire_gap) %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(re_quad = sum(recruit, na.rm = T), 
+            fire_gap = max(fire_gap, na.rm = T))
+
+# Plot with counts
+ggplot(data = df_fire_re, aes(x = as.factor(fire_gap), y = re_quad)) + 
+  geom_boxplot() +
+  geom_text(data = df_fire_re %>%
+              group_by(fire_gap) %>%
+              summarise(n = n()), 
+            aes(
+              x = as.factor(fire_gap), 
+              y = max(df_fire_re$re_quad, na.rm = TRUE) + 1.5, label = n),
+            inherit.aes = FALSE, size = 3) + 
+  theme_minimal() +
+  labs(y = expression('sum recuits per quadrat'),
+       x = expression('year gap after fire'))
+```
+
+
+### Fire on Per capita recruitment
+```{r fire on per capita recruitment}
+df_fire_rec_pc <- df_mean %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(rec_nr_t1 = sum(recruit, na.rm = T), 
+            fire_gap = max(fire_gap, na.rm = T)) %>% 
+  left_join(df_mean %>%
+              group_by(site, quad_id, plant_id, year) %>%
+              summarise(rep_nr_t0 = as.integer(any(fruit > 0)), .groups = "drop") %>% 
+              ungroup() %>% 
+              group_by(site, quad_id, year) %>% 
+              summarise(rep_nr_t0 = sum(rep_nr_t0, na.rm = T)) %>% 
+              mutate(year = year + 1)
+            , by = c('site', 'quad_id', 'year')) %>% 
+  mutate(rec_pc = rec_nr_t1 / rep_nr_t0) %>%
+  mutate(rec_pc = ifelse(is.nan(rec_pc), 0, rec_pc))
+  
+
+ggplot(df_fire_rec_pc <- df_fire_rec_pc %>%
+         mutate(fire_gap = as.factor(fire_gap)), aes(x = fire_gap, y = rec_pc)) +
+  geom_boxplot() +
+  geom_text(data = df_fire_rec_pc %>%
+              group_by(fire_gap) %>%
+              summarise(n = n(),
+                        y_pos = min(max(rec_pc, na.rm = TRUE) + 0.2, 5)),
+            aes(x = fire_gap, y = y_pos, label = n),
+            inherit.aes = FALSE, size = 3) +
+  theme_minimal() +
+  labs(y = expression('per capita recruits'),
+       x = expression('year gap after fire')) +
+  coord_cartesian(ylim = c(0, 5))
+
+```
 
 
 ## Issue 5 - Spatial relationship

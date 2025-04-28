@@ -658,6 +658,29 @@ ggplot(data = df_fire_fl, aes(x = as.factor(fire_gap), y = fl_quad)) +
        x = expression('year gap after fire'))
 
 
+# Fire on Fruits ---------------------------------------------------------------
+df_fire_fr <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(fruit, fire_sev, fire_event, fire_gap) %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(fr_quad = mean(fruit, na.rm = T), 
+            fire_gap = as.factor(max(fire_gap, na.rm = T)))
+
+# Plot
+ggplot(data = df_fire_fr, aes(x = fire_gap, y = fr_quad)) + 
+  geom_boxplot() +
+  geom_text(data = df_fire_fr %>%
+              group_by(fire_gap) %>%
+              summarise(n = n(),
+                        y_pos = max(fr_quad, na.rm = TRUE) + 0.2), 
+            aes(x = fire_gap, y = y_pos, label = n),
+            inherit.aes = FALSE, size = 3) +
+  theme_minimal() +
+  labs(y = expression('mean nr fruits per quadrat'),
+       x = expression('year gap after fire')) +
+  coord_cartesian(ylim = c(0, max(df_fire_fr$fr_quad, na.rm = TRUE) + 1))
+
+
 # Fire on Recruits -------------------------------------------------------------
 df_fire_re <- df_mean %>% 
   group_by(site, quad_id, plant_id, year) %>% 
@@ -680,6 +703,37 @@ ggplot(data = df_fire_re, aes(x = as.factor(fire_gap), y = re_quad)) +
   labs(y = expression('sum recuits per quadrat'),
        x = expression('year gap after fire'))
 
+
+# Fire on Per-capita Recruit ---------------------------------------------------
+df_fire_rec_pc <- df_mean %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(rec_nr_t1 = sum(recruit, na.rm = T), 
+            fire_gap = max(fire_gap, na.rm = T)) %>% 
+  left_join(df_mean %>%
+              group_by(site, quad_id, plant_id, year) %>%
+              summarise(rep_nr_t0 = as.integer(any(fruit > 0)), .groups = "drop") %>% 
+              ungroup() %>% 
+              group_by(site, quad_id, year) %>% 
+              summarise(rep_nr_t0 = sum(rep_nr_t0, na.rm = T)) %>% 
+              mutate(year = year + 1)
+            , by = c('site', 'quad_id', 'year')) %>% 
+  mutate(rec_pc = rec_nr_t1 / rep_nr_t0) %>%
+  mutate(rec_pc = ifelse(is.nan(rec_pc), 0, rec_pc))
+  
+
+ggplot(df_fire_rec_pc <- df_fire_rec_pc %>%
+         mutate(fire_gap = as.factor(fire_gap)), aes(x = fire_gap, y = rec_pc)) +
+  geom_boxplot() +
+  geom_text(data = df_fire_rec_pc %>%
+              group_by(fire_gap) %>%
+              summarise(n = n(),
+                        y_pos = min(max(rec_pc, na.rm = TRUE) + 0.2, 5)),
+            aes(x = fire_gap, y = y_pos, label = n),
+            inherit.aes = FALSE, size = 3) +
+  theme_minimal() +
+  labs(y = expression('per capita recruits'),
+       x = expression('year gap after fire')) +
+  coord_cartesian(ylim = c(0, 5))
 
 
 # Data Processes ---------------------------------------------------------------

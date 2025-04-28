@@ -224,9 +224,9 @@ ggplot(
 ```
 
 
-### Fertility
+### Fecundity
 ```{r fe data 1}
-df_fert <- df_fruit %>%
+df_fecu <- df_fruit %>%
   rename(nr_fruit = nr_quad) %>% 
   left_join(
     df_recr %>%
@@ -238,14 +238,14 @@ df_fert <- df_fruit %>%
 ```
 
 ```{r fe plot 1}
-ggplot(data = df_fert) +
+ggplot(data = df_fecu) +
   geom_point(aes(x = nr_fruit, y = nr_rec_t1))
 ```
 
 
 Create time gaps or rather assigning fruiting to recruits over different time gaps, here 1 (fruiting on the recruits next year) to 4 (in 4 years time)
 ```{r fe data 2}
-df_fert_mod <- df_recr %>%
+df_fecu_mod <- df_recr %>%
   rename(nr_recr = nr_quad) %>% 
   left_join(
     df_fruit %>%
@@ -281,7 +281,7 @@ df_fert_mod <- df_recr %>%
 
 The following plot shows the 4 different time gaps of fruiting on recruits
 ```{r fe plot 2}
-ggplot(df_fert_mod %>%
+ggplot(df_fecu_mod %>%
          pivot_longer(
            cols = starts_with("nr_fru_t"),
            names_to = "fru_type",
@@ -301,18 +301,41 @@ ggplot(df_fert_mod %>%
 ```
 
 ```{r fe mod 2}
-mod_fer <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
-              data = df_fert_mod)
+mod_fec <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+              data = df_fecu_mod)
 
-summary(mod_fer)
+summary(mod_fec)
+```
+#### Fecundity year specific
+```{r}
+df_mean %>%
+  group_by(year) %>%
+  summarize(total_fire = sum(fire_sev, na.rm = TRUE)) %>%
+  filter(total_fire > 0)
+
+
+df_fecu_mod %>%
+  mutate(
+    quad_id = paste(site, quad, sep = "_"),
+    year_fire = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal")
+  ) %>%
+  ggplot(aes(x = nr_fru_t1, y = nr_recr, color = year_fire)) +
+  geom_jitter(alpha = 0.7) +
+  facet_wrap(~year) +
+  scale_color_manual(values = c("fire" = "red", "normal" = "gray")) +
+  theme_minimal()
+
+# Model
+mod_fec <- lmer(nr_recr ~ nr_fru_t1 + (1|year), data = df_fecu_mod)
+summary(mod_fec)
 ```
 
 
-#### Fertility on site level
+#### Fecundity on site level
 
 Instead of relating the fruiting and recruits on the plot level we widen the scope to the site level
 ```{r fe data 3}
-df_fert_mod_site <- df_fert_mod %>%
+df_fecu_mod_site <- df_fecu_mod %>%
   group_by(year, site) %>% 
   summarise(
     tot_p_area = sum(tot_p_area, na.rm = TRUE),
@@ -325,7 +348,7 @@ df_fert_mod_site <- df_fert_mod %>%
 ```
 
 ```{r fe plot 3}
-ggplot(df_fert_mod_site %>%
+ggplot(df_fecu_mod_site %>%
          pivot_longer(
            cols = starts_with("nr_fru_t"),
            names_to = "fruit_type",
@@ -343,24 +366,24 @@ ggplot(df_fert_mod_site %>%
 ```
 
 ```{r fe mod 3}
-mod_fer_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
-                data = df_fert_mod_site)
-summary(mod_fer_s)
+mod_fec_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+                data = df_fecu_mod_site)
+summary(mod_fec_s)
 ```
 
 Following the significant influence of fruiting_t2:
 
 ```{r fe plot 3.1}
-ggplot(df_fert_mod_site, aes(y = nr_recr, x = nr_fru_t2)) +
+ggplot(df_fecu_mod_site, aes(y = nr_recr, x = nr_fru_t2)) +
   geom_jitter(width = .25, height = .5) +
   geom_smooth(method = 'lm')
 ```
 
 
-#### Fertility on year level
+#### Fecundity on year level
 
 ```{r fe data 4}
-df_fert_mod_year <- df_fert_mod %>%
+df_fecu_mod_year <- df_fecu_mod %>%
   group_by(year) %>% 
   summarise(
     tot_p_area = sum(tot_p_area, na.rm = TRUE),
@@ -374,7 +397,7 @@ df_fert_mod_year <- df_fert_mod %>%
 
 
 ```{r fe plot 4}
-ggplot(df_fert_mod_year %>%
+ggplot(df_fecu_mod_year %>%
          pivot_longer(
            cols = starts_with("nr_fru_t"),
            names_to = "fruit_type",
@@ -393,17 +416,59 @@ ggplot(df_fert_mod_year %>%
 
 
 ```{r fe mod 4}
-mod_fer_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
-                data = df_fert_mod_year)
-summary(mod_fer_s)
+mod_fec_s <- lm(nr_recr ~ nr_fru_t1 * nr_fru_t2 * nr_fru_t3, 
+                data = df_fecu_mod_year)
+summary(mod_fec_s)
 ```
 
 ```{r}
-ggplot(df_fert_mod_year, aes(y = nr_recr, x = nr_fru_t2)) +
+ggplot(df_fecu_mod_year, aes(y = nr_recr, x = nr_fru_t2)) +
   geom_jitter(width = .25, height = .5) +
   geom_smooth(method = 'lm')
 ```
 
+### Per capita recruits
+```{r pcr data}
+df_rec_pc <- df_mean %>% 
+  group_by(site, quad_id, year) %>% 
+  summarise(rec_nr_t1 = sum(recruit, na.rm = T)) %>% 
+  left_join(df_mean %>%
+              group_by(site, quad_id, plant_id, year) %>%
+              summarise(rep_nr_t0 = as.integer(any(fruit > 0)), .groups = "drop") %>% 
+              ungroup() %>% 
+              group_by(site, quad_id, year) %>% 
+              summarise(rep_nr_t0 = sum(rep_nr_t0, na.rm = T)) %>% 
+              mutate(year = year + 1)
+  , by = c('site', 'quad_id', 'year')) %>% 
+  mutate(rec_pc = rec_nr_t1 / rep_nr_t0,
+         fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal")) %>% 
+  mutate(rec_pc = ifelse(is.nan(rec_pc), 0, rec_pc),
+         fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), "fire_t1", fire_year),
+         fire_year = ifelse(year %in% c(2017), "FIRE", fire_year))
+```
+
+```{r pcr plot1}
+ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
+  geom_jitter() + 
+  facet_wrap('quad_id')
+```
+
+```{r pcr plot2}
+ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
+  geom_jitter() + 
+  facet_wrap('site')
+```
+
+```{r pcr plot3}
+ggplot(data = df_rec_pc, aes(y = rec_pc, x = year, color = fire_year)) +
+  geom_point() + 
+  facet_wrap('quad_id') +
+  scale_color_manual(values = c(
+    "fire" = "red", "normal" = "gray", 'fire_t1' = "pink", 'FIRE' = 'purple')) +
+  theme_minimal() + 
+  labs(y = expression('Per capita recruits'),
+       x = expression('Year'))
+```
 
 
 

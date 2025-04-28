@@ -1,4 +1,4 @@
---- 
+---
 title: "Reports on Moore 2021"
 author: |
   Niklas Neisse ([neisse.n@protonmail.com](mailto:neisse.n@protonmail.com))  
@@ -12,9 +12,12 @@ documentclass: book
 # url: your book url like https://bookdown.org/yihui/bookdown
 # cover-image: path to the social sharing image like images/cover.jpg
 description: |
-  Reports on Moore et al. 2021 with insights on progess and decition-making towards building species specific IPM's
+  Reports on Moore et al. 2021 with insights on progress and decision-making towards building species-specific IPMs
 # link-citations: yes
 #github-repo: rstudio/bookdown-demo
+output: 
+  bookdown::gitbook:
+    code_folding: hide
 ---
 
 

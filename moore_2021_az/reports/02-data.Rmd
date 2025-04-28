@@ -1,1 +1,184 @@
 # Data {#data}
+
+## Quadrat data 
+We focus solely on the development and decision-making related to the quadrat data, as it is the only aspect that deviates from the approach used by Adler et al.
+
+### Set-up {-}
+#### Packages {-}
+We used the following packages: 
+`tidyverse`, `plantTracker`, `sf`, `janitor`
+
+<details>
+```{r packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(plantTracker) #ver 1.1.0
+library(sf) #ver 1.0-1.2
+library(janitor)
+```
+</details>
+
+#### Key variables {-}
+Once again, we worked with the Moore et al. (2021) dataset, which was collected in Arizona, USA.
+```{r key variables}
+
+# Define publication 
+v_author_year <- c('moore_2021')
+# Define region abbreviation
+v_region_abb  <- c('az')
+```
+
+
+#### Directories {-}
+```{r dir_main1, message=FALSE, warning=FALSE, include=FALSE}
+dir_main <- file.path('C:', 'code', 'RUPDemo_IPMs')
+```
+
+```{r dir_main2, eval=FALSE, message=FALSE, warning=FALSE}
+dir_main <- file.path('path', 'to', 'RUPDemo_IPMs')
+```
+
+```{r directories}
+
+dir_publ        <- file.path(dir_main, paste0(v_author_year, '_', v_region_abb))
+dir_data        <- file.path(dir_publ, 'data')
+dir_data_ancill <- file.path(dir_data, 'Ancillary_Data_CSVs')
+dir_data_quad   <- file.path(dir_data, 'quadrat_data')
+dir_shp         <- file.path(dir_publ, 'data', 'Species_Shapefile_Extractions')
+dir_geo         <- file.path(dir_data, 'Quadrat_Spatial_Data', 'Combined_by_Site.gdb')
+```
+
+
+### Inventory quadrats and years
+We built the inventory by going through the data folder to extract the relevant demographic information.
+
+```{r data quads and years, message=FALSE, warning=FALSE}
+# Listing the shapefiles in the shapefile directory
+shapefiles <- list.files(
+  dir_shp, pattern = '\\.shp$', recursive = TRUE, full.names = TRUE)
+
+# Function to extract year and quadrat information from file names
+extract_info <- function(file_path) {
+  # Extract the year (assuming it's a 4-digit number in the filename)
+  year <- sub('.*_(\\d{4})\\.shp$', '\\1', basename(file_path))
+  
+  # Extract quadrat identifier (assuming it's before the year in the filename)
+  quadrat <- sub('^(.*)_(\\d{4})\\.shp$', '\\1', basename(file_path))
+  
+  return(c(quadrat = quadrat, year = year))  # Return as a vector
+}
+
+# Apply the function to all shapefiles and store results
+file_info <- lapply(shapefiles, extract_info)
+
+# Convert to a data frame for easier manipulation
+file_info_df <- do.call(rbind, file_info)
+colnames(file_info_df) <- c('quadrat', 'year')
+file_info_df <- as.data.frame(file_info_df)
+
+file_info_df <- file_info_df %>% 
+  mutate(year = str_sub(as.factor(year))) %>%
+  mutate(year = as.numeric(year)) %>%
+  mutate(quadrat = gsub('Quadrat_', '', quadrat),
+         quadrat = gsub('_bar_', ' / ', quadrat))
+
+unique_quadrats_by_plot <- bind_rows(
+  tibble(
+    quadrat = 'year',  # New quadrat
+    year = list(unique(file_info_df$year))),
+  file_info_df %>%
+  group_by(quadrat) %>%
+  summarise(year = list(unique(year))) %>%
+  arrange(quadrat)
+  )
+
+unique_year_list <- setNames(
+  unique_quadrats_by_plot$year, unique_quadrats_by_plot$quadrat)
+inv_sgs <- unique_year_list
+
+str(inv_sgs[1:10])
+```
+
+## Geo-data
+We obtained the geographic data directly from the data repository, where it is divided into cover data and density data. These served as the raw inputs for our analysis.
+```{r data geo, message=FALSE, warning=FALSE}
+cover_all <- sf::st_read( 
+  dsn = dir_geo, layer = 'Cover_All') %>% 
+  rename(geometry = Shape) %>% 
+  clean_names()
+
+density_all <- sf::st_read(
+  dsn = dir_geo, layer = 'Density_All' ) %>% 
+  rename(geometry = Shape) %>% 
+  clean_names()
+```
+### Centroids
+Because some of the geographic data points represent very small areas, we also reviewed the associated .shp files to verify their accuracy—and confirmed they matched the original data. Notably, approximately 5% of individuals are expected to have an area of 0.00003 (I think this should be meters2)
+
+```{r too samll}
+hist(log(cover_all$shape_area))
+quantile(cover_all$shape_area, 0.05)
+```
+#### Centroids {-}
+
+```{r centroids, message=FALSE, warning=FALSE}
+# Centroids for Cover data
+# Subset the data where Shape_Area < 2.5e-6 and Shape_Area > 0
+subset_to_update <- cover_all[
+  cover_all$shape_area < 2.5e-6 & cover_all$shape_area > 0, ]
+
+# Apply centroid and buffer transformations to the subset
+subset_to_update <- st_buffer(st_centroid(subset_to_update), dist = 0.001)
+
+# Remove the updated subset from the original data
+cover_all_remaining <- cover_all[
+  cover_all$shape_area >= 2.5e-6 | cover_all$shape_area == 0, ]
+
+# Combine the updated subset with the remaining original data
+cover_all_updated <- rbind(cover_all_remaining, subset_to_update)
+
+
+# Centroids for density data
+density_all1 <- density_all %>% 
+  mutate(area = NA,
+         n_flower = NA) %>%
+  rename(x = coords_x1,
+         y = coords_x2)
+
+density_all2 <- st_centroid(density_all1) %>%  
+#  st_buffer(dist = 0.0003120444) # what we decided with aspen
+  st_buffer(dist = 0.001) # this gives us the lowest in the graphs 
+ # which is 3.14*10^-6 m2 -- log --> ~ -13
+```
+
+#### Working data {-}
+By combining the density and cover data, we created our working dataset, which has the following structure:
+```{r df, message=FALSE, warning=FALSE}
+# Bind density and cover
+df0 <- rbind(density_all2, cover_all_updated) %>% 
+  select(-c('area')) %>% 
+  mutate(year = as.numeric(year))
+
+head(df0)
+```
+
+## Species list
+```{r data species, message=FALSE, warning=FALSE}
+df_species <- st_drop_geometry(df0) %>%
+  group_by(species, type) %>% 
+  summarise(
+    quads  = length(unique(quadrat)),
+    years  = length(unique(year)),
+    counts = n()) %>%
+  arrange(desc(counts))
+
+head(df_species)
+```
+
+## Data preparation
+Using the inventory and the working data, we first checked the data for bugs and then performed the necessary cleaning with the `checkDat` funciton.
+```{r eval=FALSE, message=FALSE, warning=FALSE}
+checkDat(
+  dat = df0, inv = inv_sgs, species = 'species', site = 'site', 
+  quad = 'quadrat', year = 'year', geometry = 'geometry')
+```
+

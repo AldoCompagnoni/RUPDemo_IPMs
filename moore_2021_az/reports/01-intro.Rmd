@@ -1,3 +1,13 @@
 # Introduction {#intro}
 ## Abstract
 Reports on Moore et al. 2021 with insights on progess and decition-making towards building species specific IPM's
+
+## Publication
+[Moore et al. (2021)](https://doi.org/10.1002/ecy.3661) conducted a study on southwestern ponderosa pine ecosystems near Flagstaff, Arizona, USA, examining plant demography data over a 19-year period (2002–2020). The study provides annual mapping of these ecosystems, offering valuable insights into plant population dynamics. The data collected during this extensive period can be accessed through the [Zenodo repository](https://zenodo.org/records/5567814)
+
+## Main
+The dataset stands out due to its unique folder structure and the distinct nature of the data it contains. Specifically, we used geospatial data provided by Moore. 
+
+To handle the small observations, we manipulated the data by using centroids, as these observations were quite granular. By doing so, we grouped them into a newly defined smallest category. 
+
+Additionally, the dataset differs in how plants are categorized. Instead of using growth form as the categorization method, it relies on geospatial data that captures density and cover information, providing a more nuanced view of the plant distribution.

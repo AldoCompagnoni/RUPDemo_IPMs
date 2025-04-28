@@ -31,10 +31,11 @@ v_region_abb  <- c('az')
 
 # Directories ------------------------------------------------------------------
 dir_publ        <- file.path(paste0(v_author_year, '_', v_region_abb))
-dir_data        <- file.path(dir_publ, "data")
+dir_data        <- file.path(dir_publ, 'data')
 dir_data_ancill <- file.path(dir_data, 'Ancillary_Data_CSVs')
 dir_data_quad   <- file.path(dir_data, 'quadrat_data')
-dir_shp         <- file.path(dir_publ,  "data", "Species_Shapefile_Extractions")
+dir_shp         <- file.path(dir_publ, 'data', 'Species_Shapefile_Extractions')
+dir_geo         <- file.path(dir_data, 'Quadrat_Spatial_Data', 'Combined_by_Site.gdb')
 
 
 # Quadrat list -----------------------------------------------------------------
@@ -42,15 +43,15 @@ dir_shp         <- file.path(dir_publ,  "data", "Species_Shapefile_Extractions")
 
 # List of all shapefiles in the moore folder
 shapefiles <- list.files(
-  file.path(dir_shp), pattern = "\\.shp$", recursive = TRUE, full.names = TRUE)
+  dir_shp, pattern = '\\.shp$', recursive = TRUE, full.names = TRUE)
 
 # Function to extract year and quadrat information from file names
 extract_info <- function(file_path) {
   # Extract the year (assuming it's a 4-digit number in the filename)
-  year <- sub(".*_(\\d{4})\\.shp$", "\\1", basename(file_path))
+  year <- sub('.*_(\\d{4})\\.shp$', '\\1', basename(file_path))
   
   # Extract quadrat identifier (assuming it's before the year in the filename)
-  quadrat <- sub("^(.*)_(\\d{4})\\.shp$", "\\1", basename(file_path))
+  quadrat <- sub('^(.*)_(\\d{4})\\.shp$', '\\1', basename(file_path))
   
   return(c(quadrat = quadrat, year = year))  # Return as a vector
 }
@@ -60,18 +61,18 @@ file_info <- lapply(shapefiles, extract_info)
 
 # Convert to a data frame for easier manipulation
 file_info_df <- do.call(rbind, file_info)
-colnames(file_info_df) <- c("quadrat", "year")
+colnames(file_info_df) <- c('quadrat', 'year')
 file_info_df <- as.data.frame(file_info_df)
 
 file_info_df <- file_info_df %>% 
   mutate(year = str_sub(as.factor(year))) %>%
   mutate(year = as.numeric(year)) %>%
-  mutate(quadrat = gsub("Quadrat_", "", quadrat),
-         quadrat = gsub("_bar_", " / ", quadrat))
+  mutate(quadrat = gsub('Quadrat_', '', quadrat),
+         quadrat = gsub('_bar_', ' / ', quadrat))
 
 unique_quadrats_by_plot <- bind_rows(
   tibble(
-    quadrat = "year",  # New quadrat
+    quadrat = 'year',  # New quadrat
     year = list(unique(file_info_df$year))),
   file_info_df %>%
   group_by(quadrat) %>%
@@ -84,19 +85,17 @@ unique_year_list <- setNames(
 inv_sgs <- unique_year_list
 
 saveRDS(
-  inv_sgs, file = file.path(dir_data_quad, "moore21_quadrat_inventory.RData"))
+  inv_sgs, file = file.path(dir_data_quad, 'moore21_quadrat_inventory.RData'))
 
 
 # Data from geo-data -----------------------------------------------------------
-wdName <- file.path(dir_data, "Quadrat_Spatial_Data", "Combined_by_Site.gdb" )
-
 cover_all <- sf::st_read( 
-  dsn = wdName, layer = "Cover_All") %>% 
+  dsn = dir_geo, layer = 'Cover_All') %>% 
   rename(geometry = Shape) %>% 
   clean_names()
 
 density_all <- sf::st_read(
-  dsn = wdName, layer = "Density_All" ) %>% 
+  dsn = dir_geo, layer = 'Density_All' ) %>% 
   rename(geometry = Shape) %>% 
   clean_names()
 
@@ -138,28 +137,29 @@ df0 <- rbind(density_all2, cover_all_updated) %>%
   select(-c('area')) %>% 
   mutate(year = as.numeric(year))
 
-saveRDS(df0, file.path(dir_data_quad, "moore21_quadrats_full.rds"))
+saveRDS(df0, file.path(dir_data_quad, 'moore21_quadrats_full.rds'))
 
 
 # Species list -----------------------------------------------------------------
 ## For each species, summarize the total number of quads, the number of years it
 ## was observed, and the total instances of observation
 
-summary <- st_drop_geometry(df0) %>% 
+df_species <- st_drop_geometry(df0) %>%
   group_by(species, type) %>% 
-  summarise( quads = length( unique( quadrat ) ),
-                              years = length( unique( year ) ),
-                              counts = n()) %>%
+  summarise(
+    quads  = length(unique(quadrat)),
+    years  = length(unique(year)),
+    counts = n()) %>%
   arrange(desc(counts))
 
-write.csv(row.names = F, summary, 
-          file.path(dir_data_quad, "moore21_species_list.csv"))
+write.csv(row.names = F, df_species, 
+          file.path(dir_data_quad, 'moore21_species_list.csv'))
 
 
 # Filter data ------------------------------------------------------------------
 # Check the inv and dat arguments
-checkDat(df0, inv_sgs, species = "species", site = "site", quad = "quadrat", 
-         year = "year", geometry = "geometry")
+checkDat(df0, inv_sgs, species = 'species', site = 'site', quad = 'quadrat', 
+         year = 'year', geometry = 'geometry')
 # Some rows had invalid geometry, so we fix the geometries
 invalid_geom <- c(
   128861, 134027, 143973, 145470, 153222, 159612, 160762, 175001, 186821, 
@@ -175,18 +175,18 @@ for(i in 1:length(invalid_geom)){
   dat01[invalid_geom[i],15] <- st_make_valid(dat01[invalid_geom[i],15])
 }
 
-checkDat(dat01, inv_sgs, species = "species", site = "site", quad = "quadrat", 
-         year = "year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = 'species', site = 'site', quad = 'quadrat', 
+         year = 'year', geometry = 'geometry')
 # Still have a couple of repeated rows, somehow, so we will drop those
 drop_rows <- c(
   8684, 37028, 76227, 76229, 76231, 76233, 76235, 76237, 76239)
 
 dat02 <- dat01[!(row.names(dat01) %in% drop_rows),]
 
-checkDat(dat02, inv_sgs, species = "species", site = "site", quad = "quadrat", 
-         year = "year", geometry = "geometry")
+checkDat(dat02, inv_sgs, species = 'species', site = 'site', quad = 'quadrat', 
+         year = 'year', geometry = 'geometry')
 
 
 # Save -------------------------------------------------------------------------
-saveRDS(dat02, file = file.path(dir_data_quad, "moore21_quadrats_filtered.rds"))
-dat02 <- readRDS(file = file.path(dir_data_quad, "moore21_quadrats_filtered.rds"))
+saveRDS(dat02, file = file.path(dir_data_quad, 'moore21_quadrats_filtered.rds'))
+dat02 <- readRDS(file = file.path(dir_data_quad, 'moore21_quadrats_filtered.rds'))

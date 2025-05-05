@@ -171,8 +171,8 @@ df_mean_og <- df %>%
   summarise(
     survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
     size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
-    fruit    = if_else(all(is.na(fr)), NA_real_, mean(fr, na.rm = TRUE)),
-    flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),
+    fruit    = if_else(all(is.na(fr)), NA_real_, max (fr, na.rm = TRUE)),   
+    flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),  
     fire_sev = if_else(
       all(is.na(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),
       NA_real_, 
@@ -525,22 +525,265 @@ df_fire_grow <- df_mean %>%
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
   select(plant_id, year, size_t0, size_t1, age,
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event)
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event, fire_sev) %>% 
+  mutate(fire_event = as.factor(fire_event),
+         fire_sev   = if_else(is.na(fire_sev), 0, fire_sev))
 
 ggplot(
-  data  = df_fire_grow, aes(x = logsize_t0, y = logsize_t1)) +
-  geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') +
-  geom_abline(aes(slope = 1, intercept = 0)) + 
+  data  = df_fire_grow, aes(
+    x = logsize_t0, y = logsize_t1, 
+    colour = fire_event, shape = fire_event)) +
+  geom_jitter(alpha = 0.7, size = 1.5) + 
+  geom_abline(slope = 1, intercept = 0) + 
   geom_smooth(method = 'lm') +
+  scale_colour_manual(values = c("0" = "lightgray", "1" = "red"))  +
   theme_bw() +
   theme(axis.text = element_text(size = 8),
-        title     = element_text(size = 10)) +
+        title     = element_text(size = 10),
+        plot.subtitle = element_text(size = 8)) +
   labs(title    = 'Fire on Growth',
        subtitle = v_ggp_suffix,
        x        = expression('log(size) ' [t0]),
-       y        = expression('log(size)  '[t1])) +
-  theme(plot.subtitle = element_text(size = 8)) +
-  facet_wrap(~ fire_event)
+       y        = expression('log(size)  '[t1]))
+
+
+# Model fire on growth with event ----------------------------------------------
+mod_fi_gr_0 <- lm(logsize_t1 ~ fire_event, 
+                  data = df_fire_grow)
+# Linear model
+mod_fi_gr_1 <- lm(logsize_t1 ~ logsize_t0 +
+                    fire_event + fire_event:logsize_t0, 
+                  data = df_fire_grow)
+# Quadratic model
+mod_fi_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
+                    fire_event + fire_event:logsize_t0 + 
+                    fire_event:logsize_t0_2, 
+                  data = df_fire_grow)  
+# Cubic model
+mod_fi_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + 
+                    fire_event + fire_event:logsize_t0 + 
+                    fire_event:logsize_t0_2 + fire_event:logsize_t0_3, 
+                  data = df_fire_grow)
+
+mods_fi_gr      <- list(mod_fi_gr_0, mod_fi_gr_1, mod_fi_gr_2, mod_fi_gr_3)
+mods_fi_gr_dAIC <- AICtab(mods_fi_gr, weights = T, sort = F)$dAIC
+
+
+# Get the sorted indices of dAIC values
+mods_fi_gr_sorted <- order(mods_fi_gr_dAIC)
+
+# Establish the index of model complexity
+v_mod_fi_set_gr <- c()
+if (length(v_mod_fi_set_gr) == 0) {
+  mod_fi_gr_index_bestfit <- mods_fi_gr_sorted[1]
+  v_mod_fi_gr_index       <- mod_fi_gr_index_bestfit - 1 
+} else {
+  mod_fi_gr_index_bestfit <- v_mod_fi_set_gr +1
+  v_mod_fi_gr_index       <- v_mod_fi_set_gr
+}
+
+mod_fi_gr_bestfit         <- mods_fi_gr[[mod_fi_gr_index_bestfit]]
+mod_fi_gr_ranef           <- coef(mod_fi_gr_bestfit)
+
+# Predict size at time t1 using the mean growth model
+df_fire_grow$pred <- predict(mod_fi_gr_bestfit, type = 'response')
+
+source('helper_functions/line_color_pred_fun.R')
+source('helper_functions/predictor_fun.R')
+
+g_fi_grow_line <- ggplot(
+  df_fire_grow, aes(x = logsize_t0, y = logsize_t1, colour = fire_event)) +
+  # Plot observed data
+  geom_point() +
+  geom_function(fun = function(x) predictor_fun(x, mod_fi_gr_ranef), 
+                color = line_color_pred_fun(mod_fi_gr_ranef), 
+                lwd = 2) +
+  theme_bw() + 
+  labs(title    = 'Growth prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+g_fi_grow_pred <- ggplot(
+  df_fire_grow, aes(x = pred, y = logsize_t1)) +
+  geom_point() +  
+  geom_abline(aes(intercept = 0, slope = 1),  
+              color = 'red', lwd = 2) + 
+  theme_bw()
+
+g_fi_grow_overall_pred <- g_fi_grow_line + g_fi_grow_pred + plot_layout() 
+g_fi_grow_overall_pred
+
+
+# Model fire on growth with event & severity -----------------------------------
+mod_fi2_gr_0 <- lm(logsize_t1 ~ fire_sev + fire_event + fire_sev:fire_event, 
+                   data = df_fire_grow)
+# Linear model
+mod_fi2_gr_1 <- lm(logsize_t1 ~ logsize_t0 +
+                     fire_sev:fire_event + 
+                     fire_sev   + fire_sev:logsize_t0 +
+                     fire_event + fire_event:logsize_t0, 
+                   data = df_fire_grow)
+# Quadratic model
+mod_fi2_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 +
+                     fire_sev:fire_event + 
+                     fire_sev   + fire_sev:logsize_t0 + 
+                     fire_sev   + fire_sev:logsize_t0_2 +
+                     fire_event + fire_event:logsize_t0 +
+                     fire_event + fire_event:logsize_t0_2, 
+                   data = df_fire_grow)  
+# Cubic model
+mod_fi2_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 +
+                     fire_sev:fire_event + 
+                     fire_sev   + fire_sev:logsize_t0 + 
+                     fire_sev   + fire_sev:logsize_t0_2 + 
+                     fire_sev   + fire_sev:logsize_t0_3 +
+                     fire_event + fire_event:logsize_t0 +
+                     fire_event + fire_event:logsize_t0_2 +
+                     fire_event + fire_event:logsize_t0_3, 
+                   data = df_fire_grow)
+
+mods_fi2_gr      <- list(mod_fi2_gr_0, mod_fi2_gr_1, mod_fi2_gr_2, mod_fi2_gr_3)
+mods_fi2_gr_dAIC <- AICtab(mods_fi2_gr, weights = T, sort = F)$dAIC
+
+
+# Get the sorted indices of dAIC values
+mods_fi2_gr_sorted <- order(mods_fi2_gr_dAIC)
+
+# Establish the index of model complexity
+v_mod_fi2_set_gr <- c()
+if (length(v_mod_fi2_set_gr) == 0) {
+  mod_fi2_gr_index_bestfit <- mods_fi2_gr_sorted[1]
+  v_mod_fi2_gr_index       <- mod_fi2_gr_index_bestfit - 1 
+} else {
+  mod_fi2_gr_index_bestfit <- v_mod_fi2_set_gr +1
+  v_mod_fi2_gr_index       <- v_mod_fi2_set_gr
+}
+
+mod_fi2_gr_bestfit         <- mods_fi2_gr[[mod_fi2_gr_index_bestfit]]
+mod_fi2_gr_ranef           <- coef(mod_fi2_gr_bestfit)
+
+summary(mod_fi2_gr_bestfit)
+
+# Predict size at time t1 using the mean growth model
+df_fire_grow$pred <- predict(mod_fi2_gr_bestfit, type = 'response')
+
+source('helper_functions/line_color_pred_fun.R')
+source('helper_functions/predictor_fun.R')
+
+g_fi2_grow_line <- ggplot(
+  df_fire_grow, aes(x = logsize_t0, y = logsize_t1, colour = fire_sev)) +
+  # Plot observed data
+  geom_point() +
+  geom_function(fun = function(x) predictor_fun(x, mod_fi2_gr_ranef), 
+                color = line_color_pred_fun(mod_fi2_gr_ranef), 
+                lwd = 2) +
+  theme_bw() + 
+  labs(title    = 'Growth prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+g_fi2_grow_pred <- ggplot(
+  df_fire_grow, aes(x = pred, y = logsize_t1)) +
+  geom_point() +  
+  geom_abline(aes(intercept = 0, slope = 1),  
+              color = 'red', lwd = 2) + 
+  theme_bw()
+
+g_fi2_grow_overall_pred <- g_fi2_grow_line + g_fi2_grow_pred + plot_layout() 
+g_fi2_grow_overall_pred
+
+
+
+# Model fire on growth with severity -------------------------------------------
+mod_fi3_gr_0 <- lm(logsize_t1 ~ fire_sev, 
+                   data = df_fire_grow)
+# Linear model
+mod_fi3_gr_1 <- lm(logsize_t1 ~ logsize_t0 +
+                     fire_sev + fire_sev:logsize_t0, 
+                   data = df_fire_grow)
+# Quadratic model
+mod_fi3_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
+                     fire_sev + fire_sev:logsize_t0 + 
+                     fire_sev:logsize_t0_2, 
+                   data = df_fire_grow)  
+# Cubic model
+mod_fi3_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + 
+                     fire_sev + fire_sev:logsize_t0 + 
+                     fire_sev:logsize_t0_2 + fire_sev:logsize_t0_3, 
+                   data = df_fire_grow)
+
+mods_fi3_gr      <- list(mod_fi3_gr_0, mod_fi3_gr_1, mod_fi3_gr_2, mod_fi3_gr_3)
+mods_fi3_gr_dAIC <- AICtab(mods_fi3_gr, weights = T, sort = F)$dAIC
+
+
+# Get the sorted indices of dAIC values
+mods_fi3_gr_sorted <- order(mods_fi3_gr_dAIC)
+
+# Establish the index of model complexity
+v_mod_fi3_set_gr <- c()
+if (length(v_mod_fi3_set_gr) == 0) {
+  mod_fi3_gr_index_bestfit <- mods_fi3_gr_sorted[1]
+  v_mod_fi3_gr_index       <- mod_fi3_gr_index_bestfit - 1 
+} else {
+  mod_fi3_gr_index_bestfit <- v_mod_fi3_set_gr +1
+  v_mod_fi3_gr_index       <- v_mod_fi3_set_gr
+}
+
+mod_fi3_gr_bestfit         <- mods_fi3_gr[[mod_fi3_gr_index_bestfit]]
+mod_fi3_gr_ranef           <- coef(mod_fi3_gr_bestfit)
+
+summary(mod_fi3_gr_bestfit)
+
+# Predict size at time t1 using the mean growth model
+df_fire_grow$pred <- predict(mod_fi3_gr_bestfit, type = 'response')
+
+source('helper_functions/line_color_pred_fun.R')
+source('helper_functions/predictor_fun.R')
+
+g_fi3_grow_line <- ggplot(
+  df_fire_grow, aes(x = logsize_t0, y = logsize_t1, colour = fire_sev)) +
+  # Plot observed data
+  geom_point() +
+  geom_function(fun = function(x) predictor_fun(x, mod_fi3_gr_ranef), 
+                color = line_color_pred_fun(mod_fi3_gr_ranef), 
+                lwd = 2) +
+  theme_bw() + 
+  labs(title    = 'Growth prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+g_fi3_grow_pred <- ggplot(
+  df_fire_grow, aes(x = pred, y = logsize_t1)) +
+  geom_point() +  
+  geom_abline(aes(intercept = 0, slope = 1),  
+              color = 'red', lwd = 2) + 
+  theme_bw()
+
+g_fi3_grow_overall_pred <- g_fi3_grow_line + g_fi3_grow_pred + plot_layout() 
+g_fi3_grow_overall_pred
+
+
+# Fire on growth models comparison ---------------------------------------------
+
+mods_fi_gr_all <- list(
+  mod_fi_gr_0,  mod_fi_gr_1,  mod_fi_gr_2,  mod_fi_gr_3,
+  mod_fi2_gr_0, mod_fi2_gr_1, mod_fi2_gr_2, mod_fi2_gr_3,
+  mod_fi3_gr_0, mod_fi3_gr_1, mod_fi3_gr_2, mod_fi3_gr_3
+)
+
+mods_fi_gr_all_dAIC <- AICtab(mod_fi_gr_all, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_fi_gr_all_sorted <- order(mods_fi_gr_all_dAIC)
+
+# Establish the index of model complexity
+mods_fi_gr_all_index_bestfit <- mods_fi_gr_all_sorted[1]
+
+mods_fi_gr_all_bestfit         <- mods_fi_gr_all[[mods_fi_gr_all_index_bestfit]]
+mods_fi_gr_all_ranef           <- coef(mods_fi_gr_all_bestfit)
+
+summary(mods_fi_gr_all_bestfit)
+
 
 
 # Fire on survival -------------------------------------------------------------
@@ -643,6 +886,9 @@ df_fire_fl <- df_mean %>%
   summarise(fl_quad = mean(flower, na.rm = T), 
             fire_gap = max(fire_gap, na.rm = T))
 
+
+
+
 # Plot with counts
 ggplot(data = df_fire_fl, aes(x = as.factor(fire_gap), y = fl_quad)) + 
   geom_boxplot() +
@@ -656,6 +902,85 @@ ggplot(data = df_fire_fl, aes(x = as.factor(fire_gap), y = fl_quad)) +
   theme_minimal() +
   labs(y = expression('mean nr flowers per quadrat'),
        x = expression('year gap after fire'))
+
+
+# Fire on Flower the year after ------------------------------------------------
+df_fire_fl_0 <- df_mean %>% 
+  filter(!is.na(flower)) %>%
+  filter(size_t0 != 0) %>%
+  select(plant_id, year, size_t0, flower, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event) %>% 
+  mutate(flower = if_else(flower > 0, 1, flower)) %>% 
+  filter(fire_event == 0)
+
+df_fire_fl_1 <- df_mean %>% 
+  filter(!is.na(flower)) %>%
+  filter(size_t0 != 0) %>%
+  select(plant_id, year, size_t0, flower, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event) %>% 
+  mutate(flower = if_else(flower > 0, 1, flower)) %>% 
+  filter(fire_event == 1)
+
+p_fire_fl_0 <- ggplot(
+  data = plot_binned_prop(df_fire_fl_0, 10, logsize_t0, flower)) +
+  geom_point(aes(x = logsize_t0,
+                 y = flower),
+             alpha = 1, pch = 16, color = 'red' ) +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                size = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+  ylim(0, 1.01) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Fire on Flowering without fire',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size)'[t0]),
+       y        = expression('Survival to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
+
+p_fire_fl_1 <- ggplot(
+  data = plot_binned_prop(df_fire_fl_1, 10, logsize_t0, flower)) +
+  geom_point(aes(x = logsize_t0,
+                 y = flower),
+             alpha = 1, pch = 16, color = 'red' ) +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                size = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+  ylim(0, 1.01) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title     = element_text(size = 10)) +
+  labs(title    = 'Fire on Flowering with fire',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size)'[t0]),
+       y        = expression('Survival to time t1')) +
+  theme(plot.subtitle = element_text(size = 8))
+
+p_fire_fl <- p_fire_fl_0 + p_fire_fl_1 + plot_layout()
+p_fire_fl
+
+
+# Fire on Flowering one year after ---------------------------------------------
+df_fr_fl_t0 <- df_mean %>% 
+  group_by(site, quad_id, plant_id) %>% 
+  select(year, flower, fire_event) %>% 
+  rename(fl_t0 = flower)
+
+df_fr_fl_t1 <- df_mean %>% 
+  group_by(site, quad_id, plant_id) %>% 
+  select(year, flower) %>% 
+  mutate(year = year - 1) %>% 
+  rename(fl_t1 = flower)
+  
+df_fr_fl_t <- df_fr_fl_t0 %>% 
+  left_join(df_fr_fl_t1, by = c('site', 'quad_id', 'plant_id', 'year')) %>% 
+  mutate(fire_event = as.factor(fire_event))
+
+ggplot(data = df_fr_fl_t) +
+  geom_jitter(aes(x = fl_t0, y = fl_t1, colour = fire_event), alpha = 0.5) +
+  geom_smooth(aes(x = fl_t0, y = fl_t1, colour = fire_event), method = 'lm') +
+  geom_abline(intercept = 0, slope = 1)
 
 
 # Fire on Fruits ---------------------------------------------------------------
@@ -681,6 +1006,71 @@ ggplot(data = df_fire_fr, aes(x = fire_gap, y = fr_quad)) +
   coord_cartesian(ylim = c(0, max(df_fire_fr$fr_quad, na.rm = TRUE) + 1))
 
 
+# Effect of fire on fruiting
+df_fi_quad <- df_mean %>%  
+  group_by (year, site, quad) %>% 
+  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
+  ungroup
+
+df_fi_group <- df_fi_quad %>% 
+  group_by (year) %>% 
+  summarise(g_cov = mean(tot_p_area)) %>% 
+  ungroup
+
+df_fi_cover <- left_join(df_fi_quad, df_fi_group) %>%
+  mutate(year = year + 1) %>% 
+  mutate(year = as.integer(year)) %>% 
+  drop_na()
+
+
+df_fi_fruit <- df_mean %>%
+  group_by (year, site, quad) %>% 
+  summarise(nr_quad    = mean(fruit, na.rm = T),
+            fire_event = max( fire_event, na.rm = T )) %>% 
+  ungroup
+
+df_fi_fruit <- left_join(df_fi_cover, df_fi_fruit) %>% 
+  mutate(fire_event = as.factor(if_else(is.na(fire_event), 0, fire_event)))
+
+summary(df_fi_fruit$fire_event)
+
+ggplot(
+  df_fi_fruit, aes(x = tot_p_area, y = nr_quad)) + 
+  geom_point(alpha = 0.5, pch = 16, size = 1) +  
+  theme_bw() + 
+  labs(title    = 'Fruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of fruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8)) +
+  facet_wrap('fire_event')
+
+
+# Fire on Fruiting one year after ----------------------------------------------
+df_fi_fr_t0 <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(fruit, fire_event) %>% 
+  rename(fr_t0 = fruit)
+
+df_fi_fr_t1 <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(fruit) %>% 
+  mutate(year = year - 1) %>% 
+  rename(fr_t1 = fruit)
+
+df_fi_fr_t <- df_fi_fr_t0 %>% 
+  left_join(df_fi_fr_t1) %>% 
+  mutate(fire_event = if_else(is.na(fire_event), 0, fire_event),
+         fire_event = as.factor(fire_event))
+
+ggplot(data = df_fi_fr_t) +
+  geom_jitter(aes(y = fr_t1, x = fr_t0, colour = fire_event),
+              alpha = 0.3) +
+  geom_smooth(aes(y = fr_t1, x = fr_t0, colour = fire_event), method = 'lm') +
+  geom_abline(intercept = 0, slope = 1)
+  
+
+
 # Fire on Recruits -------------------------------------------------------------
 df_fire_re <- df_mean %>% 
   group_by(site, quad_id, plant_id, year) %>% 
@@ -702,6 +1092,17 @@ ggplot(data = df_fire_re, aes(x = as.factor(fire_gap), y = re_quad)) +
   theme_minimal() +
   labs(y = expression('sum recuits per quadrat'),
        x = expression('year gap after fire'))
+
+ggplot(data = df_fire_re %>%
+         filter(fire_gap >= 0,
+                fire_gap <= 1), 
+       aes(x = as.factor(fire_gap), y = re_quad)) + 
+  geom_boxplot()
+
+
+summary(lm(data = df_fire_re %>% filter(fire_gap >= 0, fire_gap <= 1),
+           formula = re_quad ~ fire_gap))
+
 
 
 # Fire on Per-capita Recruit ---------------------------------------------------
@@ -734,6 +1135,35 @@ ggplot(df_fire_rec_pc <- df_fire_rec_pc %>%
   labs(y = expression('per capita recruits'),
        x = expression('year gap after fire')) +
   coord_cartesian(ylim = c(0, 5))
+
+
+# Fire on Flower to Fruit transition -------------------------------------------
+df_fi_ftf <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(logsize_t0, flower, fruit, fire_event) %>% 
+  mutate(ftf = fruit/flower)
+
+df_fi_ftf %>% 
+  filter(flower > 0) %>% 
+  arrange(desc(ftf))
+
+ggplot(data = df_fi_ftf) +
+  geom_histogram(aes(x = ftf))
+
+df_fi_ftf %>% 
+  summary
+
+df_fi_ftf %>% 
+  filter(fire_event > 0,
+         ftf >= 0)
+
+ggplot(data = df_fi_ftf) +
+  geom_histogram(aes(x = ftf)) + 
+  facet_wrap('fire_event')
+
+
+ggplot(data = df_fi_ftf) +
+  geom_jitter(aes(y = ftf, x = logsize_t0))
 
 
 # Data Processes ---------------------------------------------------------------
@@ -836,6 +1266,21 @@ ggplot(
   theme(plot.subtitle = element_text(size = 8))
 
 
+df_re_qd <- df_mean %>% 
+  group_by(site, quad_id, year) %>%
+  select(recruit) %>% 
+  summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
+  left_join(df_mean %>% 
+              group_by(site, quad_id, year) %>% 
+              summarise(nr_ind = sum(!is.na(size_t0))) %>% 
+              mutate(year = year - 1),
+            by = c('site', 'quad_id', 'year'))
+
+ggplot(data = df_re_qd) + 
+  geom_jitter(aes(y = rec_qd_t1, x = nr_ind)) + 
+  geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm')
+
+
 # Fruiting data ----------------------------------------------------------------
 df_quad <- df_mean %>%  
   group_by (year, site, quad) %>% 
@@ -870,8 +1315,6 @@ ggplot(
        x        = expression('Total parent plant area '[t0]),   
        y        = expression('Number of fruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8))
-
-
 
 
 # Fecundity data ---------------------------------------------------------------
@@ -1108,8 +1551,9 @@ df_rec_pc <- df_mean %>%
   
 
 ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
-  geom_jitter() + 
-  facet_wrap('quad_id') +
+  geom_jitter(width = 0.05) + 
+  geom_smooth(method = 'lm') +
+  facet_wrap('quad_id', scales = 'free_y') +
   theme_minimal()
 
 ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
@@ -1179,77 +1623,6 @@ ggplot(data = df_flower) +
 
 
 # Models -----------------------------------------------------------------------
-# Growth model -----------------------------------------------------------------
-mod_gr_0 <- lm(logsize_t1 ~ 1, 
-               data = df_grow)
-# Linear model
-mod_gr_1   <- lm(logsize_t1 ~ logsize_t0, 
-                 data = df_grow)
-# Quadratic model
-mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, 
-               data = df_grow)  
-# Cubic model
-mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, 
-               data = df_grow)
-
-mods_gr      <- list(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
-mods_gr_dAIC <- AICtab(mods_gr, weights = T, sort = F)$dAIC
-
-# Get the sorted indices of dAIC values
-mods_gr_sorted <- order(mods_gr_dAIC)
-
-# Establish the index of model complexity
-if (length(v_mod_set_gr) == 0) {
-  mod_gr_index_bestfit <- mods_gr_sorted[1]
-  v_mod_gr_index       <- mod_gr_index_bestfit - 1 
-} else {
-  mod_gr_index_bestfit <- v_mod_set_gr +1
-  v_mod_gr_index       <- v_mod_set_gr
-}
-
-mod_gr_bestfit         <- mods_gr[[mod_gr_index_bestfit]]
-mod_gr_ranef           <- coef(mod_gr_bestfit)
-
-# Predict size at time t1 using the mean growth model
-df_grow$pred <- predict(mod_gr_bestfit, type = 'response')
-
-source('helper_functions/line_color_pred_fun.R')
-source('helper_functions/predictor_fun.R')
-
-g_grow_line <- ggplot(
-  df_grow, aes(x = logsize_t0, y = logsize_t1)) +
-  # Plot observed data
-  geom_point() +
-  geom_function(fun = function(x) predictor_fun(x, mod_gr_ranef), 
-                color = line_color_pred_fun(mod_gr_ranef), 
-                lwd = 2) +
-  theme_bw() + 
-  labs(title    = 'Growth prediction',
-       subtitle = v_ggp_suffix) +
-  theme(plot.subtitle = element_text(size = 8))
-
-g_grow_pred <- ggplot(
-  df_grow, aes(x = pred, y = logsize_t1)) +
-  geom_point() +  
-  geom_abline(aes(intercept = 0, slope = 1),  
-              color = 'red', lwd = 2) + 
-  theme_bw()
-
-g_grow_overall_pred <- g_grow_line + g_grow_pred + plot_layout() 
-g_grow_overall_pred
-
-
-# Fit a model to assess variance in growth
-# Fitted values from growth model
-mod_gr_x   <- fitted(mod_gr_bestfit)  
-# Squared residuals
-mod_gr_y   <- resid(mod_gr_bestfit)^2  
-# Non-linear model for variance
-mod_gr_var <- nls(
-  mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
-  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE) ) 
-
-
 # Survival model ---------------------------------------------------------------
 # Logistic regression
 mod_su_0 <- glm(survives ~ 1,
@@ -1328,6 +1701,77 @@ g_surv_bin <- ggplot() +
 # Combine survival plots
 g_surv_overall_pred <- g_surv_line + g_surv_bin + plot_layout()
 g_surv_overall_pred
+
+
+# Growth model -----------------------------------------------------------------
+mod_gr_0 <- lm(logsize_t1 ~ 1, 
+               data = df_grow)
+# Linear model
+mod_gr_1   <- lm(logsize_t1 ~ logsize_t0, 
+                 data = df_grow)
+# Quadratic model
+mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, 
+               data = df_grow)  
+# Cubic model
+mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, 
+               data = df_grow)
+
+mods_gr      <- list(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
+mods_gr_dAIC <- AICtab(mods_gr, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_gr_sorted <- order(mods_gr_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_gr) == 0) {
+  mod_gr_index_bestfit <- mods_gr_sorted[1]
+  v_mod_gr_index       <- mod_gr_index_bestfit - 1 
+} else {
+  mod_gr_index_bestfit <- v_mod_set_gr +1
+  v_mod_gr_index       <- v_mod_set_gr
+}
+
+mod_gr_bestfit         <- mods_gr[[mod_gr_index_bestfit]]
+mod_gr_ranef           <- coef(mod_gr_bestfit)
+
+# Predict size at time t1 using the mean growth model
+df_grow$pred <- predict(mod_gr_bestfit, type = 'response')
+
+source('helper_functions/line_color_pred_fun.R')
+source('helper_functions/predictor_fun.R')
+
+g_grow_line <- ggplot(
+  df_grow, aes(x = logsize_t0, y = logsize_t1)) +
+  # Plot observed data
+  geom_point() +
+  geom_function(fun = function(x) predictor_fun(x, mod_gr_ranef), 
+                color = line_color_pred_fun(mod_gr_ranef), 
+                lwd = 2) +
+  theme_bw() + 
+  labs(title    = 'Growth prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+g_grow_pred <- ggplot(
+  df_grow, aes(x = pred, y = logsize_t1)) +
+  geom_point() +  
+  geom_abline(aes(intercept = 0, slope = 1),  
+              color = 'red', lwd = 2) + 
+  theme_bw()
+
+g_grow_overall_pred <- g_grow_line + g_grow_pred + plot_layout() 
+g_grow_overall_pred
+
+
+# Fit a model to assess variance in growth
+# Fitted values from growth model
+mod_gr_x   <- fitted(mod_gr_bestfit)  
+# Squared residuals
+mod_gr_y   <- resid(mod_gr_bestfit)^2  
+# Non-linear model for variance
+mod_gr_var <- nls(
+  mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
+  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE) ) 
 
 
 # Recruitment model ------------------------------------------------------------

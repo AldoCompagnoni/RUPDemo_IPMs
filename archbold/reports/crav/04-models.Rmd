@@ -452,7 +452,7 @@ df_rec_pc <- df_mean %>%
 ```{r pcr plot1, fig.width = 10, fig.height = 20}
 ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
   geom_jitter() + 
-  facet_wrap('quad_id') +
+  facet_wrap('quad_id', scales = 'free') +
   theme_minimal()
 ```
 

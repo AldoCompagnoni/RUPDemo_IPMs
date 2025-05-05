@@ -5,7 +5,8 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.04.217
+# Date  : 2025.04.17
+
 # Code adapted from: https://github.com/aestears/plantTracker
 # Adapted from plantTracker How to (Stears et al. 2022)
 

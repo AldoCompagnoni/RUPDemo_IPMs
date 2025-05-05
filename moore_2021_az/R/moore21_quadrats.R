@@ -188,5 +188,10 @@ checkDat(dat02, inv_sgs, species = 'species', site = 'site', quad = 'quadrat',
 
 
 # Save -------------------------------------------------------------------------
-saveRDS(dat02, file = file.path(dir_data_quad, 'moore21_quadrats_filtered.rds'))
-dat02 <- readRDS(file = file.path(dir_data_quad, 'moore21_quadrats_filtered.rds'))
+dat03 <- dat02 %>% 
+  rename(location = site) %>% 
+  mutate(site = 'az')
+
+
+saveRDS(dat03, file = file.path(dir_data_quad, 'moore21_quadrats_filtered.rds'))
+dat03 <- readRDS(file = file.path(dir_data_quad, 'moore21_quadrats_filtered.rds'))

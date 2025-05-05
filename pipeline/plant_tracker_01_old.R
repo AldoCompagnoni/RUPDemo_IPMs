@@ -5,7 +5,7 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.04.29
+# Date  : 2024.10.24
 
 # Code adapted from: https://github.com/aestears/plantTracker
 # Adapted from plantTracker How to (Stears et al. 2022)
@@ -35,9 +35,7 @@ if (!dir.exists(dir_qud)) {
 # Key variables ----------------------------------------------------------------
 # Prefix for the script name
 v_script_prefix <- str_c(str_extract(v_author_year, '^[^_]+'), 
-                         str_sub(str_extract(v_author_year, '_\\d+$'), -2, -1))
-
-
+                       str_sub(str_extract(v_author_year, '_\\d+$'), -2, -1))
 # Define prefix for two of the same author and year
 if (
   length(
@@ -74,19 +72,12 @@ quote_bare <- function(...){
 }
 
 
-
 # Data -------------------------------------------------------------------------
 # Read species list and filter for target species
-sp_list <- readr::read_delim(
-  {
-    f <- list.files(path = dir_qud, pattern = "species_list.csv", full.names = TRUE)
-    match1 <- f[basename(f) == "species_list.csv"]
-    match2 <- f[grepl(v_script_prefix, f)]
-    if (length(match1) > 0) match1[1] else match2[1]
-  },
-  delim = v_delimiter, escape_double = FALSE, trim_ws = TRUE
-) %>%
-  as.data.frame() %>%
+sp_list <- read_delim(paste0(dir_qud, '/species_list.csv'), 
+                      delim = v_delimiter, escape_double = FALSE, 
+                      trim_ws = TRUE) %>% 
+  as.data.frame()  %>%
   { 
     # Rename 'type' or 'form' to 'growthForm' if they exist
     if('type' %in% colnames(.)) {
@@ -107,10 +98,8 @@ sp_list <- readr::read_delim(
     }
   ) %>% 
   {
-    if ("count" %in% colnames(.)) {
+    if ('count' %in% colnames(.)) {
       arrange(., desc(count))
-    } else if ("counts" %in% colnames(.)) {
-      arrange(., desc(counts))
     } else {
       if (v_gr_form == 'forb') {
         arrange(., desc(if ('density' %in% colnames(.)){density} else {pointFeatures}))

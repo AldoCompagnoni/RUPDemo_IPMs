@@ -60,8 +60,8 @@ df_mean_og <- df %>%
   summarise(
     survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
     size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
-    fruit    = if_else(all(is.na(fr)), NA_real_, mean(fr, na.rm = TRUE)),
-    flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),
+    fruit    = if_else(all(is.na(fr)), NA_real_, max(fr, na.rm = TRUE)),    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    flower   = if_else(all(is.na(fl)), NA_real_, max (fl, na.rm = TRUE)),   # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     fire_sev = if_else(
       all(is.na(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),
       NA_real_, 

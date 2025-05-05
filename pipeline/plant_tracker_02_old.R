@@ -5,7 +5,7 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.29
+# Date  : 2024.10.24
 
 # Code adapted from: https://github.com/aestears/plantTracker
 # Adapted from plantTracker How to (Stears et al. 2022)
@@ -19,9 +19,7 @@ v_sp_abb  <- tolower(gsub(' ', '', paste(substr(
 
 
 # Directory --------------------------------------------------------------------
-if ((tolower(v_gr_form) == 'forb' | 
-     tolower(v_gr_form) == 'shrub' | 
-     tolower(v_gr_form) == 'density')) {
+if ((v_gr_form == 'forb' | v_gr_form == 'shrub')) {
   v_folder_suffix <- paste0(v_sp_abb, '_mpm')
   dir_R      <- file.path(dir_pub, 'R', v_folder_suffix)
   dir_data   <- file.path(dir_pub, 'data', v_folder_suffix)
@@ -34,21 +32,16 @@ if ((tolower(v_gr_form) == 'forb' |
 
 
 # Data -------------------------------------------------------------------------
-# Read anf format quadrat inventory file 
 # Identify quadrat inventory file 
-quad_file <- list.files(
-  path = dir_qud, full.names = TRUE,
-  pattern = 'quad_inventory|quadrat_inventory'
-)[1]
+quad_file  <- list.files(
+  path    = dir_qud, full.names = TRUE,
+  pattern = 'quad_inventory|quadrat_inventory')
 
-if (grepl("\\.RData$", quad_file)) {
-  quad_inv <- readRDS(quad_file)
-} else {
-  quad_inv <- read_delim(
-    quad_file, delim = v_delimiter, escape_double = FALSE, trim_ws = TRUE) %>%
-    as.data.frame %>% 
-    as.list()
-}
+# Read anf format quadrat inventory file 
+quad_inv   <- read_delim(
+  quad_file, delim = v_delimiter, escape_double = FALSE, trim_ws = TRUE) %>%
+  as.data.frame %>% 
+  as.list
 
 # Remove NAs
 inv        <- lapply(
@@ -78,37 +71,26 @@ data <- {
 # This is to accommodate older versions of 'quadrat' scripts
 #set_names(c('species', 'site', 'quad', 'year', 'geometry'))
 
-
 # Subset data for the target species
-dat_target_spec <- data %>%
-  subset(species %in% target_spec$species) %>%
+dat_target_spec <- data %>% 
+  subset(species %in% target_spec$species) %>% 
+  # Exclude certain samples
   filter(
-    if (exists("mod_plot") && length(mod_plot) > 0) !(quad %in% mod_plot)
+    if (exists('mod_plot') && length(mod_plot) > 0) !(quad %in% mod_plot) 
     else TRUE
-  ) %>%
-  select(
-    species, site, 
-    matches("quad"),  # selects quad or quadrat
-    year, geometry,
-    everything()      # all remaining columns
-  ) %>% 
-  rename(Species = species,
-         Site    = site,
-         Quad    = matches("quad"),
-         Year    = year)
-
+  )
 
 # set the buffer to 0.05 or 5 depending on the unit of measure used in GIS file
-buff <- v_buff <- if_else(
-  st_bbox(dat_target_spec)[3] < 1.1 | st_bbox(dat_target_spec)[3] > 100, 
-  0.05, 5)
+buff <- v_buff    <- if_else(st_bbox(dat_target_spec)[3] < 1.1, 0.05, 5)
 
 # Forbs are not "clonal"; we assume non-forbs are clonal.
 v_clonal  <- if_else(v_gr_form == 'forb', F, T)
 
 # Prepare data for the trackSpp function
 datTrackSpp <- trackSpp(
-  dat_target_spec,
+  dat_target_spec %>%  
+    # Rename columns for the function to work
+    setNames(quote_bare(Species, Site, Quad, Year, geometry)),
   inv,
   # Dormancy flag
   dorm         = 1,
@@ -138,5 +120,3 @@ datTrackSpp %>%
   write.csv(file.path(
     dir_data, paste0(
       v_script_prefix, '_', v_sp_abb, '.csv')), row.names = FALSE)  
-
-

@@ -21,12 +21,8 @@ options(stringsAsFactors = F)
 # Packages ---------------------------------------------------------------------
 
 # load packages
-source( 'helper_functions/load_packages.R' )
-<<<<<<< HEAD
+source('helper_functions/load_packages.R')
 load_packages( tidyverse, patchwork, skimr, ipmr, binom, bbmle, janitor)
-=======
-load_packages( tidyverse, patchwork, skimr, ipmr, binom, bbmle, janitor )
->>>>>>> 94f0652142531bae90bd9b2abeeba6c33694b747
 
 
 # Specification ----------------------------------------------------------------

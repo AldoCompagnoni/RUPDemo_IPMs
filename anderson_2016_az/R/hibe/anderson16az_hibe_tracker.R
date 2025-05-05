@@ -14,7 +14,7 @@
 
 # rm(list = ls())
 
-# Data -------------------------------------------------------------------------
+# Specifications ---------------------------------------------------------------
 # Define publication 
 v_author_year      <- c('anderson_2016')
 # Define region abbreviation

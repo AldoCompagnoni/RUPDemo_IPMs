@@ -1,13 +1,13 @@
-# IPM year specific - Anderson 2016 Arizona - Heteropogon contortus
+# IPM year specific - Alder 2007 Kansas - Sporobolus cryptandrus
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
+# Co    : Aspen Workman, Aldo Compagnoni
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2025.05.05
 
-# Publication: https://doi.org/10.1890/11-2200.1
+# Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
 
 
 # Clean up ---------------------------------------------------------------------
@@ -16,11 +16,11 @@
 
 # Key variables ----------------------------------------------------------------
 # Define publication 
-v_author_year <- c('anderson_2016')
+v_author_year <- c('adler_2007')
 # Define region abbreviation
-v_region_abb  <- c('az')
+v_region_abb  <- c('ks')
 # Define species 
-v_species     <- c('Heteropogon contortus')
+v_species     <- c('Sporobolus cryptandrus')
 
 
 # CHECK -- Adaptions -----------------------------------------------------------
@@ -73,7 +73,7 @@ rec_mod
 
 # Building the IPM from scratch ------------------------------------------------
 # All parameters
-skim(all_pars)
+head(skim(all_pars))
 
 # Mean population growth rate
 lam_mean_yr

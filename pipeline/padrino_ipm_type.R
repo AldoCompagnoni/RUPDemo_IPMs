@@ -10,9 +10,9 @@
 
 # Execution distributor --------------------------------------------------------
 # Conditional execution based on ipm_type
-if (ipm_type == 'mean') {
+if (v_ipm_type == 'mean') {
   source('pipeline/padrino_mean.R')
-} else if (ipm_type == 'year_specific') {
+} else if (v_ipm_type == 'year_specific') {
   source('pipeline/padrino_year_specific.R')
 } else {
   stop("Invalid ipm_type value. Choose either 'mean' or 'year_specific'.")

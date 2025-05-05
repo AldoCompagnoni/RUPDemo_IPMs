@@ -9,7 +9,7 @@
 
 # rm(list = ls())
 
-# Data -------------------------------------------------------------------------
+# Specifications ---------------------------------------------------------------
 # Define publication 
 v_author_year      <- c('adler_2007')
 # Define region abbreviation

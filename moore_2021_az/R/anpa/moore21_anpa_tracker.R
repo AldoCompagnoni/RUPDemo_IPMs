@@ -11,7 +11,7 @@
 
 # rm(list = ls())
 
-# Data -------------------------------------------------------------------------
+# Specifications ---------------------------------------------------------------
 # Define publication 
 v_author_year      <- c('moore_2021')
 # Define region abbreviation

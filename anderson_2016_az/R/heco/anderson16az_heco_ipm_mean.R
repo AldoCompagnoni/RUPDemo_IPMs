@@ -1,11 +1,11 @@
 # IPM mean - Anderson 2016 Arizona - Heteropogon contortus
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.02.21
+# Date  : 2025.04.15
 
 # Publication: https://doi.org/10.1890/11-2200.1
 

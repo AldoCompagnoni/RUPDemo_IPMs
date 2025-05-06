@@ -172,7 +172,7 @@ df_mean_og <- df %>%
     survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
     size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
     fruit    = if_else(all(is.na(fr)), NA_real_, max (fr, na.rm = TRUE)),   
-    flower   = if_else(all(is.na(fl)), NA_real_, sum (fl, na.rm = TRUE)),  
+    flower   = if_else(all(is.na(fl)), NA_real_, max (fl, na.rm = TRUE)),  
     fire_sev = if_else(
       all(is.na(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),
       NA_real_, 
@@ -525,18 +525,23 @@ df_fire_grow <- df_mean %>%
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
   select(plant_id, year, size_t0, size_t1, age,
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event, fire_sev) %>% 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, 
+         fire_event, fire_sev) %>% 
   mutate(fire_event = as.factor(fire_event),
          fire_sev   = if_else(is.na(fire_sev), 0, fire_sev))
 
-ggplot(
-  data  = df_fire_grow, aes(
-    x = logsize_t0, y = logsize_t1, 
-    colour = fire_event, shape = fire_event)) +
-  geom_jitter(alpha = 0.7, size = 1.5) + 
-  geom_abline(slope = 1, intercept = 0) + 
-  geom_smooth(method = 'lm') +
-  scale_colour_manual(values = c("0" = "lightgray", "1" = "red"))  +
+df_fire_grow %>% count(fire_event == 1)
+
+ggplot(data = df_fire_grow, aes(x = logsize_t0, y = logsize_t1)) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 0),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.3, size = 1.5) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 1),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.8, size = 1.5) +
+  geom_abline(slope = 1, intercept = 0) +
+  geom_smooth(method = 'lm', aes(colour = fire_event)) +
+  scale_colour_manual(values = c("0" = "black", "1" = "red")) +
   theme_bw() +
   theme(axis.text = element_text(size = 8),
         title     = element_text(size = 10),
@@ -547,7 +552,9 @@ ggplot(
        y        = expression('log(size)  '[t1]))
 
 
+
 # Model fire on growth with event ----------------------------------------------
+# Intercept model
 mod_fi_gr_0 <- lm(logsize_t1 ~ fire_event, 
                   data = df_fire_grow)
 # Linear model
@@ -593,28 +600,40 @@ source('helper_functions/predictor_fun.R')
 
 g_fi_grow_line <- ggplot(
   df_fire_grow, aes(x = logsize_t0, y = logsize_t1, colour = fire_event)) +
-  # Plot observed data
-  geom_point() +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 0),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.2, size = 1.5) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 1),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.6, size = 1.5) +
   geom_function(fun = function(x) predictor_fun(x, mod_fi_gr_ranef), 
                 color = line_color_pred_fun(mod_fi_gr_ranef), 
                 lwd = 2) +
-  theme_bw() + 
-  labs(title    = 'Growth prediction',
+  theme_bw() +
+  scale_colour_manual(values = c("0" = "black", "1" = "red")) + 
+  labs(title    = 'Growth prediction with fire event',
        subtitle = v_ggp_suffix) +
   theme(plot.subtitle = element_text(size = 8))
 
 g_fi_grow_pred <- ggplot(
-  df_fire_grow, aes(x = pred, y = logsize_t1)) +
-  geom_point() +  
+  df_fire_grow, aes(x = pred, y = logsize_t1, colour = fire_event)) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 0),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.2, size = 1.5) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 1),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.6, size = 1.5) +  
   geom_abline(aes(intercept = 0, slope = 1),  
               color = 'red', lwd = 2) + 
-  theme_bw()
+  theme_bw() +
+  scale_colour_manual(values = c("0" = "black", "1" = "red"))
 
 g_fi_grow_overall_pred <- g_fi_grow_line + g_fi_grow_pred + plot_layout() 
 g_fi_grow_overall_pred
 
 
 # Model fire on growth with event & severity -----------------------------------
+# Intercept model
 mod_fi2_gr_0 <- lm(logsize_t1 ~ fire_sev + fire_event + fire_sev:fire_event, 
                    data = df_fire_grow)
 # Linear model
@@ -662,36 +681,44 @@ if (length(v_mod_fi2_set_gr) == 0) {
 mod_fi2_gr_bestfit         <- mods_fi2_gr[[mod_fi2_gr_index_bestfit]]
 mod_fi2_gr_ranef           <- coef(mod_fi2_gr_bestfit)
 
-summary(mod_fi2_gr_bestfit)
-
 # Predict size at time t1 using the mean growth model
-df_fire_grow$pred <- predict(mod_fi2_gr_bestfit, type = 'response')
+df_fire_grow$pred2 <- predict(mod_fi2_gr_bestfit, type = 'response')
 
 source('helper_functions/line_color_pred_fun.R')
 source('helper_functions/predictor_fun.R')
 
 g_fi2_grow_line <- ggplot(
-  df_fire_grow, aes(x = logsize_t0, y = logsize_t1, colour = fire_sev)) +
-  # Plot observed data
-  geom_point() +
+  df_fire_grow, aes(x = logsize_t0, y = logsize_t1, colour = fire_event)) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 0),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.2, size = 1.5) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 1),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.6, size = 1.5) +
   geom_function(fun = function(x) predictor_fun(x, mod_fi2_gr_ranef), 
                 color = line_color_pred_fun(mod_fi2_gr_ranef), 
                 lwd = 2) +
-  theme_bw() + 
-  labs(title    = 'Growth prediction',
+  theme_bw() +
+  scale_colour_manual(values = c("0" = "black", "1" = "red")) + 
+  labs(title    = 'Growth prediction with fire event',
        subtitle = v_ggp_suffix) +
   theme(plot.subtitle = element_text(size = 8))
 
 g_fi2_grow_pred <- ggplot(
-  df_fire_grow, aes(x = pred, y = logsize_t1)) +
-  geom_point() +  
+  df_fire_grow, aes(x = pred2, y = logsize_t1)) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 0),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.2, size = 1.5) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 1),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.6, size = 1.5) +  
   geom_abline(aes(intercept = 0, slope = 1),  
               color = 'red', lwd = 2) + 
-  theme_bw()
+  theme_bw() +
+  scale_colour_manual(values = c("0" = "black", "1" = "red"))
 
 g_fi2_grow_overall_pred <- g_fi2_grow_line + g_fi2_grow_pred + plot_layout() 
 g_fi2_grow_overall_pred
-
 
 
 # Model fire on growth with severity -------------------------------------------
@@ -735,29 +762,40 @@ mod_fi3_gr_ranef           <- coef(mod_fi3_gr_bestfit)
 summary(mod_fi3_gr_bestfit)
 
 # Predict size at time t1 using the mean growth model
-df_fire_grow$pred <- predict(mod_fi3_gr_bestfit, type = 'response')
+df_fire_grow$pred3 <- predict(mod_fi3_gr_bestfit, type = 'response')
 
 source('helper_functions/line_color_pred_fun.R')
 source('helper_functions/predictor_fun.R')
 
 g_fi3_grow_line <- ggplot(
-  df_fire_grow, aes(x = logsize_t0, y = logsize_t1, colour = fire_sev)) +
-  # Plot observed data
-  geom_point() +
+  df_fire_grow, aes(x = logsize_t0, y = logsize_t1, colour = fire_event)) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 0),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.2, size = 1.5) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 1),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.6, size = 1.5) +
   geom_function(fun = function(x) predictor_fun(x, mod_fi3_gr_ranef), 
                 color = line_color_pred_fun(mod_fi3_gr_ranef), 
                 lwd = 2) +
-  theme_bw() + 
-  labs(title    = 'Growth prediction',
+  theme_bw() +
+  scale_colour_manual(values = c("0" = "black", "1" = "red")) + 
+  labs(title    = 'Growth prediction with fire event',
        subtitle = v_ggp_suffix) +
   theme(plot.subtitle = element_text(size = 8))
 
 g_fi3_grow_pred <- ggplot(
-  df_fire_grow, aes(x = pred, y = logsize_t1)) +
-  geom_point() +  
+  df_fire_grow, aes(x = pred3, y = logsize_t1)) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 0),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.2, size = 1.5) +
+  geom_jitter(data = subset(df_fire_grow, fire_event == 1),
+              aes(colour = fire_event, shape = fire_event),
+              alpha = 0.6, size = 1.5) +  
   geom_abline(aes(intercept = 0, slope = 1),  
               color = 'red', lwd = 2) + 
-  theme_bw()
+  theme_bw() +
+  scale_colour_manual(values = c("0" = "black", "1" = "red"))
 
 g_fi3_grow_overall_pred <- g_fi3_grow_line + g_fi3_grow_pred + plot_layout() 
 g_fi3_grow_overall_pred
@@ -771,7 +809,7 @@ mods_fi_gr_all <- list(
   mod_fi3_gr_0, mod_fi3_gr_1, mod_fi3_gr_2, mod_fi3_gr_3
 )
 
-mods_fi_gr_all_dAIC <- AICtab(mod_fi_gr_all, weights = T, sort = F)$dAIC
+mods_fi_gr_all_dAIC <- AICtab(mods_fi_gr_all, weights = T, sort = F)$dAIC
 
 # Get the sorted indices of dAIC values
 mods_fi_gr_all_sorted <- order(mods_fi_gr_all_dAIC)
@@ -841,43 +879,6 @@ p_fire_suv <- p_fire_suv_0 + p_fire_suv_1 + plot_layout()
 p_fire_suv
 
 
-# Fire on Recruits -------------------------------------------------------------
-df_quad <- df_mean %>%  
-  group_by (year, site, quad) %>% 
-  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
-  ungroup
-
-df_group <- df_quad %>% 
-  group_by (year) %>% 
-  summarise(g_cov = mean(tot_p_area)) %>% 
-  ungroup
-
-df_cover <- left_join(df_quad, df_group) %>%
-  mutate(year = year + 1) %>% 
-  mutate(year = as.integer(year)) %>% 
-  drop_na()
-
-df_fire_recr <- df_mean %>%
-  group_by (year, site, quad) %>% 
-  summarise(nr_quad = sum(recruit, na.rm = T), 
-            fire_event = max(fire_event, na.rm = T)) %>% 
-  ungroup
-
-df_fire_recr <- left_join(df_cover, df_fire_recr) %>% 
-  filter(!is.na(fire_event))
-
-ggplot(
-  df_fire_recr, aes(x = tot_p_area, y = nr_quad)) + 
-  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
-  theme_bw() + 
-  labs(title    = 'Fire on Recruitment',
-       subtitle = v_ggp_suffix,
-       x        = expression('Total parent plant area '[t0]),   
-       y        = expression('Number of recruits '     [t1])) +
-  theme(plot.subtitle = element_text(size = 8)) + 
-  facet_wrap(~ fire_event)
-
-
 # Fire on Flowers --------------------------------------------------------------
 df_fire_fl <- df_mean %>% 
   group_by(site, quad_id, plant_id, year) %>% 
@@ -885,8 +886,6 @@ df_fire_fl <- df_mean %>%
   group_by(site, quad_id, year) %>% 
   summarise(fl_quad = mean(flower, na.rm = T), 
             fire_gap = max(fire_gap, na.rm = T))
-
-
 
 
 # Plot with counts
@@ -977,10 +976,21 @@ df_fr_fl_t <- df_fr_fl_t0 %>%
   left_join(df_fr_fl_t1, by = c('site', 'quad_id', 'plant_id', 'year')) %>% 
   mutate(fire_event = as.factor(fire_event))
 
-ggplot(data = df_fr_fl_t) +
-  geom_jitter(aes(x = fl_t0, y = fl_t1, colour = fire_event), alpha = 0.5) +
-  geom_smooth(aes(x = fl_t0, y = fl_t1, colour = fire_event), method = 'lm') +
-  geom_abline(intercept = 0, slope = 1)
+ggplot(data = df_fr_fl_t, aes(x = fl_t0, y = fl_t1)) +
+  geom_jitter(data = subset(df_fr_fl_t, fire_event == 0),
+              aes(colour = factor(fire_event)),
+              alpha = 0.2) +
+  geom_jitter(data = subset(df_fr_fl_t, fire_event == 1),
+              aes(colour = factor(fire_event)),
+              alpha = 0.6) +
+  geom_smooth(aes(colour = factor(fire_event)), method = 'lm') +
+  geom_abline(intercept = 0, slope = 1) +
+  scale_colour_manual(
+    values = c("0" = "black", "1" = "red"),
+    name = "Fire Event",
+    labels = c("No Fire", "Fire")
+  ) +
+  theme_minimal()
 
 
 # Fire on Fruits ---------------------------------------------------------------
@@ -1063,12 +1073,99 @@ df_fi_fr_t <- df_fi_fr_t0 %>%
   mutate(fire_event = if_else(is.na(fire_event), 0, fire_event),
          fire_event = as.factor(fire_event))
 
-ggplot(data = df_fi_fr_t) +
-  geom_jitter(aes(y = fr_t1, x = fr_t0, colour = fire_event),
-              alpha = 0.3) +
-  geom_smooth(aes(y = fr_t1, x = fr_t0, colour = fire_event), method = 'lm') +
-  geom_abline(intercept = 0, slope = 1)
+ggplot(data = df_fi_fr_t, aes(x = fr_t0, y = fr_t1)) +
+  geom_jitter(data = subset(df_fi_fr_t, fire_event == 0),
+              aes(colour = factor(fire_event)),
+              alpha = 0.2) +
+  geom_jitter(data = subset(df_fi_fr_t, fire_event == 1),
+              aes(colour = factor(fire_event)),
+              alpha = 0.6) +
+  geom_smooth(aes(colour = factor(fire_event)), method = 'lm') +
+  geom_abline(intercept = 0, slope = 1) +
+  scale_colour_manual(
+    values = c("0" = "black", "1" = "red"),
+    name   = "Fire Event",
+    labels = c("No Fire", "Fire")
+  ) +
+  theme_minimal()
   
+
+
+# Fire on Flower to Fruit transition -------------------------------------------
+df_fi_ftf <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(logsize_t0, flower, fruit, fire_event) %>% 
+  mutate(ftf = fruit/flower)
+
+df_fi_ftf %>% 
+  filter(flower > 0) %>% 
+  arrange(desc(ftf))
+
+df_fi_ftf %>% 
+  filter(flower == 0) %>% 
+  arrange(desc(ftf)) %>% 
+  head(5)
+
+df_fi_ftf %>% 
+  filter(flower > 0) %>% 
+  arrange(desc(ftf)) %>% 
+  head(5)
+
+ggplot(data = df_fi_ftf) +
+  geom_histogram(aes(x = ftf))
+
+df_fi_ftf %>% 
+  summary
+
+df_fi_ftf %>% 
+  filter(fire_event > 0,
+         ftf >= 0)
+
+ggplot(data = df_fi_ftf) +
+  geom_histogram(aes(x = ftf)) + 
+  facet_wrap('fire_event')
+
+
+ggplot(data = df_fi_ftf %>% filter(flower > 0)) +
+  geom_jitter(aes(y = ftf, x = logsize_t0)) +
+  facet_wrap('fire_event')
+
+
+# Fire on Recruits -------------------------------------------------------------
+df_quad <- df_mean %>%  
+  group_by (year, site, quad) %>% 
+  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
+  ungroup
+
+df_group <- df_quad %>% 
+  group_by (year) %>% 
+  summarise(g_cov = mean(tot_p_area)) %>% 
+  ungroup
+
+df_cover <- left_join(df_quad, df_group) %>%
+  mutate(year = year + 1) %>% 
+  mutate(year = as.integer(year)) %>% 
+  drop_na()
+
+df_fire_recr <- df_mean %>%
+  group_by (year, site, quad) %>% 
+  summarise(nr_quad = sum(recruit, na.rm = T), 
+            fire_event = max(fire_event, na.rm = T)) %>% 
+  ungroup
+
+df_fire_recr <- left_join(df_cover, df_fire_recr) %>% 
+  filter(!is.na(fire_event))
+
+ggplot(
+  df_fire_recr, aes(x = tot_p_area, y = nr_quad)) + 
+  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
+  theme_bw() + 
+  labs(title    = 'Fire on Recruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8)) + 
+  facet_wrap(~ fire_event)
 
 
 # Fire on Recruits -------------------------------------------------------------
@@ -1135,35 +1232,6 @@ ggplot(df_fire_rec_pc <- df_fire_rec_pc %>%
   labs(y = expression('per capita recruits'),
        x = expression('year gap after fire')) +
   coord_cartesian(ylim = c(0, 5))
-
-
-# Fire on Flower to Fruit transition -------------------------------------------
-df_fi_ftf <- df_mean %>% 
-  group_by(site, quad_id, plant_id, year) %>% 
-  select(logsize_t0, flower, fruit, fire_event) %>% 
-  mutate(ftf = fruit/flower)
-
-df_fi_ftf %>% 
-  filter(flower > 0) %>% 
-  arrange(desc(ftf))
-
-ggplot(data = df_fi_ftf) +
-  geom_histogram(aes(x = ftf))
-
-df_fi_ftf %>% 
-  summary
-
-df_fi_ftf %>% 
-  filter(fire_event > 0,
-         ftf >= 0)
-
-ggplot(data = df_fi_ftf) +
-  geom_histogram(aes(x = ftf)) + 
-  facet_wrap('fire_event')
-
-
-ggplot(data = df_fi_ftf) +
-  geom_jitter(aes(y = ftf, x = logsize_t0))
 
 
 # Data Processes ---------------------------------------------------------------
@@ -1278,7 +1346,13 @@ df_re_qd <- df_mean %>%
 
 ggplot(data = df_re_qd) + 
   geom_jitter(aes(y = rec_qd_t1, x = nr_ind)) + 
-  geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm')
+  geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm') + 
+  theme_minimal() + 
+  labs(title    = 'Recruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
 
 
 # Fruiting data ----------------------------------------------------------------
@@ -1535,7 +1609,8 @@ df_rec_pc <- df_mean %>%
   summarise(rec_nr_t1 = sum(recruit, na.rm = T)) %>% 
   left_join(df_mean %>%
               group_by(site, quad_id, plant_id, year) %>%
-              summarise(rep_nr_t0 = as.integer(any(fruit > 0)), .groups = "drop") %>% 
+              summarise(rep_nr_t0 = as.integer(any(fruit > 0)), 
+                        .groups = "drop") %>% 
               ungroup() %>% 
               group_by(site, quad_id, year) %>% 
               summarise(rep_nr_t0 = sum(rep_nr_t0, na.rm = T)) %>% 
@@ -1544,20 +1619,27 @@ df_rec_pc <- df_mean %>%
   mutate(
     rec_pc = rec_nr_t1 / rep_nr_t0,
     fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal"),
-    rec_pc = ifelse(is.nan(rec_pc) | is.infinite(rec_pc), 0, rec_pc),  # <- key fix
+    rec_pc = ifelse(is.nan(rec_pc) | is.infinite(rec_pc), 0, rec_pc),  
     fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), "fire_t1", fire_year),
     fire_year = ifelse(year %in% c(2017), "FIRE", fire_year)
   )
   
 
 ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
-  geom_jitter(width = 0.05) + 
+  geom_point() + 
+  facet_wrap('quad_id', scales = 'free') +
   geom_smooth(method = 'lm') +
-  facet_wrap('quad_id', scales = 'free_y') +
   theme_minimal()
 
 ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
-  geom_jitter() + 
+  geom_jitter(width = 0.05) + 
+  geom_smooth(method = 'lm') +
+  facet_wrap('quad_id', scales = 'free') +
+  theme_minimal()
+
+ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
+  geom_jitter(width = 0.05) + 
+  geom_smooth(method = 'lm') + 
   facet_wrap('site') +
   theme_minimal()
 

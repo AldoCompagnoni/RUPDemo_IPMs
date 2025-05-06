@@ -223,6 +223,28 @@ ggplot(
   theme(plot.subtitle = element_text(size = 8))
 ```
 
+#### Density effect on recruitment
+
+Density seems to have a have a positve effect on the reuitment in the next year!?
+
+```{r }
+df_re_qd <- df_mean %>% 
+  group_by(site, quad_id, year) %>%
+  select(recruit) %>% 
+  summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
+  left_join(df_mean %>% 
+              group_by(site, quad_id, year) %>% 
+              summarise(nr_ind = sum(!is.na(size_t0))) %>% 
+              mutate(year = year - 1),
+            by = c('site', 'quad_id', 'year'))
+
+ggplot(data = df_re_qd) + 
+  geom_jitter(aes(y = rec_qd_t1, x = nr_ind)) + 
+  geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm') + 
+  theme_minimal()
+```
+
+
 
 ### Fecundity
 ```{r fe data 1}
@@ -434,7 +456,8 @@ df_rec_pc <- df_mean %>%
   summarise(rec_nr_t1 = sum(recruit, na.rm = T)) %>% 
   left_join(df_mean %>%
               group_by(site, quad_id, plant_id, year) %>%
-              summarise(rep_nr_t0 = as.integer(any(fruit > 0)), .groups = "drop") %>% 
+              summarise(rep_nr_t0 = as.integer(any(fruit > 0)), 
+                        .groups = "drop") %>% 
               ungroup() %>% 
               group_by(site, quad_id, year) %>% 
               summarise(rep_nr_t0 = sum(rep_nr_t0, na.rm = T)) %>% 
@@ -443,29 +466,34 @@ df_rec_pc <- df_mean %>%
   mutate(
     rec_pc = rec_nr_t1 / rep_nr_t0,
     fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal"),
-    rec_pc = ifelse(is.nan(rec_pc) | is.infinite(rec_pc), 0, rec_pc),  # <- key fix
+    rec_pc = ifelse(is.nan(rec_pc) | is.infinite(rec_pc), 0, rec_pc),  
     fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), "fire_t1", fire_year),
     fire_year = ifelse(year %in% c(2017), "FIRE", fire_year)
   )
 ```
-### quadrat level
+#### quadrat level
+
+It turns out that free scale and jitter can lead to true confusion. There is what actually happened: 
+
 ```{r pcr plot1, fig.width = 10, fig.height = 20}
 ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
-  geom_jitter() + 
+  geom_point() + 
+  geom_smooth(method = 'lm') +
   facet_wrap('quad_id', scales = 'free') +
   theme_minimal()
 ```
 
-### site level
+#### site level
 ```{r pcr plot2}
 ggplot(data = df_rec_pc, aes(y = rec_nr_t1, x = rep_nr_t0)) +
-  geom_jitter() + 
+  geom_jitter(width = 0.05) + 
+  geom_smooth(method = 'lm') + 
   facet_wrap('site') +
   theme_minimal()
 ```
 
 
-### quadrat level year specific
+#### quadrat level year specific
 ```{r pcr plot3, fig.width = 14, fig.height = 20}
 ggplot(df_rec_pc, aes(x = year, y = rec_pc, color = fire_year)) +
   geom_point() +

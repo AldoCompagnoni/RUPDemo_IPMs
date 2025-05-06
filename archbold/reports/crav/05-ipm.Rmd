@@ -1,28 +1,5 @@
 # IPM from Scratch {#ipm_scratch}
 
-## !!!-Question-!!!
-
-Let me try to put this into words. To begin, here are the direct questions:
-
-1. *How do I implement* **flowering** *into the kernel?*
-2. *How do I implement* **fruiting** *into the kernel?*
-
-I reviewed the kernel again to better understand its structure. From what I gather, we have three key components that we focus on:
-
-1. The **Survival vector** is the easiest to explain. It is defined in the 200th dimension (as are the others), with each bin representing a size class. This vector indicates the probability of survival for individuals within each respective size class.
-2. The **Growth matrix** represents the probability or rate of size change between bins.
-3. The **Fertility matrix** is the rate or probability at which individuals in a particular size class contribute to the next size class through recruits. In this case, it essentially functions as a vector, since the probability of contributing to lower size classes is constant across all size classes, while it decreases for larger classes at the same rate.
-
-4. The **Transition matrix** combines the Growth matrix and the Survival vector in a multiplicative manner and corrects for eviction.
-
-Together, these components make up the **Kernel**, which is the sum of the Transition matrix and the Fertility matrix.
-
-Now, regarding how to incorporate the other two processes (flowering and fruiting), I briefly considered that these processes would likely need to alter the fertility component. However, I realized that I would need more information to proceed. While I could have researched how others have approached this (for the extra glory), I believe it is just the best to ask for your input, especially since the models I have developed based on your suggestions regarding distribution only build on what I already knew from the other models and so I am not sure if this is what we are aming for.
-
-Thus, could you maybe first go over the models and then let me know how to proceed? 
-
-Cheers!
-
 
 ## Building the IPM
 

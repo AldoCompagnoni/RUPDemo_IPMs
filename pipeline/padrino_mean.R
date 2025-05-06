@@ -38,6 +38,16 @@ dir_result <- file.path(dir_pub, 'results', v_sp_abb)
 v_script_prefix <- str_c(
   str_extract(v_author_year, '^[^_]+'),
   str_sub(str_extract(v_author_year, '_\\d+$'), -2, -1))
+# Define prefix for two of the same author and year
+if (
+  length(
+    list.dirs(
+      full.names = TRUE, recursive = FALSE)[grepl(
+        paste0("^", v_author_year), basename(
+          list.dirs(full.names = TRUE, recursive = FALSE)))]
+  ) > 1) {
+  v_script_prefix <- paste0(v_script_prefix, v_region_abb)
+}
 
 if (
   length(

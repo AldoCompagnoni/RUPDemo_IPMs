@@ -34,10 +34,22 @@ dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
 dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
 dir_result <- file.path(dir_pub, 'results', v_sp_abb)
 
+
 # Prefix for all the files
 v_script_prefix <- str_c(
   str_extract(v_author_year, '^[^_]+'), 
   str_sub(str_extract(v_author_year, '_\\d+$'), -2, -1))
+# Define prefix for two of the same author and year
+if (
+  length(
+    list.dirs(
+      full.names = TRUE, recursive = FALSE)[grepl(
+        paste0("^", v_author_year), basename(
+          list.dirs(full.names = TRUE, recursive = FALSE)))]
+  ) > 1) {
+  v_script_prefix <- paste0(v_script_prefix, v_region_abb)
+}
+v_suffix <- read.csv(file.path(dir_data, 'v_suffix.csv'))
 
 # Ipm mean and plant tracker if they not already exists
 if (

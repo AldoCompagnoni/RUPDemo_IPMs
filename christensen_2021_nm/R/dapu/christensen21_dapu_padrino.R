@@ -39,7 +39,7 @@ ipm_type    <- 'year_specific'
 
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (https://resolver.globalnames.org)
-species_accepted <- gsub(" ", "_", species)
+species_accepted <- 'Munroa pulchella'
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family

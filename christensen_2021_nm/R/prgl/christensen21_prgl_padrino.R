@@ -43,11 +43,11 @@ species_accepted <- 'Neltuma glandulosa'
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family
-tax_family <- 'Poaceae'
+tax_family <- 'Fabaceae'
 # The accepted order
-tax_order  <- 'Poales' 
+tax_order  <- 'Fabales' 
 # The accepted class
-tax_class  <- 'Liliopsida'
+tax_class  <- 'Magnoliopsida'
 # The accepted phylum
 tax_phylum <- 'Tracheophyta' 
 # The kingdom

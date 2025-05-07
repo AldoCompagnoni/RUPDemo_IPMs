@@ -38,7 +38,7 @@ ipm_type    <- 'year_specific'
 
 
 # Taxonomic information --------------------------------------------------------
-# The accepted name of the species (here Wikipedia)
+# The accepted name of the species (https://resolver.globalnames.org)
 species_accepted <- gsub(' ', '_', species)
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
@@ -47,9 +47,9 @@ tax_family <- 'Asteraceae'
 # The accepted order
 tax_order  <- 'Asterales' 
 # The accepted class
-tax_class  <- 'Eudicots'
+tax_class  <- 'Magnoliopsida'
 # The accepted phylum
-tax_phylum <- 'Magnoliophyta' 
+tax_phylum <- 'Tracheophyta' 
 # The kingdom
 kingdom    <- 'Plantae'
 # The type of organism. For plants, this is usually something like 
@@ -60,7 +60,7 @@ kingdom    <- 'Plantae'
 organism_type <- 'Herbaceous' 
 # Whether the species is a dicotyledon or a monocotyledon 
 #  (only applies to plants)
-dicot_monocot <- 'Monocot'
+dicot_monocot <- 'Dicot'
 # Whether the species is a angiosperm or a gymosperm (only applies to plants)
 angio_gymno   <- 'angio'
 

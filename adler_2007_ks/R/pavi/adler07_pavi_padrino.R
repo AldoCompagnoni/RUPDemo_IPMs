@@ -38,7 +38,7 @@ v_ipm_type    <- c('mean')
 
 
 # Taxonomic information --------------------------------------------------------
-# The accepted name of the species (here Wikipedia)
+# The accepted name of the species (https://resolver.globalnames.org)
 v_species_accepted <- gsub(' ', '_', v_species)
 # The accepted genus
 v_tax_genus  <- sub('_.*', '', v_species_accepted)

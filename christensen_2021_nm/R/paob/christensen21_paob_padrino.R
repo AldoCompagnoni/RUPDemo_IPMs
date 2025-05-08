@@ -39,7 +39,7 @@ ipm_type    <- 'year_specific'
 
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (https://resolver.globalnames.org)
-species_accepted <- 'Hopia obtusa'
+species_accepted <- 'Hopia_obtusa'
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family

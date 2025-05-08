@@ -38,7 +38,7 @@ ipm_type    <- 'year_specific'
 
 
 # Taxonomic information --------------------------------------------------------
-# The accepted name of the species (here Wikipedia)
+# The accepted name of the species (https://resolver.globalnames.org)
 species_accepted <- gsub(' ', '_', species)
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)

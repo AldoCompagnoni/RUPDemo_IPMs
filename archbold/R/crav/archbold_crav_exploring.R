@@ -882,7 +882,9 @@ p_fire_suv
 # Fire on Flowers --------------------------------------------------------------
 df_fire_fl <- df_mean %>% 
   group_by(site, quad_id, plant_id, year) %>% 
-  select(flower, fire_sev, fire_event, fire_gap) %>% 
+  select(
+    flower, fire_sev, fire_event, fire_gap, 
+    logsize_t0, logsize_t0_2, logsize_t0_3) %>% 
   group_by(site, quad_id, year) %>% 
   summarise(fl_quad = mean(flower, na.rm = T), 
             fire_gap = max(fire_gap, na.rm = T))
@@ -935,7 +937,7 @@ p_fire_fl_0 <- ggplot(
   labs(title    = 'Fire on Flowering without fire',
        subtitle = v_ggp_suffix,
        x        = expression('log(size)'[t0]),
-       y        = expression('Survival to time t1')) +
+       y        = expression('Flowering at time t0')) +
   theme(plot.subtitle = element_text(size = 8))
 
 p_fire_fl_1 <- ggplot(
@@ -953,7 +955,7 @@ p_fire_fl_1 <- ggplot(
   labs(title    = 'Fire on Flowering with fire',
        subtitle = v_ggp_suffix,
        x        = expression('log(size)'[t0]),
-       y        = expression('Survival to time t1')) +
+       y        = expression('Flowering at time t0')) +
   theme(plot.subtitle = element_text(size = 8))
 
 p_fire_fl <- p_fire_fl_0 + p_fire_fl_1 + plot_layout()
@@ -990,7 +992,124 @@ ggplot(data = df_fr_fl_t, aes(x = fl_t0, y = fl_t1)) +
     name = "Fire Event",
     labels = c("No Fire", "Fire")
   ) +
-  theme_minimal()
+  theme_minimal() +
+  labs(subtitle = v_ggp_suffix,
+       x        = expression('Flowers at time t1'),
+       y        = expression('Flowers at time t0')) +
+  theme(plot.subtitle = element_text(size = 8))
+
+
+
+# Fire on Flowering on plant id level ------------------------------------------
+df_fi_fl_p <- df_mean %>% 
+  group_by(site, quad_id, plant_id, year) %>% 
+  select(flower, fire_event, logsize_t0, logsize_t0_2, logsize_t0_3) %>% 
+  filter(flower >= 0) %>% 
+  mutate(flower = if_else(flower > 0, 1, flower))
+
+df_fi_fl_p %>% 
+  summary()
+
+
+# Fire on flowering model ------------------------------------------------------
+# Logistic regression
+mod_fi_fl_0 <- glm(flower ~ fire_event,
+                   data = df_fi_fl_p, family = 'binomial') 
+# Logistic regression
+mod_fi_fl_1 <- glm(flower ~ fire_event + 
+                     logsize_t0 +
+                     fire_event:logsize_t0,
+                   data = df_fi_fl_p, family = 'binomial') 
+# Quadratic logistic model
+mod_fi_fl_2 <- glm(flower ~ fire_event + 
+                     logsize_t0 + logsize_t0_2 +
+                     fire_event:logsize_t0 + 
+                     fire_event:logsize_t0_2,
+                   data = df_fi_fl_p, family = 'binomial')  
+# Quadratic logistic model
+mod_fi_fl_2.1 <- glm(flower ~ fire_event + 
+                     logsize_t0 + logsize_t0_2 +
+                     fire_event:logsize_t0_2,
+                   data = df_fi_fl_p, family = 'binomial') 
+# Quadratic logistic model
+mod_fi_fl_2.2 <- glm(flower ~ fire_event + 
+                       logsize_t0 + logsize_t0_2,
+                     data = df_fi_fl_p, family = 'binomial')  
+# Cubic logistic model
+mod_fi_fl_3 <- glm(flower ~ fire_event + 
+                     logsize_t0 + logsize_t0_2 + logsize_t0_3 +
+                     fire_event:logsize_t0 + 
+                     fire_event:logsize_t0_2 + 
+                     fire_event:logsize_t0_3,
+                   data = df_fi_fl_p, family = 'binomial')  
+
+
+# Compare models using AIC
+mods_fi_fl      <- list(mod_fi_fl_0, mod_fi_fl_1, mod_fi_fl_2, mod_fi_fl_3,
+                        mod_fi_fl_2.1, mod_fi_fl_2.2)
+mods_fi_fl_dAIC <- AICtab(mods_fi_fl, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_fi_fl_sorted <- order(mods_fi_fl_dAIC)
+
+v_mod_sets_fi_fl <- c()
+
+# Establish the index of model complexity
+if (length(v_mod_sets_fi_fl) == 0) {
+  mod_fi_fl_index_bestfit <- mods_fi_fl_sorted[1]
+  v_mod_fi_fl_index       <- mod_fi_fl_index_bestfit - 1 
+} else {
+  mod_fi_fl_index_bestfit <- v_mod_sets_fi_fl +1
+  v_mod_fi_fl_index       <- v_mod_sets_fi_fl
+}
+
+
+mod_fi_fl_bestfit   <- mods_fi_fl[[mod_fi_fl_index_bestfit]]
+mod_fi_fl_ranef     <- coef(mod_fi_fl_bestfit)
+summary(mod_fi_fl_bestfit)
+
+
+# Generate predictions for survival across a range of sizes
+mod_fi_fl_x <- seq(
+  min(df_fi_fl_p$logsize_t0, na.rm = T),
+  max(df_fi_fl_p$logsize_t0, na.rm = T), length.out = 100)
+
+# Prepare data for survival plot
+df_fi_flow_pred <- predictor_fun(mod_fi_fl_x, mod_fi_fl_ranef) %>% 
+  # Inverse logit for predictions
+  boot::inv.logit() %>% 
+  data.frame(logsize_t0 = mod_fi_fl_x, flower = .)
+
+g_fi_flow_line <- ggplot() +
+  geom_jitter(data = df_fi_fl_p, 
+              aes(x = logsize_t0, y = flower, colour = as.factor(fire_event)),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_fi_flow_pred, 
+            aes(x = logsize_t0, y = flower),
+            color = line_color_pred_fun(mod_fi_fl_ranef), 
+            lwd   = 2) +  
+  theme_bw() + 
+  labs(title    = 'Flowering prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+g_fi_flow_bin <- ggplot() +
+  geom_point(data =  plot_binned_prop(
+    df_fi_fl_p, 10, logsize_t0, flower), 
+    aes(x = logsize_t0, y = flower) ) +
+  geom_errorbar(
+    data = plot_binned_prop(df_fi_fl_p, 10, logsize_t0, flower), 
+    aes(x = logsize_t0, ymin = lwr, ymax = upr) ) +
+  geom_line(data = df_fi_flow_pred, 
+            aes(x = logsize_t0, y = flower),
+            color = 'red', lwd   = 2) + 
+  theme_bw() +
+  ylim(0, 1)
+
+# Combine survival plots
+g_fi_flow_overall_pred <- g_fi_flow_line + g_fi_flow_bin + plot_layout()
+g_fi_flow_overall_pred
+
 
 
 # Fire on Fruits ---------------------------------------------------------------
@@ -1194,7 +1313,9 @@ ggplot(data = df_fire_re %>%
          filter(fire_gap >= 0,
                 fire_gap <= 1), 
        aes(x = as.factor(fire_gap), y = re_quad)) + 
-  geom_boxplot()
+  geom_boxplot() +
+  geom_jitter(width = 0.05, height = 0.2) +
+  theme_minimal()
 
 
 summary(lm(data = df_fire_re %>% filter(fire_gap >= 0, fire_gap <= 1),
@@ -1942,6 +2063,8 @@ if (length(v_mod_set_fl) == 0) {
 
 mod_fl_bestfit   <- mods_fl[[mod_fl_index_bestfit]]
 mod_fl_ranef     <- coef(mod_fl_bestfit)
+
+anova(mod_fi_fl_bestfit, mod_fl_bestfit, test = "Chisq")
 
 # Generate predictions for survival across a range of sizes
 mod_fl_x <- seq(

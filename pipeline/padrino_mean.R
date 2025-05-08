@@ -49,15 +49,6 @@ if (
   v_script_prefix <- paste0(v_script_prefix, v_region_abb)
 }
 
-if (
-  length(
-    list.dirs(
-      full.names = TRUE, recursive = FALSE)[grepl(
-        paste0("^", v_author_year), basename(
-          list.dirs(full.names = TRUE, recursive = FALSE)))]
-  ) > 1) {
-  v_script_prefix <- paste0(v_script_prefix, v_region_abb)
-}
 
 v_suffix <- read.csv(file.path(dir_data, 'v_suffix.csv'))
 

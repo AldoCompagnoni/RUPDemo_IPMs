@@ -983,7 +983,9 @@ ggplot(data = df_fire_re %>%
          filter(fire_gap >= 0,
                 fire_gap <= 1), 
        aes(x = as.factor(fire_gap), y = re_quad)) + 
-  geom_boxplot()
+  geom_boxplot() +
+  geom_jitter(width = 0.05, height = 0.2) +
+  theme_minimal()
 ```
 
 Fire has a significant effect on recuitment the year after

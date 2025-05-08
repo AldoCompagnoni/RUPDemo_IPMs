@@ -40,7 +40,7 @@ ipm_type    <- 'mean'
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (https://resolver.globalnames.org)
 # The accepted name of the species 
-species_accepted <- gsub(" ", "_", species)
+species_accepted <- 'Bouteloua_dactyloides'
 # The accepted genus
 tax_genus  <- sub("_.*", "", species_accepted)
 # The accepted family

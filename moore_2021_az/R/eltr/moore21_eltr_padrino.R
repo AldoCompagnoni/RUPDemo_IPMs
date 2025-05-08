@@ -39,7 +39,7 @@ ipm_type    <- 'mean'
 
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (https://resolver.globalnames.org)
-species_accepted <- gsub(' ', '_', species)
+species_accepted <-'Elymus_violaceus'
 # The accepted genus
 tax_genus  <- sub('_.*', '', species_accepted)
 # The accepted family

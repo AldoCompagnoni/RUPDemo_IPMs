@@ -39,7 +39,7 @@ v_ipm_type    <- c('year_specific')
 
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (https://resolver.globalnames.org)
-v_species_accepted <- c('Allium textile')
+v_species_accepted <- c('Bouteloua barbata')
 # The accepted genus
 v_tax_genus  <- sub('_.*', '', v_species_accepted)
 # The accepted family

@@ -7,8 +7,8 @@ df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>%
   janitor::clean_names() %>%
   mutate(across(c(5, 6, 11:length(.)), ~ na_if(., 9999))) %>%
   mutate(
-    plant_id = as.factor(paste(site, quad, plant, sep = "_")),
-    quad_id  = as.factor(paste(site, quad, sep = "_")),
+    plant_id = as.factor(paste(site, quad, plant, sep = '_')),
+    quad_id  = as.factor(paste(site, quad, sep = '_')),
     year     = as.numeric(substr(date, 1, 4)),  
     month    = as.numeric(substr(date, 6, 7)),
     site     = as.factor(site),
@@ -66,7 +66,7 @@ df_mean_og <- df %>%
       all(is.na(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),
       NA_real_, 
       mean(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f), na.rm = TRUE)),
-    .groups  = "drop"
+    .groups  = 'drop'
   ) %>% 
   ungroup()
 ```

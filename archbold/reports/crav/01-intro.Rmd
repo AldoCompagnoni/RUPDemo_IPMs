@@ -57,7 +57,7 @@ dir_func   <- file.path(dir_wd, 'helper_functions')
 
 
 # Functions
-# plot your survival data "binned" (instead of "jittered")
+# plot your survival data 'binned' (instead of 'jittered')
 source(file.path(dir_func, 'plot_binned_prop.R'))
 # 
 source(file.path(dir_func, 'line_color_pred_fun.R'))

@@ -227,7 +227,17 @@ ggplot(
 
 Density seems to have a have a positve effect on the reuitment in the next year!?
 
-```{r }
+```{r message=FALSE, warning=FALSE}
+df_re_qd <- df_mean %>% 
+  group_by(site, quad_id, year) %>%
+  select(recruit) %>% 
+  summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
+  left_join(df_mean %>% 
+              group_by(site, quad_id, year) %>% 
+              summarise(nr_ind = sum(!is.na(size_t0))) %>% 
+              mutate(year = year - 1),
+            by = c('site', 'quad_id', 'year'))
+
 df_re_qd <- df_mean %>% 
   group_by(site, quad_id, year) %>%
   select(recruit) %>% 
@@ -241,7 +251,12 @@ df_re_qd <- df_mean %>%
 ggplot(data = df_re_qd) + 
   geom_jitter(aes(y = rec_qd_t1, x = nr_ind)) + 
   geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm') + 
-  theme_minimal()
+  theme_minimal() + 
+  labs(title    = 'Recruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
 ```
 
 
@@ -305,18 +320,18 @@ The following plot shows the 4 different time gaps of fruiting on recruits
 ```{r fe plot 2}
 ggplot(df_fecu_mod %>%
          pivot_longer(
-           cols = starts_with("nr_fru_t"),
-           names_to = "fru_type",
-           values_to = "fru_count"
+           cols = starts_with('nr_fru_t'),
+           names_to = 'fru_type',
+           values_to = 'fru_count'
          ), 
        aes(x = fru_count, y = nr_recr, color = fru_type)) +
   geom_smooth(alpha = 0.2, method = 'lm') +
   geom_jitter(aes(shape = fru_type)) +
   labs(
-    x = "Number of Fruits",
-    y = "Number of Recruits",
-    color = "Fruit Type",
-    title = "Relationship between Fruit Counts and Recruits"
+    x = 'Number of Fruits',
+    y = 'Number of Recruits',
+    color = 'Fruit Type',
+    title = 'Relationship between Fruit Counts and Recruits'
   ) +
   theme_minimal()
 
@@ -338,13 +353,13 @@ df_mean %>%
 
 df_fecu_mod %>%
   mutate(
-    quad_id = paste(site, quad, sep = "_"),
-    year_fire = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal")
+    quad_id = paste(site, quad, sep = '_'),
+    year_fire = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), 'fire', 'normal')
   ) %>%
   ggplot(aes(x = nr_fru_t1, y = nr_recr, color = year_fire)) +
   geom_jitter(alpha = 0.7) +
   facet_wrap(~year) +
-  scale_color_manual(values = c("fire" = "red", "normal" = "gray")) +
+  scale_color_manual(values = c('fire' = 'red', 'normal' = 'gray')) +
   theme_minimal()
 
 # Model
@@ -372,17 +387,17 @@ df_fecu_mod_site <- df_fecu_mod %>%
 ```{r fe plot 3}
 ggplot(df_fecu_mod_site %>%
          pivot_longer(
-           cols = starts_with("nr_fru_t"),
-           names_to = "fruit_type",
-           values_to = "fruit_count"
+           cols = starts_with('nr_fru_t'),
+           names_to = 'fruit_type',
+           values_to = 'fruit_count'
          ), aes(x = fruit_count, y = nr_recr, color = fruit_type)) +
-  geom_smooth(se = FALSE, method = "lm") +
+  geom_smooth(se = FALSE, method = 'lm') +
   geom_jitter(aes(shape = fruit_type)) +
   labs(
-    title = "Relationship between Fruit Counts and Recruits",
-    x = "Fruit Count",
-    y = "Number of Recruits",
-    color = "Fruit Type"
+    title = 'Relationship between Fruit Counts and Recruits',
+    x = 'Fruit Count',
+    y = 'Number of Recruits',
+    color = 'Fruit Type'
   ) +
   theme_minimal()
 ```
@@ -421,17 +436,17 @@ df_fecu_mod_year <- df_fecu_mod %>%
 ```{r fe plot 4}
 ggplot(df_fecu_mod_year %>%
          pivot_longer(
-           cols = starts_with("nr_fru_t"),
-           names_to = "fruit_type",
-           values_to = "fruit_count"
+           cols = starts_with('nr_fru_t'),
+           names_to = 'fruit_type',
+           values_to = 'fruit_count'
          ), aes(x = fruit_count, y = nr_recr, color = fruit_type)) +
-  geom_smooth(se = FALSE, method = "lm") +
+  geom_smooth(se = FALSE, method = 'lm') +
   geom_jitter(aes(shape = fruit_type)) +
   labs(
-    title = "Relationship between Fruit Counts and Recruits",
-    x = "Fruit Count",
-    y = "Number of Recruits",
-    color = "Fruit Type"
+    title = 'Relationship between Fruit Counts and Recruits',
+    x = 'Fruit Count',
+    y = 'Number of Recruits',
+    color = 'Fruit Type'
   ) +
   theme_minimal()
 ```
@@ -457,7 +472,7 @@ df_rec_pc <- df_mean %>%
   left_join(df_mean %>%
               group_by(site, quad_id, plant_id, year) %>%
               summarise(rep_nr_t0 = as.integer(any(fruit > 0)), 
-                        .groups = "drop") %>% 
+                        .groups = 'drop') %>% 
               ungroup() %>% 
               group_by(site, quad_id, year) %>% 
               summarise(rep_nr_t0 = sum(rep_nr_t0, na.rm = T)) %>% 
@@ -465,10 +480,10 @@ df_rec_pc <- df_mean %>%
   , by = c('site', 'quad_id', 'year')) %>% 
   mutate(
     rec_pc = rec_nr_t1 / rep_nr_t0,
-    fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), "fire", "normal"),
+    fire_year = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), 'fire', 'normal'),
     rec_pc = ifelse(is.nan(rec_pc) | is.infinite(rec_pc), 0, rec_pc),  
-    fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), "fire_t1", fire_year),
-    fire_year = ifelse(year %in% c(2017), "FIRE", fire_year)
+    fire_year = ifelse(year %in% c(2006, 2010, 2015, 2017, 2018), 'fire_t1', fire_year),
+    fire_year = ifelse(year %in% c(2017), 'FIRE', fire_year)
   )
 ```
 #### quadrat level
@@ -499,7 +514,7 @@ ggplot(df_rec_pc, aes(x = year, y = rec_pc, color = fire_year)) +
   geom_point() +
   facet_wrap('quad_id') +
   scale_color_manual(values = c(
-    "fire" = "red", "normal" = "gray", "fire_t1" = "pink", "FIRE" = "purple")) +
+    'fire' = 'red', 'normal' = 'gray', 'fire_t1' = 'pink', 'FIRE' = 'purple')) +
   theme_minimal() +
   labs(y = expression('Per capita recruits'),
        x = expression('Year'))

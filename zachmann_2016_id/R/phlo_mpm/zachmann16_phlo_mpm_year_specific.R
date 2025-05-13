@@ -1,11 +1,11 @@
 # MPM year specific - Zachmann 2016 Idaho - Phlox longifolia
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
+# Date  : 2025.05.13
 
 # Publication : https://doi.org/10.1890/10-0404.1
 
@@ -20,19 +20,19 @@
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'zachmann_2016'
+v_author_year <- c('zachmann_2016')
 # Define region abbreviation
-region_abb  <- 'id'
+v_region_abb  <- c('id')
 # Define the species variable
-species     <- 'Phlox longifolia'
+v_species     <- c('Phlox longifolia')
 # Type of population model
-mod_type    <- 'mpm'
+v_mod_type    <- c('mpm')
 
 
 # CHECK -- Adaptions to the models ---------------------------------------------
 # Years:
 #  Removal of certain years if unspecified nothing is removed
-years_re <- c()
+v_years_re <- c()
 # Age:
 #  Set a age threshold at which all ages get the same survival probability
 #  If unspecified it's 'c(1)'

@@ -1,11 +1,11 @@
 # MPM year specific - Adler 2007 Kansas - Lesquerella ovalifolia
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.12.12
+# Date  : 2025.05.13
 
 # Publication: https://doi.org/10.1890/0012-9658(2007)88[2673:LMQFKP]2.0.CO;2
 
@@ -16,23 +16,23 @@
 # 2.1 and the survival and recruitment data in its respective folder
 
 
-rm(list = ls())
+# rm(list = ls())
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'adler_2007'
+v_author_year <- c('adler_2007')
 # Define region abbreviation
-region_abb  <- 'ks'
+v_region_abb  <- c('ks')
 # Define the species variable
-species     <- 'Lesquerella ovalifolia'
+v_species     <- c('Lesquerella ovalifolia')
 # Type of population model
-mod_type    <- 'mpm'
+v_mod_type    <- c('mpm')
 
 
 # CHECK -- Adaptions to the models ---------------------------------------------
 # Years:
 #  Removal of certain years if unspecified nothing is removed
-years_re <- c()
+v_years_re <- c()
 
 
 # MPM pipeline -- with model comparison -- -------------------------------------

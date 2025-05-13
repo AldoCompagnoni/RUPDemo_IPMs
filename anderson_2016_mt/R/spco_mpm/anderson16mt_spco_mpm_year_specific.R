@@ -1,11 +1,11 @@
 # MPM year specific - Anderson 2016 Montana - Sphaeralcea coccinea
 
 # Author: Diana Spurite
-# Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
+# Co    : Aspen Workman, Niklas Neisse, Aldo Compagnoni*
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
+# Date  : 2025.05.13
 
 # Publication : https://doi.org/10.1890/11-0193.1
 
@@ -20,23 +20,23 @@
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'anderson_2016'
+v_author_year <- c('anderson_2016')
 # Define region abbreviation
-region_abb  <- 'mt'
+v_region_abb  <- c('mt')
 # Define the species variable
-species     <- 'Sphaeralcea coccinea'
+v_species     <- c('Sphaeralcea coccinea')
 # Type of population model
-mod_type    <- 'mpm'
+v_mod_type    <- c('mpm')
 
 
 # CHECK -- Adaptions to the models ---------------------------------------------
 # Years:
 #  Removal of certain years if unspecified nothing is removed
-years_re <- c()
+v_years_re <- c()
 # Age:
 #  Set a age threshold at which all ages get the same survival probability
 #  If unspecified it's 'c(1)'
-surv_age_threshold <- c(1)
+v_surv_age_threshold <- c(1)
 
 
 # MPM pipeline -- with model comparison -- -------------------------------------

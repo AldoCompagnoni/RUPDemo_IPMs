@@ -1,13 +1,13 @@
 # MPM year specific - Chu 2013 Colorado - Lepidium densiflorum
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.24
+# Date  : 2025.05.13
 
-# Publication : https://doi.org/10.1890/13-0121.1
+# Publication: https://doi.org/10.1890/13-0121.1
 
 
 # Comments ---------------------------------------------------------------------
@@ -20,19 +20,19 @@
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'chu_2013'
+v_author_year <- c('chu_2013')
 # Define region abbreviation
-region_abb  <- 'co'
+v_region_abb  <- c('co')
 # Define the species variable
-species     <- 'Lepidium densiflorum'
+v_species     <- c('Lepidium densiflorum')
 # Type of population model
-mod_type    <- 'mpm'
+v_mod_type    <- c('mpm')
 
 
 # CHECK -- Adaptions to the models ---------------------------------------------
 # Years:
 #  Removal of certain years if unspecified nothing is removed
-years_re <- c()
+v_years_re <- c()
 
 
 # MPM pipeline -- with model comparison -- -------------------------------------

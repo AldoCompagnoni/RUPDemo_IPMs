@@ -14,52 +14,56 @@
 # Packages ---------------------------------------------------------------------
 # read and check  
 source('helper_functions/load_packages.R')
-load_packages(tidyverse, patchwork, skimr, lme4, ggthemes, boot)
-# 
-# library(ggplot2)
-# library(dplyr)
-# library(boot)
+load_packages(tidyverse, patchwork, skimr, lme4, ggthemes, boot, janitor)
 
 
 # Data -------------------------------------------------------------------------
 # Species abbreviation
-sp_abb  <- tolower(
+v_sp_abb  <- tolower(
   gsub(' ', '', paste(
-    substr(unlist(strsplit(species, ' ')), 1, 2), collapse = '')))
+    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
 # Suffix for the folder structure
-folder_suffix <- paste0(sp_abb, '_', mod_type)
+v_folder_suffix <- paste0(v_sp_abb, '_', v_mod_type)
 # Prefix for the script name
-script_prefix <- str_c(
-  str_extract(author_year, "^[^_]+"),
-  str_sub(str_extract(author_year, "_\\d+$"), -2, -1))
+v_script_prefix <- str_c(
+  str_extract(v_author_year, "^[^_]+"),
+  str_sub(str_extract(v_author_year, "_\\d+$"), -2, -1))
 # Define prefix for two of the same author and year
 if (
   length(
     list.dirs(
       full.names = TRUE, recursive = FALSE)[grepl(
-        paste0("^", author_year), basename(
+        paste0("^", v_author_year), basename(
           list.dirs(full.names = TRUE, recursive = FALSE)))]
   ) > 1) {
-  script_prefix <- paste0(script_prefix, region_abb)
+  v_script_prefix <- paste0(v_script_prefix, v_region_abb)
 }
 
 
 
 # Directories 
-pub_dir       <- file.path(paste0(author_year, '_', region_abb))
-R_dir         <- file.path(pub_dir, 'R',       folder_suffix)
-data_dir      <- file.path(pub_dir, 'data',    folder_suffix)
-result_dir    <- file.path(pub_dir, 'results', folder_suffix)
+dir_pub       <- file.path(paste0(v_author_year, '_', v_region_abb))
+dir_R         <- file.path(dir_pub, 'R',       v_folder_suffix)
+dir_data      <- file.path(dir_pub, 'data',    v_folder_suffix)
+dir_result    <- file.path(dir_pub, 'results', v_folder_suffix)
+
+# Create output directory if it doesn't exist
+if (!dir.exists(paste0(dir_result))) {
+  dir.create(paste0(dir_result))}
 
 
 # Plant tracker if it does not already exist
-if (!file.exists(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv'))) {
-  source(paste0(R_dir, '/', script_prefix, '_', sp_abb, '_tracker.R'))
+if (!file.exists(
+  file.path(dir_data, paste0(v_script_prefix, '_', v_sp_abb, '.csv')))) {
+  source(
+    file.path(dir_R, paste0(v_script_prefix, '_', v_sp_abb, '_tracker.R')))
 }
 
 # Species data frame
-df <- read.csv(paste0(data_dir, '/', script_prefix, '_', sp_abb, '.csv')) %>% 
-  filter(species == species) %>%
+df <- read.csv(
+  file.path(dir_data, paste0(v_script_prefix, '_', v_sp_abb, '.csv'))) %>% 
+  clean_names() %>% 
+  filter(species == v_species) %>%
   select(-c(suspect, near_edge, site)) %>% # geometry, 
   mutate(across(c(quad), as.factor)) %>% 
   rename(survives = survives_tplus1)
@@ -84,15 +88,10 @@ inv_plot_per_year <- df %>%
                  y = quad)) +
   theme_bw() +
   labs(title    = 'Sampling inventory',
-       subtitle = paste(script_prefix, '-', species)) +
+       subtitle = paste(v_script_prefix, '-', v_species)) +
   theme(axis.text.y = element_text(size = 5))
 
-# Create output directory if it doesn't exist
-if (!dir.exists(paste0(result_dir))) {
-  dir.create(paste0(result_dir))
-}
-
-ggsave(paste0(result_dir, 
+ggsave(paste0(dir_result, 
               '/0_inventory_quadrat_per_year.png'),  
        plot = inv_plot_per_year,
        width = 6, height = 4, dpi = 150)
@@ -149,24 +148,24 @@ recr_df  <- left_join(indiv_t0, indiv_t1) %>%
 
 
 # Removing specified years -----------------------------------------------------
-df       <- df          %>% filter(!is.na(year) & !(year %in% years_re))
-surv_df  <- surv_out_df %>% filter(!is.na(year) & !(year %in% years_re))
-recr_df  <- recr_df     %>% filter(!is.na(year) & !(year %in% years_re))
+df       <- df          %>% filter(!is.na(year) & !(year %in% v_years_re))
+surv_df  <- surv_out_df %>% filter(!is.na(year) & !(year %in% v_years_re))
+recr_df  <- recr_df     %>% filter(!is.na(year) & !(year %in% v_years_re))
 
 years_v  <- sort(unique(df$year))
 
 
 # Save all data ----------------------------------------------------------------
 # Create the data folder for the species if it does not exits already
-if (!dir.exists(paste0(data_dir))) {
-  dir.create(paste0(data_dir))
+if (!dir.exists(paste0(dir_data))) {
+  dir.create(paste0(dir_data))
 }
 write.csv(df, row.names = F,          
-          paste0(data_dir, '/data_df.csv'))
+          paste0(dir_data, '/data_df.csv'))
 write.csv(surv_out_df, row.names = F, 
-          paste0(data_dir, '/survival_df.csv'))
+          paste0(dir_data, '/survival_df.csv'))
 write.csv(recr_df, row.names = F,     
-          paste0(data_dir, '/recruitment_df.csv'))
+          paste0(dir_data, '/recruitment_df.csv'))
 
 
 # Survival ---------------------------------------------------------------------
@@ -175,9 +174,9 @@ hist_age <- ggplot(surv_out_df, aes(x = age)) +
   labs(x = 'Age',
        y = 'Count', 
        title    = 'Age hist',
-       subtitle = paste(script_prefix, '-', species))
+       subtitle = paste(v_script_prefix, '-', v_species))
 
-ggsave(paste0(result_dir, '/0_age_counts.png'),  
+ggsave(paste0(dir_result, '/0_age_counts.png'),  
        plot = hist_age,      width = 6, height = 9, dpi = 150)
 
 
@@ -248,7 +247,7 @@ surv_age <- ggplot(survival_results, aes(x = age, y = mean_survival)) +
   theme() +
   ylim(0, 1)
 
-ggsave(paste0(result_dir, '/0_surv_age.png'),  
+ggsave(paste0(dir_result, '/0_surv_age.png'),  
        plot = surv_age,      width = 6, height = 9, dpi = 150)  
   
 #-------------------------------------------------------------------------------
@@ -315,7 +314,7 @@ su_fun <- function(df, re){
          y = 'Survival', 
          title    = paste0(
            'Predicted vs observed survival probablity between' , re, 's'),
-         subtitle = paste(script_prefix, '-', species)) +
+         subtitle = paste(v_script_prefix, '-', v_species)) +
     theme(legend.position = 'top') +
     scale_color_colorblind()
   return(p_surv)
@@ -325,9 +324,9 @@ p_surv_quad <- su_fun(shat_quad_df, 'quad')
 p_surv      <- su_fun(shat_df,      'year')
 
 # store the plot
-ggsave(paste0(result_dir, '/1_survival_years.png'),  
+ggsave(paste0(dir_result, '/1_survival_years.png'),  
        plot = p_surv,      width = 6, height = 9, dpi = 150)
-ggsave(paste0(result_dir, '/1_survival_quads.png'),  
+ggsave(paste0(dir_result, '/1_survival_quads.png'),  
        plot = p_surv_quad, width = 6, height = 9, dpi = 150)
 
 
@@ -409,9 +408,9 @@ pcr_comp_mod <-
        y = 'Conditional pcr hat', 
        title    = paste0(
          'Conditional on uncoditional per capita recruitment rate'),
-       subtitle = paste(script_prefix, '-', species))
+       subtitle = paste(v_script_prefix, '-', v_species))
 
-ggsave(paste0(result_dir, '/2_pcr_comp_mod.png'),  
+ggsave(paste0(dir_result, '/2_pcr_comp_mod.png'),  
        plot = pcr_comp_mod,
        width = 6, height = 9, dpi = 150)
 
@@ -433,17 +432,16 @@ recr_p <- recr_df %>%
        y = 'Parents count', 
        title    = paste0(
          'Observed vs modeled (red) recruitments'),
-       subtitle = paste(script_prefix, '-', species))
+       subtitle = paste(v_script_prefix, '-', v_species))
 
 # store the plot
-ggsave(paste0(result_dir, '/2_recruitment_years.png'),  
+ggsave(paste0(dir_result, '/2_recruitment_years.png'),  
        plot = recr_p,
        width = 6, height = 9, dpi = 150)
 
 
 # compare 'naive' per capita recruitment, with the model's
-pcr_comp_naive <- 
-  recr_df %>% 
+pcr_comp_naive <- recr_df %>%
   group_by(year) %>% 
   summarise(pcr_naive = mean(pcr,na.rm=T)) %>% 
   ungroup %>% 
@@ -459,9 +457,9 @@ pcr_comp_naive <-
        y = 'Modeled pcr', 
        title    = paste0(
          'Conditional vs uncoditional (blue)- on native per capita recruitment'),
-       subtitle = paste(script_prefix, '-', species))
+       subtitle = paste(v_script_prefix, '-', v_species))
 
-ggsave(paste0(result_dir, '/2_pcr_comp_naive.png'),  
+ggsave(paste0(dir_result, '/2_pcr_comp_naive.png'),  
        plot = pcr_comp_naive,
        width = 6, height = 9, dpi = 150)
 
@@ -591,7 +589,7 @@ pop_counts <- left_join(pop_counts_t0,
   left_join(lam_df) %>% 
   drop_na
 
-write.csv(pop_counts, row.names = F, paste0(data_dir, '/metrics_df.csv'))
+write.csv(pop_counts, row.names = F, paste0(dir_data, '/metrics_df.csv'))
 
 # mostly over-predicted population growth
 #   not as bad as the published data though (see below)!
@@ -607,21 +605,21 @@ comp_obpogr_lam <-
        y = 'Lambda', 
        title    = paste0(
          'Projected vs regular lambda on observed pop. growth rates'),
-       subtitle = paste(script_prefix, '-', species))
+       subtitle = paste(v_script_prefix, '-', v_species))
 
-ggsave(paste0(result_dir, '/3_comp_obpogr_lam.png'),  
+ggsave(paste0(dir_result, '/3_comp_obpogr_lam.png'),  
        plot = comp_obpogr_lam,
        width = 6, height = 9, dpi = 150)
 
 # for now, store everything as an R object that resembles 
 mpm_df %>% 
   mutate(year = paste0('19',year)) %>% 
-  mutate(SpeciesAuthor = species) %>% 
+  mutate(SpeciesAuthor = v_species) %>% 
   setNames(c('year', 
              'surv_age0', 'surv_age1', 
              'per_capita_recruitment',
              'SpeciesAuthor')) %>% 
-  write.csv(paste0(data_dir, '/mpm_pste.csv'), row.names = F)
+  write.csv(paste0(dir_data, '/mpm_pste.csv'), row.names = F)
 
 
 # compare with COMPADRE's estimates --------------------------------------------
@@ -632,7 +630,7 @@ load('adler_2007_ks/data/COMPADRE_v.6.23.5.0.RData')
 
 # identify the matrices across COMPADRE 
 id <- compadre$metadata %>% 
-  subset(grepl(gsub(' ', '_', species), SpeciesAuthor)) %>% 
+  subset(grepl(gsub(' ', '_', v_species), SpeciesAuthor)) %>% 
   subset(MatrixComposite == 'Individual') %>% 
   subset(MatrixStartYear %in% pop_counts$year) %>% 
   row.names %>% 
@@ -675,9 +673,9 @@ comp_pub_pcr <-
        y = 'pcr hat compadre', 
        title    = paste0(
          'PCR hat - estimation vs. publication'),
-       subtitle = species)
+       subtitle = v_species)
 
-ggsave(paste0(result_dir, '/4_comp_pub_pcr.png'),  
+ggsave(paste0(dir_result, '/4_comp_pub_pcr.png'),  
        plot = comp_pub_pcr,
        width = 6, height = 9, dpi = 150)
 
@@ -691,9 +689,9 @@ comp_pub_0 <-
        y = 'Suv 0 compadre', 
        title    = paste0(
          'Survival age 0 - estimation vs. publication'),
-       subtitle = species)
+       subtitle = v_species)
 
-ggsave(paste0(result_dir, '/4_comp_pub_0.png'),  
+ggsave(paste0(dir_result, '/4_comp_pub_0.png'),  
        plot = comp_pub_0,
        width = 6, height = 9, dpi = 150)
 
@@ -707,9 +705,9 @@ comp_pub_1 <-
        y = 'Suv 1 compadre', 
        title    = paste0(
          'Survival age 1 - estimation vs. publication'),
-       subtitle = species)
+       subtitle = v_species)
 
-ggsave(paste0(result_dir, '/4_comp_pub_1.png'),  
+ggsave(paste0(dir_result, '/4_comp_pub_1.png'),  
        plot = comp_pub_1,
        width = 6, height = 9, dpi = 150)
 
@@ -724,9 +722,9 @@ comp_pub_pgr <-
        y = 'PGR compadre', 
        title    = paste0(
          'Population growth rates - estimation vs. publication'),
-       subtitle = species)
+       subtitle = v_species)
 
-ggsave(paste0(result_dir, '/4_comp_pub_pgr.png'),  
+ggsave(paste0(dir_result, '/4_comp_pub_pgr.png'),  
        plot = comp_pub_pgr,
        width = 6, height = 9, dpi = 150)
 
@@ -745,9 +743,9 @@ comp_pgr <-
        y = 'Lambda compadre', 
        title    = paste0(
          'Lambda - estimation vs. publication'),
-       subtitle = species)
+       subtitle = v_species)
 
-ggsave(paste0(result_dir, '/4_comp_pgr.png'),  
+ggsave(paste0(dir_result, '/4_comp_pgr.png'),  
        plot = comp_pgr,
        width = 6, height = 9, dpi = 150)
 

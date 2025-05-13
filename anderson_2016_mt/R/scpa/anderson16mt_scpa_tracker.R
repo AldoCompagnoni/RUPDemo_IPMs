@@ -1,28 +1,28 @@
 # plantTracker - Anderson 2016 Montana - Schedonnardus paniculatus
 
-
 # Author: Diana Spurite
-# Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
+# Co    : Aspen Workman, Niklas Neisse, Aldo Compagnoni*
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.03.18
+# Date  : 2025.05.08
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
 # rm(list = ls())
 
-
 # Data -------------------------------------------------------------------------
 # Define publication 
-author_year <- 'anderson_2016'
+v_author_year      <- c('anderson_2016')
 # Define region abbreviation
-region_abb <- 'mt'
+v_region_abb       <- c('mt')
 # Define growth form (grass - including c4, c3 and short grasses-, forb, shrub)
-gr_form    <- 'grass'
+v_gr_form          <- c('grass')
 # Customized delimiter for `read_delim` function, comma is predefined
-custom_delimiter <- c(',')
+v_custom_delimiter <- c(',')
 
+
+# Main pipelines ---------------------------------------------------------------
 source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
@@ -32,7 +32,7 @@ target_spec <- sp_list %>% .[c(6),]
 
 # Modifications to the data structure ------------------------------------------
 # Specific plots to exclude, a list of plots
-mod_plot <- c()
+v_mod_plot <- c()
 
 source('pipeline/plant_tracker_02.R')
 

@@ -65,8 +65,6 @@ pars          <- read.csv(
 lam_mean_ipmr <- read.csv(
   file.path(dir_data, paste0(v_script_prefix, '_', v_sp_abb, '_lambda.csv')))
 
-v_suffix
-
 
 # Populating the PADRINO database template -------------------------------------
 # Store the PADRINO excel template

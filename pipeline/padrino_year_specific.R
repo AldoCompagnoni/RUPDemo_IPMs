@@ -59,9 +59,12 @@ if (
     dir_R, '/', v_script_prefix, '_', v_sp_abb, '_ipm_year_specific.R'))
 }
 
-all_pars      <- read.csv(file.path(dir_data, 'all_pars.csv'))
-pars_var_wide <- read.csv(file.path(dir_data, '2.pars_var.csv'))
-lam_mean_ipmr <- read.csv(file.path(dir_data, 'lambdas_yr_vec.csv'))
+all_pars      <- read.csv(
+  file.path(dir_data, paste0('all_pars', v_suffix[[1]], '.csv')))
+pars_var_wide <- read.csv(
+  file.path(dir_data, paste0('2.pars_var', v_suffix[[1]], '.csv')))
+lam_mean_ipmr <- read.csv(
+  file.path(dir_data, paste0('lambdas_yr_vec', v_suffix[[1]], '.csv')))
 
 
 # Populating the PADRINO database template -------------------------------------

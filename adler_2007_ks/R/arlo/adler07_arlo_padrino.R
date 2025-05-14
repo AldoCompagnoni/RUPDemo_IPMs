@@ -1,8 +1,7 @@
 # Populating padrino - Adler 2007 Kansas - Aristida longiseta
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
-# Email : neisse.n@protonmail.com
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2025.05.05

@@ -1,7 +1,7 @@
 # IPM mean - Moore 2021 Arizona - Eremogone fendleri
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
@@ -24,7 +24,7 @@ v_author_year <- c('moore_2021')
 # Define region abbreviation
 v_region_abb  <- c('az')
 # Define species 
-v_species     <- c('Antennaria parvifolia')
+v_species     <- c('Eremogone fendleri')
 
 
 # CHECK -- Adaptions -----------------------------------------------------------

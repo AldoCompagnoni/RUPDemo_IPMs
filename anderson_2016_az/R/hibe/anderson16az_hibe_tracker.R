@@ -1,9 +1,6 @@
 # plantTracker - Anderson 2016 Arizona - Hilaria belangeri
 
 # Author: Niklas Neisse
-# Co    : Aspen Workman, Aldo Compagnoni
-
-# Author: Niklas Neisse
 # Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de

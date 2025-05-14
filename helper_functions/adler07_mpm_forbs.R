@@ -1,9 +1,11 @@
 # MPM year specific Adler 2007 Kansas for any forb species
 
 # Author: Niklas Neisse
-# Email: neisse.n@protonmail.com &
-#  aldo.compagnoni@gmail.com
-# Date: 2024.10.30
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
+# Email : neisse.n@protonmail.com
+# Main  : aldo.compagnoni@idiv.de
+# Web   : https://aldocompagnoni.weebly.com/
+# Date  : 2024.10.30
 
 # Original models from https://doi.org/10.1111/j.1365-2745.2009.01585.x
 #   check the appendices for details on model fitting!

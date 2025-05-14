@@ -5,7 +5,7 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.05.13
+# Date  : 2025.05.14
 
 # Publication: https://doi.org/10.1002/ecy.3661
 
@@ -27,7 +27,7 @@ v_author_year <- c('moore_2021')
 # Define region abbreviation
 v_region_abb  <- c('az')
 # Define species 
-v_species      <- c('Antennaria parvifolia')
+v_species     <- c('Antennaria parvifolia')
 
 # A unique identifier for each model. 
 #  It is 6 alphanumeric characters with no spaces
@@ -164,4 +164,4 @@ lambda(bg_ipm_pdb)
 plot(lambda(bg_ipm_pdb) ~ lam_mean_ipmr$years)
 
 # Testing the model with padrino
-test_model(pdb_test, id = ipm_id)
+test_model(pdb_test, id = v_ipm_id)

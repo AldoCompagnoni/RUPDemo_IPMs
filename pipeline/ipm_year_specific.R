@@ -103,6 +103,13 @@ surv_df <- read.csv(
 recr_df <- read.csv(
   paste0(dir_data, '/', v_script_prefix, '_', v_sp_abb, '_recruitment_df.csv'))
 
+# Implement size threshold
+if (length(v_size_threshold) > 0) {
+  df <- df %>% 
+    filter(logsize_t0 > v_size_threshold | is.na(logsize_t0)) %>% 
+    filter(logsize_t1 > v_size_threshold | is.na(logsize_t1))
+}
+
 df_long <- pivot_longer(
   df, cols = c(logsize_t0, logsize_t1 ), 
   names_to = 'size', values_to = 'size_value' ) %>% 
@@ -128,10 +135,8 @@ g_hist_logsizes_years <- df_long %>%
   theme(axis.text.y = element_text(size = 5)) +
   theme(plot.subtitle = element_text(size = 8))
 
-ggsave(
-  paste0(dir_result, '/3.1_years_hist_logsizes_years', v_suffix, '.png'),  
-  plot = g_hist_logsizes_years,
-  width = 6, height = 12, dpi = 150)
+ggsave(paste0(dir_result, '/3.1_years_hist_logsizes_years', v_suffix, '.png'),
+       plot = g_hist_logsizes_years, width = 6, height = 12, dpi = 150)
 
 
 # Survival 
@@ -174,6 +179,7 @@ ggsave(paste0(dir_result, '/3.2_years_survival', v_suffix, '.png'),
        plot = g_survival,
        width = 4, height = 9, dpi = 150)
 
+
 # Growth
 grow_yr_pan_df <- grow_df %>%
   mutate(transition = paste(
@@ -201,10 +207,11 @@ g_growth <- ggplot(
        subtitle = v_ggp_suffix,
        x        =  expression('log(size) '[t0]),
        y        = expression('log(size) '[t1]))
-
-ggsave(paste0(dir_result, '/3.3_years_growth', v_suffix, '.png'), 
+  
+ggsave(paste0(dir_result, '/3.3_years_growth', v_suffix, '.png'),
        plot = g_growth,
        width = 4, height = 9, dpi = 150)
+
 
 # Recruits
 indiv_qd <- surv_df %>%
@@ -849,6 +856,8 @@ contains_numeric0 <- sapply(pars_yr, function(regular_list) {
 })
 
 which_contains_numeric0 <- which(contains_numeric0)
+v_years_rm_sugg         <- years_v[which_contains_numeric0]
+v_years_og              <- years_v
 # CHECK -- Exclude these years ##
 pars_yr <- pars_yr[-which_contains_numeric0]
 years_v <- years_v[-which_contains_numeric0]

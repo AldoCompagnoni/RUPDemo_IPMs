@@ -664,8 +664,7 @@ compare_df <- pop_counts %>%
   drop_na
 
 # Recruitment: our estimation vs. publication
-comp_pub_pcr <-
-  ggplot(compare_df) +
+comp_pub_pcr <- ggplot(compare_df) +
   geom_point(aes(pcr_hat, pub_pcr_hat)) +
   geom_abline(intercept = 0,
               slope     = 1) +
@@ -680,8 +679,7 @@ ggsave(paste0(dir_result, '/4_comp_pub_pcr.png'),
        width = 6, height = 9, dpi = 150)
 
 # Survival age 0: our estimation vs. publication
-comp_pub_0 <-
-  ggplot(compare_df) +
+comp_pub_0 <- ggplot(compare_df) +
   geom_point(aes(`0`, pub_0)) +
   geom_abline(intercept = 0,
               slope     = 1) +
@@ -696,8 +694,7 @@ ggsave(paste0(dir_result, '/4_comp_pub_0.png'),
        width = 6, height = 9, dpi = 150)
 
 # Survival age 1: our estimation vs. publication
-comp_pub_1 <-
-  ggplot(compare_df) +
+comp_pub_1 <- ggplot(compare_df) +
   geom_point(aes(`1`, pub_1)) +
   geom_abline(intercept = 0,
               slope     = 1) +
@@ -729,8 +726,7 @@ ggsave(paste0(dir_result, '/4_comp_pub_pgr.png'),
        width = 6, height = 9, dpi = 150)
 
 # compare population growth rates
-comp_pgr <- 
-  ggplot(compare_df) +
+comp_pgr <- ggplot(compare_df) +
   # geom_point(aes(pcr_hat,pub_pcr_hat)) +
   geom_point(aes(obs_pgr, pub_lam), col = 'green') +
   geom_point(aes(obs_pgr, pub_proj_lam), col = 'blue') +

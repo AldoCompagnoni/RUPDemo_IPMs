@@ -313,7 +313,7 @@ su_fun <- function(df, re){
     labs(x = 'Age',
          y = 'Survival', 
          title    = paste0(
-           'Predicted vs observed survival probablity between' , re, 's'),
+           'Predicted vs observed survival probablity between ' , re, 's'),
          subtitle = paste(v_script_prefix, '-', v_species)) +
     theme(legend.position = 'top') +
     scale_color_colorblind()
@@ -399,8 +399,7 @@ recr_pred_df <- left_join(yesno_pred_df, pcr_uc_pred_df) %>%
   mutate(pcr_uc_hat = uc_pcr_hat, 
          pcr_hat    = cond_pcr_hat * yesno_prob)
 
-pcr_comp_mod <-
-  recr_pred_df %>% 
+pcr_comp_mod <- recr_pred_df %>% 
   ggplot() +
   geom_point(aes(x = pcr_uc_hat, y = pcr_hat)) +
   geom_abline(intercept = 0, slope = 1, color = 'black', pch = 1) +
@@ -470,8 +469,8 @@ ggsave(paste0(dir_result, '/2_pcr_comp_naive.png'),
 mpm_df <- shat_df %>% 
   pivot_wider(names_from  = 'age',
               values_from = 'shat') %>% 
-  left_join(dplyr::select(recr_pred_df,
-                          year, pcr_hat)) %>% 
+  left_join(dplyr::select(
+    recr_pred_df, year, pcr_hat)) %>% 
   drop_na %>% 
   ungroup
 
@@ -519,7 +518,7 @@ make_mat <- function(year_x, mat_df){
 
 # project based on stage distribution
 stage_counts <- df %>%
-  mutate(year = as.character(year) ) %>%
+  mutate(year = as.character(year)) %>%
   mutate(age = replace(age, age > surv_age_threshold, surv_age_threshold)) %>% 
   group_by(year, age) %>%
   summarize(n_t0 = n()) %>% 
@@ -593,8 +592,7 @@ write.csv(pop_counts, row.names = F, paste0(dir_data, '/metrics_df.csv'))
 
 # mostly over-predicted population growth
 #   not as bad as the published data though (see below)!
-comp_obpogr_lam <- 
-  ggplot(pop_counts) +
+comp_obpogr_lam <- ggplot(pop_counts) +
   geom_point(aes(obs_pgr, lam)) +
   geom_point(aes(obs_pgr, proj_lam),
              col = 'red') +
@@ -614,12 +612,13 @@ ggsave(paste0(dir_result, '/3_comp_obpogr_lam.png'),
 # for now, store everything as an R object that resembles 
 mpm_df %>% 
   mutate(year = paste0('19',year)) %>% 
-  mutate(SpeciesAuthor = v_species) %>% 
+  mutate(SpeciesAuthor = paste0(v_species, ' - ', v_author_year)) %>% 
   setNames(c('year', 
              'surv_age0', 'surv_age1', 
              'per_capita_recruitment',
              'SpeciesAuthor')) %>% 
-  write.csv(paste0(dir_data, '/mpm_pste.csv'), row.names = F)
+  write.csv(file.path(dir_data, paste0('mpm_', v_sp_abb, '.csv')), 
+            row.names = F)
 
 
 # compare with COMPADRE's estimates --------------------------------------------

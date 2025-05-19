@@ -32,10 +32,11 @@ v_mod_type    <- c('mpm')
 # CHECK -- Adaptions to the models ---------------------------------------------
 # Years:
 #  Removal of certain years if unspecified nothing is removed
-v_years_re <- c()
+v_years_re  <- c()
 # Age:
-#  Set a maximum age bin with: v_age_surv_threshold
-#  Undefined it is age class 1, therfore only 0 and 1
+#  Set a max age of age classes
+#  Undefined it is max age is 1, therefore we have age classes 0 and 1 only
+v_age_class <- c()
 
 
 # MPM mean pipeline ------------------------------------------------------------
@@ -43,24 +44,24 @@ source('pipeline/mpm_mean.R')
 
 
 # Output -----------------------------------------------------------------------
-# Data frames:
-# Recruitment: year specific recruitment predictions
-skim(recr_pred_df)
-
-# Population count: year specific lambdas and underlying survival 
-#  and recruitment predictions 
-#  alongside observed population count and growth rate   
-skim(pop_counts)
-
-# Models:
-# Survival: 
-summary(mod_surv)
-
-# Recruit1: recruitment being there or not 
-summary(yesno_mod)
-
-# Recruit2: per-capita recruitment (pcr) *conditional* on recruitment happening
-summary(pcr_mod)
-
-# Recruit3: per capita recruitment *unconditinoal*
-summary(pcr_uc_mod)
+# # Data frames:
+# # Recruitment: year specific recruitment predictions
+# skim(recr_pred_df)
+# 
+# # Population count: year specific lambdas and underlying survival 
+# #  and recruitment predictions 
+# #  alongside observed population count and growth rate   
+# skim(pop_counts)
+# 
+# # Models:
+# # Survival: 
+# summary(mod_surv)
+# 
+# # Recruit1: recruitment being there or not 
+# summary(yesno_mod)
+# 
+# # Recruit2: per-capita recruitment (pcr) *conditional* on recruitment happening
+# summary(pcr_mod)
+# 
+# # Recruit3: per capita recruitment *unconditinoal*
+# summary(pcr_uc_mod)

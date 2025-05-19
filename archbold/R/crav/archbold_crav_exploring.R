@@ -79,9 +79,8 @@ source('helper_functions/plot_binned_prop.R')
 
 
 # Data -------------------------------------------------------------------------
-df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>% 
-  janitor::clean_names() %>%
-  mutate(across(c(5, 6, 11:length(.)), ~ na_if(., 9999))) %>%
+df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data_v2.csv')) %>% 
+  janitor::clean_names() %>%  
   mutate(
     plant_id = as.factor(paste(site, quad, plant, sep = '_')),
     quad_id  = as.factor(paste(site, quad, sep = '_')),
@@ -93,7 +92,24 @@ df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>%
     plant    = as.factor(plant),
     caged    = as.factor(caged),
     veg      = as.factor(veg)) %>%
-  arrange(site, quad, plant, year, month)
+  arrange(site, quad, quad_id, plant, plant_id, year, month)
+  
+
+# df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data.csv')) %>% 
+#   janitor::clean_names() %>%
+#   mutate(across(c(5, 6, 11:length(.)), ~ na_if(., 9999))) %>%
+#   mutate(
+#     plant_id = as.factor(paste(site, quad, plant, sep = '_')),
+#     quad_id  = as.factor(paste(site, quad, sep = '_')),
+#     year     = as.numeric(substr(date, 1, 4)),  
+#     month    = as.numeric(substr(date, 6, 7)),
+#     site     = as.factor(site),
+#     quad     = as.factor(quad),
+#     mp       = as.factor(mp),
+#     plant    = as.factor(plant),
+#     caged    = as.factor(caged),
+#     veg      = as.factor(veg)) %>%
+#   arrange(site, quad, plant, year, month)
 
 df_meta <- data.frame(variable = colnames(df)) %>% 
   mutate(definition = c(
@@ -1004,8 +1020,9 @@ ggplot(data = df_fr_fl_t, aes(x = fl_t0, y = fl_t1)) +
 df_fi_fl_p <- df_mean %>% 
   group_by(site, quad_id, plant_id, year) %>% 
   select(flower, fire_event, logsize_t0, logsize_t0_2, logsize_t0_3) %>% 
-  filter(flower >= 0) %>% 
-  mutate(flower = if_else(flower > 0, 1, flower)) %>% 
+  rename(flower_t0 = flower) %>% 
+  filter(flower_t0 >= 0) %>% 
+  mutate(flower_t0 = if_else(flower_t0 > 0, 1, flower_t0)) %>% 
   left_join(df_mean %>% 
               group_by(site, quad_id, plant_id, year) %>% 
               select(fire_event) %>% 
@@ -1020,7 +1037,7 @@ df_fi_fl_p %>%
 
 # Fire on flowering ------------------------------------------------------------
 
-ggplot(data = df_fi_fl_p, aes(y = flower, x = as.factor(fire_event), colour = logsize_t0)) +
+ggplot(data = df_fi_fl_p, aes(y = flower_t0, x = as.factor(fire_event), colour = logsize_t0)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.6, width = 0.6) +
   geom_jitter(width = 0.2, height = 0.1, alpha = 0.6, size = 1.5) +
   scale_color_viridis_c(option = 'D', name = 'Log Size (t0)') +
@@ -1039,30 +1056,30 @@ ggplot(data = df_fi_fl_p, aes(y = flower, x = as.factor(fire_event), colour = lo
   
 # Fire on flowering models -----------------------------------------------------
 # Intercept model
-mod_fi_fl_0.0 <- glm(flower ~ fire_event,
+mod_fi_fl_0.0 <- glm(flower_t0 ~ fire_event,
                    data = df_fi_fl_p, family = 'binomial') 
 # Logistic regression
-mod_fi_fl_1.0 <- glm(flower ~ fire_event + 
+mod_fi_fl_1.0 <- glm(flower_t0 ~ fire_event + 
                      logsize_t0 +
                      fire_event:logsize_t0,
                    data = df_fi_fl_p, family = 'binomial') 
 # Quadratic logistic model
-mod_fi_fl_2.0 <- glm(flower ~ fire_event + 
+mod_fi_fl_2.0 <- glm(flower_t0 ~ fire_event + 
                      logsize_t0 + logsize_t0_2 +
                      fire_event:logsize_t0 + 
                      fire_event:logsize_t0_2,
                    data = df_fi_fl_p, family = 'binomial')  
 # Quadratic logistic model
-mod_fi_fl_2.01 <- glm(flower ~ fire_event + 
+mod_fi_fl_2.01 <- glm(flower_t0 ~ fire_event + 
                      logsize_t0 + logsize_t0_2 +
                      fire_event:logsize_t0_2,
                    data = df_fi_fl_p, family = 'binomial') 
 # Quadratic logistic model
-mod_fi_fl_2.02 <- glm(flower ~ fire_event + 
+mod_fi_fl_2.02 <- glm(flower_t0 ~ fire_event + 
                        logsize_t0 + logsize_t0_2,
                      data = df_fi_fl_p, family = 'binomial')  
 # Cubic logistic model
-mod_fi_fl_3.0 <- glm(flower ~ fire_event + 
+mod_fi_fl_3.0 <- glm(flower_t0 ~ fire_event + 
                      logsize_t0 + logsize_t0_2 + logsize_t0_3 +
                      fire_event:logsize_t0 + 
                      fire_event:logsize_t0_2 + 
@@ -1072,30 +1089,30 @@ mod_fi_fl_3.0 <- glm(flower ~ fire_event +
 
 # Fire the year before on flowering models -------------------------------------
 # Intercept model
-mod_fi_fl_0.1 <- glm(flower ~ fire_event_t_1,
+mod_fi_fl_0.1 <- glm(flower_t0 ~ fire_event_t_1,
                      data = df_fi_fl_p, family = 'binomial') 
 # Logistic regression
-mod_fi_fl_1.1 <- glm(flower ~ fire_event_t_1 + 
+mod_fi_fl_1.1 <- glm(flower_t0 ~ fire_event_t_1 + 
                        logsize_t0 +
                        fire_event_t_1:logsize_t0,
                      data = df_fi_fl_p, family = 'binomial') 
 # Quadratic logistic model
-mod_fi_fl_2.1 <- glm(flower ~ fire_event_t_1 + 
+mod_fi_fl_2.1 <- glm(flower_t0 ~ fire_event_t_1 + 
                        logsize_t0 + logsize_t0_2 +
                        fire_event_t_1:logsize_t0 + 
                        fire_event_t_1:logsize_t0_2,
                      data = df_fi_fl_p, family = 'binomial')  
 # Quadratic logistic model
-mod_fi_fl_2.11 <- glm(flower ~ fire_event_t_1 + 
+mod_fi_fl_2.11 <- glm(flower_t0 ~ fire_event_t_1 + 
                         logsize_t0 + logsize_t0_2 +
                         fire_event_t_1:logsize_t0_2,
                       data = df_fi_fl_p, family = 'binomial') 
 # Quadratic logistic model
-mod_fi_fl_2.12 <- glm(flower ~ fire_event_t_1 + 
+mod_fi_fl_2.12 <- glm(flower_t0 ~ fire_event_t_1 + 
                         logsize_t0 + logsize_t0_2,
                       data = df_fi_fl_p, family = 'binomial')  
 # Cubic logistic model
-mod_fi_fl_3.1 <- glm(flower ~ fire_event_t_1 + 
+mod_fi_fl_3.1 <- glm(flower_t0 ~ fire_event_t_1 + 
                        logsize_t0 + logsize_t0_2 + logsize_t0_3 +
                        fire_event_t_1:logsize_t0 + 
                        fire_event_t_1:logsize_t0_2 + 
@@ -1105,11 +1122,11 @@ mod_fi_fl_3.1 <- glm(flower ~ fire_event_t_1 +
 
 # Fire and fire the year before on flowering -----------------------------------
 # Quadratic model
-mod_fi_fl_4.2 <- glm(flower ~ fire_event + fire_event_t_1 +
+mod_fi_fl_4.2 <- glm(flower_t0 ~ fire_event + fire_event_t_1 +
                      logsize_t0 + logsize_t0_2,
                    data = df_fi_fl_p, family = 'binomial')
 
-mod_fi_fl_4.21 <- glm(flower ~ fire_event * fire_event_t_1 +
+mod_fi_fl_4.21 <- glm(flower_t0 ~ fire_event * fire_event_t_1 +
                        logsize_t0 + logsize_t0_2 +
                        fire_event:logsize_t0   + fire_event_t_1:logsize_t0 +
                        fire_event:logsize_t0_2 + fire_event_t_1:logsize_t0_2,
@@ -1144,16 +1161,16 @@ mod_fi_fl_bestfit   <- mods_fi_fl[[mod_fi_fl_index_bestfit]]
 mod_fi_fl_ranef     <- coef(mod_fi_fl_bestfit)
 
 summary(mod_fi_fl_bestfit)
-anova(glm(flower ~ logsize_t0 + logsize_t0_2, 
+anova(glm(flower_t0 ~ logsize_t0 + logsize_t0_2, 
           family = 'binomial', 
           data = df_fi_fl_p %>% drop_na()),
-      glm(flower ~ fire_event + 
+      glm(flower_t0 ~ fire_event + 
             logsize_t0 + logsize_t0_2, 
           family = 'binomial',
           data = df_fi_fl_p %>% drop_na()),
       mod_fi_fl_bestfit, test = 'Chisq')
 
-anova(glm(flower ~ fire_event + 
+anova(glm(flower_t0 ~ fire_event + 
             logsize_t0 + logsize_t0_2, 
           family = 'binomial',
           data = df_fi_fl_p %>% drop_na()),
@@ -1169,14 +1186,14 @@ mod_fi_fl_x <- seq(
 df_fi_flow_pred <- predictor_fun(mod_fi_fl_x, mod_fi_fl_ranef) %>% 
   # Inverse logit for predictions
   boot::inv.logit() %>% 
-  data.frame(logsize_t0 = mod_fi_fl_x, flower = .)
+  data.frame(logsize_t0 = mod_fi_fl_x, flower_t0 = .)
 
 g_fi_flow_line <- ggplot() +
   geom_jitter(data = df_fi_fl_p, 
-              aes(x = logsize_t0, y = flower, colour = as.factor(fire_event)),
+              aes(x = logsize_t0, y = flower_t0, colour = as.factor(fire_event)),
               alpha = 0.25, width = 0.08, height = 0.3) +
   geom_line(data = df_fi_flow_pred, 
-            aes(x = logsize_t0, y = flower),
+            aes(x = logsize_t0, y = flower_t0),
             color = line_color_pred_fun(mod_fi_fl_ranef), 
             lwd   = 2) +  
   theme_bw() + 
@@ -1186,13 +1203,13 @@ g_fi_flow_line <- ggplot() +
 
 g_fi_flow_bin <- ggplot() +
   geom_point(data =  plot_binned_prop(
-    df_fi_fl_p, 10, logsize_t0, flower), 
-    aes(x = logsize_t0, y = flower) ) +
+    df_fi_fl_p, 10, logsize_t0, flower_t0), 
+    aes(x = logsize_t0, y = flower_t0) ) +
   geom_errorbar(
-    data = plot_binned_prop(df_fi_fl_p, 10, logsize_t0, flower), 
+    data = plot_binned_prop(df_fi_fl_p, 10, logsize_t0, flower_t0), 
     aes(x = logsize_t0, ymin = lwr, ymax = upr) ) +
   geom_line(data = df_fi_flow_pred, 
-            aes(x = logsize_t0, y = flower),
+            aes(x = logsize_t0, y = flower_t0),
             color = 'red', lwd   = 2) + 
   theme_bw() +
   ylim(0, 1)
@@ -1441,6 +1458,14 @@ ggplot(data = df_fi_ftf %>% filter(flower > 0)) +
     plot.title = element_text(face = 'bold', size = 16),
     strip.text = element_text(face = 'bold'))
 
+
+# Fire on FtF-R models ---------------------------------------------------------
+
+# df_fi_ftf %>% 
+#   cbind('fruit', 'ftf')
+# 
+# mod_fi_ftf_1 <- glm(cbind(fruit, ftf) ~ fire_event, data = df_fi_ftf, family = 'binomial')
+# summary(mod_fi_ftf_1)
 
 
 # Fire on Recruits -------------------------------------------------------------

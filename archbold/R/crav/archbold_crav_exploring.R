@@ -1461,11 +1461,34 @@ ggplot(data = df_fi_ftf %>% filter(flower > 0)) +
 
 # Fire on FtF-R models ---------------------------------------------------------
 
-# df_fi_ftf %>% 
-#   cbind('fruit', 'ftf')
-# 
-# mod_fi_ftf_1 <- glm(cbind(fruit, ftf) ~ fire_event, data = df_fi_ftf, family = 'binomial')
-# summary(mod_fi_ftf_1)
+# Binomial model with and without fire even
+mod0 <- glm( cbind(fruit,flower-fruit) ~ 1, 
+             data = subset( df_fi_ftf, !is.nan(ftf) ), 
+             family = 'binomial') 
+mod1 <- glm( cbind(fruit,flower-fruit) ~ fire_event, 
+             data = subset( df_fi_ftf, !is.nan(ftf) ), 
+             family = 'binomial') 
+mod2 <- glm( cbind(fruit,flower-fruit) ~ logsize_t0, 
+             data = subset( df_fi_ftf, !is.nan(ftf) ), 
+             family = 'binomial') 
+mod3 <- glm( cbind(fruit,flower-fruit) ~ logsize_t0 + fire_event, 
+             data = subset( df_fi_ftf, !is.nan(ftf) ), 
+             family = 'binomial') 
+mod4 <- glm( cbind(fruit,flower-fruit) ~ logsize_t0*fire_event, 
+             data = subset( df_fi_ftf, !is.nan(ftf) ), 
+             family = 'binomial') 
+
+
+# Compare the two models
+bbmle::AICctab(mod0,mod1,mod2,mod3,mod4, weights = T)
+
+# confidence intervals are enormous. This is a mess.
+confint(mod3)
+
+# Vast majority of data points are 0!!!
+#   I don't think we have enough data to confidently model fire effect
+subset( df_fi_ftf, !is.nan(ftf) ) %>% 
+  count( fire_event, ftf)
 
 
 # Fire on Recruits -------------------------------------------------------------

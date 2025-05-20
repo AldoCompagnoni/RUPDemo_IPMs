@@ -21,6 +21,7 @@ load_packages(tidyverse, janitor,
               skimr)
 # load_packages(patchwork, , lme4, ggthemes, boot)
 
+
 # Specification ----------------------------------------------------------------
 # Species abbreviation
 v_sp_abb  <- tolower(
@@ -28,33 +29,37 @@ v_sp_abb  <- tolower(
     substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
 # Suffix for the folder structure
 v_folder_suffix <- paste0(v_sp_abb, '_', v_mod_type)
-# Prefix for the script name
-v_script_prefix <- str_c(
-  str_extract(v_author_year, '^[^_]+'),
-  str_sub(str_extract(v_author_year, '_\\d+$'), -2, -1))
-# Define prefix for two of the same author and year
-if (
-  length(
-    list.dirs(
-      full.names = TRUE, recursive = FALSE)[grepl(
-        paste0('^', v_author_year), basename(
-          list.dirs(full.names = TRUE, recursive = FALSE)))]
-  ) > 1) {
-  v_script_prefix <- paste0(v_script_prefix, v_region_abb)
-}
-# Figure subtitle
-v_fig_subt <- paste(
-  paste(
-    paste0(
-      toupper(substr(strsplit(v_author_year, '_')[[1]][1], 1, 1)), 
-      substr(strsplit(
-        v_author_year, '_')[[1]][1], 
-        2, 
-        nchar(strsplit(v_author_year, '_')[[1]][1]))), 
-    strsplit(v_author_year, '_')[[1]][2]), 
-  '-', 
-  v_species)
 
+# Prefix for the script name
+v_script_prefix <- {
+  author <- str_extract(v_author_year, '^[^_]+')
+  year   <- str_sub(str_extract(v_author_year, '_\\d+$'), -2, -1)
+  
+  dir_count <- length(
+    list.dirs(full.names = TRUE, recursive = FALSE)[
+      grepl(paste0('^', v_author_year), basename(list.dirs(full.names = TRUE, recursive = FALSE)))
+    ]
+  )
+  
+  suffix <- if (dir_count > 1) v_region_abb else ''
+  paste0(author, year, suffix)
+}
+
+# Figure subtitle
+v_fig_subt <- {
+  parts <- strsplit(v_author_year, '_')[[1]]
+  author_cap <- paste0(toupper(substr(parts[1], 1, 1)), substr(parts[1], 2, nchar(parts[1])))
+  year <- parts[2]
+  
+  dir_count <- length(
+    list.dirs(full.names = TRUE, recursive = FALSE)[
+      grepl(paste0('^', v_author_year), basename(list.dirs(full.names = TRUE, recursive = FALSE)))
+    ]
+  )
+  
+  year_label <- if (dir_count > 1) paste(year, toupper(v_region_abb)) else year
+  paste(author_cap, year_label, '-', v_species)
+}
 
 # Setting the age class, max age starting from 0 to inf
 if (!exists('v_age_class') || length(v_age_class) == 0) {
@@ -160,13 +165,13 @@ df_rec  <- df %>%
 
 
 # Removing specified years -----------------------------------------------------
-v_years_all  <- sort(unique(df$year))
+v_years_all <- sort(unique(df$year))
 
-df      <- df     %>% filter(!is.na(year) & !(year %in% v_years_re))
-df_suv  <- df_suv %>% filter(!is.na(year) & !(year %in% v_years_re))
-df_rec  <- df_rec %>% filter(!is.na(year) & !(year %in% v_years_re))
+df     <- df     %>% filter(!is.na(year) & !(year %in% v_years_re))
+df_suv <- df_suv %>% filter(!is.na(year) & !(year %in% v_years_re))
+df_rec <- df_rec %>% filter(!is.na(year) & !(year %in% v_years_re))
 
-v_years  <- sort(unique(df$year))
+v_years <- sort(unique(df$year))
 
 
 # Save all data ----------------------------------------------------------------
@@ -223,7 +228,7 @@ mod_su   <- glm(survives ~ age, data = df_su_mod, family = 'binomial')
 # Mean predicted probability by age class–specific
 # Get predicted survival probabilities with standard errors
 mod_su_new_ages <- data.frame(age = sort(unique(df_su_mod$age)))
-mod_su_pred <- predict(mod_su, newdata = mod_su_new_ages, type = "link", se.fit = TRUE)
+mod_su_pred <- predict(mod_su, newdata = mod_su_new_ages, type = 'link', se.fit = TRUE)
 
 # Create data frame with predictions and SE's
 mod_su_prob <- data.frame(
@@ -262,7 +267,7 @@ fig_su <- ggplot(data = df_su_mod %>% filter(!is.na(age)),
               group_by(age) %>%
               summarise(n = n()) %>%
               mutate(age = as.factor(age)),
-            aes(x = age, y = 0, label = paste0("n=", n)),
+            aes(x = age, y = 0, label = paste0('n=', n)),
             inherit.aes = FALSE,
             hjust = 2.5,
             vjust = 11,  # only shows in the image
@@ -311,8 +316,8 @@ df_re_pc_uc <- df_rec %>%
   mutate(pcr_uc = recruits_uc / parents)
 
 # Per-capita recruitment model
-mod_re_pc_uc <- glm(pcr_uc ~ 1, 
-                    data = df_re_pc_uc, family = Gamma(link = 'log'))
+mod_re_pc_uc <- glm(
+  pcr_uc ~ 1, data = df_re_pc_uc, family = Gamma(link = 'log'))
 
 # predict conditional per-capita recruitment
 mod_re_pc_uc_pred <- exp(coef(mod_re_pc_c)[[1]])
@@ -367,25 +372,20 @@ stage_counts <- df %>%
 # lambda function
 fun_lambda_mpm_mean <- function(x) x %>% eigen %>% .$value %>% Re %>% max
 
-
 # create the lambda matrix 
 fun_lam_mean <- function(mat_df){
   
   # mat_df <- df_mpm
   tmp_pars <- mat_df
-  
   mat      <- matrix(0,v_age_class + 1,v_age_class + 1)
   
   # per capita recruitment values
   mat[1,]  <- tmp_pars$re_pc_pred
-  
   # survival values
   mat[2,1] <- tmp_pars$`0`
-  
   for (i in 1:v_age_class) {
     mat[i + 1, i] <- tmp_pars[[as.character(i - 1)]]
   }
-  
   # Fill survival for the last age class staying in place
   mat[v_age_class + 1, v_age_class + 1] <- tmp_pars[[as.character(v_age_class )]]
   
@@ -399,19 +399,15 @@ fun_make_mat_mean <- function(mat_df){
   
   # mat_df <- df_mpm
   tmp_pars <- mat_df
-  
   mat      <- matrix(0,v_age_class + 1,v_age_class + 1)
   
   # per capita recruitment values
   mat[1,]  <- tmp_pars$re_pc_pred
-  
   # survival values
   mat[2,1] <- tmp_pars$`0`
-  
   for (i in 1:v_age_class) {
     mat[i + 1, i] <- tmp_pars[[as.character(i - 1)]]
   }
-  
   # Fill survival for the last age class staying in place
   mat[v_age_class + 1, v_age_class + 1] <- tmp_pars[[as.character(v_age_class )]]
   
@@ -425,7 +421,6 @@ fun_proj_lam_mean <- function(mat_df){
   
   # year-specific stage counts
   tmp_stage <- stage_counts
-  
   # year-specific projection matrix
   # mat_df <- df_mpm
   tmp_mat <- fun_make_mat_mean(mat_df)
@@ -441,43 +436,23 @@ df_lam <- df_mpm %>%
          proj_lam_mean = fun_proj_lam_mean(df_mpm))
 
 
-# Population counts at time t0
-pop_counts_t0 <- df %>%
-  # subset( !is.na(age) ) %>% 
-  group_by(year, quad) %>%
-  summarize(n_t0 = n()) %>% 
-  ungroup %>% 
-  mutate(year = year + 1)
-
-# Population counts at time t1
-pop_counts_t1 <- df %>%
-  # subset( !is.na(age) ) %>% 
-  group_by(year, quad) %>%
-  summarize(n_t1 = n()) %>% 
-  ungroup 
-
-# Calculate observed population growth rates, 
-#   accounting for discontinued sampling!
-pop_counts <- left_join(pop_counts_t0, 
-                        pop_counts_t1) %>% 
-  mutate(year = year - 1) %>% 
-  # by dropping NAs, we remove gaps in sampling!
-  drop_na %>% 
-  summarise(n_t0 = sum(n_t0),
-            n_t1 = sum(n_t1)) %>%
-  mutate(obs_pgr = n_t1 / n_t0) %>% 
-  bind_cols(df_lam) %>% 
-  drop_na
+pop_counts <- {
+  pop_counts_t0 <- df %>%
+    group_by(year, quad) %>%
+    summarize(n_t0 = n(), .groups = 'drop') %>%
+    mutate(year = year + 1)
+  
+  pop_counts_t1 <- df %>%
+    group_by(year, quad) %>%
+    summarize(n_t1 = n(), .groups = 'drop')
+  
+  left_join(pop_counts_t0, pop_counts_t1, by = c('year', 'quad')) %>%
+    mutate(year = year - 1) %>%
+    drop_na() %>%
+    summarise(n_t0 = sum(n_t0), n_t1 = sum(n_t1)) %>%
+    mutate(obs_pgr = n_t1 / n_t0) %>%
+    bind_cols(df_lam) %>%
+    drop_na()
+}
 
 write.csv(pop_counts, row.names = F, file.path(dir_data, 'mean_metrics_df.csv'))
-
-
-# # Save the data
-# df_mpm %>% 
-#   mutate(SpeciesAuthor = paste0(v_species, ' - ', v_author_year)) %>% 
-#   setNames(c('surv_age0', 'surv_age1', 
-#              'per_capita_recruitment',
-#              'species_author')) %>% 
-#   write.csv(file.path(dir_data, paste0('mpm_', v_sp_abb, '.csv')), 
-#             row.names = F)
-

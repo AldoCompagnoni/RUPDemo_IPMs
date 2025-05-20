@@ -1,4 +1,4 @@
-# MPM mean - Adler 2007 Kansas - Cirsium undulatum
+# MPM mean - Anderson 2016 Arizona - Ambrosia artemisiifolia
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
@@ -20,11 +20,11 @@
 
 # Data -------------------------------------------------------------------------
 # Define publication 
-v_author_year <- c('adler_2007')
+v_author_year <- c('anderson_2016')
 # Define region abbreviation
-v_region_abb  <- c('ks')
+v_region_abb  <- c('az')
 # Define the species variable
-v_species     <- c('Cirsium undulatum')
+v_species     <- c('Ambrosia artemisiifolia')
 # Type of population model
 v_mod_type    <- c('mpm')
 
@@ -36,7 +36,7 @@ v_years_re  <- c()
 # Age:
 #  Set a max age of age classes
 #  Undefined it is max age is 1, therefore we have age classes 0 and 1 only
-v_age_class <- c(2)
+v_age_class <- c()
 
 
 # MPM mean pipeline ------------------------------------------------------------

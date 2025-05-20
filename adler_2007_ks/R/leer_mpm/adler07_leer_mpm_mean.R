@@ -44,24 +44,28 @@ source('pipeline/mpm_mean.R')
 
 
 # Output -----------------------------------------------------------------------
-# # Data frames:
-# # Recruitment: year specific recruitment predictions
-# skim(recr_pred_df)
-# 
-# # Population count: year specific lambdas and underlying survival 
-# #  and recruitment predictions 
-# #  alongside observed population count and growth rate   
-# skim(pop_counts)
-# 
-# # Models:
-# # Survival: 
-# summary(mod_surv)
-# 
-# # Recruit1: recruitment being there or not 
-# summary(yesno_mod)
-# 
-# # Recruit2: per-capita recruitment (pcr) *conditional* on recruitment happening
-# summary(pcr_mod)
-# 
-# # Recruit3: per capita recruitment *unconditinoal*
-# summary(pcr_uc_mod)
+# Models:
+# Survival:
+summary(mod_su)
+
+# Recruit1: recruitment being there or not
+summary(mod_re_yn)
+
+# Recruit2: per-capita recruitment (pcr) *conditional* on recruitment happening
+summary(mod_re_pc_c)
+
+# Recruit3: per capita recruitment *unconditinoal*
+summary(mod_re_pc_uc)
+
+
+# Plots: 
+fig_age_hist
+fig_age_surv
+fig_su
+fig_re
+
+
+# Data frames:
+# Population count: mean lambda and survival and recruitment predictions
+#  alongside observed population count and growth rate
+print(pop_counts)

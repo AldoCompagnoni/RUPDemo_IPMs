@@ -1242,7 +1242,7 @@ df_fi_fl_ls_pred$upper_ci <- plogis(pred$fit + 1.96 * pred$se.fit)
 ggplot() +
   # Raw data
   geom_jitter(data = df_fi_fl_p, 
-              aes(x = logsize_t0, y = flower), 
+              aes(x = logsize_t0, y = flower_t0), 
               alpha = 0.2, width = 0, height = 0.05, color = 'black') +
   
   # Confidence ribbon

@@ -261,7 +261,7 @@ fig_su <- ggplot(data = df_su_mod %>% filter(!is.na(age)),
             color = 'black',
             size = 3,
             hjust = 0,  
-            nudge_x = 0.15) +
+            nudge_x = 0.25) +
   geom_text(data = df_su_mod %>%
               filter(!is.na(age)) %>%
               group_by(age) %>%
@@ -277,6 +277,7 @@ fig_su <- ggplot(data = df_su_mod %>% filter(!is.na(age)),
        subtitle = v_fig_subt,
        y = 'Survival to t1',
        x = 'Age class')
+fig_su
 
 ggsave(file.path(dir_result, 'mean_survival.png'),  
        plot = fig_su, width = 6, height = 9, dpi = 150)

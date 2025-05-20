@@ -33,25 +33,25 @@ v_sp_abb  <- tolower(
 # Define script prefix
 
 v_script_prefix <- str_c(
-  str_extract(v_author_year, "^[^_]+"),
-  str_sub(str_extract(v_author_year, "_\\d+$"), -2, -1))
+  str_extract(v_author_year, '^[^_]+'),
+  str_sub(str_extract(v_author_year, '_\\d+$'), -2, -1))
 # Define prefix for two of the same author and year
 if (
   length(
     list.dirs(
       full.names = TRUE, recursive = FALSE)[grepl(
-        paste0("^", v_author_year), basename(
+        paste0('^', v_author_year), basename(
           list.dirs(full.names = TRUE, recursive = FALSE)))]
     ) > 1) {
   v_script_prefix <- paste0(v_script_prefix, v_region_abb)
 }
 
 # Define suffix for plot outputs
-v_suffix     <- ""
-if (length(v_years_re)       > 0) {v_suffix <- paste0(v_suffix, "_yr1")}
-if (length(v_size_threshold) > 0) {v_suffix <- paste0(v_suffix, "_st1")}
-if (length(v_mod_set_gr)     > 0) {v_suffix <- paste0(v_suffix, "_gr1")}
-if (length(v_mod_set_su)     > 0) {v_suffix <- paste0(v_suffix, "_su1")}
+v_suffix     <- ''
+if (length(v_years_re)       > 0) {v_suffix <- paste0(v_suffix, '_yr1')}
+if (length(v_size_threshold) > 0) {v_suffix <- paste0(v_suffix, '_st1')}
+if (length(v_mod_set_gr)     > 0) {v_suffix <- paste0(v_suffix, '_gr1')}
+if (length(v_mod_set_su)     > 0) {v_suffix <- paste0(v_suffix, '_su1')}
 
 # Define graph subtitle
 v_ggp_suffix <- paste(
@@ -64,7 +64,7 @@ v_ggp_suffix <- paste(
   ifelse(is.null(v_mod_set_gr), !is.null(v_mod_set_gr), v_mod_set_gr), '/', 
   ifelse(is.null(v_mod_set_su), !is.null(v_mod_set_su), v_mod_set_su),
   '\n Years removed:',
-  ifelse(is.null(v_years_re), !is.null(v_years_re), paste(v_years_re, collapse = ", ")))
+  ifelse(is.null(v_years_re), !is.null(v_years_re), paste(v_years_re, collapse = ', ')))
 
 
 # Directory --------------------------------------------------------------------

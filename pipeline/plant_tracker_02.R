@@ -14,8 +14,13 @@
 # Specifications ----------------------------------------------------------------
 # Define the species variable and abbreviation
 v_species <- target_spec[1,1]
-v_sp_abb  <- tolower(gsub(' ', '', paste(substr(
-  strsplit(v_species, ' ')[[1]], 1, 2), collapse = '')))
+v_sp_abb  <- v_species %>% 
+              strsplit(' ') %>% 
+              pluck(1) %>% 
+              substr( 1, 2 ) %>% 
+              paste(collapse = '') %>% 
+              str_replace_all(' ', '') %>% 
+              tolower
 
 
 # Directory --------------------------------------------------------------------

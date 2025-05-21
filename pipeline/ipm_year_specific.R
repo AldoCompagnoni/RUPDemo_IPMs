@@ -352,7 +352,7 @@ surv_yr_plots <- function(i) {
     geom_point(aes(x = logsize_t0, y = survives), size = 0.5) +
     geom_line(data = pred_temp_df, 
               aes(x = logsize_t0, y = survives), color = line_color, lwd = 1) +
-    labs(title = years_v[i],
+    labs(title = v[i],
          x = expression('log(size)'[t0]),
          y = expression('Survival probability '[t1])) +
     ylim( 0, 1 ) +

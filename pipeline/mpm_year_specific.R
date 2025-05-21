@@ -104,9 +104,8 @@ last_year   <- (df$year %>% max) - 1
 
 # Survival data that retains all ages
 surv_out_df <- df %>% 
-  mutate( survives = replace( survives,
-                              is.na( survives ) & year == last_year,
-                              0 ) ) %>% 
+  mutate(survives = replace( 
+    survives, is.na(survives) & year == last_year, 0)) %>% 
   subset(!is.na(survives)) %>%
   select(quad, track_id, year, age, survives) 
   
@@ -172,7 +171,7 @@ write.csv(recr_df, row.names = F,
 hist_age <- ggplot(surv_out_df, aes(x = age)) +
   geom_histogram(binwidth = .5, na.rm = TRUE) +
   labs(x = 'Age',
-       y = 'Count', 
+       y = 'Frequency', 
        title    = 'Age hist',
        subtitle = paste(v_script_prefix, '-', v_species))
 

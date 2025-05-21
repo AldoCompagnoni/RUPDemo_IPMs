@@ -37,7 +37,6 @@ if (!dir.exists(dir_qud)) {
 v_script_prefix <- str_c(str_extract(v_author_year, '^[^_]+'), 
                          str_sub(str_extract(v_author_year, '_\\d+$'), -2, -1))
 
-
 # Define prefix for two of the same author and year
 if (
   length(
@@ -72,7 +71,6 @@ quote_bare <- function(...){
     # apply to each element, returning a character vector of the names
     sapply(deparse)  
 }
-
 
 
 # Data -------------------------------------------------------------------------

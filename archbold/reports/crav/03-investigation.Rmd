@@ -327,7 +327,181 @@ ggplot(df_fire1, aes(x = quad_id, y = year, size = fire_sev, color = fire_sev)) 
 ```
 
 
+### Timing of the fire
+```{r fi timing, message=FALSE, warning=FALSE}
+df_fi_hit <- df %>% 
+  select(
+    year, month, burn_a, burn_b, burn_c, burn_d, burn_e, burn_f, st, fl) %>% 
+  mutate(burn_a = as.numeric(burn_a),
+         burn_d = as.numeric(burn_d),
+         burn_e = as.numeric(burn_e)) %>% 
+  ungroup()
+
+summary(df_fi_hit)
+
+{
+  # library(dplyr)
+  # library(tidyr)
+  # library(ggplot2)
+  # library(patchwork)
+  
+  # Step 1: Extract months with fire (non-zero burn)
+  fire_months <- df_fi_hit %>%
+    select(month, starts_with('burn_')) %>%
+    pivot_longer(cols = starts_with('burn_'), names_to = 'fire_type', values_to = 'value') %>%
+    filter(!is.na(value), value > 0) %>%
+    distinct(month) %>%
+    pull(month)
+  
+  # Step 2: Filter NA data
+  df_st <- df_fi_hit %>% filter(!is.na(st), !is.na(month))
+  df_fl <- df_fi_hit %>% filter(!is.na(fl), !is.na(month))
+  
+  # Step 3: Plot ST (with fire lines)
+  plot_st <- ggplot(df_st, aes(x = month, y = st)) +
+    geom_jitter(height = 0.1, width = 0.1, alpha = 0.5, color = 'darkgreen') +
+    geom_vline(xintercept = fire_months, color = 'red', linetype = 'dashed') +
+    labs(y = 'stem count') +
+    theme_bw() +
+    theme(
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank()
+    )
+  
+  # Step 4: Plot FL (inverted y + fire lines)
+  plot_fl <- ggplot(df_fl, aes(x = month, y = fl)) +
+    geom_jitter(height = 0.1, width = 0.1, alpha = 0.5, color = 'darkblue') +
+    geom_vline(xintercept = fire_months, color = 'red', linetype = 'dashed') +
+    scale_y_reverse() +
+    labs(x = 'month', y = 'flower count') +
+    theme_bw()
+  
+  # Step 5: Combine plots
+  combined <- (plot_st / plot_fl) +
+    plot_annotation(title = 'Timing of growth and flowering against fire events')
+  
+  # Save final plot to global environment
+  assign('fig_fi_timing_overall', combined, envir = .GlobalEnv)
+  }
+fig_fi_timing_overall
+
+
+
+fig_fi_timing <- {
+  # library(dplyr)
+  # library(tidyr)
+  # library(ggplot2)
+  # library(purrr)
+  # library(patchwork)
+  
+  # Step 1: Identify all fire months and years (where any burn_* > 0)
+  fires_by_year <- df_fi_hit %>%
+    select(year, month, starts_with('burn_')) %>%
+    pivot_longer(cols = starts_with('burn_'), names_to = 'fire_type', values_to = 'value') %>%
+    filter(!is.na(value), value > 0) %>%
+    distinct(year, month)
+  
+  fire_years <- unique(fires_by_year$year)
+  
+  # Step 2: Filter the dataset to only rows with non-NA st (growth counts)
+  # but keep all rows for fire years, including those with NA st (for proper plot x axis range)
+  df_st_fire_years <- df_fi_hit %>%
+    filter(year %in% fire_years)
+  
+  df_st_nonfire_years <- df_fi_hit %>%
+    filter(!year %in% fire_years, !is.na(st))
+  
+  # Step 3: Create plots per fire year (including months with NA st as gaps)
+  plots_fire <- df_st_fire_years %>%
+    split(.$year) %>%
+    map(function(df_year) {
+      yr <- unique(df_year$year)
+      fire_months <- fires_by_year %>%
+        filter(year == yr) %>%
+        pull(month)
+      
+      ggplot(df_year, aes(x = month, y = st)) +
+        geom_jitter(width = 0.2, height = 0.1, alpha = 0.5, color = 'darkgreen', na.rm = TRUE) +
+        geom_smooth(method = 'glm', method.args = list(family = 'poisson'), color = 'black', na.rm = TRUE) +
+        geom_vline(xintercept = fire_months, color = 'red', linetype = 'dashed') +
+        scale_x_continuous(limits = c(1, 10), breaks = 1:10) +
+        labs(title = paste('Year:', yr), y = 'Stem count', x = 'Month') +
+        theme_bw()
+    })
+  
+  # Step 4: Plot for non-fire years
+  plot_nonfire <- ggplot(df_st_nonfire_years, aes(x = month, y = st)) +
+    geom_jitter(width = 0.2, height = 0.1, alpha = 0.5, color = 'gray40') +
+    geom_smooth(method = 'glm', method.args = list(family = 'poisson'), color = 'black') +
+    scale_x_continuous(limits = c(1, 10), breaks = 1:10) +
+    labs(title = 'All Non-Fire Years Combined', y = 'Stem count', x = 'Month') +
+    theme_bw()
+  
+  # Step 5: Combine all plots in a 2-column layout
+  wrap_plots(c(plots_fire, list(plot_nonfire)), ncol = 2) +
+    plot_annotation(title = 'Stem Count per Month: Fire vs Non-Fire Years with GLM Fit')
+}
+fig_fi_timing
+
+
+
+fig_fi_fl_timing <- {
+  # Step 1: Identify fire months and years (same as before)
+  fires_by_year <- df_fi_hit %>%
+    select(year, month, starts_with('burn_')) %>%
+    pivot_longer(cols = starts_with('burn_'), names_to = 'fire_type', values_to = 'value') %>%
+    filter(!is.na(value), value > 0) %>%
+    distinct(year, month)
+  
+  fire_years <- unique(fires_by_year$year)
+  
+  # Step 2: Filter dataset for flower count (fl)
+  # Keep all rows for fire years (including NAs for full x-axis coverage)
+  df_fl_fire_years <- df_fi_hit %>%
+    filter(year %in% fire_years)
+  
+  # Non-fire years only with non-NA fl
+  df_fl_nonfire_years <- df_fi_hit %>%
+    filter(!year %in% fire_years, !is.na(fl))
+  
+  # Step 3: Create plots for each fire year
+  plots_fire_fl <- df_fl_fire_years %>%
+    split(.$year) %>%
+    map(function(df_year) {
+      yr <- unique(df_year$year)
+      fire_months <- fires_by_year %>%
+        filter(year == yr) %>%
+        pull(month)
+      
+      ggplot(df_year, aes(x = month, y = fl)) +
+        geom_jitter(width = 0.2, height = 0.1, alpha = 0.5, color = 'darkblue', na.rm = TRUE) +
+        geom_smooth(method = 'glm', method.args = list(family = 'poisson'), color = 'black', na.rm = TRUE) +
+        geom_vline(xintercept = fire_months, color = 'red', linetype = 'dashed') +
+        scale_x_continuous(limits = c(1, 10), breaks = 1:10) +
+        labs(title = paste('Year:', yr), y = 'Flower count', x = 'Month') +
+        theme_bw()
+    })
+  
+  # Step 4: Plot for non-fire years
+  plot_nonfire_fl <- ggplot(df_fl_nonfire_years, aes(x = month, y = fl)) +
+    geom_jitter(width = 0.2, height = 0.1, alpha = 0.5, color = 'gray40') +
+    geom_smooth(method = 'glm', method.args = list(family = 'poisson'), color = 'black') +
+    scale_x_continuous(limits = c(1, 10), breaks = 1:10) +
+    labs(title = 'All Non-Fire Years Combined', y = 'Flower count', x = 'Month') +
+    theme_bw()
+  
+  # Step 5: Combine plots in 2-column layout
+  wrap_plots(c(plots_fire_fl, list(plot_nonfire_fl)), ncol = 2) +
+    plot_annotation(title = 'Flower Count per Month: Fire vs Non-Fire Years with GLM Fit')
+}
+fig_fi_fl_timing
+```
+
+
+
 ### Fire on Growth
+
 ```{r fire on growth}
 df_fire_grow <- df_mean %>% 
   subset(size_t0 != 0) %>%
@@ -363,11 +537,44 @@ Unfortunately we have only very few data on fire
 df_fire_grow %>% count(fire_event == 1)
 ```
 
+
 #### Modeling Fire on Growth
 We modeled the effect of fire on growth we formulated three different models each in turn with varying internal structure to find the best fit.
 The first had the binary `Fire Event` as a fixed effect. The second included the continuous `Fire Severity`. And the third had both. All three versions included all interactions with the growth terms - and each other. 
 
 ```{r Model fire on growth with event}
+# Intercept model
+mod_fi_gr_0.0 <- lm(logsize_t1 ~ 1, 
+                  data = df_fire_grow)
+
+# Linear model
+mod_fi_gr_1.0 <- lm(logsize_t1 ~ logsize_t0, 
+                  data = df_fire_grow)
+
+# Linear model
+mod_fi_gr_1.1 <- lm(logsize_t1 ~ logsize_t0 + fire_event, 
+                  data = df_fire_grow)
+
+# Linear model
+mod_fi_gr_1 <- lm(logsize_t1 ~ logsize_t0 +
+                    fire_event + fire_event:logsize_t0, 
+                  data = df_fire_grow)
+
+# Quadratic model
+mod_fi_gr_2.0 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + fire_event, 
+                  data = df_fire_grow)  
+
+# Quadratic model
+mod_fi_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
+                    fire_event + fire_event:logsize_t0 + 
+                    fire_event:logsize_t0_2, 
+                  data = df_fire_grow)  
+
+# Cubic model
+mod_fi_gr_3.0 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire_event, 
+                  data = df_fire_grow)
+
+
 # Intercept model
 mod_fi_gr_0 <- lm(logsize_t1 ~ fire_event, 
                   data = df_fire_grow)
@@ -386,7 +593,8 @@ mod_fi_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 +
                     fire_event:logsize_t0_2 + fire_event:logsize_t0_3, 
                   data = df_fire_grow)
 
-mods_fi_gr      <- list(mod_fi_gr_0, mod_fi_gr_1, mod_fi_gr_2, mod_fi_gr_3)
+mods_fi_gr      <- list(mod_fi_gr_0,   mod_fi_gr_1,   mod_fi_gr_2,   mod_fi_gr_3,
+                        mod_fi_gr_0.0, mod_fi_gr_1.0, mod_fi_gr_2.0, mod_fi_gr_3.0)
 mods_fi_gr_dAIC <- AICtab(mods_fi_gr, weights = T, sort = F)$dAIC
 
 
@@ -688,6 +896,79 @@ p_fire_suv_1 <- ggplot(
 
 p_fire_suv <- p_fire_suv_0 + p_fire_suv_1 + plot_layout()
 p_fire_suv
+```
+#### Fire on Survival models 
+
+```{r fi su mods, message=FALSE, warning=FALSE}
+# Fire and Survival data
+df_fi_su <- df_mean %>% 
+  filter(!is.na(survives)) %>%
+  filter(size_t0 != 0) %>%
+  select(plant_id, year, size_t0, survives, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+         fire_event)
+
+# Intercept model
+mod_fi_su_0   <- glm(survives ~ 1,
+                     data = df_fi_su, family = 'binomial')
+# Logistic regression
+mod_fi_su_1   <- glm(survives ~ logsize_t0,
+                     data = df_fi_su, family = 'binomial')
+mod_fi_su_1.1 <- glm(survives ~ logsize_t0 + fire_event,
+                     data = df_fi_su, family = 'binomial')
+mod_fi_su_1.2 <- glm(survives ~ logsize_t0 + fire_event +
+                       logsize_t0 : fire_event,
+                     data = df_fi_su, family = 'binomial')
+# Quadratic logistic model
+mod_fi_su_2   <- glm(survives ~ logsize_t0 + logsize_t0_2,
+                     data = df_fi_su, family = 'binomial')
+mod_fi_su_2.1 <- glm(survives ~ logsize_t0 + logsize_t0_2 +  fire_event,
+                     data = df_fi_su, family = 'binomial')
+mod_fi_su_2.2 <- glm(survives ~ logsize_t0 + logsize_t0_2 +  fire_event +
+                       logsize_t0   : fire_event +
+                       logsize_t0_2 : fire_event +
+                       logsize_t0   : logsize_t0_2,
+                     data = df_fi_su, family = 'binomial')
+# Cubic logistic model
+mod_fi_su_3   <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+                     data = df_fi_su, family = 'binomial')
+mod_fi_su_3.1 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 +  fire_event,
+                     data = df_fi_su, family = 'binomial')
+mod_fi_su_3.2 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 +  fire_event +
+                       logsize_t0   : fire_event   +
+                       logsize_t0_2 : fire_event   +
+                       logsize_t0_3 : fire_event   +
+                       logsize_t0   : logsize_t0_2 +
+                       logsize_t0   : logsize_t0_3 +
+                       logsize_t0_2 : logsize_t0_3,
+                     data = df_fi_su, family = 'binomial')
+
+
+# Compare models using AIC
+mods_fi_su      <- list(mod_fi_su_0,
+                        mod_fi_su_1, mod_fi_su_1.1, mod_fi_su_1.2,
+                        mod_fi_su_2, mod_fi_su_2.1, mod_fi_su_2.2,
+                        mod_fi_su_3, mod_fi_su_3.1, mod_fi_su_3.2)
+
+mods_fi_su_dAIC <- AICtab(mods_fi_su, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_fi_su_sorted <- order(mods_fi_su_dAIC)
+
+v_mod_set_fi_su <- c()
+
+# Establish the index of model complexity
+if (length(v_mod_set_fi_su) == 0) {
+  mod_fi_su_index_bestfit <- mods_fi_su_sorted[1]
+  v_mod_fi_su_index       <- mod_fi_su_index_bestfit - 1 
+} else {
+  mod_fi_su_index_bestfit <- v_mod_set_fi_su +1
+  v_mod_fi_su_index       <- v_mod_set_fi_su
+}
+
+
+mod_fi_su_bestfit   <- mods_fi_su[[mod_fi_su_index_bestfit]]
+mod_fi_su_ranef     <- coef(mod_fi_su_bestfit)
 ```
 
 

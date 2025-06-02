@@ -828,20 +828,25 @@ g_fi_grow_line <- ggplot(
   scale_colour_manual(values = c('0' = 'black', '1' = 'red')) +
   labs(title    = 'Growth prediction with fire event',
        subtitle = v_ggp_suffix) +
-  theme(plot.subtitle = element_text(size = 8))
+  theme(
+    plot.subtitle = element_text(size = 8),
+    legend.position = "none")
+
 
 g_fi_grow_pred <- ggplot(
   df_fire_grow, aes(x = pred, y = logsize_t1, colour = fire_event)) +
-  geom_jitter(data = subset(df_fire_grow, fire_event == 0),
+  geom_jitter(data = subset(df_fire_grow, fire_event == "no"),
               aes(colour = fire_event, shape = fire_event),
               alpha = 0.2, size = 1.5) +
-  geom_jitter(data = subset(df_fire_grow, fire_event == 1),
+  geom_jitter(data = subset(df_fire_grow, fire_event == "yes"),
               aes(colour = fire_event, shape = fire_event),
               alpha = 0.6, size = 1.5) +
   geom_abline(aes(intercept = 0, slope = 1),
               color = 'red', lwd = 2) +
   theme_bw() +
-  scale_colour_manual(values = c('0' = 'black', '1' = 'red'))
+  scale_colour_manual(values = c('no' = 'black', 'yes' = 'red')) +
+  labs(colour = "Fire t0", shape = "Fire t0")
+
 
 g_fi_grow_overall_pred <- g_fi_grow_line + g_fi_grow_pred + plot_layout()
 g_fi_grow_overall_pred
@@ -2068,31 +2073,28 @@ ggplot(data = df_surv) +
 
 
 # Recruitment data -------------------------------------------------------------
-df_quad <- df_mean %>%  
-  group_by (year, site, quad) %>% 
-  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
-  ungroup
+df_re <- df_mean %>%
+  group_by(year, site, quad) %>%
+  summarise(tot_p_area = sum(size_t0, na.rm = TRUE), .groups = "drop") %>%
+  {
+    df_quad <- .
+    df_group <- df_quad %>%
+      group_by(year) %>%
+      summarise(g_cov = mean(tot_p_area), .groups = "drop")
+    
+    df_cover <- left_join(df_quad, df_group, by = "year") %>%
+      mutate(year = as.integer(year + 1)) %>%
+      drop_na()
+    
+    df_re <- df_mean %>%
+      group_by(year, site, quad) %>%
+      summarise(nr_quad = sum(recruit, na.rm = TRUE), .groups = "drop")
+    
+    left_join(df_cover, df_re, by = c("year", "site", "quad"))
+  }
 
-df_group <- df_quad %>% 
-  group_by (year) %>% 
-  summarise(g_cov = mean(tot_p_area)) %>% 
-  ungroup
-
-df_cover <- left_join(df_quad, df_group) %>%
-  mutate(year = year + 1) %>% 
-  mutate(year = as.integer(year)) %>% 
-  drop_na()
-
-df_recr <- df_mean %>%
-  group_by (year, site, quad) %>% 
-  summarise(nr_quad = sum(recruit, na.rm = T)) %>% 
-  ungroup
-
-df_recr <- left_join(df_cover, df_recr)
-
-
-ggplot(
-  df_recr, aes(x = tot_p_area, y = nr_quad)) + 
+ ggplot(
+  df_re, aes(x = tot_p_area, y = nr_quad)) + 
   geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
   theme_bw() + 
   labs(title    = 'Recruitment',
@@ -2101,7 +2103,7 @@ ggplot(
        y        = expression('Number of recruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8))
 
-
+# Density dependency
 df_re_qd <- df_mean %>% 
   group_by(site, quad_id, year) %>%
   select(recruit) %>% 
@@ -2112,11 +2114,11 @@ df_re_qd <- df_mean %>%
               mutate(year = year - 1),
             by = c('site', 'quad_id', 'year'))
 
-ggplot(data = df_re_qd) + 
+fig_re_dens <- ggplot(data = df_re_qd) + 
   geom_jitter(aes(y = rec_qd_t1, x = nr_ind)) + 
   geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm') + 
   theme_minimal() + 
-  labs(title    = 'Recruitment',
+  labs(title    = 'Recruitment - desity dependence',
        subtitle = v_ggp_suffix,
        x        = expression('Total parent plant area '[t0]),   
        y        = expression('Number of recruits '     [t1])) +
@@ -2164,7 +2166,7 @@ ggplot(
 df_fecu <- df_fruit %>%
   rename(nr_fruit = nr_quad) %>% 
   left_join(
-    df_recr %>%
+    df_re %>%
       mutate(year = year - 1) %>%
       rename(nr_rec_t1 = nr_quad) %>% 
       select('year', 'site', 'quad', 'nr_rec_t1'),
@@ -2175,7 +2177,7 @@ df_fecu <- df_fruit %>%
 ggplot(data = df_fruit %>%
          rename(nr_fruit = nr_quad) %>% 
          left_join(
-           df_recr %>%
+           df_re %>%
              rename(nr_rec_t0 = nr_quad) %>% 
              select('year', 'site', 'quad', 'nr_rec_t0'),
            by = c('year', 'site', 'quad')
@@ -2191,7 +2193,7 @@ ggplot(data = df_fecu) +
 ggplot(data = df_fruit %>%
          rename(nr_fruit = nr_quad) %>% 
          left_join(
-           df_recr %>%
+           df_re %>%
              mutate(year = year - 2) %>% 
              select('year', 'site', 'quad', 'nr_quad'),
            by = c('year', 'site', 'quad')
@@ -2202,7 +2204,7 @@ ggplot(data = df_fruit %>%
 
 
 
-df_fecu_mod <- df_recr %>%
+df_fecu_mod <- df_re %>%
   rename(nr_recr = nr_quad) %>% 
   left_join(
     df_fruit %>%
@@ -2623,16 +2625,16 @@ mod_gr_var <- nls(
 
 
 # Recruitment model ------------------------------------------------------------
-df_recr_nona_nr_quad <- df_recr %>% filter(!is.na(nr_quad))
+df_re_nona_nr_quad <- df_re %>% filter(!is.na(nr_quad))
 # Fit a negative binomial model for recruitment
-mod_rec <- MASS::glm.nb(nr_quad ~ 1, data = df_recr_nona_nr_quad)
+mod_rec <- MASS::glm.nb(nr_quad ~ 1, data = df_re_nona_nr_quad)
 
 # Generate predictions for recruitment
-df_recr_nona_nr_quad <- df_recr_nona_nr_quad %>% 
+df_re_nona_nr_quad <- df_re_nona_nr_quad %>% 
   mutate(mod_pred = predict(mod_rec, type = 'response')) 
 
 # Summarize total number of recruits and predictions
-df_rec_sums_m <- df_recr_nona_nr_quad %>%
+df_rec_sums_m <- df_re_nona_nr_quad %>%
   summarize(nr_quad = sum(nr_quad),
             mod_pred = sum(mod_pred))
 

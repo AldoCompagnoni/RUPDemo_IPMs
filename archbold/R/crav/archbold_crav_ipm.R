@@ -26,6 +26,9 @@ options(stringsAsFactors = F)
 # load packages
 source('helper_functions/load_packages.R')
 load_packages(
+  # negative binomial modeling
+  MASS,
+  # load tidyverse after MASS to not mask the select function
   tidyverse,
   # bbmle is for AICtab
   bbmle,
@@ -58,9 +61,14 @@ v_ggp_suffix    <- paste(
 
 
 # Models
-v_mod_set_gr <- c()
+v_mod_set_gr <- c(2)
+# fig_gr
 v_mod_set_su <- c()
+# fig_su
 v_mod_set_fl <- c()
+# fig_fl
+v_mod_set_fr <- c()
+
 
 # Directory --------------------------------------------------------------------
 dir_pub    <- file.path(paste0(v_head))
@@ -274,11 +282,14 @@ df_mean <- df_mean_og %>%
 df_su <- df_mean %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
-  select(plant_id, year, size_t0, survives, size_t1, 
+  dplyr::select(plant_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 fig_su_overall <- ggplot(
   data = plot_binned_prop(df_mean, 10, logsize_t0, survives)) +
+  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives), 
+              position = position_jitter(width = 0.1, height = 0.3)
+              , alpha = .1) +
   geom_point(aes(x = logsize_t0, y = survives),
              alpha = 1, pch = 16, color = 'red') +
   geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
@@ -292,19 +303,7 @@ fig_su_overall <- ggplot(
        subtitle = v_ggp_suffix,
        x = expression('log(size)'[t0]),
        y = expression('Survival to time t1'))
-fig_su_overall
-
-ggplot(data = df_su) +
-  geom_jitter(aes(x = logsize_t0, y = survives), 
-              position = position_jitter(width = 0.1, height = 0.3)) +
-  theme_bw() +
-  theme(axis.text = element_text(size = 8),
-        title     = element_text(size = 10)) +
-  labs(title    = 'Survival',
-       subtitle = v_ggp_suffix,
-       x        = expression('log(size) ' [t0]),
-       y        = expression('Survival to time t1')) +
-  theme(plot.subtitle = element_text(size = 8))
+fig_su_overall 
 
 
 # Survival model ---------------------------------------------------------------
@@ -354,13 +353,10 @@ df_su_pred <- predictor_fun(mod_su_x, mod_su_ranef) %>%
 
 # Survival plots
 fig_su_line <- ggplot() +
-  geom_jitter(data = df_su, aes(x = logsize_t0, 
-                                  y = survives),
+  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives),
               alpha = 0.25, width = 0.08, height = 0.3) +
-  geom_line(data = df_su_pred, aes(x = logsize_t0, 
-                                     y = survives),
-            color = line_color_pred_fun(mod_su_ranef), 
-            lwd   = 2) +  
+  geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives),
+            color = line_color_pred_fun(mod_su_ranef), lwd = 2) +  
   theme_bw() + 
   labs(title    = 'Survival prediction',
        subtitle = v_ggp_suffix) +
@@ -369,15 +365,11 @@ fig_su_line <- ggplot() +
 fig_su_bin <- ggplot() +
   geom_point(data =  plot_binned_prop(
     df_mean, 10, logsize_t0, survives), 
-    aes(x = logsize_t0, 
-        y = survives) ) +
+    aes(x = logsize_t0, y = survives) ) +
   geom_errorbar(
     data = plot_binned_prop(df_mean, 10, logsize_t0, survives), 
-    aes(x = logsize_t0, 
-        ymin = lwr,
-        ymax = upr) ) +
-  geom_line(data = df_su_pred, aes(x = logsize_t0, 
-                                     y = survives),
+    aes(x = logsize_t0, ymin = lwr, ymax = upr) ) +
+  geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives),
             color = 'red', lwd   = 2) + 
   theme_bw() +
   ylim(0, 1)
@@ -391,7 +383,7 @@ fig_su
 df_gr <- df_mean %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
-  select(plant_id, year, size_t0, size_t1, age,
+  dplyr::select(plant_id, year, size_t0, size_t1, age,
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 ggplot(
@@ -409,11 +401,11 @@ ggplot(
 
 # Growth model -----------------------------------------------------------------
 # Intercept model 
-mod_gr_0 <- lm(logsize_t1 ~ 1, 
+mod_gr_0 <- lm(logsize_t1 ~ 1,
                data = df_gr)
 # Linear model
-mod_gr_1   <- lm(logsize_t1 ~ logsize_t0, 
-                 data = df_gr)
+mod_gr_1 <- lm(logsize_t1 ~ logsize_t0, 
+               data = df_gr)
 # Quadratic model
 mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, 
                data = df_gr)  
@@ -448,8 +440,7 @@ fig_gr_line <- ggplot(
   # Plot observed data
   geom_point() +
   geom_function(fun = function(x) predictor_fun(x, mod_gr_ranef), 
-                color = line_color_pred_fun(mod_gr_ranef), 
-                lwd = 2) +
+                color = line_color_pred_fun(mod_gr_ranef), lwd = 2) +
   theme_bw() + 
   labs(title    = 'Growth prediction',
        subtitle = v_ggp_suffix) +
@@ -458,15 +449,14 @@ fig_gr_line <- ggplot(
 fig_gr_pred <- ggplot(
   df_gr, aes(x = pred, y = logsize_t1)) +
   geom_point() +  
-  geom_abline(aes(intercept = 0, slope = 1),  
-              color = 'red', lwd = 2) + 
+  geom_abline(aes(intercept = 0, slope = 1), color = 'red', lwd = 2) + 
   theme_bw()
 
 fig_gr <- fig_gr_line + fig_gr_pred + plot_layout() 
 fig_gr
 
 
-# Fit a model to assess variance in growth
+# Growth variance --------------------------------------------------------------
 # Fitted values from growth model
 mod_gr_x   <- fitted(mod_gr_bestfit)  
 # Squared residuals
@@ -475,6 +465,277 @@ mod_gr_y   <- resid(mod_gr_bestfit)^2
 mod_gr_var <- nls(
   mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
   control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE) ) 
+
+
+
+# Flower data ------------------------------------------------------------------
+df_fl <- df_mean %>% 
+  filter(!is.na(flower)) %>%
+  filter(size_t0 != 0) %>%
+  dplyr::select(plant_id, year, size_t0, flower, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3) %>% 
+  mutate(flower = if_else(flower > 0, 1, flower))
+
+fig_fl_overall <- ggplot(
+  data = plot_binned_prop(df_fl, 10, logsize_t0, flower)) +
+  geom_jitter(data = df_fl, aes(x = logsize_t0, y = flower), alpha = 0.1, 
+              position = position_jitter(width = 0.1, height = 0.3)) +
+  geom_point(aes(x = logsize_t0, y = flower),
+             alpha = 1, pch = 16, color = 'red') +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                linewidth = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  theme_bw() +
+  theme(axis.text     = element_text(size = 8),
+        title         = element_text(size = 10),
+        plot.subtitle = element_text(size = 8)) +
+  labs(title    = 'Flowering',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size)'[t0]),
+       y        = expression('Flowering probability in t0'))
+fig_fl_overall
+
+
+# Flower model -----------------------------------------------------------------
+# Logistic regression
+mod_fl_0 <- glm(flower ~ 1,
+                data = df_fl, family = 'binomial') 
+# Logistic regression
+mod_fl_1 <- glm(flower ~ logsize_t0,
+                data = df_fl, family = 'binomial') 
+# Quadratic logistic model
+mod_fl_2 <- glm(flower ~ logsize_t0 + logsize_t0_2,
+                data = df_fl, family = 'binomial')  
+# Cubic logistic model
+mod_fl_3 <- glm(flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+                data = df_fl, family = 'binomial')  
+
+
+# Compare models using AIC
+mods_fl      <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
+mods_fl_dAIC <- AICtab(mods_fl, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_fl_sorted <- order(mods_fl_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_fl) == 0) {
+  mod_fl_index_bestfit <- mods_fl_sorted[1]
+  v_mod_fl_index       <- mod_fl_index_bestfit - 1 
+} else {
+  mod_fl_index_bestfit <- v_mod_set_fl +1
+  v_mod_fl_index       <- v_mod_set_fl
+}
+
+mod_fl_bestfit <- mods_fl[[mod_fl_index_bestfit]]
+mod_fl_ranef   <- coef(mod_fl_bestfit)
+
+# Generate predictions for survival across a range of sizes
+mod_fl_x <- seq(
+  min(df_fl$logsize_t0, na.rm = T),
+  max(df_fl$logsize_t0, na.rm = T), length.out = 100)
+
+# Prepare data for survival plot
+df_fl_pred <- predictor_fun(mod_fl_x, mod_fl_ranef) %>% 
+  # Inverse logit for predictions
+  boot::inv.logit() %>% 
+  data.frame(logsize_t0 = mod_fl_x, flower = .)
+
+# Survival plots
+fig_fl_line <- ggplot() +
+  geom_jitter(data = df_fl, aes(x = logsize_t0, y = flower),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_fl_pred, aes(x = logsize_t0, y = flower),
+            color = line_color_pred_fun(mod_fl_ranef), lwd = 2) +  
+  theme_bw() + 
+  labs(title    = 'Flowering prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+fig_fl_bin <- ggplot() +
+  geom_point(data = plot_binned_prop(df_fl, 10, logsize_t0, flower), 
+    aes(x = logsize_t0, y = flower)) +
+  geom_errorbar(
+    data = plot_binned_prop(df_fl, 10, logsize_t0, flower), 
+    aes(x = logsize_t0, ymin = lwr, ymax = upr)) +
+  geom_line(data = df_fl_pred, aes(x = logsize_t0, y = flower),
+            color = 'red', lwd   = 2) + 
+  theme_bw() +
+  ylim(0, 1)
+
+# Combine survival plots
+fig_fl <- fig_fl_line + fig_fl_bin + plot_layout()
+fig_fl
+
+
+# Fruit data -------------------------------------------------------------------
+df_fr <- df_mean %>%
+  filter(!is.na(fruit), !is.na(logsize_t0))
+
+# Over dispersed -> negative binomial
+# otherwise Poisson
+mean(df_fr$fruit)
+var(df_fr$fruit)
+
+
+# Fruit model ------------------------------------------------------------------
+fr_mod_0 <- glm.nb(fruit ~ 1, data = df_fr)
+fr_mod_1 <- glm.nb(fruit ~ logsize_t0, data = df_fr)
+fr_mod_2 <- glm.nb(fruit ~ logsize_t0 + logsize_t0_2, data = df_fr)
+fr_mod_3 <- glm.nb(fruit ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = df_fr)
+
+fr_mods      <- list(fr_mod_0, fr_mod_1, fr_mod_2, fr_mod_3)
+fr_mods_dAIC <- AICtab(fr_mods, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+fr_mods_i_sort <- order(fr_mods_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_fr) == 0) {
+  fr_mod_i_best <- fr_mods_i_sort[1]
+  v_mod_fr_i    <- fr_mod_i_best - 1 
+} else {
+  fr_mod_i_best <- v_mod_set_fr +1
+  v_mod_fr_i    <- v_mod_set_fr
+}
+
+fr_mod_best  <- fr_mods[[fr_mod_i_best]]
+fr_mod_ranef <- coef(fr_mod_best)
+
+# Plot
+{
+  # Create prediction range
+  logsize_seq <- seq(min(df_fr$logsize_t0, na.rm = TRUE),
+                     max(df_fr$logsize_t0, na.rm = TRUE),
+                     length.out = 200)
+  
+  # Build prediction dataframe dynamically
+  pred_data <- data.frame(logsize_t0 = logsize_seq)
+  
+  if ('logsize_t0_2' %in% names(coef(fr_mod_best))) {
+    pred_data$logsize_t0_2 <- logsize_seq^2
+  }
+  if ('logsize_t0_3' %in% names(coef(fr_mod_best))) {
+    pred_data$logsize_t0_3 <- logsize_seq^3
+  }
+  
+  # Predict values
+  pred_data$pred <- predict(fr_mod_best, newdata = pred_data, type = 'response')
+  
+  # Create and assign plot
+  fig_fr <- ggplot(df_fr, aes(x = logsize_t0, y = fruit)) +
+    geom_point(alpha = 0.3, size = 1) +
+    geom_line(data = pred_data, aes(x = logsize_t0, y = pred), color = line_color_pred_fun(fr_mod_ranef), linewidth = 1.2) +
+    theme_minimal() +
+    labs(
+      title = 'Predicted Fruit Count vs. log(Size)',
+      x = 'log(Size at t0)',
+      y = 'Number of Fruits'
+    )
+}
+
+
+# Fruit to recruit -------------------------------------------------------------
+repr_pc_by_year <- {
+  fruit_by_year <- df_mean %>%
+    filter(!is.na(fruit)) %>%
+    group_by(year) %>%
+    summarise(total_fruit = sum(fruit, na.rm = TRUE)) %>%
+    mutate(year = year + 1)
+  
+  recruits_by_year <- df_mean %>%
+    filter(recruit == 1) %>%
+    group_by(year) %>%
+    summarise(n_recruits = n())
+  
+  recruits_by_year %>%
+    left_join(fruit_by_year, by = 'year') %>%
+    mutate(repr_pc_mean = n_recruits / total_fruit)
+}
+
+repr_pc_by_year %>% 
+  summarise(mean(repr_pc_mean),
+            sd  (repr_pc_mean),
+            median(repr_pc_mean))
+
+repr_pc_mean <- mean(repr_pc_by_year$repr_pc_mean, na.rm = T)
+
+
+# Recruitment data -------------------------------------------------------------
+df_re <- df_mean %>%
+  group_by(year, site, quad) %>%
+  summarise(tot_p_area = sum(size_t0, na.rm = TRUE), .groups = "drop") %>%
+  {
+    df_quad <- .
+    df_group <- df_quad %>%
+      group_by(year) %>%
+      summarise(g_cov = mean(tot_p_area), .groups = "drop")
+    
+    df_cover <- left_join(df_quad, df_group, by = "year") %>%
+      mutate(year = as.integer(year + 1)) %>%
+      drop_na()
+    
+    df_re <- df_mean %>%
+      group_by(year, site, quad) %>%
+      summarise(nr_quad = sum(recruit, na.rm = TRUE), .groups = "drop")
+    
+    left_join(df_cover, df_re, by = c("year", "site", "quad"))
+  }
+
+ggplot(
+  df_re, aes(x = tot_p_area, y = nr_quad)) + 
+  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
+  theme_bw() + 
+  labs(title    = 'Recruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
+
+# Density dependency
+df_re_qd <- df_mean %>% 
+  group_by(site, quad_id, year) %>%
+  dplyr::select(recruit) %>% 
+  summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
+  left_join(df_mean %>% 
+              group_by(site, quad_id, year) %>% 
+              summarise(nr_ind = sum(!is.na(size_t0))) %>% 
+              mutate(year = year - 1),
+            by = c('site', 'quad_id', 'year'))
+
+fig_re_dens <- ggplot(data = df_re_qd) + 
+  geom_jitter(aes(y = rec_qd_t1, x = nr_ind)) + 
+  geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm') + 
+  theme_minimal() + 
+  labs(title    = 'Recruitment - desity dependence',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
+
+
+# Recruitment model ------------------------------------------------------------
+df_re_mod <- df_re %>% filter(!is.na(nr_quad))
+# Fit a negative binomial model for recruitment
+mod_rec <- MASS::glm.nb(nr_quad ~ 1, data = df_re_mod)
+
+# Generate predictions for recruitment
+df_re_mod <- df_re_mod %>% 
+  mutate(mod_pred = predict(mod_rec, type = 'response')) 
+
+# Per-capita reproduction
+df_repr_pc <- df_su %>%
+  summarize(n_adults = n()) %>%
+  bind_cols(
+    df_re_mod %>%
+      summarize(nr_quad = sum(nr_quad, na.rm = TRUE),
+                mod_pred = sum(mod_pred, na.rm = TRUE))
+  ) %>%
+  mutate(
+    repr_pc_mean = mod_pred / n_adults,
+    repr_pc_obs = nr_quad / n_adults
+  ) %>%
+  drop_na()
 
 
 # Extracting parameter estimates -----------------------------------------------
@@ -498,9 +759,35 @@ coef_gr <- Reduce(function(...) rbind(...), list(coef_gr_fe, coef_gr_var)) %>%
   mutate(coefficient = replace(
     coefficient, grepl('Intercept', coefficient), 'b0'))
 
+# Flower
+coef_fl_fe  <- data.frame(coefficient = names(coef(mod_fl_bestfit)),
+                          value       =       coef(mod_fl_bestfit))
 
-coef_misc   <- data.frame(coefficient = c('max_siz', 'min_siz'),
-                          value       = c(df_gr$logsize_t0 %>% max, 
+coef_fl <- Reduce(function(...) rbind(...), list(coef_fl_fe)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# Fruit
+coef_fr_fe  <- data.frame(coefficient = names(coef(fr_mod_best)),
+                          value       =       coef(fr_mod_best))
+
+coef_fr <- Reduce(function(...) rbind(...), list(coef_fl_fe)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# Recruitment 
+df_re_size <- df_mean %>% subset(recruit == 1)
+
+# Miscellany
+coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
+                                          'fecu_b0', 
+                                          'max_siz', 'min_siz'),
+                          value       = c(mean(log(df_re_size$size_t0), na.rm = T), 
+                                          sd(  log(df_re_size$size_t0), na.rm = T),
+                                          repr_pc_mean,
+                                          df_gr$logsize_t0 %>% max, 
                                           df_gr$logsize_t0 %>% min))
 
 extr_value <- function(x, field){
@@ -520,6 +807,17 @@ pars <- Filter(function(x) length(x) > 0, list(
   grow_b3 = extr_value(coef_gr, 'logsize_t0_3'),
   a       = extr_value(coef_gr, 'a'),
   b       = extr_value(coef_gr, 'b'),
+  fl_b0   = extr_value(coef_fl, 'b0'),
+  fl_b1   = extr_value(coef_fl, 'logsize_t0'),
+  fl_b2   = extr_value(coef_fl, 'logsize_t0_2'),
+  fl_b3   = extr_value(coef_fl, 'logsize_t0_3'),
+  fr_b0   = extr_value(coef_fl, 'b0'),
+  fr_b1   = extr_value(coef_fr, 'logsize_t0'),
+  fr_b2   = extr_value(coef_fr, 'logsize_t0_2'),
+  fr_b3   = extr_value(coef_fr, 'logsize_t0_3'),
+  fecu_b0 = extr_value(coef_misc, 'fecu_b0'),
+  recr_sz = extr_value(coef_misc, 'rec_siz'),
+  recr_sd = extr_value(coef_misc, 'rec_sd'),
   L       = extr_value(coef_misc, 'min_siz'),
   U       = extr_value(coef_misc, 'max_siz'),
   mat_siz = 200,
@@ -569,15 +867,49 @@ pxy <- function(x, y, pars) {
   return(sx(x, pars) * gxy(x, y, pars))
 }
 
-
-# Function describing the recruitment 
-fy <- function(y, pars, h){
-  n_recr  <- pars$fecu_b0
-  recr_y  <- dnorm(y, pars$recr_sz, pars$recr_sd) * h
-  recr_y  <- recr_y / sum(recr_y)
-  f       <- n_recr * recr_y
-  return(f)
+# Flowering of x-sized individual at time t0
+fl_x <- function(x, pars, num_pars = v_mod_fl_index) {
+  val <- pars$fl_b0
+  for (i in 1:num_pars) {
+    param <- paste0('fl_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  inv_logit(val)
 }
+
+# Fruiting of x-sized individuals at time t0
+fr_x <- function(x, pars, num_pars = v_mod_fr_i) {
+  val <- pars$fr_b0
+  for (i in 1:num_pars) {
+    param <- paste0('fr_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  exp(val)  # Negative binomial uses log link
+}
+
+# Recruitment size distribution at time t1
+re_y_dist <- function(y, pars) {
+  dnorm(y, mean = pars$recr_sz, sd = pars$recr_sd)
+}
+
+# F-kernel
+fxy <- function(x, y, pars) {
+  fl_x(x, pars) *
+    fr_x(x, pars) *
+    pars$fecu_b0 *
+    re_y_dist(y, pars)
+}
+
+# not applied here - just for future reference!
+# # F kernel
+# #  NS(x)   = p(x) * FF(x)
+# #  F (x)   = exp(b0 + b1, NS(x))
+# #  R (x,y) = p(y) * F(x)
+
 
 # Kernel
 kernel <- function(pars) {
@@ -619,7 +951,7 @@ kernel <- function(pars) {
   }
   
   # Fertility matrix -----------------------------------------------------------
-  Fmat        <- matrix(0, n, n)
+  Fmat <- outer(y, y, Vectorize(function(x, y) fxy(x, y, pars))) * h
 
   # Full Kernel is simply a summation of fertility and transition matrices
   k_yx <- Fmat + Tmat
@@ -638,3 +970,59 @@ lambda_ipm <- function(i) {
 # mean population growth rate
 lam_mean <- lambda_ipm(pars)
 lam_mean
+
+
+
+
+# IPM investigation ------------------------------------------------------------
+max_size <- summary(exp(df_mean$logsize_t0), na.rm = TRUE)
+cat("Largest size in dataset:", max_size, "\n")
+
+
+
+fl_vals <- sapply(x_vals, function(x) fl_x(x, pars))
+cat("Flowering values summary:\n")
+print(summary(fl_vals))
+
+plot(x_vals, fl_vals, type = "l", main = "Flowering Probability vs Size", 
+     xlab = "Size (x)", ylab = "Flowering Probability")
+
+
+
+fr_vals <- sapply(x_vals, function(x) fr_x(x, pars))
+cat("Fruiting values summary:\n")
+print(summary(fr_vals))
+
+plot(x_vals, fr_vals, type = "l", main = "Fruiting Counts vs Size", 
+     xlab = "Size (x)", ylab = "Mean Number of Fruits")
+
+
+re_vals <- sapply(y_vals, function(y) re_y_dist(y, pars))
+cat("Recruitment size distribution summary:\n")
+print(summary(re_vals))
+
+plot(y_vals, re_vals, type = "l", main = "Recruitment Size Distribution", 
+     xlab = "Size (y)", ylab = "Density")
+
+
+fxy_vals <- outer(x_vals, y_vals, Vectorize(function(x, y) fxy(x, y, pars)))
+cat("Kernel (fxy) values summary:\n")
+print(summary(as.vector(fxy_vals)))
+
+# Visualize kernel slices for selected sizes x
+selected_x <- c(2, 5, 8)  # example sizes
+matplot(y_vals, t(fxy_vals[selected_x, ]), type = "l", lty = 1, col = 1:length(selected_x),
+        main = "Kernel fxy across y for selected x",
+        xlab = "Size (y)", ylab = "fxy value")
+legend("topright", legend = paste("x =", selected_x), col = 1:length(selected_x), lty = 1)
+
+
+
+
+
+dx <- x_vals[2] - x_vals[1]
+dy <- y_vals[2] - y_vals[1]
+
+lambda_approx <- sum(fxy_vals) * dx * dy
+cat("Approximated lambda:\n")
+print(lambda_approx)

@@ -658,7 +658,32 @@ repr_pc_by_year %>%
             sd  (repr_pc_mean),
             median(repr_pc_mean))
 
-repr_pc_mean <- mean(repr_pc_by_year$repr_pc_mean, na.rm = T)
+repr_pc_mean   <- mean(  repr_pc_by_year$repr_pc_mean, na.rm = T)
+repr_pc_median <- median(repr_pc_by_year$repr_pc_mean, na.rm = T)
+
+
+
+# # draw fecu_b0 from its empirical distribution
+# fun_lambda_stochastic_fecundity <- function(pars, fecu_values, n_years = 1000) {
+#   log_lambdas <- numeric(n_years)
+#   
+#   for (i in 1:n_years) {
+#     # Sample a fecundity value for this year
+#     pars$fecu_b0 <- sample(fecu_values, 1)
+#     
+#     # Compute lambda from IPM
+#     log_lambdas[i] <- log(lambda_ipm(pars))
+#   }
+#   
+#   # Stochastic population growth rate (on real scale)
+#   lambda_stoch <- exp(mean(log_lambdas))
+#   return(lambda_stoch)
+# }
+# 
+# # Example usage
+# fecu_vals <- repr_pc_by_year$repr_pc_mean
+# lambda_stochastic <- fun_lambda_stochastic_fecundity(pars, fecu_vals)
+# cat("Stochastic lambda (mean log λ):", lambda_stochastic, "\n")
 
 
 # Recruitment data -------------------------------------------------------------
@@ -723,8 +748,9 @@ mod_rec <- MASS::glm.nb(nr_quad ~ 1, data = df_re_mod)
 df_re_mod <- df_re_mod %>% 
   mutate(mod_pred = predict(mod_rec, type = 'response')) 
 
-# Per-capita reproduction
-df_repr_pc <- df_su %>%
+# Per-capita reproduction ------------------------------------------------------
+df_repr_pc <- df_mean %>%
+  filter(!is.na(size_t0)) %>% 
   summarize(n_adults = n()) %>%
   bind_cols(
     df_re_mod %>%
@@ -786,7 +812,7 @@ coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
                                           'max_siz', 'min_siz'),
                           value       = c(mean(log(df_re_size$size_t0), na.rm = T), 
                                           sd(  log(df_re_size$size_t0), na.rm = T),
-                                          repr_pc_mean,
+                                          repr_pc_median,
                                           df_gr$logsize_t0 %>% max, 
                                           df_gr$logsize_t0 %>% min))
 
@@ -897,7 +923,7 @@ re_y_dist <- function(y, pars) {
 }
 
 # F-kernel
-fxy <- function(x, y, pars) {
+fxy <- function(y, x, pars) {
   fl_x(x, pars) *
     fr_x(x, pars) *
     pars$fecu_b0 *
@@ -950,7 +976,7 @@ kernel <- function(pars) {
     Tmat[,i]  <- Gmat[,i] * Smat[i]
   }
   
-  # Fertility matrix -----------------------------------------------------------
+  # Fertility matrix
   Fmat <- outer(y, y, Vectorize(function(x, y) fxy(x, y, pars))) * h
 
   # Full Kernel is simply a summation of fertility and transition matrices
@@ -972,44 +998,47 @@ lam_mean <- lambda_ipm(pars)
 lam_mean
 
 
+# Observed population growth ---------------------------------------------------
+df_counts_year <- df_mean %>%
+  group_by(year) %>%
+  filter(!is.na(size_t0)) %>% 
+  summarise(n = n())
+
+# Then compute observed lambda
+lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
+lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
 
 
 # IPM investigation ------------------------------------------------------------
-max_size <- summary(exp(df_mean$logsize_t0), na.rm = TRUE)
-cat("Largest size in dataset:", max_size, "\n")
+summary(df_mean$size_t0, na.rm = TRUE)
+hist(df_mean$size_t0, na.rm = TRUE)
 
+# Use actual observed size limits
+min_x <- min(df_mean$size_t0, na.rm = TRUE)
+max_x <- max(df_mean$size_t0, na.rm = TRUE)
 
+# Recalculate mesh points
+n_mesh <- 200  # resolution
+x_vals <- seq(min_x, max_x, length.out = n_mesh)
+y_vals <- x_vals  # assuming y follows same range
 
+ 
 fl_vals <- sapply(x_vals, function(x) fl_x(x, pars))
-cat("Flowering values summary:\n")
-print(summary(fl_vals))
-
-plot(x_vals, fl_vals, type = "l", main = "Flowering Probability vs Size", 
+plot(x_vals, fl_vals, type = "l", main = "Flowering Probability vs Size",
      xlab = "Size (x)", ylab = "Flowering Probability")
 
 
-
 fr_vals <- sapply(x_vals, function(x) fr_x(x, pars))
-cat("Fruiting values summary:\n")
-print(summary(fr_vals))
-
-plot(x_vals, fr_vals, type = "l", main = "Fruiting Counts vs Size", 
+plot(x_vals, fr_vals, type = "l", main = "Fruiting Counts vs Size",
      xlab = "Size (x)", ylab = "Mean Number of Fruits")
 
 
 re_vals <- sapply(y_vals, function(y) re_y_dist(y, pars))
-cat("Recruitment size distribution summary:\n")
-print(summary(re_vals))
-
-plot(y_vals, re_vals, type = "l", main = "Recruitment Size Distribution", 
+plot(y_vals, re_vals, type = "l", main = "Recruitment Size Distribution",
      xlab = "Size (y)", ylab = "Density")
 
 
 fxy_vals <- outer(x_vals, y_vals, Vectorize(function(x, y) fxy(x, y, pars)))
-cat("Kernel (fxy) values summary:\n")
-print(summary(as.vector(fxy_vals)))
-
-# Visualize kernel slices for selected sizes x
 selected_x <- c(2, 5, 8)  # example sizes
 matplot(y_vals, t(fxy_vals[selected_x, ]), type = "l", lty = 1, col = 1:length(selected_x),
         main = "Kernel fxy across y for selected x",
@@ -1017,12 +1046,10 @@ matplot(y_vals, t(fxy_vals[selected_x, ]), type = "l", lty = 1, col = 1:length(s
 legend("topright", legend = paste("x =", selected_x), col = 1:length(selected_x), lty = 1)
 
 
-
-
-
+# Approximated lambda
 dx <- x_vals[2] - x_vals[1]
 dy <- y_vals[2] - y_vals[1]
-
 lambda_approx <- sum(fxy_vals) * dx * dy
-cat("Approximated lambda:\n")
-print(lambda_approx)
+
+cat("F-only lambda (approx):", lambda_approx, "\n")
+cat("Full IPM lambda (eigen):", lam_mean, "\n")

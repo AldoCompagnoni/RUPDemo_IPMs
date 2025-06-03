@@ -1043,6 +1043,86 @@ mods_fi_gr_all_ranef           <- coef(mods_fi_gr_all_bestfit)
 summary(mods_fi_gr_all_bestfit)
 
 
+fig_fi_gr_3 <- {
+  plot_data <- df_fire_grow %>%
+    mutate(fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire")))
+  
+  pred_data <- expand.grid(
+    logsize_t0 = seq(min(df_fire_grow$logsize_t0), max(df_fire_grow$logsize_t0), length.out = 100),
+    fire_event = c(0, 1)
+  ) %>%
+    mutate(
+      fire_event = factor(fire_event, levels = c(0, 1)),
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3,
+      fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire"))
+    )
+  
+  pred_data$predicted <- predict(mods_fi_gr_all_bestfit, newdata = pred_data)
+  
+  ggplot() +
+    geom_point(
+      data = plot_data,
+      aes(x = logsize_t0, y = logsize_t1, color = fire_event_label, alpha = fire_event_label)
+    ) +
+    geom_line(
+      data = pred_data,
+      aes(x = logsize_t0, y = predicted, color = fire_event_label),
+      size = 1.2
+    ) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_alpha_manual(values = c("No Fire" = 0.1,     "Fire" = 1)) +
+    labs(
+      title = "Fire on Growth Predictions, cubic",
+      x = "log(size_t0)",
+      y = "log(size_t1)",
+      color = "Fire Event",
+      alpha = "Fire Event"
+    ) +
+    theme_minimal()
+}
+fig_fi_gr_3
+
+
+fig_fi_gr_2 <- {
+  plot_data <- df_fire_grow %>%
+    mutate(fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire")))
+  
+  pred_data <- expand.grid(
+    logsize_t0 = seq(min(df_fire_grow$logsize_t0), max(df_fire_grow$logsize_t0), length.out = 100),
+    fire_event = c(0, 1)
+  ) %>%
+    mutate(
+      fire_event = factor(fire_event, levels = c(0, 1)),
+      logsize_t0_2 = logsize_t0^2,
+      fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire"))
+    )
+  
+  pred_data$predicted <- predict(mod_fi_gr_2, newdata = pred_data)
+  
+  ggplot() +
+    geom_point(
+      data = plot_data,
+      aes(x = logsize_t0, y = logsize_t1, color = fire_event_label, alpha = fire_event_label)
+    ) +
+    geom_line(
+      data = pred_data,
+      aes(x = logsize_t0, y = predicted, color = fire_event_label),
+      size = 1.2
+    ) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_alpha_manual(values = c("No Fire" = 0.1, "Fire" = 1)) +
+    labs(
+      title = "Fire on Growth Predictions, quadratic",
+      x = "log(size_t0)",
+      y = "log(size_t1)",
+      color = "Fire Event",
+      alpha = "Fire Event"
+    ) +
+    theme_minimal()
+}
+fig_fi_gr_2
+
 
 # Fire on Survival -------------------------------------------------------------
 df_fire_surv_0 <- df_mean %>% 
@@ -1169,6 +1249,201 @@ if (length(v_mod_set_fi_su) == 0) {
 mod_fi_su_bestfit   <- mods_fi_su[[mod_fi_su_index_bestfit]]
 mod_fi_su_ranef     <- coef(mod_fi_su_bestfit)
 
+
+fig_fi_su_2 <- {
+  plot_data <- df_fi_su %>%
+    mutate(fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire")))
+  
+  pred_data <- expand.grid(
+    logsize_t0 = seq(min(df_fi_su$logsize_t0), max(df_fi_su$logsize_t0), length.out = 100),
+    fire_event = c(0, 1)
+  ) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire"))
+    )
+  
+  # IMPORTANT: for predict(), fire_event must be numeric as in the original model
+  pred_data$predicted_prob <- predict(mod_fi_su_bestfit, newdata = pred_data, type = "response")
+  
+  ggplot() +
+    geom_jitter(
+      data = plot_data,
+      aes(x = logsize_t0, y = survives, color = fire_event_label, alpha = fire_event_label),
+      height = 0.05, width = 0, size = 1.5
+    ) +
+    geom_line(
+      data = pred_data,
+      aes(x = logsize_t0, y = predicted_prob, color = fire_event_label),
+      size = 1.2
+    ) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_alpha_manual(values = c("No Fire" = 0.1, "Fire" = 1)) +
+    labs(
+      title = "Fire on Predicted Survival Probability, quadratic",
+      x = "log(size_t0)",
+      y = "Probability of Survival",
+      color = "Fire Event",
+      alpha = "Fire Event"
+    ) +
+    theme_minimal()
+}
+
+
+fig_fi_su_2_pred <- {
+  # Prepare binned data
+  binned_df <- plot_binned_prop(df_mean, 10, logsize_t0, survives)
+  
+  # Prediction grid for fire events
+  pred_data <- expand.grid(
+    logsize_t0 = seq(min(df_mean$logsize_t0, na.rm = T), max(df_mean$logsize_t0, na.rm = T), length.out = 100),
+    fire_event = c(0, 1)
+  ) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,   # add if model needs quadratic term
+      fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire"))
+    )
+  
+  # Predict with your logistic model; replace mod_fi_su_bestfit with your model
+  pred_data$predicted_prob <- predict(mod_fi_su_bestfit, newdata = pred_data, type = "response")
+  
+  # Plot binned points + error bars + prediction lines
+  ggplot(data = binned_df) +
+    geom_point(aes(x = logsize_t0, y = survives), alpha = 1, pch = 16, color = 'red') +
+    geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr), size = 0.5, width = 0.5) +
+    geom_line(data = pred_data, aes(x = logsize_t0, y = predicted_prob, color = fire_event_label), size = 1.2) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
+    ylim(0, 1.01) +
+    theme_bw() +
+    theme(axis.text = element_text(size = 8),
+          title = element_text(size = 10),
+          plot.subtitle = element_text(size = 8)) +
+    labs(
+      title = 'Survival',
+      subtitle = v_ggp_suffix,
+      x = expression('log(size)'[t0]),
+      y = expression('Survival to time t1'),
+      color = "Fire Event"
+    )
+}
+
+
+{
+  # Create binned data separately for each fire_event group
+  binned_no_fire <- plot_binned_prop(filter(df_mean, fire_event == 0), 10, logsize_t0, survives) %>%
+    mutate(fire_event_label = "No Fire")
+  
+  binned_fire <- plot_binned_prop(filter(df_mean, fire_event == 1), 10, logsize_t0, survives) %>%
+    mutate(fire_event_label = "Fire")
+  
+  # Combine them
+  binned_df <- bind_rows(binned_no_fire, binned_fire)
+  
+  # Prediction grid
+  pred_data <- expand.grid(
+    logsize_t0 = seq(min(df_mean$logsize_t0, na.rm = T), max(df_mean$logsize_t0, na.rm = T), length.out = 100),
+    fire_event = c(0, 1)
+  ) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      fire_event_label = factor(fire_event, levels = c(0,1), labels = c("No Fire", "Fire"))
+    )
+  
+  pred_data$predicted_prob <- predict(mod_fi_su_bestfit, newdata = pred_data, type = "response")
+  
+  # Plot No Fire
+  plot_no_fire <- ggplot() +
+    geom_point(data = filter(binned_df, fire_event_label == "No Fire"),
+               aes(x = logsize_t0, y = survives),
+               color = "black", alpha = 1, pch = 16) +
+    geom_errorbar(data = filter(binned_df, fire_event_label == "No Fire"),
+                  aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                  size = 0.5, width = 0.5) +
+    geom_line(data = filter(pred_data, fire_event_label == "No Fire"),
+              aes(x = logsize_t0, y = predicted_prob),
+              color = "black", size = 1.2) +
+    scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+    theme_bw() +
+    labs(title = "Survival (No Fire)",
+         x = expression('log(size)'[t0]),
+         y = expression('Survival to time t1')) +
+    theme(axis.text = element_text(size = 8),
+          title = element_text(size = 10))
+  
+  # Plot Fire
+  plot_fire <- ggplot() +
+    geom_point(data = filter(binned_df, fire_event_label == "Fire"),
+               aes(x = logsize_t0, y = survives),
+               color = "red", alpha = 1, pch = 16) +
+    geom_errorbar(data = filter(binned_df, fire_event_label == "Fire"),
+                  aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                  size = 0.5, width = 0.5) +
+    geom_line(data = filter(pred_data, fire_event_label == "Fire"),
+              aes(x = logsize_t0, y = predicted_prob),
+              color = "red", size = 1.2) +
+    scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+    theme_bw() +
+    labs(title = "Survival (Fire)",
+         x = expression('log(size)'[t0]),
+         y = expression('Survival to time t1')) +
+    theme(axis.text = element_text(size = 8),
+          title = element_text(size = 10))
+  
+  list(no_fire = plot_no_fire, fire = plot_fire)
+}
+
+
+
+{
+  # (Your existing code here that creates plot_no_fire and plot_fire)
+  
+  combined_plot <- fig_fi_su_2 + fig_fi_su_2_pred + plot_no_fire + plot_fire + 
+    plot_layout(ncol = 2) + 
+    plot_annotation(title = "Survival Plots by Fire Event")
+  
+  combined_plot
+}
+
+
+fig_fi_su_1.1 <- {
+  plot_data <- df_fi_su %>%
+    mutate(fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire")))
+  
+  pred_data <- expand.grid(
+    logsize_t0 = seq(min(df_fi_su$logsize_t0), max(df_fi_su$logsize_t0), length.out = 100),
+    fire_event = c(0, 1)
+  ) %>%
+    mutate(
+      fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire"))
+    )
+  
+  # fire_event numeric for predict()
+  pred_data$predicted_prob <- predict(mod_fi_su_1.1, newdata = pred_data, type = "response")
+  
+  ggplot() +
+    geom_jitter(
+      data = plot_data,
+      aes(x = logsize_t0, y = survives, color = fire_event_label, alpha = fire_event_label),
+      height = 0.05, width = 0, size = 1.5
+    ) +
+    geom_line(
+      data = pred_data,
+      aes(x = logsize_t0, y = predicted_prob, color = fire_event_label),
+      size = 1.2
+    ) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_alpha_manual(values = c("No Fire" = 0.1, "Fire" = 1)) +
+    labs(
+      title = "Fire on Predicted Survival Probability, linear",
+      x = "log(size_t0)",
+      y = "Probability of Survival",
+      color = "Fire Event",
+      alpha = "Fire Event"
+    ) +
+    theme_minimal()
+}
+fig_fi_su_1.1
 
 
 # Fire on Flowers --------------------------------------------------------------
@@ -1579,6 +1854,188 @@ ggplot() +
 
 
 
+# Fire on flowering plot -------------------------------------------------------
+fig_fi_fl_2 <- {
+  # Common prediction grid
+  pred_data <- expand.grid(
+    logsize_t0 = seq(min(df_fi_fl_p$logsize_t0, na.rm = TRUE), max(df_fi_fl_p$logsize_t0, na.rm = TRUE), length.out = 100),
+    fire_event = c(0, 1)
+  ) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire"))
+    )
+  
+  pred_data$predicted_prob <- predict(mod_fi_fl_2.01, newdata = pred_data, type = "response")
+  
+  # Prepare plot data with fire labels
+  plot_data <- df_fi_fl_p %>%
+    mutate(fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire")))
+  
+  # Binned data by fire_event for both groups
+  binned_df <- bind_rows(
+    plot_binned_prop(filter(df_fi_fl_p, fire_event == 0), 10, logsize_t0, flower_t0) %>% mutate(fire_event_label = "No Fire"),
+    plot_binned_prop(filter(df_fi_fl_p, fire_event == 1), 10, logsize_t0, flower_t0) %>% mutate(fire_event_label = "Fire")
+  )
+  
+  # Plot 1: jitter + model fit lines (both fire groups)
+  p1 <- ggplot() +
+    geom_jitter(
+      data = plot_data,
+      aes(x = logsize_t0, y = flower_t0, color = fire_event_label, alpha = fire_event_label),
+      height = 0.05, width = 0, size = 1.5
+    ) +
+    geom_line(
+      data = pred_data,
+      aes(x = logsize_t0, y = predicted_prob, color = fire_event_label),
+      size = 1.2
+    ) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_alpha_manual(values = c("No Fire" = 0.1, "Fire" = 1)) +
+    labs(title = "Fire Effect on Flowering Probability, quadratic + interaction",
+         x = "log(size_t0)", y = "Probability of Flowering",
+         color = "Fire Event", alpha = "Fire Event") +
+    theme_minimal()
+  
+  # Plot 2: binned data points + model fit lines (both groups)
+  p2 <- ggplot(binned_df) +
+    geom_point(aes(x = logsize_t0, y = flower_t0), color = "red", pch = 16) +
+    geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr), width = 0.5, size = 0.5) +
+    geom_line(data = pred_data, aes(x = logsize_t0, y = predicted_prob, color = fire_event_label), size = 1.2) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+    labs(title = "Flowering Probability",
+         subtitle = v_ggp_suffix,
+         x = expression('log(size)'[t0]),
+         y = expression('Probability of Flowering'),
+         color = "Fire Event") +
+    theme_bw() +
+    theme(axis.text = element_text(size = 8), title = element_text(size = 10), plot.subtitle = element_text(size = 8))
+  
+  # Helper function to build fire/no-fire plots
+  make_single_plot <- function(fire_label, point_color) {
+    ggplot() +
+      geom_point(data = filter(binned_df, fire_event_label == fire_label),
+                 aes(x = logsize_t0, y = flower_t0),
+                 color = point_color, pch = 16, alpha = 1) +
+      geom_errorbar(data = filter(binned_df, fire_event_label == fire_label),
+                    aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                    size = 0.5, width = 0.5) +
+      geom_line(data = filter(pred_data, fire_event_label == fire_label),
+                aes(x = logsize_t0, y = predicted_prob),
+                color = point_color, size = 1.2) +
+      scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+      labs(title = paste("Flowering Probability (", fire_label, ")", sep = ""),
+           x = expression('log(size)'[t0]),
+           y = expression('Probability of Flowering')) +
+      theme_bw() +
+      theme(axis.text = element_text(size = 8), title = element_text(size = 10))
+  }
+  
+  p3 <- make_single_plot("No Fire", "black")
+  p4 <- make_single_plot("Fire", "red")
+  
+  # Combine all 4 plots
+  p1 + p2 + p3 + p4 +
+    plot_layout(ncol = 2) +
+    plot_annotation(title = "Flowering Probability by Fire Event")
+}
+fig_fi_fl_2
+
+
+fig_fi_fl_1 <- {
+  # Common prediction grid
+  pred_data <- expand.grid(
+    logsize_t0 = seq(min(df_fi_fl_p$logsize_t0, na.rm = TRUE), 
+                     max(df_fi_fl_p$logsize_t0, na.rm = TRUE), 
+                     length.out = 100),
+    fire_event = c(0, 1)
+  ) %>%
+    mutate(
+      fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire"))
+    )
+  
+  pred_data$predicted_prob <- predict(mod_fi_fl_1.01, newdata = pred_data, type = "response")
+  
+  # Prepare plot data with fire labels
+  plot_data <- df_fi_fl_p %>%
+    mutate(fire_event_label = factor(fire_event, levels = c(0, 1), labels = c("No Fire", "Fire")))
+  
+  # Binned data by fire_event for both groups
+  binned_df <- bind_rows(
+    plot_binned_prop(filter(df_fi_fl_p, fire_event == 0), 10, logsize_t0, flower_t0) %>% mutate(fire_event_label = "No Fire"),
+    plot_binned_prop(filter(df_fi_fl_p, fire_event == 1), 10, logsize_t0, flower_t0) %>% mutate(fire_event_label = "Fire")
+  )
+  
+  # Plot 1: jitter + model fit lines (both fire groups)
+  p1 <- ggplot() +
+    geom_jitter(
+      data = plot_data,
+      aes(x = logsize_t0, y = flower_t0, color = fire_event_label, alpha = fire_event_label),
+      height = 0.05, width = 0, size = 1.5
+    ) +
+    geom_line(
+      data = pred_data,
+      aes(x = logsize_t0, y = predicted_prob, color = fire_event_label),
+      size = 1.2
+    ) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_alpha_manual(values = c("No Fire" = 0.1, "Fire" = 1)) +
+    labs(title = "Fire Effect on Flowering Probability (linear)",
+         x = "log(size_t0)", y = "Probability of Flowering",
+         color = "Fire Event", alpha = "Fire Event") +
+    theme_minimal()
+  
+  # Plot 2: binned data points + model fit lines (both groups)
+  p2 <- ggplot(binned_df) +
+    geom_point(aes(x = logsize_t0, y = flower_t0), color = "red", pch = 16) +
+    geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr), width = 0.5, size = 0.5) +
+    geom_line(data = pred_data, aes(x = logsize_t0, y = predicted_prob, color = fire_event_label), size = 1.2) +
+    scale_color_manual(values = c("No Fire" = "black", "Fire" = "red")) +
+    scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+    labs(
+      x = expression('log(size)'[t0]),
+      y = expression('Probability of Flowering'),
+      color = "Fire Event",
+      subtitle = v_ggp_suffix
+    ) +
+    theme_bw() +
+    theme(axis.text = element_text(size = 8), title = element_text(size = 10), plot.subtitle = element_text(size = 8))
+  
+  # Helper function to build fire/no-fire plots
+  make_single_plot <- function(fire_label, point_color) {
+    ggplot() +
+      geom_point(data = filter(binned_df, fire_event_label == fire_label),
+                 aes(x = logsize_t0, y = flower_t0),
+                 color = point_color, pch = 16, alpha = 1) +
+      geom_errorbar(data = filter(binned_df, fire_event_label == fire_label),
+                    aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                    size = 0.5, width = 0.5) +
+      geom_line(data = filter(pred_data, fire_event_label == fire_label),
+                aes(x = logsize_t0, y = predicted_prob),
+                color = point_color, size = 1.2) +
+      scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+      labs(
+        x = expression('log(size)'[t0]),
+        y = expression('Probability of Flowering')
+      ) +
+      theme_bw() +
+      theme(axis.text = element_text(size = 8), title = element_text(size = 10))
+  }
+  
+  p3 <- make_single_plot("No Fire", "black")
+  p4 <- make_single_plot("Fire", "red")
+  
+  # Combine all 4 plots
+  p1 + p2 + p3 + p4 +
+    plot_layout(ncol = 2) +
+    plot_annotation(title = "Flowering Probability by Fire Event")
+}
+fig_fi_fl_1
+
+
+
+
 # ------------------------------------------------------------------------------
 # Prepare prediction grid
 logsize_seq <- seq(min(df_fi_fl_p$logsize_t0, na.rm = TRUE), 
@@ -1927,7 +2384,8 @@ df_rec_sums_m <- df_fi_re_mod %>%
             mod_pred = sum(mod_pred))
 
 # Count number of adult individuals
-indiv_m <- df_surv %>%
+indiv_m <- df_mean %>%
+  filter(!is.na(size_t0)) %>% 
   summarize(n_adults = n())
 
 # Calculate reproduction per capita (both observed and predicted)
@@ -2639,7 +3097,8 @@ df_rec_sums_m <- df_re_nona_nr_quad %>%
             mod_pred = sum(mod_pred))
 
 # Count number of adult individuals
-indiv_m <- df_surv %>%
+indiv_m <- df_mean %>%
+  filter(!is.na(size_t0)) %>% 
   summarize(n_adults = n())
 
 # Calculate reproduction per capita (both observed and predicted)
@@ -2665,7 +3124,8 @@ df_fruit_sums_m <- df_fruit_nona_nr_quad %>%
             mod_pred = sum(mod_pred))
 
 # Count number of adult individuals
-indiv_m <- df_surv %>%
+indiv_m <- df_mean %>%
+  filter(!is.na(size_t0)) %>% 
   summarize(n_adults = n())
 
 # Calculate reproduction per capita (both observed and predicted)

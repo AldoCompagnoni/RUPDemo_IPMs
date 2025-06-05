@@ -57,7 +57,7 @@ spp_by_site <- lapply( 1:5, get_ipm_spp ) %>% bind_rows
 
 
 # function to run mean models (models with all data comprised)
-run_mean_models <- function( ii ){
+run_yearly_models <- function( ii ){
   
   # set up the relevant codes
   spp_code_x  <- spp_by_site$species[ii]
@@ -74,4 +74,4 @@ run_mean_models <- function( ii ){
 }
 
 # Run plant tracker for all species
-lapply( 1:24, run_mean_models )
+lapply( 1:24, run_yearly_models )

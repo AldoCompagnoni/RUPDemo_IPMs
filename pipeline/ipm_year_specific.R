@@ -489,7 +489,7 @@ gr_var <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))
 
 # Recruitment model year specific ----------------------------------------------
 recr_nona_nr_quad <- recr_df %>% filter(!is.na(nr_quad))
-
+# Fit a negative binomial model for recruitment
 rec_mod <- glmer.nb(nr_quad ~ (1 | year), data = recr_nona_nr_quad)
 
 # predict the number of recruits per year per quad
@@ -503,7 +503,7 @@ rec_sums_df <- recr_nona_nr_quad %>%
             pred_mod = sum(pred_mod)) %>% 
   ungroup
 
-# number of adults present in each year
+# number of adults present in each year ----------------------------------------
 indiv_yr <- surv_df %>%
   count(year) %>% 
   rename(n_adults = n) %>% 

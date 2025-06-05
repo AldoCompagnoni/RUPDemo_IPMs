@@ -1,11 +1,11 @@
-# Building IPM - Archbold - Menges 2016 - Crotalaria avonensis
+# IPM mean - Archbold - Menges 2016 - Crotalaria avonensis
 
 # Author: Niklas Neisse*
 # Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.05.28
+# Date  : 2025.06.02
 
 
 # Website    : https://portal.edirepository.org/nis/mapbrowse?packageid=edi.219.1
@@ -471,7 +471,6 @@ mod_gr_var <- nls(
 # Flower data ------------------------------------------------------------------
 df_fl <- df_mean %>% 
   filter(!is.na(flower)) %>%
-  filter(size_t0 != 0) %>%
   dplyr::select(plant_id, year, size_t0, flower, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3) %>% 
   mutate(flower = if_else(flower > 0, 1, flower))
@@ -658,8 +657,14 @@ repr_pc_by_year %>%
             sd  (repr_pc_mean),
             median(repr_pc_mean))
 
+hist(repr_pc_by_year$repr_pc_mean)
+
 repr_pc_mean   <- mean(  repr_pc_by_year$repr_pc_mean, na.rm = T)
 repr_pc_median <- median(repr_pc_by_year$repr_pc_mean, na.rm = T)
+
+# Grand mean 
+# Year 
+# Quad
 
 
 

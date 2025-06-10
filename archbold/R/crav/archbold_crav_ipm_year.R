@@ -698,7 +698,7 @@ for (i in 2:ncol(su_coef_matrix)) {
 }
 
 # Combine data frames and mutate the coefficient column
-surv_out_yr <- Reduce(rbind, su_data_frames) %>%
+su_out_yr <- Reduce(rbind, su_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 
@@ -720,35 +720,98 @@ for (i in 2:ncol(gr_coef_matrix)) {
   column_name <- paste0('logsize_t0_', i - 1)
   if (column_name %in% colnames(gr_coef_matrix)) {
     gr_data_frames[[length(gr_data_frames) + 1]] <- data.frame(
-      coefficient = paste0('logsize_t0_', i - 1, rownames(gr_coef_matrix)),
+      coefficient = paste0('logsize_t0_', i - 1, '_', rownames(gr_coef_matrix)),
       value = gr_coef_matrix[, column_name]
     )
   }
 }
 
 # Combine all data frames using Reduce and mutate the coefficient column
-grow_out_yr <- Reduce(function(...) rbind(...), gr_data_frames) %>%
+gr_out_yr <- Reduce(function(...) rbind(...), gr_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
-write.csv(grow_out_yr, 
-          paste0(dir_data, '/2.grow_pars', v_suffix, '.csv'), 
-          row.names = F)
+ 
+# Flower
+# Get the coefficients matrix
+fl_coef_matrix <- coef(mod_fl_best)$year
+
+# Initialize a list to store data frames
+fl_data_frames <- list(
+  data.frame(coefficient = paste0('year_', rownames(fl_coef_matrix)), 
+             value = fl_coef_matrix[, '(Intercept)']),
+  data.frame(coefficient = paste0('logsize_t0_', rownames(fl_coef_matrix)), 
+             value = fl_coef_matrix[, 'logsize_t0'])
+)
+
+# Loop to create additional data frames if needed
+for (i in 2:ncol(fl_coef_matrix)) {
+  column_name <- paste0('logsize_t0_', i - 1)
+  if (column_name %in% colnames(fl_coef_matrix)) {
+    fl_data_frames[[length(fl_data_frames) + 1]] <- data.frame(
+      coefficient = paste0('logsize_t0_', i - 1, rownames(fl_coef_matrix)),
+      value = fl_coef_matrix[, column_name]
+    )
+  }
+}
+
+# Combine data frames and mutate the coefficient column
+fl_out_yr <- Reduce(rbind, fl_data_frames) %>%
+  mutate(coefficient = as.character(coefficient))
+
+
+
+# Fruit
+# Get the coefficients matrix
+fr_coef_matrix <- coef(mod_fr_best)$year
+
+# Initialize a list to store data frames
+fr_data_frames <- list(
+  data.frame(coefficient = paste0('year_', rownames(fr_coef_matrix)), 
+             value = fr_coef_matrix[, '(Intercept)']),
+  data.frame(coefficient = paste0('logsize_t0_', rownames(fr_coef_matrix)), 
+             value = fr_coef_matrix[, 'logsize_t0'])
+)
+
+# Loop to create additional data frames if needed
+for (i in 2:ncol(fr_coef_matrix)) {
+  column_name <- paste0('logsize_t0_', i - 1)
+  if (column_name %in% colnames(fr_coef_matrix)) {
+    fr_data_frames[[length(fr_data_frames) + 1]] <- data.frame(
+      coefficient = paste0('logsize_t0_', i - 1, rownames(fr_coef_matrix)),
+      value = fr_coef_matrix[, column_name]
+    )
+  }
+}
+
+# Combine data frames and mutate the coefficient column
+fr_out_yr <- Reduce(rbind, fr_data_frames) %>%
+  mutate(coefficient = as.character(coefficient))
+
+
+
+# Fruit to recruit
+ftr_out_yr <- fruit_recruit_ratio_by_year %>%
+  mutate(coefficient = paste0('year_', year),
+         value = repr_pc) %>% 
+  dplyr::select(coefficient, value)
+
+
 
 
 # Recruitment
 rc_pc <- data.frame(coefficient = paste0('rec_pc_',repr_pc_yr$year),
                     value = repr_pc_yr$repr_percapita)
 
+rec_size          <- df %>% subset(recruit == 1)
+
 rc_sz <- data.frame(coefficient = c('rec_siz', 'rec_sd'),
-                    value = c(mean(rec_size$logsize_t0),
-                              sd(rec_size$logsize_t0)))
+                    value = c(mean(rec_size$logsize_t0, na.rm = TRUE),
+                              sd(  rec_size$logsize_t0, na.rm = TRUE)))
+mean()
 
 recr_out_yr <- Reduce(function(...) rbind(...), list(rc_pc, rc_sz)) %>%
   mutate(coefficient = as.character(coefficient))
 
-write.csv(recr_out_yr, 
-          paste0(dir_data, '/2.recr_pars', v_suffix, '.csv'), 
-          row.names = F)
 
 
 # df constant parameters, fixed effects estimates, and mean parameter estimates
@@ -759,8 +822,8 @@ constants <- data.frame(coefficient = c('recr_sz',
                                         'L',
                                         'U',
                                         'mat_siz'),
-                        value = c(mean(rec_size$logsize_t0),
-                                  sd(  rec_size$logsize_t0),
+                        value = c(mean(df_re_mod$logsize_t0),
+                                  sd(  df_re_mod$logsize_t0),
                                   as.numeric(coef(gr_var)[1]),
                                   as.numeric(coef(gr_var)[2]),
                                   grow_df$logsize_t0 %>% min,
@@ -788,9 +851,7 @@ rownames(pars_cons) <- 1:nrow(pars_cons)
 pars_cons_wide <- as.list(pivot_wider(pars_cons, names_from = 'coefficient', 
                                       values_from = 'value'))
 
-write.csv(pars_cons_wide, 
-          paste0(dir_data, '/2.pars_cons', v_suffix, '.csv'), 
-          row.names = F)
+
 
 
 # DF varying parameters

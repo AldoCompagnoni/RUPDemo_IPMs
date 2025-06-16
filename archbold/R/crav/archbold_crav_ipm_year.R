@@ -647,7 +647,8 @@ indiv_yr <- df %>%
   filter(!is.na(survives)) %>% 
   count(year) %>% 
   rename(n_adults = n) %>% 
-  mutate(year = year + 1)
+  mutate(year = year + 1) 
+#  all 37 individuals in 2017 are recruits
 
 # calculate per-capita recruitment rate
 repr_pc_yr <- indiv_yr %>% 
@@ -759,7 +760,6 @@ fl_out_yr <- Reduce(rbind, fl_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 
-
 # Fruit
 # Get the coefficients matrix
 fr_coef_matrix <- coef(mod_fr_best)$year
@@ -788,14 +788,11 @@ fr_out_yr <- Reduce(rbind, fr_data_frames) %>%
   mutate(coefficient = as.character(coefficient))
 
 
-
 # Fruit to recruit
 ftr_out_yr <- fruit_recruit_ratio_by_year %>%
   mutate(coefficient = paste0('year_', year),
          value = repr_pc) %>% 
   dplyr::select(coefficient, value)
-
-
 
 
 # Recruitment
@@ -807,11 +804,9 @@ rec_size          <- df %>% subset(recruit == 1)
 rc_sz <- data.frame(coefficient = c('rec_siz', 'rec_sd'),
                     value = c(mean(rec_size$logsize_t0, na.rm = TRUE),
                               sd(  rec_size$logsize_t0, na.rm = TRUE)))
-mean()
 
 recr_out_yr <- Reduce(function(...) rbind(...), list(rc_pc, rc_sz)) %>%
   mutate(coefficient = as.character(coefficient))
-
 
 
 # df constant parameters, fixed effects estimates, and mean parameter estimates
@@ -822,36 +817,42 @@ constants <- data.frame(coefficient = c('recr_sz',
                                         'L',
                                         'U',
                                         'mat_siz'),
-                        value = c(mean(df_re_mod$logsize_t0),
-                                  sd(  df_re_mod$logsize_t0),
+                        value = c(as.numeric(rc_sz[1,2]),
+                                  as.numeric(rc_sz[2,2]),
                                   as.numeric(coef(gr_var)[1]),
                                   as.numeric(coef(gr_var)[2]),
-                                  grow_df$logsize_t0 %>% min,
-                                  grow_df$logsize_t0 %>% max,
+                                  df_gr$logsize_t0 %>% min,
+                                  df_gr$logsize_t0 %>% max,
                                   200))
 
 # Create the data frame dynamically based on the number of fixed effects
-surv_fe <- data.frame(
+su_fe <- data.frame(
   coefficient = paste0('surv_b', 0:(length(fixef(mod_su_best)) - 1)),
   value       = fixef(mod_su_best))
 
-grow_fe <- data.frame(
+gr_fe <- data.frame(
   coefficient = paste0('grow_b', 0:(length(fixef(mod_gr_best)) - 1)),
   value       = fixef(mod_gr_best))
 
-rec_fe  <- data.frame(coefficient = 'fecu_b0',
+fl_fe <- data.frame(
+  coefficient = paste0('flow_b', 0:(length(fixef(mod_fl_best)) - 1)),
+  value       = fixef(mod_fl_best))
+
+fr_fe <- data.frame(
+  coefficient = paste0('frui_b', 0:(length(fixef(mod_fr_best)) - 1)),
+  value       = fixef(mod_fr_best))
+
+re_fe  <- data.frame(coefficient = 'fecu_b0',
                       value       = mean(repr_pc_yr$repr_percapita))
 
 pars_cons <- Reduce(function(...) rbind(...), 
-                    list(surv_fe, grow_fe, rec_fe, constants)) %>%
+                    list(su_fe, gr_fe, fl_fe, fr_fe, re_fe, constants)) %>%
   mutate(coefficient = as.character(coefficient))
 
 rownames(pars_cons) <- 1:nrow(pars_cons)
 
 pars_cons_wide <- as.list(pivot_wider(pars_cons, names_from = 'coefficient', 
                                       values_from = 'value'))
-
-
 
 
 # DF varying parameters
@@ -869,51 +870,385 @@ create_coef_df <- function(model, prefix) {
 # Create data frames for survival and growth models
 su_data_frames <- create_coef_df(mod_su_best, 'surv_b')
 gr_data_frames <- create_coef_df(mod_gr_best, 'grow_b')
-
-# Create the fecundity data frame
-fecu_b0 <- data.frame(coefficient = paste0('fecu_b0_', repr_pc_yr$year),
-                      value = repr_pc_yr$repr_percapita)
+fl_data_frames <- create_coef_df(mod_fl_best, 'flow_b')
+fr_data_frames <- create_coef_df(mod_fr_best, 'frui_b')
+re_data_frames <- list(data.frame(
+  coefficient = paste0('fecu_b0_', repr_pc_yr$year),
+  value = repr_pc_yr$repr_percapita))
 
 # Combine all data frames into one
-pars_var <- Reduce(rbind, c(su_data_frames, gr_data_frames, list(fecu_b0)))
+pars_var <- Reduce(rbind, c(
+  su_data_frames, gr_data_frames, fl_data_frames, fr_data_frames, re_data_frames))
 
 pars_var_wide <- as.list(pivot_wider(pars_var, 
                                      names_from  = 'coefficient', 
-                                     values_from = 'value') )
+                                     values_from = 'value'))
+
+
+# Building the year-specific IPMs from scratch ---------------------------------
+# Functions
+# Inverse logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, num_params = mod_su_index_bestfit) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_params) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
+}
+
+# Standard deviation of growth model
+grow_sd <- function(x, pars) {
+  pars$a * (exp(pars$b * x)) %>% sqrt 
+}
+
+# Growth from size x to size y
+gxy <- function(x, y, pars, num_params = mod_gr_index_bestfit) {
+  mean_value <- 0 # Why is the mean value 0?
+  for (i in 0:num_params) {
+    param_name <- paste0('grow_b', i)
+    if (!is.null(pars[[param_name]])) {
+      mean_value <- mean_value + pars[[param_name]] * x^i
+    }
+  }
+  sd_value <- grow_sd(x, pars)
+  return(dnorm(y, mean = mean_value, sd = sd_value))
+}
+
+# Transition of x-sized individual to y-sized individual at time t1
+pxy <- function(x, y, pars) {
+  return(sx(x, pars) * gxy(x, y, pars))
+}
+
+# Flowering of x-sized individual at time t0
+fl_x <- function(x, pars, num_params = mod_fl_index_bestfit) {
+  flower_value <- pars$flow_b0
+  for (i in 1:num_params) {
+    param_name <- paste0('flow_b', i)
+    if (!is.null(pars[[param_name]])) {
+      flower_value <- flower_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(flower_value))
+}
+
+# Fruiting of x-sized individuals at time t0
+fr_x <- function(x, pars, num_pars = mod_fr_i_best) {
+  val <- pars$frui_b0
+  for (i in 1:num_pars) {
+    param <- paste0('frui_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  exp(val)  # Negative binomial uses log link
+}
+
+# Recruitment size distribution at time t1
+re_y_dist <- function(y, pars) {
+  dnorm(y, mean = pars$recr_sz, sd = pars$recr_sd)
+}
+
+# F-kernel
+fyx <- function(y, x, pars) {
+  fl_x(x, pars) *
+    fr_x(x, pars) *
+    pars$fecu_b0 *
+    re_y_dist(y, pars)
+}
+
+# Kernel
+kernel <- function(pars) {
+  
+  n      <- pars$mat_siz
+  L      <- pars$L
+  U      <- pars$U
+  h      <- (U - L) / n
+  b      <- L + c(0:n) * h
+  y      <- 0.5 * (b[1:n] + b[2:( n + 1 )])
+  
+  Smat   <- c()
+  Smat   <- sx(y, pars)
+  
+  Gmat   <- matrix(0, n, n)
+  Gmat[] <- t(outer(y, y, gxy, pars)) * h
+  
+  Tmat   <- matrix(0, n, n)
+  
+  for(i in 1:(n / 2)) {
+    Gmat[1,i] <- Gmat[1,i] + 1 - sum(Gmat[,i])
+    Tmat[,i]  <- Gmat[,i] * Smat[i]
+  }
+  
+  for(i in (n / 2 + 1):n) {
+    Gmat[n,i] <- Gmat[n,i] + 1 - sum(Gmat[,i])
+    Tmat[,i]  <- Gmat[,i] * Smat[i]
+  }
+  
+  Fmat   <- outer(y, y, Vectorize(function(x, y) fyx(x, y, pars))) * h
+  
+  k_yx <- Fmat + Tmat
+  
+  return(list(k_yx    = k_yx,
+              Fmat    = Fmat,
+              Tmat    = Tmat,
+              Gmat    = Gmat,
+              meshpts = y))
+  
+}
+
+
+# Mean population growth rate --------------------------------------------------
+pars_mean <- pars_cons_wide
+
+lambda_ipm <- function(i) {
+  return(Re(eigen(kernel(i)$k_yx)$value[1]))
+}
+
+lam_mean <- lambda_ipm(pars_mean)
+lam_mean
+
+
+# population growth rates for each year
+pars_yr <- vector(mode = 'list', length = length(v_years))
+extr_value_list <- function(x, field) {
+  return(as.numeric(x[paste0(field)] %>% unlist()))
+}
+
+prep_pars <- function(i, num_surv_params, num_grow_params, 
+                      num_flow_params, num_frui_params) {
+  yr_now <- v_years[i]
+  
+  # Initialize the parameters list with the required order
+  pars_year <- list(
+    surv_b0  = extr_value_list(pars_var_wide, paste('surv_b0', yr_now, sep = '_')),
+    grow_b0  = extr_value_list(pars_var_wide, paste('grow_b0', yr_now, sep = '_')),
+    flow_b0  = extr_value_list(pars_var_wide, paste('flow_b0', yr_now, sep = '_')),
+    frui_b0  = extr_value_list(pars_var_wide, paste('frui_b0', yr_now, sep = '_')),
+    a        = extr_value_list(pars_cons_wide, 'a'),
+    b        = extr_value_list(pars_cons_wide, 'b'),
+    fecu_b0  = extr_value_list(pars_var_wide, paste('fecu_b0', yr_now, sep = '_')),
+    recr_sz   = extr_value_list(pars_cons_wide, 'recr_sz'),
+    recr_sd   = extr_value_list(pars_cons_wide, 'recr_sd'),
+    L        = extr_value_list(pars_cons_wide, 'L'),
+    U        = extr_value_list(pars_cons_wide, 'U'),
+    mat_siz  = 200
+  )
+  
+  # Dynamically add survival parameters based on num_surv_params
+  for (j in 1:num_surv_params) {
+    param_name <- paste0('surv_b', j)
+    value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = '_'))
+    if (!is.null(value)) {
+      pars_year <- append(pars_year, setNames(list(value), paste0('surv_b', j)), after = 1)
+    }
+  }
+  
+  # Dynamically add growth parameters based on num_grow_params
+  for (j in num_grow_params:1) {
+    param_name <- paste0('grow_b', j)
+    value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = '_'))
+    if (!is.null(value)) {
+      pos <- which(names(pars_year) == 'grow_b0') + 1
+      pars_year <- append(pars_year, setNames(list(value), paste0('grow_b', j)), after = pos - 1)
+    }
+  }
+  
+  # Dynamically add flower parameters based on num_flow_params
+  for (j in num_flow_params:1) {
+    param_name <- paste0('flow_b', j)
+    value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = '_'))
+    if (!is.null(value)) {
+      pos <- which(names(pars_year) == 'flow_b0') + 1
+      pars_year <- append(pars_year, setNames(list(value), paste0('flow_b', j)), after = pos - 1)
+    }
+  }
+  
+  # Dynamically add fruit parameters based on num_frui_params
+  for (j in num_frui_params:1) {
+    param_name <- paste0('frui_b', j)
+    value <- extr_value_list(pars_var_wide, paste(param_name, yr_now, sep = '_'))
+    if (!is.null(value)) {
+      pos <- which(names(pars_year) == 'frui_b0') + 1
+      pars_year <- append(pars_year, setNames(list(value), paste0('frui_b', j)), after = pos - 1)
+    }
+  }
+  
+  # Return the list with the dynamic parameters included
+  return(pars_year)
+}
+
+pars_yr <- lapply(1:length(v_years), 
+                  num_surv_params = v_mod_su_index, 
+                  num_grow_params = v_mod_gr_index, 
+                  num_flow_params = v_mod_fl_index, 
+                  num_frui_params = v_mod_fr_i, 
+                  prep_pars)
 
 
 
-# ----------------------
-# 1. Fruit per plot per year
-fruit_by_plot_year <- df %>%
-  filter(!is.na(fruit)) %>%
-  group_by(year, quad_id) %>%
-  summarise(total_fruit_t0 = sum(fruit, na.rm = TRUE), .groups = 'drop')
+# Identify which years contain parameters with numeric(0)
+contains_numeric0 <- sapply(pars_yr, function(regular_list) {
+  any(sapply(regular_list, function(sublist) {
+    identical(sublist, numeric(0))
+  }))
+})
 
-# 2. Recruits per plot per year (shifted back to match fruit of previous year)
-recruits_by_plot_year <- df %>%
-  filter(recruit == 1) %>%
-  mutate(year = year - 1) %>%  # shift recruits back one year
-  group_by(year, quad_id) %>%
-  summarise(n_recruits_t1 = n(), .groups = 'drop')
+which_contains_numeric0 <- which(contains_numeric0)
+v_years_rm_sugg         <- v_years[which_contains_numeric0]
+pars_yr <- pars_yr[-which_contains_numeric0]
 
-# 3. Combine fruit and recruit data at plot-year level
-plot_level_ratios <- recruits_by_plot_year %>%
-  left_join(fruit_by_plot_year, by = c("year", "quad_id")) %>%
-  mutate(total_fruit_t0 = ifelse(
-    total_fruit_t0 < n_recruits_t1, n_recruits_t1, total_fruit_t0),
-    repr_pc = n_recruits_t1 / total_fruit_t0)
+calc_lambda <- function(i) {
+  lam <- Re(eigen(kernel(pars_yr[[i]])$k_yx)$value[1])
+  return(lam)
+}
 
-# 4. Mean ratio per year across all plots
-yearly_mean_ratios <- plot_level_ratios %>%
-  group_by(year) %>%
-  summarise(mean_repr_pc = mean(repr_pc, na.rm = TRUE),
-            sd_repr_pc   = sd(repr_pc, na.rm = TRUE),
-            n_plots      = n(),
-            .groups = 'drop')
-
-# Output
-print(yearly_mean_ratios)
+# Year specific lambdas --------------------------------------------------------
+lambdas_yr <- lapply(1:(length(pars_yr)), calc_lambda)
+names(lambdas_yr) <- v_years[-which_contains_numeric0]
 
 
+# Comparing the year-specific lambdas
+year_kern <- function(i) {
+  return(kernel(pars_yr[[i]])$k_yx)
+}
 
+kern_yr <- lapply(1:(length(v_years[-which_contains_numeric0])), year_kern)
+
+all_mat <- array(dim = c(200, 200, (length(v_years[-which_contains_numeric0]))))
+
+for(i in 1:(length(v_years[-which_contains_numeric0]))) {
+  all_mat[,,i] <- as.matrix(kern_yr[[i]])
+}
+
+mean_kern <- apply(all_mat, c(1, 2), mean)
+lam_mean_kern <- Re(eigen(mean_kern)$value[1])
+
+
+# Population counts at time t0
+pop_counts_t0 <- df %>%
+  group_by(year, quad) %>%
+  filter(!is.na(survives)) %>% 
+  summarize(n_t0 = n()) %>% 
+  ungroup %>% 
+  mutate(year = year + 1)
+
+# Population counts at time t1
+pop_counts_t1 <- df %>%
+  group_by(year, quad ) %>%
+  filter(!is.na(survives)) %>%
+  summarize(n_t1 = n()) %>% 
+  ungroup 
+
+# Calculate observed population growth rates -----------------------------------
+#   accounting for discontinued sampling!
+pop_counts <- left_join(pop_counts_t0, 
+                        pop_counts_t1) %>% 
+  # by dropping NAs, we remove gaps in sampling!
+  mutate(year = year - 1) %>% 
+  drop_na %>% 
+  group_by(year) %>% 
+  summarise(n_t0 = sum(n_t0),
+            n_t1 = sum(n_t1)) %>% 
+  ungroup %>% 
+  mutate(obs_pgr = n_t1 / n_t0) %>%
+  full_join(data.frame(year = as.numeric(names(lambdas_yr)),
+                       lambda = unlist(lambdas_yr)), 
+            by = 'year') %>% 
+  drop_na
+
+lam_mean_yr    <- mean(pop_counts$lambda, na.rm = T)
+lam_mean_count <- mean(pop_counts$obs_pgr, na.rm = T)
+
+lam_mean_geom <- exp(mean(log(pop_counts$obs_pgr), na.rm = T))
+lam_mean_geom
+
+lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
+lam_mean_overall
+
+
+# projecting a population vector for each year using the year-specific models,
+# and compare the projected population to the observed population
+count_indivs_by_size <- function(size_vector,
+                                 lower_size,
+                                 upper_size,
+                                 matrix_size){
+  
+  size_vector %>%
+    cut(breaks = seq(lower_size - 0.00001,
+                     upper_size + 0.00001,
+                     length.out = matrix_size + 1)) %>%
+    table %>%
+    as.vector
+  
+}
+
+yr_pop_vec <- function(i) {
+  vec_temp <- df_su %>% filter(year == i) %>% select(logsize_t0) %>% unlist()
+  min_sz   <- pars_mean$L
+  max_sz   <- pars_mean$U
+  pop_vec <- count_indivs_by_size(vec_temp, min_sz, max_sz, 200)
+  
+  return(pop_vec)
+}
+
+year_pop <- lapply(pop_counts$year, yr_pop_vec)
+
+proj_pop <- function(i) {
+  sum(all_mat[,,i] %*% year_pop[[i]])
+}
+
+projected_pop_ns  <- sapply(1:(length(pop_counts$year)), proj_pop)
+
+pop_counts_update <- pop_counts %>%
+  mutate(proj_n_t1 = projected_pop_ns) %>%
+  mutate(proj_pgr  = proj_n_t1/n_t0)
+
+fig_mod_vs_obs <- ggplot(pop_counts_update) +
+  geom_point( aes(x = lambda,   y = obs_pgr), color = 'brown') +
+  geom_point( aes(x = proj_pgr, y = obs_pgr), color = 'red') +
+  geom_abline(aes(intercept = 0, slope = 1)) +
+  labs(title    = 'Lambda vs pgr',
+       subtitle = v_ggp_suffix,
+       x        = 'Modeled lambda',
+       y        = 'Observed population growth rate') +
+  theme_classic()
+
+
+
+# # ----------------------
+# # 1. Fruit per plot per year
+# fruit_by_plot_year <- df %>%
+#   filter(!is.na(fruit)) %>%
+#   group_by(year, quad_id) %>%
+#   summarise(total_fruit_t0 = sum(fruit, na.rm = TRUE), .groups = 'drop')
+# 
+# # 2. Recruits per plot per year (shifted back to match fruit of previous year)
+# recruits_by_plot_year <- df %>%
+#   filter(recruit == 1) %>%
+#   mutate(year = year - 1) %>%  # shift recruits back one year
+#   group_by(year, quad_id) %>%
+#   summarise(n_recruits_t1 = n(), .groups = 'drop')
+# 
+# # 3. Combine fruit and recruit data at plot-year level
+# plot_level_ratios <- recruits_by_plot_year %>%
+#   left_join(fruit_by_plot_year, by = c("year", "quad_id")) %>%
+#   mutate(total_fruit_t0 = ifelse(
+#     total_fruit_t0 < n_recruits_t1, n_recruits_t1, total_fruit_t0),
+#     repr_pc = n_recruits_t1 / total_fruit_t0)
+# 
+# # 4. Mean ratio per year across all plots
+# yearly_mean_ratios <- plot_level_ratios %>%
+#   group_by(year) %>%
+#   summarise(mean_repr_pc = mean(repr_pc, na.rm = TRUE),
+#             sd_repr_pc   = sd(repr_pc, na.rm = TRUE),
+#             n_plots      = n(),
+#             .groups = 'drop')
+# 
+# # Output
+# print(yearly_mean_ratios)

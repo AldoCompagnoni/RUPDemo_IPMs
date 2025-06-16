@@ -858,6 +858,21 @@ pars <- Filter(function(x) length(x) > 0, list(
 
 
 # Building the IPM -------------------------------------------------------------
+# Function describing the invert logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, num_pars = v_mod_su_index) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_pars) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
+}
+
 # Function describing standard deviation of growth model
 grow_sd <- function(x, pars) {
   pars$a * (exp(pars$b* x)) %>% sqrt 
@@ -874,23 +889,6 @@ gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
   }
   sd_value <- grow_sd(x, pars)
   return(dnorm(y, mean = mean_value, sd = sd_value))
-}
-
-
-# Function describing the invert logit
-inv_logit <- function(x) {exp(x) / (1 + exp(x))}
-
-
-# Survival of x-sized individual to time t1
-sx <- function(x, pars, num_pars = v_mod_su_index) {
-  survival_value <- pars$surv_b0
-  for (i in 1:num_pars) {
-    param_name <- paste0('surv_b', i)
-    if (!is.null(pars[[param_name]])) {
-      survival_value <- survival_value + pars[[param_name]] * x^(i)
-    }
-  }
-  return(inv_logit(survival_value))
 }
 
 # Function describing the transition kernel
@@ -928,7 +926,7 @@ re_y_dist <- function(y, pars) {
 }
 
 # F-kernel
-fxy <- function(y, x, pars) {
+fyx <- function(y, x, pars) {
   fl_x(x, pars) *
     fr_x(x, pars) *
     pars$fecu_b0 *
@@ -982,7 +980,7 @@ kernel <- function(pars) {
   }
   
   # Fertility matrix
-  Fmat <- outer(y, y, Vectorize(function(x, y) fxy(x, y, pars))) * h
+  Fmat <- outer(y, y, Vectorize(function(x, y) fyx(x, y, pars))) * h
 
   # Full Kernel is simply a summation of fertility and transition matrices
   k_yx <- Fmat + Tmat
@@ -1043,18 +1041,18 @@ plot(y_vals, re_vals, type = "l", main = "Recruitment Size Distribution",
      xlab = "Size (y)", ylab = "Density")
 
 
-fxy_vals <- outer(x_vals, y_vals, Vectorize(function(x, y) fxy(x, y, pars)))
+fyx_vals <- outer(x_vals, y_vals, Vectorize(function(x, y) fyx(x, y, pars)))
 selected_x <- c(2, 5, 8)  # example sizes
-matplot(y_vals, t(fxy_vals[selected_x, ]), type = "l", lty = 1, col = 1:length(selected_x),
-        main = "Kernel fxy across y for selected x",
-        xlab = "Size (y)", ylab = "fxy value")
+matplot(y_vals, t(fyx_vals[selected_x, ]), type = "l", lty = 1, col = 1:length(selected_x),
+        main = "Kernel fyx across y for selected x",
+        xlab = "Size (y)", ylab = "fyx value")
 legend("topright", legend = paste("x =", selected_x), col = 1:length(selected_x), lty = 1)
 
 
 # Approximated lambda
 dx <- x_vals[2] - x_vals[1]
 dy <- y_vals[2] - y_vals[1]
-lambda_approx <- sum(fxy_vals) * dx * dy
+lambda_approx <- sum(fyx_vals) * dx * dy
 
 cat("F-only lambda (approx):", lambda_approx, "\n")
 cat("Full IPM lambda (eigen):", lam_mean, "\n")

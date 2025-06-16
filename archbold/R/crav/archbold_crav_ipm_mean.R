@@ -768,6 +768,49 @@ df_repr_pc <- df_mean %>%
   ) %>%
   drop_na()
 
+# overall level
+df_mean %>% 
+  filter(!is.na(size_t0)) %>% 
+  summarize(n_adults = n()) %>% 
+  bind_cols(df_mean %>% 
+              filter(!is.na(recruit)) %>%
+              summarize(n_rec = n())) %>% 
+  mutate(rp_pc_m = n_rec / n_adults)
+
+
+# site level
+df_mean %>% 
+  filter(!is.na(size_t0)) %>%
+  group_by(site) %>% 
+  summarize(n_adults = n()) %>% 
+  left_join(df_mean %>% 
+              filter(!is.na(recruit)) %>%
+              group_by(site) %>%
+              summarize(n_rec = n()),
+            by = 'site') %>% 
+  mutate(n_rec = ifelse(is.na(n_rec), 0, n_rec)) %>%
+  mutate(repr_pc_mean = n_rec / n_adults) %>% 
+  summarise(n_adults = sum(n_adults),
+            n_rec    = sum(n_rec),
+            rp_pc_m  = mean(repr_pc_mean))
+
+
+# quad level
+df_mean %>% 
+  filter(!is.na(size_t0)) %>%
+  group_by(quad_id) %>% 
+  summarize(n_adults = n()) %>% 
+  left_join(df_mean %>% 
+              filter(!is.na(recruit)) %>%
+              group_by(quad_id) %>%
+              summarize(n_rec = n()),
+            by = 'quad_id') %>% 
+  mutate(n_rec = ifelse(is.na(n_rec), 0, n_rec)) %>%
+  mutate(repr_pc_mean = n_rec / n_adults) %>% 
+  summarise(n_adults = sum(n_adults),
+            n_rec    = sum(n_rec),
+            rp_pc_m  = mean(repr_pc_mean))
+
 
 # Extracting parameter estimates -----------------------------------------------
 # Survival

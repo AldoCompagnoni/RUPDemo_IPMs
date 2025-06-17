@@ -26,7 +26,7 @@ v_custom_delimiter <- c()
 source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list)
+head(sp_list, 15)
 target_spec <- sp_list %>% .[c(3),]  
 
 source('pipeline/plant_tracker_02.R')

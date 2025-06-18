@@ -31,7 +31,7 @@ v_species     <- c('Bouteloua curtipendula')
 # Removal of certain years if unspecified nothing is removed
 v_years_re       <- c()
 # Define size threshold
-v_size_threshold <- c(-12.7)
+v_size_threshold <- c(-0.51)
 # Set a complexity to the growth and survival model 
 # (NULL = highest AIC / 0 = intercept / 1 = linear / 2 = quadratic / 3 = cubic)
 v_mod_set_gr     <- c()

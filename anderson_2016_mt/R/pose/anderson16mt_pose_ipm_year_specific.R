@@ -1,11 +1,11 @@
 # IPM year specific - Anderson 2016 Montana - Poa secunda
 
-# Author: Diana Spurite
+# Author: Diāna Spurīte
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.03.06
+# Date  : 2025.06.18
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
@@ -73,7 +73,7 @@ rec_mod
 
 # Building the IPM from scratch ------------------------------------------------
 # All parameters
-head(skim(all_pars))
+skim(all_pars)
 
 # Mean population growth rate
 lam_mean_yr
@@ -93,4 +93,3 @@ lam_mean_kern
 
 # Building the IPM with ipmr ---------------------------------------------------
 ipmr_yr 
-

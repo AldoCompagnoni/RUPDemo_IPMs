@@ -1,11 +1,11 @@
 # Populating padrino - Anderson 2016 Arizona - Schedonnardus paniculatus
 
-# Author: Diana Spurite
+# Author: Diāna Spurīte
 # Co    : Aspen Workman, Aldo Compagnoni, Niklas Neisse
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.05.13
+# Date  : 2025.06.18
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
@@ -39,7 +39,7 @@ v_ipm_type    <- c('mean')
 
 # Taxonomic information --------------------------------------------------------
 # The accepted name of the species (here Wikipedia)
-v_species_accepted <- c('Muhlenbergia paniculata')
+v_species_accepted <- gsub('Muhlenbergia', '_', 'paniculata')
 # The accepted genus
 v_tax_genus  <- sub('_.*', '', v_species_accepted)
 # The accepted family
@@ -148,10 +148,10 @@ source('pipeline/padrino_ipm_type.R')
 
 # Parameters -------------------------------------------------------------------
 # All parameters of the ipm
-pars
+all_pars
 
 # Year specific lambda -impr- 
-lam_mean_ipmr 
+lam_mean_ipmr
 
 # Padrino entry
 pdb
@@ -161,7 +161,7 @@ pdb
 # Deterministic lambda, year specific
 bg_ipm_pdb
 lambda(bg_ipm_pdb)
-lam_mean_ipmr
+plot(lambda(bg_ipm_pdb) ~ lam_mean_ipmr$years)
 
 # Testing the model with padrino
 test_model(pdb_test, id = v_ipm_id)

@@ -31,11 +31,11 @@ v_species     <- c('Bouteloua eriopoda')
 # Removal of certain years if unspecified nothing is removed
 v_years_re       <- c()
 # Define size threshold
-v_size_threshold <- c(-12.7)
+v_size_threshold <- c(-10.85)
 # Set a complexity to the growth and survival model 
 # (NULL = highest AIC / 0 = intercept / 1 = linear / 2 = quadratic / 3 = cubic)
 v_mod_set_gr     <- c()
-v_mod_set_su     <- c()
+v_mod_set_su     <- c(2)
 
 
 # Main pipeline ----------------------------------------------------------------

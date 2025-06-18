@@ -34,7 +34,7 @@ v_years_re       <- c()
 v_size_threshold <- c(-12.7)
 # Set a complexity to the growth and survival model 
 # (NULL = highest AIC / 0 = intercept / 1 = linear / 2 = quadratic / 3 = cubic)
-v_mod_set_gr     <- c()
+v_mod_set_gr     <- c(2)
 v_mod_set_su     <- c()
 
 

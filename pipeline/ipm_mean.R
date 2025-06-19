@@ -1,4 +1,4 @@
-# IPM for Author yyyy; State(or region);
+# IPM mean; State(or region);
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
@@ -298,7 +298,7 @@ gr_mod_mean_3 <- lm(logsize_t1 ~
 
 # Compare models using AIC
 gr_mods              <- list(gr_mod_mean_0, gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
-gr_dAIC_values       <- AICtab(gr_mods, weights = T, sort = F)$dAIC
+gr_dAIC_values       <- bbmle::AICctab(gr_mods, weights = T, sort = F)$dAIC
 
 # Get the sorted indices of dAIC values
 gr_sorted_indices    <- order(gr_dAIC_values)
@@ -380,7 +380,7 @@ su_mod_mean_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
 
 # Compare models using AIC
 su_mods              <- list(su_mod_mean_0, su_mod_mean, su_mod_mean_2, su_mod_mean_3)
-su_dAIC_values       <- AICtab(su_mods, weights = T, sort = F)$dAIC
+su_dAIC_values       <- bbmle::AICctab(su_mods, weights = T, sort = F)$dAIC
 
 # Get the sorted indices of dAIC values
 su_sorted_indices    <- order(su_dAIC_values)

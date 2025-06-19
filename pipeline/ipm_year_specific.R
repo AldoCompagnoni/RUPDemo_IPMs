@@ -299,10 +299,10 @@ su_mod_yr_2 <- glmer(
 su_mod_yr_3 <- glmer(
   survives ~ logsize_t0 + logsize_t0_2 +  logsize_t0_3 + (1 | year), 
   data = surv_df, family = binomial)
-su_mods     <- list(su_mod_yr_0, su_mod_yr, su_mod_yr_2, su_mod_yr_3)
 
+su_mods     <- list(su_mod_yr_0, su_mod_yr, su_mod_yr_2, su_mod_yr_3)
 # Assign the best model to the variable
-su_dAIC_values    <- AICtab(su_mods, weights = T, sort = F)$dAIC
+su_dAIC_values    <- bbmle::AICctab(su_mods, weights = T, sort = F)$dAIC
 su_sorted_indices <- order(su_dAIC_values)
 
 # Establish the index of model complexity
@@ -405,8 +405,7 @@ gr_mod_yr_3 <- lmer(
 
 gr_mods <- list(gr_mod_yr_0, gr_mod_yr, gr_mod_yr_2, gr_mod_yr_3)
 # Assign the best model
-gr_dAIC_values <- AICtab(gr_mods, weights = T, sort = F)$dAIC
-# Get the sorted indices of dAIC values
+gr_dAIC_values <- bbmle::AICctab(gr_mods, weights = T, sort = F)$dAIC
 gr_sorted_indices <- order(gr_dAIC_values)
 
 # Establish the index of model complexity
@@ -694,6 +693,21 @@ write.csv(pars_var_wide,
 
 # Building the year-specific IPMs from scratch ---------------------------------
 # Functions
+# Inverse logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, num_params = su_mod_ys_index_bestfit) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_params) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
+}
+
 # Standard deviation of growth model
 grow_sd <- function(x, pars) {
   pars$a * (exp(pars$b * x)) %>% sqrt 
@@ -710,21 +724,6 @@ gxy <- function(x, y, pars, num_params = gr_mod_ys_index_bestfit) {
   }
   sd_value <- grow_sd(x, pars)
   return(dnorm(y, mean = mean_value, sd = sd_value))
-}
-
-# Inverse logit
-inv_logit <- function(x) {exp(x) / (1 + exp(x))}
-
-# Survival of x-sized individual to time t1
-sx <- function(x, pars, num_params = su_mod_ys_index_bestfit) {
-  survival_value <- pars$surv_b0
-  for (i in 1:num_params) {
-    param_name <- paste0('surv_b', i)
-    if (!is.null(pars[[param_name]])) {
-      survival_value <- survival_value + pars[[param_name]] * x^(i)
-    }
-  }
-  return(inv_logit(survival_value))
 }
 
 # Transition of x-sized individual to y-sized individual at time t1
@@ -751,9 +750,6 @@ kernel <- function(pars) {
   b      <- L + c(0:n) * h
   y      <- 0.5 * (b[1:n] + b[2:( n + 1 )])
   
-  Fmat   <- matrix(0, n, n)
-  Fmat[] <- matrix(fy(y, pars, h), n, n)
-  
   Smat   <- c()
   Smat   <- sx(y, pars)
   
@@ -771,6 +767,9 @@ kernel <- function(pars) {
     Gmat[n,i] <- Gmat[n,i] + 1 - sum(Gmat[,i])
     Tmat[,i]  <- Gmat[,i] * Smat[i]
   }
+  
+  Fmat   <- matrix(0, n, n)
+  Fmat[] <- matrix(fy(y, pars, h), n, n)
   
   k_yx <- Fmat + Tmat
   

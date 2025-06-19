@@ -1,4 +1,4 @@
-# Quadrat data - Moore 2021 Arizona 
+# Quadrat data - Adler 2007 Kansas
 
 # Author: Niklas Neisse
 # Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*

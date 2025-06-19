@@ -36,13 +36,13 @@ v_delimiter <- c(',')
 # Data -------------------------------------------------------------------------
 # Species list
 sp_list <- read_delim(
-  file.path(dir_qud, "species_list.csv"), 
+  file.path(dir_qud, 'species_list.csv'), 
   delim = v_delimiter, escape_double = FALSE, trim_ws = TRUE) %>% 
   clean_names()
   
 # Read in quad inventory to use as 'inv' list in plantTracker
 quad_inv      <- read_delim(
-  file.path(dir_qud, "quadrat_inventory.csv"),
+  file.path(dir_qud, 'quadrat_inventory.csv'),
   delim = v_delimiter, escape_double = FALSE, trim_ws = TRUE)
 quadInv_list  <- as.list(quad_inv)
 quadInv_list  <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
@@ -60,7 +60,7 @@ for(i in 1:length(quadNames)){
   quadNow      <- quadNames[i]
   # quad/year name combination
   quadYears    <- file.path(dir_shp, quadNow) %>% 
-    list.files( pattern = ".e00$" ) 
+    list.files( pattern = '.e00$' ) 
   
   # loop over each year  
   for(j in 1:length(quadYears)){
@@ -72,7 +72,7 @@ for(i in 1:length(quadNames)){
       dplyr::select( SCI_NAME, geometry) %>% 
       clean_names() %>% 
       rename(species = sci_name)
-    shapeNow$site <- "ks"
+    shapeNow$site <- 'ks'
     shapeNow$quad <- quadNow
     shapeNow$year <- quad_yr_name %>% 
       gsub(quadNow,'',.) %>% 
@@ -83,7 +83,7 @@ for(i in 1:length(quadNames)){
     # start final data frame
     if(i == 1 & j == 1) {
       dat <- shapeNow
-      # "append" data to the initial data frame  
+      # 'append' data to the initial data frame  
     } else {
       dat <- rbind(dat, shapeNow)
     }
@@ -97,8 +97,8 @@ dat <- readRDS(file.path(dir_qud, 'adler07_quadrats_full.rds'))
 
 # Clean data -------------------------------------------------------------------
 # Check the inv and dat arguments
-checkDat(dat, inv_ks, species = "species", site = "site", quad = "quad", 
-         year = "year", geometry = "geometry")
+checkDat(dat, inv_ks, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 
 dat01 <- dat
 

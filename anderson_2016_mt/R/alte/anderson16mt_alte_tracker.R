@@ -42,6 +42,3 @@ dat_target_spec
 # Buffer size - regular and genet
 st_bbox(dat_target_spec)
 v_buff
-
-
-

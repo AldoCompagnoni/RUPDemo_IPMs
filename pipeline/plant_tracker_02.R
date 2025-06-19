@@ -75,8 +75,7 @@ data <- {
     readRDS(file = list.files(
       dir_qud, pattern = 'all_filtered\\.rds$', full.names = TRUE)[1])
   }
-  
-} %>%
+  } %>%
   # Remove the 'type' column
   select(-any_of(c('type'))) %>% 
   clean_names() #%>%   
@@ -135,11 +134,15 @@ if (!dir.exists(dir_data)) {
 
 # Save the tracked data to a CSV file
 datTrackSpp %>% 
-  as.data.frame %>% 
+  as.data.frame() %>% 
   dplyr::select(
     Site, Quad, Species, trackID, Year, basalArea_genet, recruit, 
     survives_tplus1, age, size_tplus1, nearEdge, Suspect) %>%
-  clean_names() %>% 
+  clean_names() %>%
+  dplyr::mutate(
+    year = ifelse(year < 100, as.integer(
+      paste0("19", sprintf("%02d", year))), year),
+    year_t0 = year) %>%
   write.csv(file.path(
     dir_data, paste0(
       v_script_prefix, '_', v_sp_abb, '.csv')), row.names = FALSE)  

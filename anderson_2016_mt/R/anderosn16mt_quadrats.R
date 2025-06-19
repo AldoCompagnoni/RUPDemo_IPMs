@@ -26,10 +26,10 @@ dir_shp <- file.path(dir_qud, 'shapefiles')
 
 # Data -------------------------------------------------------------------------
 # Species list
-sp_list <- read.csv(file.path(dir_qud, "species_list.csv"))
+sp_list <- read.csv(file.path(dir_qud, 'species_list.csv'))
 
 # Read in quad inventory to use as 'inv' list in plantTracker
-quad_inv <- read.csv(file.path(dir_qud, "quad_inventory.csv"))
+quad_inv <- read.csv(file.path(dir_qud, 'quad_inventory.csv'))
 quadInv_list <- as.list(quad_inv)
 quadInv_list <- lapply(X = quadInv_list, FUN = function(x) x[is.na(x) == FALSE])
 inv_sgs <- quadInv_list
@@ -40,7 +40,7 @@ shpFiles <- list.files(dir_shp)
 
 quadYears <- unlist(strsplit(list.files(
   file.path(dir_shp),
-  pattern = ".shp$"), split = ".shp"))
+  pattern = '.shp$'), split = '.shp'))
 
 for (j in 1:length(quadYears)) {
   quadYearNow <- quadYears[j]
@@ -53,16 +53,16 @@ for (j in 1:length(quadYears)) {
                           crs = NA)
   
   # Add Site, Quad, and Year
-  shapeNow$Site <- "Mt"
-  shapeNow$Quad <- strsplit(quadYearNow, split = "_")[[1]][1]
-  shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = "_")[[1]][2])
+  shapeNow$Site <- 'Mt'
+  shapeNow$Quad <- strsplit(quadYearNow, split = '_')[[1]][1]
+  shapeNow$Year <- as.numeric(strsplit(quadYearNow, split = '_')[[1]][2])
   
   # Handle specific columns based on layer type (_D or not)
-  if (grepl(quadYearNow, pattern = "_D")) {
+  if (grepl(quadYearNow, pattern = '_D')) {
     # Keep only the relevant columns for point data
     shapeNow <- shapeNow %>%
       select(Species, Site, Quad, Year, geometry) %>%
-      mutate(type = "point")
+      mutate(type = 'point')
     
     # Apply buffer if necessary for point data
     shapeNow <- st_buffer(shapeNow, dist = .0025)
@@ -70,7 +70,7 @@ for (j in 1:length(quadYears)) {
     # Keep only the relevant columns for polygon data
     shapeNow <- shapeNow %>%
       select(Species, Site, Quad, Year, geometry) %>%
-      mutate(type = "polygon")
+      mutate(type = 'polygon')
   }
   
   # Combine all data into the `dat` variable
@@ -84,12 +84,12 @@ for (j in 1:length(quadYears)) {
 dat <- dat %>% clean_names()
 
 # Save the output file so that it doesn't need to be recreated ever again
-saveRDS(dat,   file = file.path(dir_qud, "anderson16mt_quadrats_full.rds"))
-dat <- readRDS(file = file.path(dir_qud, "anderson16mt_quadrats_full.rds"))
+saveRDS(dat,   file = file.path(dir_qud, 'anderson16mt_quadrats_full.rds'))
+dat <- readRDS(file = file.path(dir_qud, 'anderson16mt_quadrats_full.rds'))
 
 # Check the inv and dat arguments ----------------------------------------------
-checkDat(dat, inv_sgs, species = "species", site = "site", quad = "quad", 
-         year = "year", geometry = "geometry")
+checkDat(dat, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 # Some rows had invalid geometry, so we fix the geometries
 invalid_geom <- c(
   452, 481, 686, 713, 2224, 3287, 3736, 18640, 19211, 36792, 42830, 44822, 
@@ -110,17 +110,17 @@ for(i in 1:length(invalid_geom)){
   dat01[invalid_geom[i],6] <- st_make_valid(dat01[invalid_geom[i],6])
  }
 
-checkDat(dat01, inv_sgs, species = "species", site = "site", quad = "quad", 
-         year = "year", geometry = "geometry")
+checkDat(dat01, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 # Still have a couple of repeated rows, somehow, so we will drop those
 drop_rows <- c(
   20522, 26373, 34704, 67889, 74969, 132988, 135544, 165470, 167341)
 
 dat02 <- dat01[!(row.names(dat01) %in% drop_rows),]
-checkDat(dat02, inv_sgs, species = "species", site = "site", quad = "quad", 
-         year = "year", geometry = "geometry")
+checkDat(dat02, inv_sgs, species = 'species', site = 'site', quad = 'quad', 
+         year = 'year', geometry = 'geometry')
 
 
 # Save data
-saveRDS(  dat02, file = file.path(dir_qud, "anderson16mt_quadrats_filtered.rds"))
-dat02 <- readRDS(file = file.path(dir_qud, "anderson16mt_quadrats_filtered.rds"))
+saveRDS(  dat02, file = file.path(dir_qud, 'anderson16mt_quadrats_filtered.rds'))
+dat02 <- readRDS(file = file.path(dir_qud, 'anderson16mt_quadrats_filtered.rds'))

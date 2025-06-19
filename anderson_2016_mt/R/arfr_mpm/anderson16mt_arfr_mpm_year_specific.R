@@ -1,13 +1,13 @@
 # MPM year specific - Anderson 2016 Montana - Artemisia frigida
 
-# Author: Diana Spurite
+# Author: Diāna Spurīte
 # Co    : Aspen Workman, Niklas Neisse, Aldo Compagnoni*
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.05.13
+# Date  : 2025.06.19
 
-# Publication : https://doi.org/10.1890/11-0193.1
+# Publication: https://doi.org/10.1890/11-0193.1
 
 
 # Comments ---------------------------------------------------------------------
@@ -33,10 +33,6 @@ v_mod_type    <- c('mpm')
 # Years:
 #  Removal of certain years if unspecified nothing is removed
 v_years_re <- c()
-# Age:
-#  Set a age threshold at which all ages get the same survival probability
-#  If unspecified it's 'c(1)'
-v_surv_age_threshold <- c(1)
 
 
 # MPM pipeline -- with model comparison -- -------------------------------------
@@ -65,4 +61,3 @@ summary(pcr_mod)
 
 # Recruit3: per capita recruitment *unconditinoal*
 summary(pcr_uc_mod)
-

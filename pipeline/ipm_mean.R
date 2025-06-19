@@ -124,13 +124,13 @@ if (length(v_size_threshold) > 0) {
 # Analyze the quadrat inventory by year
 # Group data by quadrant and year, counting the number of individuals
 g_inv_plot_per_year <- df %>% 
-  group_by(quad, year) %>% 
+  group_by(quad, year_t0) %>% 
   summarise(nr_ind = length(.[2])) %>% 
   ungroup() %>% 
   # pivot_wider(names_from = year, values_from = nr_ind) %>%
   # Create a scatter plot of quadrat counts over the years
   ggplot() + 
-  geom_point(aes(x = year, y = quad)) +
+  geom_point(aes(x = year_t0, y = quad)) +
   theme_bw() +
   labs(title    = 'Sampling inventory',
        subtitle = v_ggp_suffix) +
@@ -147,39 +147,35 @@ ggsave(paste0(dir_result, '/0.0_quad_per_year', v_suffix,'', v_suffix,'.png'),
 # Survival data frame
 surv_df <- subset(df, !is.na(survives)) %>%
   subset(size_t0 != 0) %>%
-  select(quad, track_id, year, size_t0, survives, size_t1, 
+  select(quad, track_id, year_t0, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 # Growth data frame
 grow_df <- df %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
-  select(quad, track_id, year, size_t0, survives, size_t1, 
+  select(quad, track_id, year_t0, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
-# Total area data frame
-quad_df <- df %>%  
-  group_by (quad, year) %>% 
-  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
-  ungroup
+# Recruit data frame
+# Parent area cover data at year t0
+cover_df <- df %>%  
+  group_by(quad, year_t0) %>% 
+  summarise(tot_p_area = sum(size_t0, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  group_by(year_t0) %>% 
+  mutate(g_cov = mean(tot_p_area)) %>% 
+  ungroup()
 
-group_df <- quad_df %>% 
-  group_by (year) %>% 
-  summarise(g_cov = mean(tot_p_area)) %>% 
-  ungroup
-
-cover_df <- left_join(quad_df, group_df) %>%
-  mutate(year = year + 1) %>% 
-  mutate(year = as.integer(year)) %>% 
-  drop_na()
-
-# Recruitment data frame
+# Recruitment data at year t1
 recr_df <- df %>%
-  group_by (year, quad) %>% 
-  summarise(nr_quad = sum(recruit, na.rm = T)) %>% 
-  ungroup
+  group_by(quad, year_t0) %>% 
+  summarise(nr_rec = sum(recruit, na.rm = TRUE)) %>% 
+  mutate(year_t1 = year_t0 - 1) %>%
+  ungroup() %>% 
+  select(-year_t0)
 
-recr_df <- left_join(cover_df, recr_df)
+recr_df <- full_join(cover_df, recr_df, by = c('quad', 'year_t0' = 'year_t1'))
 
 # Save data
 write.csv(df,      paste0(
@@ -266,7 +262,7 @@ ggsave(paste0(dir_result, '/1.2_overall_gr', v_suffix,'.png'),
 # Create a scatter plot showing the relationship between 
 # total parent plant area and number of recruits
 g_rec_overall <- ggplot(
-  recr_df, aes(x = tot_p_area, y = nr_quad)) + 
+  recr_df, aes(x = tot_p_area, y = nr_rec)) + 
   geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
   theme_bw() + 
   labs(title    = 'Recruitment',
@@ -449,19 +445,19 @@ ggsave(paste0(dir_result, '/2.2_overall_surv_pred_logs', v_suffix, '.png'),
 
 ## Recruitment
 # Filter recruitment data to exclude NAs
-recr_nona_nr_quad <- recr_df %>% filter(!is.na(nr_quad))
+recr_nona_nr_rec <- recr_df %>% filter(!is.na(nr_rec))
 # Fit a negative binomial model for recruitment
-rec_mod_mean <- MASS::glm.nb(nr_quad ~ 1, data = recr_nona_nr_quad)
+rec_mod_mean <- MASS::glm.nb(nr_rec ~ 1, data = recr_nona_nr_rec)
 
 # Generate predictions for recruitment
-recr_nona_nr_quad <- 
-  recr_nona_nr_quad %>% 
+recr_nona_nr_rec <- 
+  recr_nona_nr_rec %>% 
   mutate(pred_mod_mean = predict(rec_mod_mean, type = 'response')) 
 
 # Summarize total number of recruits and predictions
 rec_sums_df_m <- 
-  recr_nona_nr_quad %>%
-  summarize(nr_quad = sum(nr_quad),
+  recr_nona_nr_rec %>%
+  summarize(nr_rec = sum(nr_rec),
             pred_mod_mean = sum(pred_mod_mean))
 
 # Count number of adult individuals
@@ -472,7 +468,7 @@ indiv_m <- surv_df %>%
 repr_pc_m <- indiv_m %>%
   bind_cols(rec_sums_df_m) %>%
   mutate(repr_pc_mean = pred_mod_mean / n_adults) %>%
-  mutate(repr_pc_obs = nr_quad / n_adults) %>%
+  mutate(repr_pc_obs = nr_rec / n_adults) %>%
   drop_na 
 
 

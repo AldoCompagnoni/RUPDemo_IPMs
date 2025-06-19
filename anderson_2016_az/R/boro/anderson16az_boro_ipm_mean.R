@@ -35,7 +35,7 @@ v_size_threshold <- c(-10.7)
 # Set a complexity to the growth and survival model 
 # (NULL = highest AIC / 0 = intercept / 1 = linear / 2 = quadratic / 3 = cubic)
 v_mod_set_gr     <- c()
-v_mod_set_su     <- c()
+v_mod_set_su     <- c(2)
 
 
 # Main pipeline ----------------------------------------------------------------

@@ -34,9 +34,7 @@ v_delimiter <- c(',')
 
 
 # Data -------------------------------------------------------------------------
-# Read in species list, species name changes, and subset species list to perennial grasses
-# with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
-# species with the lowest cover later.
+# Species list
 sp_list <- read_delim(
   file.path(dir_qud, "species_list.csv"), 
   delim = v_delimiter, escape_double = FALSE, trim_ws = TRUE) %>% 

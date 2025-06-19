@@ -19,10 +19,10 @@ load_packages(sf, plantTracker, tidyverse, readr, janitor)
 
 # Specifications ---------------------------------------------------------------
 # Accommodate old variable name set
-if (exists("author_year"))      {v_author_year      <- author_year}
-if (exists("region_abb"))       {v_region_abb       <- region_abb}
-if (exists("gr_form"))          {v_gr_form          <- gr_form}
-if (exists("custom_delimiter")) {v_custom_delimiter <- custom_delimiter}
+if (exists('author_year'))      {v_author_year      <- author_year}
+if (exists('region_abb'))       {v_region_abb       <- region_abb}
+if (exists('gr_form'))          {v_gr_form          <- gr_form}
+if (exists('custom_delimiter')) {v_custom_delimiter <- custom_delimiter}
 
 
 # Directories ------------------------------------------------------------------
@@ -77,37 +77,60 @@ quote_bare <- function(...){
 # Read species list and filter for target species
 sp_list <- readr::read_delim(
   {
-    f <- list.files(path = dir_qud, pattern = "species_list.csv", full.names = TRUE)
-    match1 <- f[basename(f) == "species_list.csv"]
+    f <- list.files(path = dir_qud, pattern = 'species_list.csv', full.names = TRUE)
+    match1 <- f[basename(f) == 'species_list.csv']
     match2 <- f[grepl(v_script_prefix, f)]
     if (length(match1) > 0) match1[1] else match2[1]
   },
-  delim = v_delimiter, escape_double = FALSE, trim_ws = TRUE
-) %>%
+  delim = v_delimiter,
+  col_names = TRUE,
+  escape_double = FALSE,
+  trim_ws = TRUE,
+  show_col_types = FALSE
+  ) %>%
+  {
+    # Capture valid (non-placeholder) column names
+    v_spec_col_names <- names(.) %>%
+      discard(~ str_detect(.x, '^\\.\\.\\.'))
+    
+    # If placeholder columns exist, fix by merging
+    if (any(str_detect(names(.), '^\\.\\.\\.'))) {
+      bind_cols(
+        tibble(!!v_spec_col_names[1] := str_c(.[[v_spec_col_merge[1]]], .[[v_spec_col_merge[2]]], sep = ' ')),
+        .[, -v_spec_col_merge]
+      ) %>%
+        set_names(v_spec_col_names)
+    } else {
+      .
+    }
+  } %>%
   as.data.frame() %>%
   { 
     # Rename 'type' or 'form' to 'growthForm' if they exist
+    if('growthForm' %in% colnames(.)) {
+      . <- rename(., growth_form = growthForm)
+    }
     if('type' %in% colnames(.)) {
-      . <- rename(., growthForm = type)
+      . <- rename(., growth_form = type)
     }
     if('form' %in% colnames(.)) {
-      . <- rename(., growthForm = form)
+      . <- rename(., growth_form = form)
     }
     .
   } %>% 
   filter(
     if(tolower(v_gr_form) == 'grass') {
       # If 'grass' is specified, include 'grass', 'c3', 'c4'
-      tolower(growthForm) %in% c('grass', 'c3', 'c4', 'shortgrass')  
+      tolower(growth_form) %in% c('grass', 'c3', 'c4', 'shortgrass')  
     } else {
-      # Otherwise, filter exactly by the specified growthForm
-      tolower(growthForm) == tolower(v_gr_form)  
+      # Otherwise, filter exactly by the specified growth_form
+      tolower(growth_form) == tolower(v_gr_form)  
     }
   ) %>% 
   {
-    if ("count" %in% colnames(.)) {
+    if ('count' %in% colnames(.)) {
       arrange(., desc(count))
-    } else if ("counts" %in% colnames(.)) {
+    } else if ('counts' %in% colnames(.)) {
       arrange(., desc(counts))
     } else {
       if (v_gr_form == 'forb') {

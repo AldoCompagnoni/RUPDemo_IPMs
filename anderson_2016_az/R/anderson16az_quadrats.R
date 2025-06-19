@@ -1,13 +1,13 @@
-# Using plantTracker to convert chart quadrat data from SGS LTER to demographic data for IPMs
-# Aspen Workman, fall 2023
-#
-#
-# Outline
-# This script uses the plantTracker package (Stears et al. 2022, Methods in Ecology & Evolution)
-# to convert this chart quadrat data to demographic data that will be used to parameterize vital
-# rate models for the construction of integral projection models (IPMs) of the perennial grasses.
-#
-# Publication: https://esajournals.onlinelibrary.wiley.com/doi/10.1002/ecy.3530
+# Quadrat data - Anderson 2016 Arizona 
+
+# Author: Niklas Neisse
+# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
+# Email : neisse.n@protonmail.com
+# Main  : aldo.compagnoni@idiv.de
+# Web   : https://aldocompagnoni.weebly.com/
+# Date  : 2025.04.15
+
+# Publication: https://doi.org/10.1890/11-2200.1
 
 
 # Packages ---------------------------------------------------------------------
@@ -25,9 +25,7 @@ dir_shp <- file.path(dir_qud, 'shapefiles')
 
 
 # Data -------------------------------------------------------------------------
-# Read in species list, species name changes, and subset species list to perennial grasses
-# with minimum cover of 100. Also taking out Carex spp.; 8 species total, might exclude some
-# species with the lowest cover later.
+# Species list
 sp_list <- read.csv(file.path(dir_qud, "species_list.csv")) %>% 
   clean_names()
 

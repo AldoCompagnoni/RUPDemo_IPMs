@@ -113,8 +113,8 @@ v_clonal  <- if_else(v_gr_form == 'forb', F, T)
 
 # Prepare data for the trackSpp function
 datTrackSpp <- trackSpp(
-  dat_target_spec,
-  inv,
+  dat = dat_target_spec,
+  inv = inv,
   # Dormancy flag
   dorm         = 1,
   # Buffer size

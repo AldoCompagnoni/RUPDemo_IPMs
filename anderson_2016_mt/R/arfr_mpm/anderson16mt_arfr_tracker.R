@@ -1,18 +1,18 @@
 # plantTracker - Anderson 2016 Montana - Artemisia frigida
 
-# Author: Diana Spurite
+# Author: Diāna Spurīte
 # Co    : Aspen Workman, Niklas Neisse, Aldo Compagnoni*
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.05.13
+# Date  : 2025.06.18
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
 # rm(list = ls())
 
-# Data -------------------------------------------------------------------------
-# Define publication 
+# Specifications ---------------------------------------------------------------
+# Define publication
 v_author_year      <- c('anderson_2016')
 # Define region abbreviation
 v_region_abb       <- c('mt')

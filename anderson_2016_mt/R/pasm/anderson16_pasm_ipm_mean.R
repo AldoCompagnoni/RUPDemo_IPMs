@@ -384,4 +384,3 @@ repr_pc_m <- indiv_m %>%
 
 # Output the reproduction per capita summary
 repr_pc_m
-

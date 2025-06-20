@@ -124,13 +124,13 @@ if (length(v_size_threshold) > 0) {
 # Analyze the quadrat inventory by year
 # Group data by quadrant and year, counting the number of individuals
 g_inv_plot_per_year <- df %>% 
-  group_by(quad, year_t0) %>% 
+  group_by(quad, year) %>% 
   summarise(nr_ind = length(.[2])) %>% 
   ungroup() %>% 
   # pivot_wider(names_from = year, values_from = nr_ind) %>%
   # Create a scatter plot of quadrat counts over the years
   ggplot() + 
-  geom_point(aes(x = year_t0, y = quad)) +
+  geom_point(aes(x = year, y = quad)) +
   theme_bw() +
   labs(title    = 'Sampling inventory',
        subtitle = v_ggp_suffix) +
@@ -147,35 +147,41 @@ ggsave(paste0(dir_result, '/0.0_quad_per_year', v_suffix,'', v_suffix,'.png'),
 # Survival data frame
 surv_df <- subset(df, !is.na(survives)) %>%
   subset(size_t0 != 0) %>%
-  select(quad, track_id, year_t0, size_t0, survives, size_t1, 
+  select(quad, track_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 # Growth data frame
 grow_df <- df %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
-  select(quad, track_id, year_t0, size_t0, survives, size_t1, 
+  select(quad, track_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 # Recruit data frame
 # Parent area cover data at year t0
-cover_df <- df %>%  
-  group_by(quad, year_t0) %>% 
-  summarise(tot_p_area = sum(size_t0, na.rm = TRUE)) %>% 
-  ungroup() %>% 
-  group_by(year_t0) %>% 
-  mutate(g_cov = mean(tot_p_area)) %>% 
-  ungroup()
+# Total area data frame
+quad_df <- df %>%  
+  group_by (quad, year) %>% 
+  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
+  ungroup
+
+group_df <- quad_df %>% 
+  group_by (year) %>% 
+  summarise(g_cov = mean(tot_p_area)) %>% 
+  ungroup
+
+cover_df <- left_join(quad_df, group_df) %>%
+  mutate(year = year + 1) %>%
+  mutate(year = as.integer(year)) %>% 
+  drop_na()
 
 # Recruitment data at year t1
-recr_df <- df %>%
-  group_by(quad, year_t0) %>% 
-  summarise(nr_rec = sum(recruit, na.rm = TRUE)) %>% 
-  mutate(year_t1 = year_t0 - 1) %>%
-  ungroup() %>% 
-  select(-year_t0)
+recr_df <- df %>% 
+  group_by (year, quad) %>%
+  summarise(nr_rec = sum(recruit, na.rm = T)) %>% 
+  ungroup
 
-recr_df <- full_join(cover_df, recr_df, by = c('quad', 'year_t0' = 'year_t1'))
+recr_df <- full_join(cover_df, recr_df, by = c('quad', 'year'))
 
 # Save data
 write.csv(df,      paste0(

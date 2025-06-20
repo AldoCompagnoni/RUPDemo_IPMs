@@ -5,7 +5,7 @@
 # Email : diana.spurite@posteo.de
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.06.17
+# Date  : 2025.06.19
 
 # Publication: https://doi.org/10.1890/11-0193.1
 
@@ -19,7 +19,7 @@ v_region_abb       <- c('mt')
 # Define growth form (grass, forb, shrub, c4)
 v_gr_form          <- c('forb')
 # Customized delimiter for `read_delim` function, comma is predefined
-v_custom_delimiter <- c()
+v_custom_delimiter <- c(',')
 # Columns to merge
 v_spec_col_merge <- c(1, 2)
 

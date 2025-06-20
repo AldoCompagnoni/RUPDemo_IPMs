@@ -20,6 +20,8 @@ v_region_abb       <- c('mt')
 v_gr_form          <- c('grass')
 # Customized delimiter for `read_delim` function, comma is predefined
 v_custom_delimiter <- c(',')
+# Columns to merge
+v_spec_col_merge <- c(1, 2)
 
 
 # Main pipelines ---------------------------------------------------------------

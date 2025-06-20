@@ -450,13 +450,11 @@ recr_nona_nr_rec <- recr_df %>% filter(!is.na(nr_rec))
 rec_mod_mean <- MASS::glm.nb(nr_rec ~ 1, data = recr_nona_nr_rec)
 
 # Generate predictions for recruitment
-recr_nona_nr_rec <- 
-  recr_nona_nr_rec %>% 
+recr_nona_nr_rec <- recr_nona_nr_rec %>% 
   mutate(pred_mod_mean = predict(rec_mod_mean, type = 'response')) 
 
 # Summarize total number of recruits and predictions
-rec_sums_df_m <- 
-  recr_nona_nr_rec %>%
+rec_sums_df_m <- recr_nona_nr_rec %>%
   summarize(nr_rec = sum(nr_rec),
             pred_mod_mean = sum(pred_mod_mean))
 
@@ -589,7 +587,7 @@ pxy <- function(x, y, pars) {
 # Function describing the recruitment 
 fy <- function(y, pars, h){
   n_recr  <- pars$fecu_b0
-  recr_y  <- dnorm(y, pars$recr_sz, pars$recr_sd) * h
+  recr_y  <- dnorm(y, pars$recr_sz, max(h/10, pars$recr_sd)) * h
   recr_y  <- recr_y / sum(recr_y)
   f       <- n_recr * recr_y
   return(f)

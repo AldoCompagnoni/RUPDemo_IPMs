@@ -3,7 +3,7 @@ library(leaflet)
 library(sf)
 
 # Load up data from the species of interest (this will vary!)
-source('moore_2021_az/R/bogr/moore21_elel_ipm_mean.R')
+source('moore_2021_az/R/elel/moore21_elel_ipm_mean.R')
 
 # re-read in quadrat data
 dir       <- 'moore_2021_az/data/Ancillary_Data_CSVs/'

@@ -35,7 +35,9 @@ load_packages(
   # patchwork plot alingment
   patchwork,
   # binom.cofint for the survival plot
-  binom) # , skimr, ipmr, binom, janitor, lme4
+  binom,
+  skimr,
+  lubridate) # , skimr, ipmr, binom, janitor, lme4
 
 
 # Specification ----------------------------------------------------------------
@@ -378,6 +380,9 @@ fig_su_bin <- ggplot() +
 fig_su <- fig_su_line + fig_su_bin + plot_layout()
 fig_su
 
+ggsave(file.path(dir_result, 'mean_survival.png'), 
+       plot = fig_su, width = 10, height = 5, dpi = 300)
+
 
 # Growth data ------------------------------------------------------------------
 df_gr <- df_mean %>% 
@@ -455,6 +460,9 @@ fig_gr_pred <- ggplot(
 fig_gr <- fig_gr_line + fig_gr_pred + plot_layout() 
 fig_gr
 
+ggsave(file.path(dir_result, 'mean_growth.png'), 
+       plot = fig_gr, width = 10, height = 5, dpi = 300)
+
 
 # Growth variance --------------------------------------------------------------
 # Fitted values from growth model
@@ -465,7 +473,6 @@ mod_gr_y   <- resid(mod_gr_bestfit)^2
 mod_gr_var <- nls(
   mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
   control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE) ) 
-
 
 
 # Flower data ------------------------------------------------------------------
@@ -566,6 +573,9 @@ fig_fl_bin <- ggplot() +
 fig_fl <- fig_fl_line + fig_fl_bin + plot_layout()
 fig_fl
 
+ggsave(file.path(dir_result, 'mean_flowering.png'), 
+       plot = fig_fl, width = 10, height = 5, dpi = 300)
+
 
 # Fruit data -------------------------------------------------------------------
 df_fr <- df_mean %>%
@@ -633,6 +643,9 @@ fr_mod_ranef <- coef(fr_mod_best)
     )
 }
 
+ggsave(file.path(dir_result, 'mean_fruiting.png'), 
+       plot = fig_fr, width = 10, height = 5, dpi = 300)
+
 
 # Fruit to recruit -------------------------------------------------------------
 repr_pc_by_year <- {
@@ -665,8 +678,6 @@ repr_pc_median <- median(repr_pc_by_year$repr_pc_mean, na.rm = T)
 # Grand mean 
 # Year 
 # Quad
-
-
 
 # # draw fecu_b0 from its empirical distribution
 # fun_lambda_stochastic_fecundity <- function(pars, fecu_values, n_years = 1000) {
@@ -736,12 +747,15 @@ df_re_qd <- df_mean %>%
 fig_re_dens <- ggplot(data = df_re_qd) + 
   geom_jitter(aes(y = rec_qd_t1, x = nr_ind)) + 
   geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm') + 
-  theme_minimal() + 
-  labs(title    = 'Recruitment - desity dependence',
+  theme_bw() + 
+  labs(title    = 'Recruitment - desity dependence: Quad level',
        subtitle = v_ggp_suffix,
        x        = expression('Total parent plant area '[t0]),   
        y        = expression('Number of recruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8))
+
+ggsave(file.path(dir_result, 'mean_rec_density_dependency.png'), 
+       plot = fig_re_dens, width = 10, height = 5, dpi = 300)
 
 
 # Recruitment model ------------------------------------------------------------

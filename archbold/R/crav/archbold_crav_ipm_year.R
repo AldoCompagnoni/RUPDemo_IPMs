@@ -321,6 +321,9 @@ fig_surv_years <- wrap_plots(surv_yrs) +
     theme = theme(plot.title = element_text(size = 13, face = "bold"),
                   plot.subtitle = element_text(size = 8)))
 
+ggsave(file.path(dir_result, 'year_surviaval.png'), 
+       plot = fig_surv_years, width = 8, height = 14, dpi = 300)
+
 
 # Growth model -----------------------------------------------------------------
 # Intercept model 
@@ -414,6 +417,9 @@ fig_grow_years <- wrap_plots(grow_yrs) +
     subtitle = v_ggp_suffix,  
     theme = theme(plot.title = element_text(size = 13, face = "bold"),
                   plot.subtitle = element_text(size = 9)))
+
+ggsave(file.path(dir_result, 'year_growth.png'), 
+       plot = fig_grow_years, width = 8, height = 14, dpi = 300)
 
 
 # Growth variance year specific ------------------------------------------------
@@ -532,6 +538,9 @@ fig_fl_years <- wrap_plots(fl_yrs) +
     theme = theme(plot.title = element_text(size = 13, face = "bold"),
                   plot.subtitle = element_text(size = 8)))
 
+ggsave(file.path(dir_result, 'year_flowering.png'), 
+       plot = fig_fl_years, width = 8, height = 14, dpi = 300)
+
 
 # Fruit model ------------------------------------------------------------------
 mod_fr_0 <- glmer.nb(
@@ -603,6 +612,9 @@ fig_fruit_years <- wrap_plots(fruit_plots) +
     title = "Fruit Production - year specific",
     theme = theme(plot.title = element_text(size = 14, face = "bold")))
 
+ggsave(file.path(dir_result, 'year_fruiting.png'), 
+       plot = fig_fruit_years, width = 8, height = 14, dpi = 300)
+
 
 # Fruit to recruit -------------------------------------------------------------
 # Calculate fruit produced each year (optionally shift year if needed)
@@ -672,6 +684,9 @@ fig_re <- repr_pc_yr %>%
        y        = 'Predicted per capita recruitment') +
   theme_bw() +
   theme(plot.subtitle = element_text(size = 8))
+
+ggsave(file.path(dir_result, 'year_recruits.png'), 
+       plot = fig_re, width = 5, height = 5, dpi = 300)
 
 
 # Exporting parameter estimates ------------------------------------------------
@@ -1219,6 +1234,8 @@ fig_mod_vs_obs <- ggplot(pop_counts_update) +
        y        = 'Observed population growth rate') +
   theme_classic()
 
+ggsave(file.path(dir_result, 'year_lamb_vs_obpopgr.png'), 
+       plot = fig_mod_vs_obs, width = 5, height = 5, dpi = 300)
 
 
 # # ----------------------

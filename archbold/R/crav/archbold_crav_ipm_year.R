@@ -100,43 +100,13 @@ source('helper_functions/predictor_fun.R')
 
 
 # Data -------------------------------------------------------------------------
-# Original data
-df_org  <- read.csv(
-  file.path(dir_data, paste0('ab_', v_sp_abb, '_df_org.csv'))) %>%  
-  mutate(
-    plant_id = as.factor(plant_id),
-    quad_id  = as.factor(quad_id),
-    site     = as.factor(site),
-    quad     = as.factor(quad),
-    mp       = as.factor(mp),
-    plant    = as.factor(plant),
-    caged    = as.factor(caged),
-    veg      = as.factor(veg))
-
-# Meta data
-df_meta <- read.csv(
-  file.path(dir_data, paste0('ab_', v_sp_abb, '_df_meta.csv')))
-
-# Aggrigated annual data 
-df_agg  <- read.csv(
-  file.path(dir_data, paste0('ab_', v_sp_abb, '_df_agg.csv'))) %>%  
-  mutate(
-    plant_id = as.factor(plant_id),
-    quad_id  = as.factor(quad_id),
-    site     = as.factor(site),
-    quad     = as.factor(quad),
-    plant    = as.factor(plant))
-
-
 # Working data -----------------------------------------------------------------
 df <- read.csv(
-  file.path(dir_data, paste0('ab_', v_sp_abb, '_df.csv'))) %>%  
+  file.path(dir_data, paste0('ab_', v_sp_abb, '_df_workdata.csv'))) %>%  
   mutate(
     plant_id = as.factor(plant_id),
     quad_id  = as.factor(quad_id),
-    site     = as.factor(site),
-    quad     = as.factor(quad),
-    plant    = as.factor(plant))
+    site     = as.factor(site))
 
 
 # Survival data ----------------------------------------------------------------
@@ -153,7 +123,7 @@ df_su <- df %>%
 df_gr <- df %>% 
   filter(size_t0 != 0) %>%
   #    filter(size_t1 != 0) %>% # what do I need this for and why does it give me a different length of data????
-  dplyr::select(plant_id, year, size_t0, size_t1, age,
+  dplyr::select(plant_id, year, size_t0, size_t1,
                 logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3) %>%
   # Complete cases only for the AICctab
   drop_na(logsize_t0, logsize_t0_2, logsize_t0_3, year)
@@ -176,7 +146,7 @@ df_fr <- df %>%
 
 # Recruitment data -------------------------------------------------------------
 df_re <- df %>%
-  group_by(year, site, quad) %>%
+  group_by(year, site, quad_id) %>%
   summarise(tot_p_area = sum(size_t0, na.rm = TRUE), .groups = "drop") %>%
   {
     df_quad <- .
@@ -189,10 +159,10 @@ df_re <- df %>%
       drop_na()
     
     df_re <- df %>%
-      group_by(year, site, quad) %>%
+      group_by(year, site, quad_id) %>%
       summarise(nr_quad = sum(recruit, na.rm = TRUE), .groups = "drop")
     
-    left_join(df_cover, df_re, by = c("year", "site", "quad"))
+    left_join(df_cover, df_re, by = c("year", "site", "quad_id"))
   }
 
 
@@ -1147,7 +1117,7 @@ lam_mean_kern <- Re(eigen(mean_kern)$value[1])
 
 # Population counts at time t0
 pop_counts_t0 <- df %>%
-  group_by(year, quad) %>%
+  group_by(year, quad_id) %>%
   filter(!is.na(survives)) %>% 
   summarize(n_t0 = n()) %>% 
   ungroup %>% 
@@ -1155,7 +1125,7 @@ pop_counts_t0 <- df %>%
 
 # Population counts at time t1
 pop_counts_t1 <- df %>%
-  group_by(year, quad ) %>%
+  group_by(year, quad_id) %>%
   filter(!is.na(survives)) %>%
   summarize(n_t1 = n()) %>% 
   ungroup 
@@ -1237,35 +1207,3 @@ fig_mod_vs_obs <- ggplot(pop_counts_update) +
 ggsave(file.path(dir_result, 'year_lamb_vs_obpopgr.png'), 
        plot = fig_mod_vs_obs, width = 5, height = 5, dpi = 300)
 
-
-# # ----------------------
-# # 1. Fruit per plot per year
-# fruit_by_plot_year <- df %>%
-#   filter(!is.na(fruit)) %>%
-#   group_by(year, quad_id) %>%
-#   summarise(total_fruit_t0 = sum(fruit, na.rm = TRUE), .groups = 'drop')
-# 
-# # 2. Recruits per plot per year (shifted back to match fruit of previous year)
-# recruits_by_plot_year <- df %>%
-#   filter(recruit == 1) %>%
-#   mutate(year = year - 1) %>%  # shift recruits back one year
-#   group_by(year, quad_id) %>%
-#   summarise(n_recruits_t1 = n(), .groups = 'drop')
-# 
-# # 3. Combine fruit and recruit data at plot-year level
-# plot_level_ratios <- recruits_by_plot_year %>%
-#   left_join(fruit_by_plot_year, by = c("year", "quad_id")) %>%
-#   mutate(total_fruit_t0 = ifelse(
-#     total_fruit_t0 < n_recruits_t1, n_recruits_t1, total_fruit_t0),
-#     repr_pc = n_recruits_t1 / total_fruit_t0)
-# 
-# # 4. Mean ratio per year across all plots
-# yearly_mean_ratios <- plot_level_ratios %>%
-#   group_by(year) %>%
-#   summarise(mean_repr_pc = mean(repr_pc, na.rm = TRUE),
-#             sd_repr_pc   = sd(repr_pc, na.rm = TRUE),
-#             n_plots      = n(),
-#             .groups = 'drop')
-# 
-# # Output
-# print(yearly_mean_ratios)

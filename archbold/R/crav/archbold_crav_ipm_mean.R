@@ -1024,3 +1024,20 @@ cat("F-only lambda (approx):", lambda_approx, "\n")
 cat("Full IPM lambda (eigen):", lam_mean, "\n")
 
 
+# Save data --------------------------------------------------------------------
+write.csv(df_og, row.names = F,
+          file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_original.csv')))
+write.csv(df_meta, row.names = F,
+          file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_meta.csv')))
+write.csv(df, row.names = F,
+          file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_workdata.csv')))
+write.csv(df_su, row.names = F,
+          file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_survival.csv')))
+write.csv(df_gr, row.names = F,
+          file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_growth.csv')))
+write.csv(df_fl, row.names = F,
+          file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_flower.csv')))
+write.csv(df_fr, row.names = F,
+          file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_fruit.csv')))
+write.csv(df_re, row.names = F,
+          file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_recruit.csv')))

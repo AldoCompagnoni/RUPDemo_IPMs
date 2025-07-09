@@ -98,7 +98,13 @@ source('helper_functions/predictor_fun.R')
 
 
 # Data -------------------------------------------------------------------------
-df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data_v2.csv')) %>% 
+df_og <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data_v2.csv'), col_types = cols(
+  burnA = col_double(),
+  burnB = col_double(),
+  burnC = col_double(),
+  burnD = col_double(),
+  burnE = col_double(),
+  burnF = col_double())) %>% 
   janitor::clean_names() %>%  
   mutate(
     plant_id = as.factor(paste(site, quad, plant, sep = '_')),
@@ -114,7 +120,7 @@ df <- read_csv(file.path(dir_data, 'crotalaria_avonensis_data_v2.csv')) %>%
   arrange(site, quad, quad_id, plant, plant_id, year, month)
 
 
-df_meta <- data.frame(variable = colnames(df)) %>% 
+df_meta <- data.frame(variable = colnames(df_og)) %>% 
   mutate(definition = c(
     'study site', 'quadrat number',	'macroplot number',	
     'plant number (within quad)', 'direction within circular quad',	
@@ -129,166 +135,95 @@ df_meta <- data.frame(variable = colnames(df)) %>%
     'plant identification', 'quadrat identification', 'sample year', 
     'sample month'))
 
+df_og_extended <- df_og %>%
+  # Survival:
+  #  is the plant not appearing but it is 3 years before latest record, then NA
+  mutate(date = ymd(paste0(date, "-01"))) %>%
+  group_by(plant_id) %>%
+  mutate(
+    # s = 6 and 5 mean death (I think)
+    latest_alive_date      = max(date[(s > 0 & s < 4)], na.rm = TRUE),
+    earliest_recorded_date = min(date[ s > 0]         , na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(
+    survival = case_when(
+      #  is it before the earliest recorded data, then NA
+      date <  earliest_recorded_date ~ NA_real_,
+      #  is the plant still alive some time after, then 1
+      date <  latest_alive_date & !is.infinite(latest_alive_date) ~ 1,
+      #  is the plant not alive some time after, then 0
+      date == latest_alive_date ~ 0,
+      # is it after the latest date that the plant is alive, then NA
+      date >  latest_alive_date ~ NA_real_,
+      latest_alive_date == 2017 ~ NA_real_)) %>%
+  # Recruits
+  mutate(
+    recruit = case_when(
+      s == 3 ~ 1,
+      date == earliest_recorded_date & year(earliest_recorded_date) > 1999 + 4 ~ 1,
+      TRUE ~ NA_real_))
 
-# Original year mean dataframe -------------------------------------------------
-df_mean_og <- df %>%
-  filter(s < 6 | is.na(s)) %>%
-  group_by(site, quad, quad_id, plant, plant_id, year) %>%
+
+# Mean data frame --------------------------------------------------------------
+df <- df_og_extended %>%
+  group_by(site, quad_id , plant_id, year) %>%
   summarise(
-    survives = if_else(all(is.na(s )), NA_real_, max (s,  na.rm = TRUE)),
-    size_t0  = if_else(all(is.na(br)), NA_real_, max (br, na.rm = TRUE)),
-    fruit    = if_else(all(is.na(fr)), NA_real_, max (fr, na.rm = TRUE)),   
-    flower   = if_else(all(is.na(fl)), NA_real_, max (fl, na.rm = TRUE)),  
+    survives = if_else(all(is.na(survival )), NA_real_, min(survival,  na.rm = T)),
+    size_t0  = if_else(all(is.na(br)),        NA_real_, max(br,        na.rm = T)),
+    flower   = if_else(all(is.na(fl)),        NA_real_, max(fl,        na.rm = T)),  
+    fruit    = if_else(all(is.na(fr)),        NA_real_, max(fr,        na.rm = T)),
+    recruit  = if_else(all(is.na(recruit)),   NA_real_, min(recruit,   na.rm = T)),
     fire_sev = if_else(
       all(is.na(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f))),
       NA_real_, 
       mean(c(burn_a, burn_b, burn_c, burn_d, burn_e, burn_f), na.rm = TRUE)),
     .groups  = 'drop'
   ) %>% 
-  ungroup()
-
-
-# Base mean dataframe ----------------------------------------------------------
-df_mean <- df_mean_og %>% 
-  group_by(site, quad, quad_id, plant, plant_id) %>% 
-  # Handle survival based on previous dormancy status
-  # If the current status is dead or NA
-  # Check if survived in the previous 1, 2, or 3 years
-  # Check if survives in the next 1, 2, or 3 years
-  mutate(
-    survives = if_else(
-      (survives == 0 | is.na(survives)) & 
-        (lag(survives, 1) %in% c(1, 3, 5) | 
-           lag(survives, 2) %in% c(1, 3, 5) | 
-           lag(survives, 3) %in% c(1, 3, 5)) & 
-        (lead(survives, 1) %in% c(1, 3, 5) | 
-           lead(survives, 2) %in% c(1, 3, 5) | 
-           lead(survives, 3) %in% c(1, 3, 5)),
-      1,  
-      survives
-    ),
-    
-    # Set survival to 0 if plant dies after 3 consecutive years of dormancy
-    survives = if_else(
-      survives == 1 & 
-        lead(survives, 1) == 0 & 
-        lead(survives, 2) == 0 & 
-        lead(survives, 3) == 0, 
-      0,  
-      survives
-    )
-  ) %>%
-  
+  ungroup() %>% 
+  mutate(survives = if_else(survives == 0 & year > 2017 - 4, NA, survives))%>%
   # Define dormancy
   mutate(
     dormancy = case_when(
-      survives == 1 & is.na(size_t0) ~ 1,
-      size_t0  >  0                  ~ 0, 
+      survives == 1 & is.na(size_t0)   ~ 1,
+      size_t0  >  0 & !is.na(survives) ~ 0, 
       TRUE ~ NA_real_ 
     ),
     # Generate a new column 'dormancy_count' that counts consecutive 1s
     dormancy_count = case_when(
-      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 0 ~ 2,
-      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 ~ 3,
-      dormancy == 1 ~ 1,
-      TRUE ~ dormancy)
-  ) %>% 
-  
-  # Define recruits
-  mutate(
-    recruit = case_when(
-      (survives == 3 | survives == 5) ~ 1, 
-      TRUE ~ NA_real_  
-    )
-  ) %>% 
-  
-  mutate(
-    # Make sure that no survival value exceeds 1
-    survives = if_else(survives > 1, 1, survives), 
-    
-    # Handle missing size_t0 for dead plants by setting NA in survival column
-    survives = if_else(survives == 0 & is.na(size_t0), NA, survives)
-  ) %>% 
-  
-  ungroup() %>% 
-  arrange(site, quad, plant, year) %>%
-  group_by(site, quad, plant, plant_id) %>%
-  
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 & 
+        lag(dormancy, 3) == 1 & lag(dormancy, 4) == 1 & lag(dormancy, 5) == 1 ~ 6,
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 
+      & lag(dormancy, 3) == 1 & lag(dormancy, 4) == 1                         ~ 5,
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 
+      & lag(dormancy, 3) == 1                                                 ~ 4,
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1           ~ 3,
+      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 0           ~ 2,
+      dormancy == 1                                                           ~ 1,
+      TRUE ~ dormancy)) %>%
+  group_by(site, quad_id, plant_id) %>%
   # Set size_t1 based on survival; propagate size_t0 if survives, otherwise set to NA
   mutate(
     size_t1 = case_when(
       survives == 1 ~ lead(size_t0), 
-      TRUE ~ NA_real_  
-    )
-  ) %>%
-  
+      TRUE ~ NA_real_)) %>%
   ungroup() %>% 
-  
   # Compute log-transformed sizes and their powers for modeling
   mutate(
     logsize_t0   = log(size_t0),     
     logsize_t1   = log(size_t1),    
     logsize_t0_2 = logsize_t0^2,     
-    logsize_t0_3 = logsize_t0^3      
-  ) %>%
-  group_by(site, quad, plant, plant_id) %>%
-  mutate(age = NA_real_) %>%  # Initialize age as NA for all
-  
-  # Apply for loop to calculate age
-  mutate(age = {
-    # Initialize age vector
-    age_vector <- rep(NA_real_, n())
-    
-    # Iterate over each row in the group (each site, quad, and plant combination)
-    for (i in 1:n()) {
-      if (!is.na(recruit[i]) && recruit[i] == 1) {
-        age_vector[i] <- 1  # Set age to 1 for recruits
-      } else if (!is.na(dormancy[i]) && dormancy[i] >= 0) {
-        # If plant survives, increment the age based on previous value
-        if (i > 1 && !is.na(age_vector[i - 1])) {
-          age_vector[i] <- age_vector[i - 1] + 1
-        }
-      }
-    }
-    
-    # Return the computed age vector
-    age_vector
-  }) %>%
-  ungroup() %>%
-  arrange(site, quad, plant, plant_id, year) %>%
-  group_by(site, quad, plant, plant_id) %>%
-  mutate(
-    fire_event = ifelse(!is.na(fire_sev) & fire_sev > 0, 1, 0),
-    fire_gap = {
-      gap <- numeric(n())
-      counter <- NA_real_
-      for (i in seq_along(fire_event)) {
-        if (is.na(fire_event[i])) {
-          # Keep NA if we haven't seen a fire yet
-          gap[i] <- counter
-        } else if (fire_event[i] == 1) {
-          counter <- 0
-          gap[i] <- counter
-        } else {
-          counter <- ifelse(is.na(counter), NA_real_, counter + 1)
-          gap[i] <- counter
-        }
-      }
-      gap
-    }
-  ) %>%
-  ungroup()
+    logsize_t0_3 = logsize_t0^3)
 
 
 # Survival data ----------------------------------------------------------------
-df_su <- df_mean %>% 
+df_su <- df %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
   dplyr::select(plant_id, year, size_t0, survives, size_t1, 
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
+                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 fig_su_overall <- ggplot(
-  data = plot_binned_prop(df_mean, 10, logsize_t0, survives)) +
+  data = plot_binned_prop(df, 10, logsize_t0, survives)) +
   geom_jitter(data = df_su, aes(x = logsize_t0, y = survives), 
               position = position_jitter(width = 0.1, height = 0.3)
               , alpha = .1) +
@@ -366,10 +301,10 @@ fig_su_line <- ggplot() +
 
 fig_su_bin <- ggplot() +
   geom_point(data =  plot_binned_prop(
-    df_mean, 10, logsize_t0, survives), 
+    df, 10, logsize_t0, survives), 
     aes(x = logsize_t0, y = survives) ) +
   geom_errorbar(
-    data = plot_binned_prop(df_mean, 10, logsize_t0, survives), 
+    data = plot_binned_prop(df, 10, logsize_t0, survives), 
     aes(x = logsize_t0, ymin = lwr, ymax = upr) ) +
   geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives),
             color = 'red', lwd   = 2) + 
@@ -385,11 +320,11 @@ ggsave(file.path(dir_result, 'mean_survival.png'),
 
 
 # Growth data ------------------------------------------------------------------
-df_gr <- df_mean %>% 
+df_gr <- df %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
-  dplyr::select(plant_id, year, size_t0, size_t1, age,
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
+  dplyr::select(plant_id, year, size_t0, size_t1,
+                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
 
 ggplot(
   data  = df_gr, aes(x = logsize_t0, y = logsize_t1)) +
@@ -476,10 +411,10 @@ mod_gr_var <- nls(
 
 
 # Flower data ------------------------------------------------------------------
-df_fl <- df_mean %>% 
+df_fl <- df %>% 
   filter(!is.na(flower)) %>%
   dplyr::select(plant_id, year, size_t0, flower, size_t1, 
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3) %>% 
+                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3) %>% 
   mutate(flower = if_else(flower > 0, 1, flower))
 
 fig_fl_overall <- ggplot(
@@ -560,7 +495,7 @@ fig_fl_line <- ggplot() +
 
 fig_fl_bin <- ggplot() +
   geom_point(data = plot_binned_prop(df_fl, 10, logsize_t0, flower), 
-    aes(x = logsize_t0, y = flower)) +
+             aes(x = logsize_t0, y = flower)) +
   geom_errorbar(
     data = plot_binned_prop(df_fl, 10, logsize_t0, flower), 
     aes(x = logsize_t0, ymin = lwr, ymax = upr)) +
@@ -578,7 +513,7 @@ ggsave(file.path(dir_result, 'mean_flowering.png'),
 
 
 # Fruit data -------------------------------------------------------------------
-df_fr <- df_mean %>%
+df_fr <- df %>%
   filter(!is.na(fruit), !is.na(logsize_t0))
 
 # Over dispersed -> negative binomial
@@ -649,13 +584,13 @@ ggsave(file.path(dir_result, 'mean_fruiting.png'),
 
 # Fruit to recruit -------------------------------------------------------------
 repr_pc_by_year <- {
-  fruit_by_year <- df_mean %>%
+  fruit_by_year <- df %>%
     filter(!is.na(fruit)) %>%
     group_by(year) %>%
     summarise(total_fruit = sum(fruit, na.rm = TRUE)) %>%
     mutate(year = year + 1)
   
-  recruits_by_year <- df_mean %>%
+  recruits_by_year <- df %>%
     filter(recruit == 1) %>%
     group_by(year) %>%
     summarise(n_recruits = n())
@@ -675,36 +610,10 @@ hist(repr_pc_by_year$repr_pc_mean)
 repr_pc_mean   <- mean(  repr_pc_by_year$repr_pc_mean, na.rm = T)
 repr_pc_median <- median(repr_pc_by_year$repr_pc_mean, na.rm = T)
 
-# Grand mean 
-# Year 
-# Quad
-
-# # draw fecu_b0 from its empirical distribution
-# fun_lambda_stochastic_fecundity <- function(pars, fecu_values, n_years = 1000) {
-#   log_lambdas <- numeric(n_years)
-#   
-#   for (i in 1:n_years) {
-#     # Sample a fecundity value for this year
-#     pars$fecu_b0 <- sample(fecu_values, 1)
-#     
-#     # Compute lambda from IPM
-#     log_lambdas[i] <- log(lambda_ipm(pars))
-#   }
-#   
-#   # Stochastic population growth rate (on real scale)
-#   lambda_stoch <- exp(mean(log_lambdas))
-#   return(lambda_stoch)
-# }
-# 
-# # Example usage
-# fecu_vals <- repr_pc_by_year$repr_pc_mean
-# lambda_stochastic <- fun_lambda_stochastic_fecundity(pars, fecu_vals)
-# cat("Stochastic lambda (mean log λ):", lambda_stochastic, "\n")
-
 
 # Recruitment data -------------------------------------------------------------
-df_re <- df_mean %>%
-  group_by(year, site, quad) %>%
+df_re <- df %>%
+  group_by(year, site, quad_id) %>%
   summarise(tot_p_area = sum(size_t0, na.rm = TRUE), .groups = "drop") %>%
   {
     df_quad <- .
@@ -716,11 +625,11 @@ df_re <- df_mean %>%
       mutate(year = as.integer(year + 1)) %>%
       drop_na()
     
-    df_re <- df_mean %>%
-      group_by(year, site, quad) %>%
+    df_re <- df %>%
+      group_by(year, site, quad_id) %>%
       summarise(nr_quad = sum(recruit, na.rm = TRUE), .groups = "drop")
     
-    left_join(df_cover, df_re, by = c("year", "site", "quad"))
+    left_join(df_cover, df_re, by = c("year", "site", "quad_id"))
   }
 
 ggplot(
@@ -734,11 +643,11 @@ ggplot(
   theme(plot.subtitle = element_text(size = 8))
 
 # Density dependency
-df_re_qd <- df_mean %>% 
+df_re_qd <- df %>% 
   group_by(site, quad_id, year) %>%
   dplyr::select(recruit) %>% 
   summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
-  left_join(df_mean %>% 
+  left_join(df %>% 
               group_by(site, quad_id, year) %>% 
               summarise(nr_ind = sum(!is.na(size_t0))) %>% 
               mutate(year = year - 1),
@@ -768,7 +677,7 @@ df_re_mod <- df_re_mod %>%
   mutate(mod_pred = predict(mod_rec, type = 'response')) 
 
 # Per-capita reproduction ------------------------------------------------------
-df_repr_pc <- df_mean %>%
+df_repr_pc <- df %>%
   filter(!is.na(size_t0)) %>% 
   summarize(n_adults = n()) %>%
   bind_cols(
@@ -783,21 +692,21 @@ df_repr_pc <- df_mean %>%
   drop_na()
 
 # overall level
-df_mean %>% 
+df %>% 
   filter(!is.na(size_t0)) %>% 
   summarize(n_adults = n()) %>% 
-  bind_cols(df_mean %>% 
+  bind_cols(df %>% 
               filter(!is.na(recruit)) %>%
               summarize(n_rec = n())) %>% 
   mutate(rp_pc_m = n_rec / n_adults)
 
 
 # site level
-df_mean %>% 
+df %>% 
   filter(!is.na(size_t0)) %>%
   group_by(site) %>% 
   summarize(n_adults = n()) %>% 
-  left_join(df_mean %>% 
+  left_join(df %>% 
               filter(!is.na(recruit)) %>%
               group_by(site) %>%
               summarize(n_rec = n()),
@@ -810,11 +719,11 @@ df_mean %>%
 
 
 # quad level
-df_mean %>% 
+df %>% 
   filter(!is.na(size_t0)) %>%
   group_by(quad_id) %>% 
   summarize(n_adults = n()) %>% 
-  left_join(df_mean %>% 
+  left_join(df %>% 
               filter(!is.na(recruit)) %>%
               group_by(quad_id) %>%
               summarize(n_rec = n()),
@@ -866,7 +775,7 @@ coef_fr <- Reduce(function(...) rbind(...), list(coef_fl_fe)) %>%
     coefficient, grepl('Intercept', coefficient), 'b0'))
 
 # Recruitment 
-df_re_size <- df_mean %>% subset(recruit == 1)
+df_re_size <- df %>% subset(recruit == 1)
 
 # Miscellany
 coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
@@ -1038,7 +947,7 @@ kernel <- function(pars) {
   
   # Fertility matrix
   Fmat <- outer(y, y, Vectorize(function(x, y) fyx(x, y, pars))) * h
-
+  
   # Full Kernel is simply a summation of fertility and transition matrices
   k_yx <- Fmat + Tmat
   
@@ -1059,7 +968,7 @@ lam_mean
 
 
 # Observed population growth ---------------------------------------------------
-df_counts_year <- df_mean %>%
+df_counts_year <- df %>%
   group_by(year) %>%
   filter(!is.na(size_t0)) %>% 
   summarise(n = n())
@@ -1070,19 +979,19 @@ lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
 
 
 # IPM investigation ------------------------------------------------------------
-summary(df_mean$size_t0, na.rm = TRUE)
-hist(df_mean$size_t0, na.rm = TRUE)
+summary(df$size_t0, na.rm = TRUE)
+hist(df$size_t0, na.rm = TRUE)
 
 # Use actual observed size limits
-min_x <- min(df_mean$size_t0, na.rm = TRUE)
-max_x <- max(df_mean$size_t0, na.rm = TRUE)
+min_x <- min(df$size_t0, na.rm = TRUE)
+max_x <- max(df$size_t0, na.rm = TRUE)
 
 # Recalculate mesh points
 n_mesh <- 200  # resolution
 x_vals <- seq(min_x, max_x, length.out = n_mesh)
 y_vals <- x_vals  # assuming y follows same range
 
- 
+
 fl_vals <- sapply(x_vals, function(x) fl_x(x, pars))
 plot(x_vals, fl_vals, type = "l", main = "Flowering Probability vs Size",
      xlab = "Size (x)", ylab = "Flowering Probability")
@@ -1113,3 +1022,5 @@ lambda_approx <- sum(fyx_vals) * dx * dy
 
 cat("F-only lambda (approx):", lambda_approx, "\n")
 cat("Full IPM lambda (eigen):", lam_mean, "\n")
+
+

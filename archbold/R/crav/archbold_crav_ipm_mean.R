@@ -407,7 +407,7 @@ mod_gr_y   <- resid(mod_gr_bestfit)^2
 # Non-linear model for variance
 mod_gr_var <- nls(
   mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
-  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE) ) 
+  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE)) 
 
 
 # Flower data ------------------------------------------------------------------

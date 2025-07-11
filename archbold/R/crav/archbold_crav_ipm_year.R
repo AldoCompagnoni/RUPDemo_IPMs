@@ -607,7 +607,6 @@ fruit_recruit_ratio_by_year <- recruits_by_year %>%
   mutate(repr_pc = n_recruits_t1 / total_fruit_t0)
 
 
-
 # Recruitment model ------------------------------------------------------------
 df_re_mod <- df_re %>% filter(!is.na(nr_quad))
 # Fit a negative binomial model for recruitment

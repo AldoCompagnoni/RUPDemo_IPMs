@@ -899,13 +899,6 @@ fyx <- function(y, x, pars) {
     re_y_dist(y, pars)
 }
 
-# not applied here - just for future reference!
-# # F kernel
-# #  NS(x)   = p(x) * FF(x)
-# #  F (x)   = exp(b0 + b1, NS(x))
-# #  R (x,y) = p(y) * F(x)
-
-
 # Kernel
 kernel <- function(pars) {
   

@@ -1095,6 +1095,7 @@ calc_lambda <- function(i) {
 # Year specific lambdas --------------------------------------------------------
 lambdas_yr <- lapply(1:(length(pars_yr)), calc_lambda)
 names(lambdas_yr) <- v_years[-which_contains_numeric0]
+mean(as.numeric(as.data.frame(lambdas_yr)[1, ]), na.rm = TRUE)
 
 
 # Comparing the year-specific lambdas

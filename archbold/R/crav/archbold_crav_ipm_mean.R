@@ -963,7 +963,7 @@ lam_mean
 # Observed population growth ---------------------------------------------------
 df_counts_year <- df %>%
   group_by(year) %>%
-  filter(!is.na(size_t0)) %>% 
+  filter(!is.na(survives)) %>% 
   summarise(n = n())
 
 # Then compute observed lambda

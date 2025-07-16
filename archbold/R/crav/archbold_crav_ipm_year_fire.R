@@ -596,4 +596,176 @@ rownames(pars_cons) <- 1:nrow(pars_cons)
 pars_cons_wide <- as.list(pivot_wider(pars_cons, names_from = 'coefficient', 
                                       values_from = 'value'))
 
+# DF varying parameters
+# Function to create coefficient data frames dynamically
+create_coef_df <- function(model, prefix) {
+  coef_matrix <- coef(model)$year
+  
+  column_map <- c(
+    '(Intercept)'   = '0',
+    'logsize_t0'    = '1',
+    'logsize_t0_2'  = '2',
+    'logsize_t0_3'  = '3',
+    'fire'          = 'f'
+  )
+  
+  # Only keep column_map entries that exist in coef_matrix
+  present_cols <- intersect(names(column_map), colnames(coef_matrix))
+  column_map <- column_map[present_cols]
+  
+  lapply(names(column_map), function(col_name) {
+    suffix <- column_map[[col_name]]
+    data.frame(
+      coefficient = paste0(prefix, suffix, '_', rownames(coef_matrix)),
+      value = coef_matrix[, col_name]
+    )
+  })
+}
 
+
+
+# Create data frames for survival and growth models
+su_data_frames <- create_coef_df(mod_su_best, 'surv_b')
+gr_data_frames <- create_coef_df(mod_gr_best, 'grow_b')
+fl_data_frames <- create_coef_df(mod_fl_best, 'flow_b')
+fr_data_frames <- create_coef_df(mod_fr_best, 'frui_b')
+re_data_frames <- list(data.frame(
+  coefficient = paste0('fecu_b0_', repr_pc_yr$year),
+  value = repr_pc_yr$repr_percapita))
+
+# Combine all data frames into one
+pars_var <- Reduce(rbind, c(
+  su_data_frames, gr_data_frames, fl_data_frames, fr_data_frames, re_data_frames))
+
+pars_var_wide <- as.list(pivot_wider(pars_var, 
+                                     names_from  = 'coefficient', 
+                                     values_from = 'value'))
+
+
+# Building the year-specific IPMs from scratch ---------------------------------
+# Functions
+# Inverse logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, num_params = mod_su_index_bestfit) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_params) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
+}
+
+# Standard deviation of growth model
+grow_sd <- function(x, pars) {
+  pars$a * (exp(pars$b * x)) %>% sqrt 
+}
+
+# Growth from size x to size y
+gxy <- function(x, y, pars, num_params = mod_gr_index_bestfit) {
+  mean_value <- 0 # Why is the mean value 0?
+  for (i in 0:num_params) {
+    param_name <- paste0('grow_b', i)
+    if (!is.null(pars[[param_name]])) {
+      mean_value <- mean_value + pars[[param_name]] * x^i
+    }
+  }
+  sd_value <- grow_sd(x, pars)
+  return(dnorm(y, mean = mean_value, sd = sd_value))
+}
+
+# Transition of x-sized individual to y-sized individual at time t1
+pxy <- function(x, y, pars) {
+  return(sx(x, pars) * gxy(x, y, pars))
+}
+
+# Flowering of x-sized individual at time t0
+fl_x <- function(x, pars, num_params = mod_fl_index_bestfit) {
+  flower_value <- pars$flow_b0
+  for (i in 1:num_params) {
+    param_name <- paste0('flow_b', i)
+    if (!is.null(pars[[param_name]])) {
+      flower_value <- flower_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(flower_value))
+}
+
+# Fruiting of x-sized individuals at time t0
+fr_x <- function(x, pars, num_pars = mod_fr_i_best) {
+  val <- pars$frui_b0
+  for (i in 1:num_pars) {
+    param <- paste0('frui_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  exp(val)  # Negative binomial uses log link
+}
+
+# Recruitment size distribution at time t1
+re_y_dist <- function(y, pars) {
+  dnorm(y, mean = pars$recr_sz, sd = pars$recr_sd)
+}
+
+# F-kernel
+fyx <- function(y, x, pars) {
+  fl_x(x, pars) *
+    fr_x(x, pars) *
+    pars$fecu_b0 *
+    re_y_dist(y, pars)
+}
+
+# Kernel
+kernel <- function(pars) {
+  
+  n      <- pars$mat_siz
+  L      <- pars$L
+  U      <- pars$U
+  h      <- (U - L) / n
+  b      <- L + c(0:n) * h
+  y      <- 0.5 * (b[1:n] + b[2:( n + 1 )])
+  
+  Smat   <- c()
+  Smat   <- sx(y, pars)
+  
+  Gmat   <- matrix(0, n, n)
+  Gmat[] <- t(outer(y, y, gxy, pars)) * h
+  
+  Tmat   <- matrix(0, n, n)
+  
+  for(i in 1:(n / 2)) {
+    Gmat[1,i] <- Gmat[1,i] + 1 - sum(Gmat[,i])
+    Tmat[,i]  <- Gmat[,i] * Smat[i]
+  }
+  
+  for(i in (n / 2 + 1):n) {
+    Gmat[n,i] <- Gmat[n,i] + 1 - sum(Gmat[,i])
+    Tmat[,i]  <- Gmat[,i] * Smat[i]
+  }
+  
+  Fmat   <- outer(y, y, Vectorize(function(x, y) fyx(x, y, pars))) * h
+  
+  k_yx <- Fmat + Tmat
+  
+  return(list(k_yx    = k_yx,
+              Fmat    = Fmat,
+              Tmat    = Tmat,
+              Gmat    = Gmat,
+              meshpts = y))
+  
+}
+
+
+# Mean population growth rate --------------------------------------------------
+pars_mean <- pars_cons_wide
+
+lambda_ipm <- function(i) {
+  return(Re(eigen(kernel(i)$k_yx)$value[1]))
+}
+
+lam_mean <- lambda_ipm(pars_mean)
+lam_mean

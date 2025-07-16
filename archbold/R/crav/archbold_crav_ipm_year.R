@@ -827,7 +827,7 @@ fr_fe <- data.frame(
   value       = fixef(mod_fr_best))
 
 re_fe  <- data.frame(coefficient = 'fecu_b0',
-                      value       = mean(repr_pc_yr$repr_percapita))
+                      value       = mean(fruit_recruit_ratio_by_year$repr_pc))
 
 pars_cons <- Reduce(function(...) rbind(...), 
                     list(su_fe, gr_fe, fl_fe, fr_fe, re_fe, constants)) %>%
@@ -857,8 +857,8 @@ gr_data_frames <- create_coef_df(mod_gr_best, 'grow_b')
 fl_data_frames <- create_coef_df(mod_fl_best, 'flow_b')
 fr_data_frames <- create_coef_df(mod_fr_best, 'frui_b')
 re_data_frames <- list(data.frame(
-  coefficient = paste0('fecu_b0_', repr_pc_yr$year),
-  value = repr_pc_yr$repr_percapita))
+  coefficient = paste0('fecu_b0_', fruit_recruit_ratio_by_year$year),
+  value = fruit_recruit_ratio_by_year$repr_pc))
 
 # Combine all data frames into one
 pars_var <- Reduce(rbind, c(
@@ -1114,6 +1114,7 @@ mean_kern <- apply(all_mat, c(1, 2), mean)
 lam_mean_kern <- Re(eigen(mean_kern)$value[1])
 
 
+# Calculate observed population growth rates -----------------------------------
 # Population counts at time t0
 pop_counts_t0 <- df %>%
   group_by(year, quad_id) %>%
@@ -1129,7 +1130,6 @@ pop_counts_t1 <- df %>%
   summarize(n_t1 = n()) %>% 
   ungroup 
 
-# Calculate observed population growth rates -----------------------------------
 #   accounting for discontinued sampling!
 pop_counts <- left_join(pop_counts_t0, 
                         pop_counts_t1) %>% 

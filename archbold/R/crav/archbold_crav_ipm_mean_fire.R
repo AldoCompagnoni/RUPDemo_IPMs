@@ -692,7 +692,7 @@ fig_fr <- ggplot(df_fr, aes(x = logsize_t0, y = fruit)) +
             color = "#1b9e77", linewidth = 1.2, linetype = "solid") +
   geom_line(data = df_pred_1, aes(x = logsize_t0, y = pred),
             color = "#d95f02", linewidth = 1.2, linetype = "dashed") +
-  theme_minimal() +
+  theme_bw() +
   labs(
     title    = 'Fruit Production by log(Size) and Fire',
     subtitle = v_ggp_suffix,

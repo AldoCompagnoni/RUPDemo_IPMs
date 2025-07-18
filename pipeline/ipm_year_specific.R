@@ -221,15 +221,15 @@ indiv_qd <- surv_df %>%
   mutate(year = year + 1)
 
 repr_yr <- indiv_qd %>% 
-  left_join(recr_df) %>%
-  mutate(repr_pc = nr_quad / n_adults) %>% 
+  left_join(recr_df, by = c('quad', 'year')) %>%
+  mutate(repr_pc = nr_rec / n_adults) %>% 
   mutate(year = year - 1) %>% 
   drop_na
 
 g_recruits <- repr_yr %>% 
-  filter(nr_quad  != max(repr_yr$nr_quad)) %>% 
+  filter(nr_rec  != max(repr_yr$nr_rec)) %>% 
   filter(n_adults != max(repr_yr$n_adults)) %>% 
-  ggplot(aes(x = n_adults, y = nr_quad ) ) +
+  ggplot(aes(x = n_adults, y = nr_rec ) ) +
   geom_point(alpha = 1, pch = 16, size = 1, color = 'red') +
   facet_wrap(.~ year, ncol = 4) +
   theme_bw() +
@@ -487,9 +487,9 @@ gr_var <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0))
 
 
 # Recruitment model year specific ----------------------------------------------
-recr_nona_nr_quad <- recr_df %>% filter(!is.na(nr_quad))
+recr_nona_nr_quad <- recr_df %>% filter(!is.na(nr_rec))
 # Fit a negative binomial model for recruitment
-rec_mod <- glmer.nb(nr_quad ~ (1 | year), data = recr_nona_nr_quad)
+rec_mod <- glmer.nb(nr_rec ~ (1 | year), data = recr_nona_nr_quad)
 
 # predict the number of recruits per year per quad
 recr_nona_nr_quad <- recr_nona_nr_quad %>% 
@@ -498,7 +498,7 @@ recr_nona_nr_quad <- recr_nona_nr_quad %>%
 # sum up the observed and predicted number of recruits per year across all quads
 rec_sums_df <- recr_nona_nr_quad %>% 
   group_by(year) %>% 
-  summarise(nr_quad  = sum(nr_quad),
+  summarise(nr_rec   = sum(nr_rec),
             pred_mod = sum(pred_mod)) %>% 
   ungroup
 
@@ -510,9 +510,9 @@ indiv_yr <- surv_df %>%
 
 # calculate per-capita recruitment rate
 repr_pc_yr <- indiv_yr %>% 
-  left_join( rec_sums_df ) %>%
+  left_join(rec_sums_df) %>%
   mutate(repr_percapita = pred_mod / n_adults,
-         repr_pc_obs    = nr_quad / n_adults,
+         repr_pc_obs    = nr_rec   / n_adults,
          year = year - 1 ) %>% 
   drop_na
 
@@ -607,7 +607,7 @@ rc_pc <- data.frame(coefficient = paste0('rec_pc_',repr_pc_yr$year),
 
 rc_sz <- data.frame(coefficient = c('rec_siz', 'rec_sd'),
                     value = c(mean(rec_size$logsize_t0),
-                              sd(rec_size$logsize_t0)))
+                              sd(  rec_size$logsize_t0)))
 
 recr_out_yr <- Reduce(function(...) rbind(...), list(rc_pc, rc_sz)) %>%
   mutate(coefficient = as.character(coefficient))

@@ -134,10 +134,13 @@ if (!dir.exists(dir_data)) {
 
 # Save the tracked data to a CSV file
 datTrackSpp %>% 
+  mutate( centr = st_centroid(geometry) ) %>% 
+  mutate( x     = st_coordinates(centr)[,1],
+          y     = st_coordinates(centr)[,2] ) %>% 
   as.data.frame() %>% 
   dplyr::select(
     Site, Quad, Species, trackID, Year, basalArea_genet, recruit, 
-    survives_tplus1, age, size_tplus1, nearEdge, Suspect) %>%
+    survives_tplus1, age, size_tplus1, nearEdge, Suspect, x, y) %>%
   clean_names() %>%
   dplyr::mutate(
     year = ifelse(year < 100, as.integer(
@@ -145,6 +148,5 @@ datTrackSpp %>%
     year_t0 = year) %>%
   write.csv(file.path(
     dir_data, paste0(
-      v_script_prefix, '_', v_sp_abb, '.csv')), row.names = FALSE)  
-
+      v_script_prefix, '_', v_sp_abb, '.csv')), row.names = FALSE)
 

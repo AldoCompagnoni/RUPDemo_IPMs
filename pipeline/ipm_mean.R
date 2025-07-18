@@ -184,13 +184,13 @@ recr_df <- df %>%
 recr_df <- full_join(cover_df, recr_df, by = c('quad', 'year'))
 
 # Save data
-write.csv(df,      paste0(
+write.csv(df, row.names = F,      paste0(
   dir_data, '/', v_script_prefix, '_',v_sp_abb, '_data_df.csv'))
-write.csv(surv_df, paste0(
+write.csv(surv_df, row.names = F, paste0(
   dir_data, '/', v_script_prefix, '_',v_sp_abb, '_survival_df.csv'))
-write.csv(grow_df, paste0(
+write.csv(grow_df, row.names = F, paste0(
   dir_data, '/', v_script_prefix, '_',v_sp_abb, '_growth_df.csv'))
-write.csv(recr_df, paste0(
+write.csv(recr_df, row.names = F, paste0(
   dir_data, '/', v_script_prefix, '_',v_sp_abb, '_recruitment_df.csv'))
 
 
@@ -448,6 +448,7 @@ g_surv_overall_pred
 ggsave(paste0(dir_result, '/2.2_overall_surv_pred_logs', v_suffix, '.png'),
        plot = g_surv_overall_pred,
        width = 8, height = 3, units = 'in', dpi = 150)
+
 
 ## Recruitment
 # Filter recruitment data to exclude NAs

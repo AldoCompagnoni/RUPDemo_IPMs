@@ -21,7 +21,9 @@ v_gr_form          <- c('forb')
 # Customized delimiter for `read_delim` function, comma is predefined
 v_custom_delimiter <- c(',')
 # Columns to merge
-v_spec_col_merge <- c(1, 2)
+v_spec_col_merge   <- c(1, 2)
+# Model specification (ipm, mpm)
+v_model_spec       <- c('ipm')
 
 
 # Main pipelines ---------------------------------------------------------------

@@ -17,7 +17,7 @@ v_author_year      <- c('anderson_2016')
 # Define region abbreviation
 v_region_abb       <- c('mt')
 # Define growth form (grass, forb, shrub, c4)
-v_gr_form          <- c('forb')
+v_gr_form          <- c('shrub')
 # Customized delimiter for `read_delim` function, comma is predefined
 v_custom_delimiter <- c(',')
 
@@ -26,7 +26,7 @@ v_custom_delimiter <- c(',')
 source('pipeline/plant_tracker_01.R')
 
 # Select the x_th species (target species)
-head(sp_list, 10)
+head(sp_list, 30)
 target_spec <- sp_list %>% .[c(1),]  
 
 source('pipeline/plant_tracker_02.R')

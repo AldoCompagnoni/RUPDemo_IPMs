@@ -11,7 +11,7 @@ For this IPM we will model the following processes:
 ## Data preparation
 ### Survival 
 ```{r su data}
-df_surv <- df_mean %>% 
+df_surv <- df %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
   select(plant_id, year, size_t0, survives, size_t1, 
@@ -33,7 +33,7 @@ p_su_1.1 <- ggplot(data = df_surv) +
   theme(plot.subtitle = element_text(size = 8))
 
 p_su_1.2 <- ggplot(
-  data = plot_binned_prop(df_mean, 10, logsize_t0, survives)) +
+  data = plot_binned_prop(df, 10, logsize_t0, survives)) +
   geom_point(aes(x = logsize_t0,
                  y = survives),
              alpha = 1, pch = 16, color = 'red' ) +
@@ -57,7 +57,7 @@ grid.arrange(p_su_1.1, p_su_1.2,
 
 ### Growth
 ```{r gr data}
-df_grow <- df_mean %>% 
+df_grow <- df %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
   select(plant_id, year, size_t0, size_t1, age,
@@ -86,7 +86,7 @@ ggplot(
 We model flowering in a binomial fashion, thus we reduce the counts of flowers only to if the individual has flowered or not.
 
 ```{r fl data}
-df_flower <- df_mean %>% 
+df_flower <- df %>% 
   filter(!is.na(flower)) %>%
   filter(size_t0 != 0) %>%
   select(plant_id, year, size_t0, flower, size_t1, 
@@ -135,8 +135,8 @@ grid.arrange(p_fl_1.1, p_fl_1.2,
 
 ### Fruting
 ```{r fr data}
-df_quad <- df_mean %>%  
-  group_by (year, site, quad) %>% 
+df_quad <- df %>%  
+  group_by (year, site, quad_id) %>% 
   summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
   ungroup
 
@@ -150,8 +150,8 @@ df_cover <- left_join(df_quad, df_group) %>%
   mutate(year = as.integer(year)) %>% 
   drop_na()
 
-df_fruit <- df_mean %>%
-  group_by (year, site, quad) %>% 
+df_fruit <- df %>%
+  group_by (year, site, quad_id) %>% 
   summarise(nr_quad = sum(fruit, na.rm = T)) %>% 
   ungroup
 
@@ -161,8 +161,8 @@ df_fruit <- left_join(df_cover, df_fruit)
 
 ```{r fr plot1, fig.width=10, fig.height=4}
 p_fr_1.1 <- ggplot() +
-  geom_histogram(data = df %>% filter(!is.na(fl)), 
-                 aes(fl)) +
+  geom_histogram(data = df %>% filter(!is.na(flower)), 
+                 aes(flower)) +
   theme_bw() + 
   labs(title    = 'Fruting',
        subtitle = v_ggp_suffix,
@@ -187,8 +187,8 @@ grid.arrange(p_fr_1.1, p_fr_1.2,
 
 ### Recruits
 ```{r re data}
-df_quad <- df_mean %>%  
-  group_by (year, site, quad) %>% 
+df_quad <- df %>%  
+  group_by (year, site, quad_id) %>% 
   summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
   ungroup
 
@@ -202,8 +202,8 @@ df_cover <- left_join(df_quad, df_group) %>%
   mutate(year = as.integer(year)) %>% 
   drop_na()
 
-df_recr <- df_mean %>%
-  group_by (year, site, quad) %>% 
+df_recr <- df %>%
+  group_by (year, site, quad_id) %>% 
   summarise(nr_quad = sum(recruit, na.rm = T)) %>% 
   ungroup
 
@@ -228,21 +228,21 @@ ggplot(
 Density seems to have a have a positve effect on the reuitment in the next year!?
 
 ```{r message=FALSE, warning=FALSE}
-df_re_qd <- df_mean %>% 
+df_re_qd <- df %>% 
   group_by(site, quad_id, year) %>%
   select(recruit) %>% 
   summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
-  left_join(df_mean %>% 
+  left_join(df %>% 
               group_by(site, quad_id, year) %>% 
               summarise(nr_ind = sum(!is.na(size_t0))) %>% 
               mutate(year = year - 1),
             by = c('site', 'quad_id', 'year'))
 
-df_re_qd <- df_mean %>% 
+df_re_qd <- df %>% 
   group_by(site, quad_id, year) %>%
   select(recruit) %>% 
   summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
-  left_join(df_mean %>% 
+  left_join(df %>% 
               group_by(site, quad_id, year) %>% 
               summarise(nr_ind = sum(!is.na(size_t0))) %>% 
               mutate(year = year - 1),
@@ -269,8 +269,8 @@ df_fecu <- df_fruit %>%
     df_recr %>%
       mutate(year = year - 1) %>%
       rename(nr_rec_t1 = nr_quad) %>% 
-      select('year', 'site', 'quad', 'nr_rec_t1'),
-    by = c('year', 'site', 'quad')
+      select('year', 'site', 'quad_id', 'nr_rec_t1'),
+    by = c('year', 'site', 'quad_id')
   )
 ```
 
@@ -287,29 +287,29 @@ df_fecu_mod <- df_recr %>%
   left_join(
     df_fruit %>%
       mutate(year = year + 1) %>% 
-      select('year', 'site', 'quad', 'nr_quad'),
-    by = c('year', 'site', 'quad')
+      select('year', 'site', 'quad_id', 'nr_quad'),
+    by = c('year', 'site', 'quad_id')
   ) %>% 
   rename(nr_fru_t1 = nr_quad) %>% 
   left_join(
     df_fruit %>%
       mutate(year = year + 2) %>% 
-      select('year', 'site', 'quad', 'nr_quad'),
-    by = c('year', 'site', 'quad')
+      select('year', 'site', 'quad_id', 'nr_quad'),
+    by = c('year', 'site', 'quad_id')
   ) %>% 
   rename(nr_fru_t2 = nr_quad) %>% 
   left_join(
     df_fruit %>%
       mutate(year = year + 3) %>% 
-      select('year', 'site', 'quad', 'nr_quad'),
-    by = c('year', 'site', 'quad')
+      select('year', 'site', 'quad_id', 'nr_quad'),
+    by = c('year', 'site', 'quad_id')
   ) %>% 
   rename(nr_fru_t3 = nr_quad) %>% 
   left_join(
     df_fruit %>%
       mutate(year = year + 4) %>% 
-      select('year', 'site', 'quad', 'nr_quad'),
-    by = c('year', 'site', 'quad')
+      select('year', 'site', 'quad_id', 'nr_quad'),
+    by = c('year', 'site', 'quad_id')
   ) %>% 
   rename(nr_fru_t4 = nr_quad)
 ```
@@ -345,7 +345,7 @@ summary(mod_fec)
 ```
 #### Fecundity year specific
 ```{r}
-df_mean %>%
+df %>%
   group_by(year) %>%
   summarize(total_fire = sum(fire_sev, na.rm = TRUE)) %>%
   filter(total_fire > 0)
@@ -353,7 +353,7 @@ df_mean %>%
 
 df_fecu_mod %>%
   mutate(
-    quad_id = paste(site, quad, sep = '_'),
+    quad_id = paste(site, quad_id, sep = '_'),
     year_fire = ifelse(year %in% c(2005, 2009, 2014, 2016, 2017), 'fire', 'normal')
   ) %>%
   ggplot(aes(x = nr_fru_t1, y = nr_recr, color = year_fire)) +
@@ -466,10 +466,10 @@ ggplot(df_fecu_mod_year, aes(y = nr_recr, x = nr_fru_t2)) +
 
 ### Per capita recruits
 ```{r pcr data}
-df_rec_pc <- df_mean %>% 
+df_rec_pc <- df %>% 
   group_by(site, quad_id, year) %>% 
   summarise(rec_nr_t1 = sum(recruit, na.rm = T)) %>% 
-  left_join(df_mean %>%
+  left_join(df %>%
               group_by(site, quad_id, plant_id, year) %>%
               summarise(rep_nr_t0 = as.integer(any(fruit > 0)), 
                         .groups = 'drop') %>% 
@@ -588,11 +588,11 @@ p_su_2.1 <- ggplot() +
 
 p_su_2.2 <- ggplot() +
   geom_point(data =  plot_binned_prop(
-    df_mean, 10, logsize_t0, survives), 
+    df, 10, logsize_t0, survives), 
     aes(x = logsize_t0, 
         y = survives) ) +
   geom_errorbar(
-    data = plot_binned_prop(df_mean, 10, logsize_t0, survives), 
+    data = plot_binned_prop(df, 10, logsize_t0, survives), 
     aes(x = logsize_t0, 
         ymin = lwr,
         ymax = upr) ) +
@@ -860,8 +860,8 @@ flwr_out <- Reduce(function(...) rbind(...), list(flwr_fe)) %>%
 
 
 # Fruiting & Recruitment & Others
-rec_size <- df_mean %>% subset(recruit == 1)
-fru_size <- df_mean %>% subset(fruit   == 1)
+rec_size <- df %>% subset(recruit == 1)
+fru_size <- df %>% subset(fruit   == 1)
 
 others   <- data.frame(coefficient = c('rec_siz', 'rec_sd', 
                                        'fru_siz', 'fru_sd', 

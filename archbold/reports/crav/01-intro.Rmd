@@ -1,6 +1,6 @@
 # Introduction {#intro}
 
-This supplementary material relates to the  *Crotalaria avonensis* dataset from Archbold Biological Station.
+The supplementary material to the  *Crotalaria avonensis* dataset from Archbold Biological Station.
 
 The GIS and Data Management program at [Archbold Biological Station](https://www.archbold-station.org/gis-and-data-mgmt/) maintains a comprehensive collection of ecological and environmental data gathered through various research initiatives and ongoing long-term monitoring projects. One key platform for accessing this data is the Archbold Biological Station' [Ecological Data Inventory (EDI)](https://portal.edirepository.org/nis/home.jsp), which hosts extensive datasets related to biodiversity, land cover, climate, and ecological patterns.
 

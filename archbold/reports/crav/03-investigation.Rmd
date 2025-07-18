@@ -13,23 +13,23 @@ We will now investigate several key aspects of the data to maximize its utility,
 To understand how the plants develop over time, we first examine the size at their first appearance. We can confidently identify this as their first appearance only if there is a record of three consecutive years with no presence prior to that year.
 
 ```{r i1 plots, fig.width=10, fig.height=4}
-i1_hist <- ggplot(df_mean %>% filter(recruit == 1), aes(x = size_t0)) +
+i1_hist <- ggplot(df %>% filter(recruit == 1), aes(x = size_t0)) +
   geom_histogram(binwidth = 1, fill = 'lightgray', color = 'black') +
   theme_minimal()
 
-df_mean_r <- df_mean %>%
-  filter(plant_id %in% df_mean$plant_id[df_mean$recruit == 1]) %>% 
+df_r <- df %>%
+  filter(plant_id %in% df$plant_id[df$recruit == 1]) %>% 
   # 1_4_17 has a problem
-  filter(plant_id != '1_4_17')
+  filter(!plant_id %in% c('1_4_17', '4_23_1', '4_24_15', '4_24_16', '4_24_2'))
 
-mod_i1_glm_size_age_quad <- lmer(logsize_t0 ~ age + I(age^2) + (1| plant_id), data = df_mean_r)
-df_mean_r$pred_glm_size_age_quad <- predict(mod_i1_glm_size_age_quad, newdata = df_mean_r, re.form = NULL)
+mod_i1_glm_size_age_quad <- lmer(logsize_t0 ~ age + I(age^2) + (1| plant_id), data = df_r)
+df_r$pred_glm_size_age_quad <- predict(mod_i1_glm_size_age_quad, newdata = df_r, re.form = NULL)
 
-mod_i1_lm_size_age_quad  <- lm  (logsize_t0 ~ age + I(age^2), data = df_mean_r)
-df_mean_r$pred_lm_size_age_quad <- predict(mod_i1_lm_size_age_quad, newdata = df_mean_r, re.form = NULL)
+mod_i1_lm_size_age_quad  <- lm  (logsize_t0 ~ age + I(age^2), data = df_r)
+df_r$pred_lm_size_age_quad <- predict(mod_i1_lm_size_age_quad, newdata = df_r, re.form = NULL)
 
 
-i1_size_age <- ggplot(df_mean_r, aes(x = age, y = logsize_t0)) +
+i1_size_age <- ggplot(df_r, aes(x = age, y = logsize_t0)) +
   geom_jitter(aes(color = plant_id), width = 0.1, height = 0.1, alpha = 0.6) +  
   geom_line(aes(y = pred_glm_size_age_quad   , color = plant_id), alpha = 0.5) +  
   geom_line(aes(y = pred_lm_size_age_quad), alpha = 1, color = 'black', size = 0.8) +  
@@ -52,11 +52,11 @@ grid.arrange(i1_hist, i1_size_age,
 This plot shows the distribution of size_t1 for dormant individuals. Most certainly, there are very large individuals that go into dormancy  Unfortunately we don't find any clear pattern that sets the dormant individuals apart form recruits. 
 
 ```{r i2 plots, fig.width=10, fig.height=4}
-i2_hist <- ggplot(df_mean %>% filter(dormancy == 1), aes(x = size_t1)) +
+i2_hist <- ggplot(df %>% filter(dormancy == 1), aes(x = size_t1)) +
   geom_histogram(binwidth = 1, fill = 'lightgray', color = 'black') +
   labs(title = 'Histogram of Size After Dormancy', x = 'Size', y = 'Frequency') +
   theme_minimal() +
-  annotate('text', x = Inf, y = Inf, label = paste('n:', nrow(df_mean %>% 
+  annotate('text', x = Inf, y = Inf, label = paste('n:', nrow(df %>% 
                                                                   filter(dormancy == 1) %>% 
                                                                   filter(!is.na(size_t1)))), 
            hjust = 2, vjust = 2, size = 4, color = 'black') +
@@ -67,9 +67,9 @@ i2_hist <- ggplot(df_mean %>% filter(dormancy == 1), aes(x = size_t1)) +
 size_before_dormancy <- c()
 
 # Loop through the rows and capture the size value before dormancy == 1
-for(i in 2:nrow(df_mean)) {
-  if(!is.na(df_mean$dormancy[i]) && df_mean$dormancy[i] == 1) {
-    size_before_dormancy <- c(size_before_dormancy, df_mean$size_t0[i - 1])
+for(i in 2:nrow(df)) {
+  if(!is.na(df$dormancy[i]) && df$dormancy[i] == 1) {
+    size_before_dormancy <- c(size_before_dormancy, df$size_t0[i - 1])
   }
 }
 
@@ -95,8 +95,8 @@ grid.arrange(i2_hist_1, i2_hist,
 <summary>Expand to see the mean dataframe of the very large individuals after dormancy</summary>
 ```{r MDFLaAfDo}
 
-print(df_mean %>% 
-  filter(plant_id ==  df_mean %>% 
+print(df %>% 
+  filter(plant_id ==  df %>% 
   filter(dormancy == 1, size_t1 > 15) %>% 
   select(plant_id) %>% 
   .[[1]]) %>% 
@@ -111,11 +111,11 @@ print(df_mean %>%
 ```{r FDFLaAfDo}
 
 print(df %>% 
-  filter(plant_id ==  df_mean %>% 
-  filter(dormancy == 1, size_t1 > 15) %>% 
-  select(plant_id) %>% 
-  .[[1]]) %>% 
-    select(plant_id, br), n = 100)
+  filter(plant_id == df %>% 
+           filter(dormancy == 1, size_t1 > 15) %>% 
+           select(plant_id) %>% 
+           .[[1]]) %>% 
+    select(year, plant_id, size_t0), n = 100)
 
 ```
 </details>
@@ -127,8 +127,8 @@ To facilitate direct comparison of observations, we create a new data frame that
 
 
 ```{r i3 data}
-df_mean_f <- df_mean %>%
-  group_by(site, quad, plant, plant_id) %>%
+df_f <- df %>%
+  group_by(site, quad_id, plant_id) %>%
   mutate(
     flag_1 = if_else(
       any(year == 1999 & is.na(size_t0)) |
@@ -142,18 +142,18 @@ df_mean_f <- df_mean %>%
   filter(flag_1 == 1 & flag_2 == 1) 
 
 # Initialize the age column
-df_mean_f$age <- NA
+df_f$age <- NA
 
 # Loop through each unique combination of site, quad, and plant
-for (i in 1:nrow(df_mean_f)) {
+for (i in 1:nrow(df_f)) {
   
-  current_site <- df_mean_f$site[i]
-  current_quad <- df_mean_f$quad[i]
-  current_plant <- df_mean_f$plant[i]
+  current_site <- df_f$site[i]
+  current_quad <- df_f$quad_id[i]
+  current_plant <- df_f$plant_id[i]
   
   # Subset the data for the current combination of site, quad, and plant
-  group_data <- df_mean_f %>%
-    filter(site == current_site, quad == current_quad, plant == current_plant) %>%
+  group_data <- df_f %>%
+    filter(site == current_site, quad_id == current_quad, plant_id == current_plant) %>%
     arrange(year)  # Ensure the rows are ordered by year
   
   # Initialize the current age starting at NA
@@ -163,22 +163,22 @@ for (i in 1:nrow(df_mean_f)) {
   for (j in 1:nrow(group_data)) {
     if (!is.na(group_data$size_t0[j])) {
       # If the size_t0 is not NA, assign the current age
-      df_mean_f$age[df_mean_f$site == current_site & 
-                      df_mean_f$quad == current_quad & 
-                      df_mean_f$plant == current_plant & 
-                      df_mean_f$year == group_data$year[j]] <- current_age
+      df_f$age[df_f$site == current_site & 
+                      df_f$quad_id == current_quad & 
+                      df_f$plant_id == current_plant & 
+                      df_f$year == group_data$year[j]] <- current_age
       # Increment the age for the next year
       current_age <- current_age + 1
     } else if (j > 1) {
       # If size_t0 is NA, carry the age from the previous row
-      previous_year_age <- df_mean_f$age[df_mean_f$site == current_site &
-                                           df_mean_f$quad == current_quad &
-                                           df_mean_f$plant == current_plant &
-                                           df_mean_f$year == group_data$year[j - 1]]
-      df_mean_f$age[df_mean_f$site == current_site & 
-                      df_mean_f$quad == current_quad & 
-                      df_mean_f$plant == current_plant & 
-                      df_mean_f$year == group_data$year[j]] <- previous_year_age
+      previous_year_age <- df_f$age[df_f$site == current_site &
+                                           df_f$quad_id == current_quad &
+                                           df_f$plant_id == current_plant &
+                                           df_f$year == group_data$year[j - 1]]
+      df_f$age[df_f$site == current_site & 
+                      df_f$quad_id == current_quad & 
+                      df_f$plant_id == current_plant & 
+                      df_f$year == group_data$year[j]] <- previous_year_age
     }
   }
 }
@@ -188,14 +188,14 @@ for (i in 1:nrow(df_mean_f)) {
 The following plots display key patterns in the data: 1. Histogram of Size at t0 showing the distribution of size_t0 for plants at age 1, with bins of width 1. 2. Scatter Plot of Log Size at t0 vs Age visualizing the relationship between age and log size.
 
 ```{r i3 plots1, fig.width=10, fig.height=4}
-i3_hist <- ggplot(df_mean_f %>% filter(age == 1), aes(x = size_t0)) +
+i3_hist <- ggplot(df_f %>% filter(age == 1), aes(x = size_t0)) +
   geom_histogram(binwidth = 1, fill = 'lightgray', color = 'black') +
   theme_minimal()
 
 
 i3_size_age <- ggplot() +
   geom_jitter(
-    data = df_mean_f, 
+    data = df_f, 
     aes(x = age, y = logsize_t0)) +
   theme_minimal()
 
@@ -217,37 +217,37 @@ In this section, we fit four different linear mixed models to examine the relati
 
 ```{r i3 models, echo=TRUE, code_folding='none', results='markup'}
 # Fit the first model: logsize_t0 ~ age + (1 | plant_id) (linear model)
-mod_flag_linear <- lmer(age ~ logsize_t0 + (1 | plant_id), data = df_mean_f)
+mod_flag_linear <- lmer(age ~ logsize_t0 + (1 | plant_id), data = df_f)
 #summary(mod_flag_linear)
 
 # Predict values using the linear model
-df_mean_f$predicted_linear <- predict(mod_flag_linear, newdata = df_mean_f, re.form = NULL)
+df_f$predicted_linear <- predict(mod_flag_linear, newdata = df_f, re.form = NULL)
 
 # Fit the second model: logsize_t0 ~ age + I(age^2) + (1 | plant_id) (quadratic model)
-mod_flag_quad <- lmer(age ~ logsize_t0 + I(logsize_t0^2) + (1 | plant_id), data = df_mean_f)
+mod_flag_quad <- lmer(age ~ logsize_t0 + I(logsize_t0^2) + (1 | plant_id), data = df_f)
 #summary(mod_flag_quad)
 
 # Predict values using the quadratic model
-df_mean_f$predicted_quad <- predict(mod_flag_quad, newdata = df_mean_f, re.form = NULL)
+df_f$predicted_quad <- predict(mod_flag_quad, newdata = df_f, re.form = NULL)
 
 # Fit the third model: logsize_t0 ~ age + (1 | plant_id) (reversed model)
-mod_flag_logsize_age <- lmer(logsize_t0 ~ age + (1 | plant_id), data = df_mean_f)
+mod_flag_logsize_age <- lmer(logsize_t0 ~ age + (1 | plant_id), data = df_f)
 #summary(mod_flag_logsize_age)
 
 # Predict values using the logsize_t0 ~ age model
-df_mean_f$predicted_logsize_age <- predict(mod_flag_logsize_age, newdata = df_mean_f, re.form = NULL)
+df_f$predicted_logsize_age <- predict(mod_flag_logsize_age, newdata = df_f, re.form = NULL)
 
 # Fit the fourth model: logsize_t0 ~ age + I(age^2) + (1 | plant_id) (quadratic term for age)
-mod_flag_quad_age <- lmer(logsize_t0 ~ age + I(age^2) + (1 | plant_id), data = df_mean_f)
+mod_flag_quad_age <- lmer(logsize_t0 ~ age + I(age^2) + (1 | plant_id), data = df_f)
 #summary(mod_flag_quad_age)
 
 # Predict values using the logsize_t0 ~ age + I(age^2) model
-df_mean_f$predicted_quad_age <- predict(mod_flag_quad_age, newdata = df_mean_f, re.form = NULL)
+df_f$predicted_quad_age <- predict(mod_flag_quad_age, newdata = df_f, re.form = NULL)
 
 
 
-lm_flag_quad_age <- lm(logsize_t0 ~ age + I(age^2), data = df_mean_f)
-df_mean_f$predicted_lm_quad_age <- predict(lm_flag_quad_age, newdata = df_mean_f, re.form = NULL)
+lm_flag_quad_age <- lm(logsize_t0 ~ age + I(age^2), data = df_f)
+df_f$predicted_lm_quad_age <- predict(lm_flag_quad_age, newdata = df_f, re.form = NULL)
 
 
 
@@ -258,7 +258,7 @@ The following plots visualize the relationships captured by the second, third, a
 
 ```{r i3 plots2, fig.width=10, fig.height=8}
 # Plot the second model (quadratic relationship for logsize_t0 ~ logsize_t0^2)
-p_i3_mod_1 <- ggplot(df_mean_f, aes(x = logsize_t0, y = age)) +
+p_i3_mod_1 <- ggplot(df_f, aes(x = logsize_t0, y = age)) +
   geom_jitter(aes(color = plant_id), width = 0.1, height = 0.1, alpha = 0.6) +  
   geom_line(aes(y = predicted_quad, color = plant_id), alpha = 0.5) +  
   theme_minimal() +
@@ -268,7 +268,7 @@ p_i3_mod_1 <- ggplot(df_mean_f, aes(x = logsize_t0, y = age)) +
   theme(legend.position = 'none')
 
 # Plot the third model (logsize_t0 ~ age relationship)
-p_i3_mod_2 <- ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
+p_i3_mod_2 <- ggplot(df_f, aes(x = age, y = logsize_t0)) +
   geom_jitter(aes(color = plant_id), width = 0.1, height = 0.1, alpha = 0.6) +  
   geom_line(aes(y = predicted_logsize_age, color = plant_id), alpha = 0.5) +  
   theme_minimal() +
@@ -278,7 +278,7 @@ p_i3_mod_2 <- ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
   theme(legend.position = 'none')
 
 # Plot the fourth model (logsize_t0 ~ age + I(age^2) relationship)
-p_i3_mod_3 <- ggplot(df_mean_f, aes(x = age, y = logsize_t0)) +
+p_i3_mod_3 <- ggplot(df_f, aes(x = age, y = logsize_t0)) +
   geom_jitter(aes(color = plant_id), width = 0.1, height = 0.1, alpha = 0.6) +  
   geom_line(aes(y = predicted_quad_age   , color = plant_id), alpha = 0.5) +  
   geom_line(aes(y = predicted_lm_quad_age), alpha = 1, color = 'black', size = 0.8) + 
@@ -311,7 +311,7 @@ Unfortunately, neither Menges' publication nor the data webpage provide informat
 ### Data
 
 ```{r fire data 1}
-df_fire1 <- df_mean %>% 
+df_fire1 <- df %>% 
   group_by(quad_id, year) %>% 
   summarise(fire_sev = mean(fire_sev, na.rm = T))
 ```
@@ -329,7 +329,7 @@ ggplot(df_fire1, aes(x = quad_id, y = year, size = fire_sev, color = fire_sev)) 
 
 ### Timing of the fire
 ```{r fi timing, message=FALSE, warning=FALSE}
-df_fi_hit <- df %>% 
+df_fi_hit <- df_og %>% 
   select(
     year, month, burn_a, burn_b, burn_c, burn_d, burn_e, burn_f, st, fl) %>% 
   mutate(burn_a = as.numeric(burn_a),
@@ -503,7 +503,7 @@ fig_fi_fl_timing
 ### Fire on Growth
 
 ```{r fire on growth}
-df_fire_grow <- df_mean %>% 
+df_fire_grow <- df %>% 
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
   select(plant_id, year, size_t0, size_t1, age,
@@ -844,14 +844,14 @@ summary(mods_fi_gr_all_bestfit)
 
 ### Fire on Survival
 ```{r fire on survival}
-df_fire_surv_0 <- df_mean %>% 
+df_fire_surv_0 <- df %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
   select(plant_id, year, size_t0, survives, size_t1, 
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire_event) %>% 
   filter(fire_event == 0)
 
-df_fire_surv_1 <- df_mean %>% 
+df_fire_surv_1 <- df %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
   select(plant_id, year, size_t0, survives, size_t1, 
@@ -901,7 +901,7 @@ p_fire_suv
 
 ```{r fi su mods, message=FALSE, warning=FALSE}
 # Fire and Survival data
-df_fi_su <- df_mean %>% 
+df_fi_su <- df %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
   select(plant_id, year, size_t0, survives, size_t1, 
@@ -974,7 +974,7 @@ mod_fi_su_ranef     <- coef(mod_fi_su_bestfit)
 
 ### Fire on Flowers
 ```{r fire on flowers}
-df_fire_fl <- df_mean %>% 
+df_fire_fl <- df %>% 
   group_by(site, quad_id, plant_id, year) %>% 
   select(flower, fire_sev, fire_event, fire_gap) %>% 
   group_by(site, quad_id, year) %>% 
@@ -997,7 +997,7 @@ ggplot(data = df_fire_fl, aes(x = as.factor(fire_gap), y = fl_quad)) +
 ```
 
 ```{r Fire on Flower the year after, message=FALSE, warning=FALSE}
-df_fire_fl_0 <- df_mean %>% 
+df_fire_fl_0 <- df %>% 
   filter(!is.na(flower)) %>%
   filter(size_t0 != 0) %>%
   select(plant_id, year, size_t0, flower, size_t1, 
@@ -1005,7 +1005,7 @@ df_fire_fl_0 <- df_mean %>%
   mutate(flower = if_else(flower > 0, 1, flower)) %>% 
   filter(fire_event == 0)
 
-df_fire_fl_1 <- df_mean %>% 
+df_fire_fl_1 <- df %>% 
   filter(!is.na(flower)) %>%
   filter(size_t0 != 0) %>%
   select(plant_id, year, size_t0, flower, size_t1, 
@@ -1054,12 +1054,12 @@ p_fire_fl
 ```
 
 ```{r message=FALSE, warning=FALSE}
-df_fr_fl_t0 <- df_mean %>% 
+df_fr_fl_t0 <- df %>% 
   group_by(site, quad_id, plant_id) %>% 
   select(year, flower, fire_event) %>% 
   rename(fl_t0 = flower)
 
-df_fr_fl_t1 <- df_mean %>% 
+df_fr_fl_t1 <- df %>% 
   group_by(site, quad_id, plant_id) %>% 
   select(year, flower) %>% 
   mutate(year = year - 1) %>% 
@@ -1095,12 +1095,12 @@ ggplot(data = df_fr_fl_t, aes(x = fl_t0, y = fl_t1)) +
 Comparing years with and without fire events, a greater proportion of individuals flower during years when fire occurs
 
 ```{r Fire on Flowering on plant id level, message=FALSE, warning=FALSE}
-df_fi_fl_p <- df_mean %>% 
+df_fi_fl_p <- df %>% 
   group_by(site, quad_id, plant_id, year) %>% 
   select(flower, fire_event, logsize_t0, logsize_t0_2, logsize_t0_3) %>% 
   filter(flower >= 0) %>% 
   mutate(flower = if_else(flower > 0, 1, flower)) %>% 
-  left_join(df_mean %>% 
+  left_join(df %>% 
               group_by(site, quad_id, plant_id, year) %>% 
               select(fire_event) %>% 
               mutate(year = year + 1) %>% 
@@ -1326,7 +1326,7 @@ ggplot() +
 
 ### Fire on Fruiting
 ```{r fire on fruiting}
-df_fire_fr <- df_mean %>% 
+df_fire_fr <- df %>% 
   group_by(site, quad_id, plant_id, year) %>% 
   select(fruit, fire_sev, fire_event, fire_gap) %>% 
   group_by(site, quad_id, year) %>% 
@@ -1351,8 +1351,8 @@ ggplot(data = df_fire_fr, aes(x = fire_gap, y = fr_quad)) +
 
 
 ```{r Effect of fire on fruiting}
-df_fi_quad <- df_mean %>%  
-  group_by (year, site, quad) %>% 
+df_fi_quad <- df %>%  
+  group_by (year, site, quad_id) %>% 
   summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
   ungroup
 
@@ -1367,8 +1367,8 @@ df_fi_cover <- left_join(df_fi_quad, df_fi_group) %>%
   drop_na()
 
 
-df_fi_fruit <- df_mean %>%
-  group_by (year, site, quad) %>% 
+df_fi_fruit <- df %>%
+  group_by (year, site, quad_id) %>% 
   summarise(nr_quad    = mean(fruit, na.rm = T),
             fire_event = max( fire_event, na.rm = T )) %>% 
   ungroup
@@ -1394,12 +1394,12 @@ Relationship between fruit production in consecutive years under fire and no-fir
 This scatterplot compares individual fruit production - here max fruits in a year - in year t (x-axis) with year t+1 (y-axis), split by fire occurrence. Points represent individual plants, with red indicating years following a fire and black indicating years without fire. Linear regression lines illustrate trends for each group. A 1:1 reference line (dashed) is included.
 
 ```{r Fire on Fruiting one year after, message=FALSE, warning=FALSE}
-df_fi_fr_t0 <- df_mean %>% 
+df_fi_fr_t0 <- df %>% 
   group_by(site, quad_id, plant_id, year) %>% 
   select(fruit, fire_event) %>% 
   rename(fr_t0 = fruit)
 
-df_fi_fr_t1 <- df_mean %>% 
+df_fi_fr_t1 <- df %>% 
   group_by(site, quad_id, plant_id, year) %>% 
   select(fruit) %>% 
   mutate(year = year - 1) %>% 
@@ -1438,7 +1438,7 @@ Also we even have some individuals that did not have flowers at all and still pr
 
 Maybe we could look at the sum of flowers as a proxi instead? 
 ```{r message=FALSE, warning=FALSE}
-df_fi_ftf_og <- df_mean %>% 
+df_fi_ftf_og <- df %>% 
   group_by(site, quad_id, plant_id, year) %>% 
   select(logsize_t0, flower, fruit, fire_event) %>% 
   mutate(ftf = fruit/flower) %>% 
@@ -1539,7 +1539,7 @@ ggplot(data = df_fi_ftf %>% filter(flower > 0)) +
 
 ### Fire on Recruits
 ```{r fire on recruits}
-df_fire_re <- df_mean %>% 
+df_fire_re <- df %>% 
   group_by(site, quad_id, plant_id, year) %>% 
   select(recruit, fire_sev, fire_event, fire_gap) %>% 
   group_by(site, quad_id, year) %>% 
@@ -1580,11 +1580,11 @@ summary(lm(data = df_fire_re %>% filter(fire_gap >= 0, fire_gap <= 1),
 
 ### Fire on Per capita recruitment
 ```{r fire on per capita recruitment}
-df_fire_rec_pc <- df_mean %>% 
+df_fire_rec_pc <- df %>% 
   group_by(site, quad_id, year) %>% 
   summarise(rec_nr_t1 = sum(recruit, na.rm = T), 
             fire_gap = max(fire_gap, na.rm = T)) %>% 
-  left_join(df_mean %>%
+  left_join(df %>%
               group_by(site, quad_id, plant_id, year) %>%
               summarise(rep_nr_t0 = as.integer(any(fruit > 0)), .groups = 'drop') %>% 
               ungroup() %>% 

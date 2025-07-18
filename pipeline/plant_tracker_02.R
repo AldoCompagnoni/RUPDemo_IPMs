@@ -24,18 +24,27 @@ v_sp_abb  <- v_species %>%
 
 
 # Directory --------------------------------------------------------------------
-if ((tolower(v_gr_form) == 'forb' | 
-     tolower(v_gr_form) == 'shrub' | 
-     tolower(v_gr_form) == 'density')) {
+# Normalize v_gr_form
+v_gr_form_lower <- tolower(v_gr_form)
+# Determine the folder suffix
+if (exists('v_model_spec')) {
+  if (v_model_spec == 'mpm') {
+    v_folder_suffix <- paste0(v_sp_abb, '_mpm')
+  } else if (v_model_spec == 'ipm') {
+    v_folder_suffix <- v_sp_abb
+  } else {
+    stop("Unknown v_model_spec value: must be 'ipm' or 'mpm'")
+  }
+} else if (v_gr_form_lower %in% c('forb', 'shrub', 'density')) {
   v_folder_suffix <- paste0(v_sp_abb, '_mpm')
-  dir_R      <- file.path(dir_pub, 'R', v_folder_suffix)
-  dir_data   <- file.path(dir_pub, 'data', v_folder_suffix)
-  dir_result <- file.path(dir_pub, 'results', v_folder_suffix)
 } else {
-  dir_R      <- file.path(dir_pub, 'R', v_sp_abb)
-  dir_data   <- file.path(dir_pub, 'data', v_sp_abb)
-  dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+  v_folder_suffix <- v_sp_abb
 }
+
+# Construct paths
+dir_R      <- file.path(dir_pub, 'R', v_folder_suffix)
+dir_data   <- file.path(dir_pub, 'data', v_folder_suffix)
+dir_result <- file.path(dir_pub, 'results', v_folder_suffix)
 
 
 # Data -------------------------------------------------------------------------

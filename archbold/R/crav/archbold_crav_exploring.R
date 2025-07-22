@@ -11,10 +11,9 @@
 # Website    : https://portal.edirepository.org/nis/mapbrowse?packageid=edi.219.1
 # Publication: https://bioone.org/journals/southeastern-naturalist/volume-15/issue-3/058.015.0318/Ecology-and-Conservation-of-the-Endangered-Legume-Crotalaria-avonensis-in/10.1656/058.015.0318.short
 
-# rm(list = ls())
-
 
 # Setting the stage ------------------------------------------------------------
+# rm(list = ls())
 # Remove all objects in the global environment
 # rm(list = ls()) 
 # Set seed for reproducibility

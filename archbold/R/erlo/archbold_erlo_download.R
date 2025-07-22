@@ -7,6 +7,12 @@
 # Stylesheet v2.14 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu      
 # Uncomment the following lines to have R clear previous work, or set a working directory
 # rm(list=ls())      
+# Link: https://portal.edirepository.org/nis/mapbrowse?packageid=edi.226.1
+# Study organism: scrub buckwheat (Eriogonum longifolium var. gnaphalifolium)
+# Time period: 1990 - 2013 (Archbold); 2001 - 2010 (Lake Wales Ridge National Wildlife Refuge Carter Creek)
+# Ecology: long-lived; dormancy; 
+#  resprouts following fire and also recruits many seedlings following post-fire stimulated flowering (minimum of every five years or every 20 years are necessary fpr viablility);
+
 
 # setwd("C:/users/my_name/my_dir")       
 

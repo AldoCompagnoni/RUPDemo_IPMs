@@ -3,7 +3,7 @@
 # Data set creator:  Pedro Quintana-Ascencio - University of Central Florida 
 # Data set creator:  Eric Menges - Archbold Biological Station 
 # Contact:    - Database Manager Archbold Biological Station  - datamanager@archbold-station.org
-# Stylesheet v2.15 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu      
+# Stylesheet v2.15 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu
 # Uncomment the following lines to have R clear previous work, or set a working directory
 # rm(list=ls())      
 
@@ -17,7 +17,7 @@ try(download.file(inUrl1,infile1,method="curl",extra=paste0(' -A "',getOption("H
 if (is.na(file.size(infile1))) download.file(inUrl1,infile1,method="auto")
 
 
-dt1 <-read.csv(infile1,header=F 
+dt1 <- read.csv(infile1, header=F 
                ,skip=1
                ,sep=","  
                , col.names=c(

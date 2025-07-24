@@ -26,7 +26,7 @@ options(stringsAsFactors = F)
 
 # load packages
 source('helper_functions/load_packages.R')
-load_packages(tidyverse, patchwork, skimr, ipmr, binom, bbmle, janitor, lme4)
+load_packages(tidyverse, patchwork, skimr, ipmr, binom, bbmle, janitor, lme4, MASS, GGally)
 
 
 # Specification ----------------------------------------------------------------
@@ -51,7 +51,7 @@ v_ggp_suffix    <- paste(
 
 # Models
 v_mod_set_su <- c()
-v_mod_set_gr <- c(2)
+v_mod_set_gr <- c()
 v_mod_set_fl <- c()
 
 # Directory --------------------------------------------------------------------
@@ -201,6 +201,49 @@ These individuals should be excluded, as they can distort our analysis of recrui
 Specifically, they contribute to the total count of recruits at the plot level but 
 do not provide any data for survival within the recruitment size category.'
 
+df_org %>% 
+  separate(col = date, into = c('year', 'month'), sep = '-') %>% 
+  mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
+  arrange(unit, id, year, month) %>% 
+  filter(id %in% (df_org %>% 
+                       mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
+                       filter(survival == 3) %>% 
+                       pull(id) %>% 
+                       unique())) #%>% view()
+'Trying to figure out what survival == 3 means. 
+*** Plant individual id == 3_539_108_130-6, was first encountered in March 2004, 
+it first encounter was marked with a survivial == 3.
+It does not have anything obvisouly to do with cohort, nor angle or distance.
+The individual survives to the next observation (3 months later without size measurement).
+Stage is marked as 3 (whatever that means) - but it is not therfore not a recruit?
+Also it has a height of 8cm, whereas the other recruits are around 1-4 cm.
+It only has 1 reporducing stem, 1 stem and 2 crowndiameter, all relatively low
+*** Plant individaul is == 3_553_6_NA-NA, was first encounted in March 2011.
+It dies in the next observation. It is at stage == 2. Height is relatively low at 2cm.
+Crowndiameter of 1, stems of 2, and reproducitve stem of 0 is also relatively low.
+*** Individual 4_502_127_NA-NA, March 2009, also dies with the next cencus. 
+It is at stage 3, with 9cm height, crowndiameter of 5, 6 stems, and 3 reproductive stems.
+*** many of them survive many years after'
+df_org %>% 
+  separate(col = date, into = c('year', 'month'), sep = '-') %>%
+  filter(survival == 3) %>% group_by(year, month) %>% count()
+'We conculde that it is some measurement of how they were added to the sampling campain,
+but sice all of them are not recruits we just convert them to survival == 1 and thats it
+-> it is new individuals added (meta-data)'
+
+# Exploring survival == 2
+df_org %>% 
+  separate(col = date, into = c('year', 'month'), sep = '-') %>% 
+  mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
+  arrange(unit, id, year, month) %>% 
+  filter(id %in% (df_org %>% 
+                    mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
+                    filter(survival == 2) %>% 
+                    pull(id) %>% 
+                    unique())) #%>% view()
+'it is 5 individuals in total
+-> remove them from the data set!?'
+
 # Exploring plant death
 df_org %>% 
   filter(survival == 0 | !is.na(height)) %>% 
@@ -215,7 +258,13 @@ df_gen <- df_org %>%
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
   arrange(unit, id, year, month) %>%
-  # Fire: For now we will just drag the maximum value of each year with us
+  # Code 2 survival: individual not found, 5 in total. REMOVE
+  filter(!id %in% (df_org %>% 
+                     mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
+                     filter(survival == 2) %>% 
+                     pull(id) %>% 
+                     unique())) %>% #view()
+# Fire: For now we will just drag the maximum value of each year with us
   select(!c(angle, dist)) %>% #view()
   group_by(id, year) %>%
   mutate(postburn_plant = if_else(all(is.na(postburn_plant)), NA_real_,
@@ -239,16 +288,22 @@ df_gen <- df_org %>%
   ungroup() %>%
   # Survival: 
   #  Since there is no dormancy I can remove everything that does not have a size 
-  # !!!!!!! there is survival 3, what is that? !!!!!!!!!!!!!!!!!
   filter(!is.na(stage)) %>% #view()
   group_by(id) %>%
-    mutate(
-      survival = if_else(row_number() == n(), 0, survival)) %>%
-    ungroup() %>% #view()
+  mutate(
+    survival = if_else(row_number() == n(), 0, survival)) %>%
+  ungroup() %>% #view()
+  # Include the NEW ADDITIONS (survival == 3)
+  mutate(survival = if_else(survival == 3, 1, survival)) %>% 
   # Growth:
   group_by(id) %>%
-  mutate(size_t1 = lead(height)) %>%
+  mutate(size_t1    = lead(height),
+         c_dim_t1   = lead(crown_diameter),
+         stems_t1   = lead(stems),
+         volumen_t0 = ((crown_diameter / 2) ^ 2) * pi * height,
+         volumen_t1 = lead(volumen_t0)) %>%
   ungroup() #%>% view()
+
 
 # Working data -----------------------------------------------------------------
 df <- df_gen %>% 
@@ -258,39 +313,23 @@ df <- df_gen %>%
   mutate(logsize_t0   = log(size_t0),
          logsize_t1   = log(size_t1),    
          logsize_t0_2 = logsize_t0^2,     
-         logsize_t0_3 = logsize_t0^3) %>% 
+         logsize_t0_3 = logsize_t0^3,
+         logvol_t0    = log(volumen_t0),
+         logvol_t1    = log(volumen_t1)) %>% 
   select(site, quad, cohort, id, year, 
          stage, survives, size_t0, flowering_stems, recruit, 
          size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
-         crown_diameter, stems)
+         crown_diameter, stems, 
+         volumen_t0, volumen_t1, logvol_t0, logvol_t1)
 
 
-# Survival ---------------------------------------------------------------------
-df_su <- df %>% 
-  filter(!is.na(survives)) %>%
-  filter(size_t0 != 0) %>%
-  dplyr::select(id, year, size_t0, survives, size_t1, 
-                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
+# GROWTH -----------------------------------------------------------------------
+df_selected <- df %>%
+  select(height = size_t0, crown_diameter, stems, volumen) %>%
+  filter(!if_any(everything(), is.na))  # remove rows with any NAs
 
-fig_su_overall <- ggplot(
-  data = plot_binned_prop(df, 10, logsize_t0, survives)) +
-  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives), 
-              position = position_jitter(width = 0.1, height = 0.3)
-              , alpha = .1) +
-  geom_point(aes(x = logsize_t0, y = survives),
-             alpha = 1, pch = 16, color = 'red') +
-  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
-                linewidth = 0.5, width = 0.5) +
-  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
-  theme_bw() +
-  theme(axis.text = element_text(size = 8),
-        title = element_text(size = 10),
-        plot.subtitle = element_text(size = 8)) +
-  labs(title = 'Survival',
-       subtitle = v_ggp_suffix,
-       x = expression('log(size)'[t0]),
-       y = expression('Survival to time t1'))
-fig_su_overall 
+# Create the pair plot
+ggpairs(df_selected)
 
 
 # Growth data ------------------------------------------------------------------
@@ -298,7 +337,9 @@ df_gr <- df %>%
   subset(size_t0 != 0) %>%
   subset(size_t1 != 0) %>% 
   dplyr::select(id, year, size_t0, size_t1,
-                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
+                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+                volumen_t0, volumen_t1, logvol_t0, logvol_t1,
+                stage)
 
 ggplot(
   data  = df_gr, aes(x = logsize_t0, y = logsize_t1)) +
@@ -310,7 +351,12 @@ ggplot(
        subtitle = v_ggp_suffix,
        x        = expression('log(size) ' [t0]),
        y        = expression('log(size)  '[t1])) +
-  theme(plot.subtitle = element_text(size = 8))
+  theme(plot.subtitle = element_text(size = 8)) + 
+  facet_wrap('stage')
+
+ggplot(df_gr) + geom_point(aes(logsize_t0, size_t1))
+ggplot(df_gr) + geom_point(aes(logvol_t0, logsize_t1))
+ggplot(df_gr) + geom_point(aes(logvol_t0, volumen_t1))
 
 
 # Growth model -----------------------------------------------------------------
@@ -368,3 +414,55 @@ fig_gr_pred <- ggplot(
 
 fig_gr <- fig_gr_line + fig_gr_pred + plot_layout() 
 fig_gr
+
+
+# Growth model negative binomial -----------------------------------------------
+mod_gr_nb_0 <- glm.nb(size_t1 ~ 1, data = df_gr)
+mod_gr_nb_1 <- glm.nb(size_t1 ~ logsize_t0, data = df_gr)
+mod_gr_nb_2 <- glm.nb(size_t1 ~ logsize_t0 + logsize_t0_2, data = df_gr)
+mod_gr_nb_3 <- glm.nb(size_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = df_gr)
+
+mods_gr_nb        <- list(  mod_gr_nb_0, mod_gr_nb_1, mod_gr_nb_2, mod_gr_nb_3)
+mods_gr_nb_dAIC   <- AICtab(mods_gr_nb, weights = T, sort = F)$dAIC
+mods_gr_nb_sorted <- order(mods_gr_nb_dAIC)
+
+mod_gr_nb_index_bestfit <- mods_gr_nb_sorted[1]
+mod_gr_nb_bestfit       <- mods_gr_nb[[mod_gr_nb_index_bestfit]]
+mod_gr_nb_ranef         <- coef(mod_gr_nb_bestfit)
+
+df_gr$nb_predicted <- predict(mod_gr_nb_2, type = "response")
+ggplot(df_gr, aes(x = logsize_t0, y = size_t1)) +
+  geom_point(alpha = 0.4) +
+  geom_line(aes(y = nb_predicted), color = "red", size = 1.2) +
+  labs(x = "log(size_t0)",
+       y = "size_t1")
+
+# Survival ---------------------------------------------------------------------
+df_su <- df %>% 
+  filter(!is.na(survives)) %>%
+  filter(size_t0 != 0) %>%
+  dplyr::select(id, year, size_t0, survives, size_t1, 
+                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
+
+fig_su_overall <- ggplot(
+  data = plot_binned_prop(df, 10, logsize_t0, survives)) +
+  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives), 
+              position = position_jitter(width = 0.1, height = 0.3)
+              , alpha = .1) +
+  geom_point(aes(x = logsize_t0, y = survives),
+             alpha = 1, pch = 16, color = 'red') +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                linewidth = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title = element_text(size = 10),
+        plot.subtitle = element_text(size = 8)) +
+  labs(title = 'Survival',
+       subtitle = v_ggp_suffix,
+       x = expression('log(size)'[t0]),
+       y = expression('Survival to time t1'))
+fig_su_overall 
+
+
+

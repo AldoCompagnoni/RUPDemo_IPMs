@@ -177,7 +177,39 @@ In some instances, an individual is recorded as dead (survival == 0/ == 9),
 and later, a new record with the same ID appears, 
 potentially with different spatial coordinates and its own associated growth measurements. 
 This pattern suggests that the same ID may be reused or reassigned to a new plant at a later time. 
-Therefore, I suggest to use angle/ distance as part of the ID.'
+Therefore, I suggest to use angle/ distance as part of the ID.
+
+The publication does not mention anything about duplications (in the methods)'
+
+df_org %>%
+  separate(date, into = c("year", "month"), sep = "-") %>%
+  mutate(id_full = paste0(unit, "_", quad, "_", id)) %>%
+  group_by(id_full, year, month) %>%
+  filter(n() > 1) %>%                    # Step 1: detect duplicates within same year-month
+  ungroup() %>%
+  group_by(id_full) %>%
+  arrange(year, month, angle, dist, .by_group = TRUE) %>%
+  slice_head(n = 2) %>%                 # Step 2: only keep first 2 rows *across all time*
+  ungroup() %>%
+  group_by(id_full) %>%
+  summarise(has_5 = any(survival == 5),
+            has_9 = any(survival == 9)) %>%
+  filter(!(has_5 & has_9))
+'there are 9 cases where the original plant is not dead and they have a new one with the same id'
+
+df_org %>%
+  separate(col = date, into = c('year', 'month'), sep = '-') %>%
+  mutate(id = paste0(unit, '_', quad, '_', id)) %>%
+  group_by(id, year, month) %>%
+  filter(n() > 1) %>%
+  ungroup() %>%
+  distinct(id) %>%
+  inner_join(
+    df_org %>%
+      separate(col = date, into = c('year', 'month'), sep = '-') %>%
+      mutate(id = paste0(unit, '_', quad, '_', id)),
+    by = "id") %>%
+  arrange(unit, id, year, month) #%>% view()
 
 # Data aggregation
 df_org %>% 
@@ -321,7 +353,8 @@ df <- df_gen %>%
          logvol_t0    = log(volume_t0),
          logvol_t1    = log(volume_t1),
          logvol_t0_2  = logvol_t0^2,
-         logvol_t0_3  = logvol_t0^3) %>%
+         logvol_t0_3  = logvol_t0^3,
+         year         = as.numeric(year)) %>%
   dplyr::select(site, quad, cohort, id, year, 
          stage, survives, size_t0, flowering_stems, recruit, 
          size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
@@ -367,9 +400,7 @@ ggplot(
   theme(plot.subtitle = element_text(size = 8)) + 
   facet_wrap('stage')
 
-ggplot(df_gr) + geom_point(aes(logsize_t0, size_t1))
 ggplot(df_gr) + geom_point(aes(logvol_t0, logsize_t1))
-ggplot(df_gr) + geom_point(aes(logvol_t0, volume_t1))
 
 
 # Growth model -----------------------------------------------------------------
@@ -379,7 +410,7 @@ mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, data = df_gr)
 mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = df_gr)
 
 mods_gr      <- list(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
-mods_gr_dAIC <- AICtab(mods_gr, weights = T, sort = F)$dAIC
+mods_gr_dAIC <- AICctab(mods_gr, weights = T, sort = F)$dAIC
 mods_gr_sorted <- order(mods_gr_dAIC)
 
 if (length(v_mod_set_gr) == 0) {
@@ -413,27 +444,6 @@ fig_gr <- fig_gr_line + fig_gr_pred + plot_layout()
 fig_gr
 
 
-# Growth model negative binomial -----------------------------------------------
-mod_gr_nb_0 <- glm.nb(size_t1 ~ 1, data = df_gr)
-mod_gr_nb_1 <- glm.nb(size_t1 ~ logsize_t0, data = df_gr)
-mod_gr_nb_2 <- glm.nb(size_t1 ~ logsize_t0 + logsize_t0_2, data = df_gr)
-mod_gr_nb_3 <- glm.nb(size_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = df_gr)
-
-mods_gr_nb        <- list(  mod_gr_nb_0, mod_gr_nb_1, mod_gr_nb_2, mod_gr_nb_3)
-mods_gr_nb_dAIC   <- AICtab(mods_gr_nb, weights = T, sort = F)$dAIC
-mods_gr_nb_sorted <- order(mods_gr_nb_dAIC)
-
-mod_gr_nb_index_bestfit <- mods_gr_nb_sorted[1]
-mod_gr_nb_bestfit       <- mods_gr_nb[[mod_gr_nb_index_bestfit]]
-mod_gr_nb_ranef         <- coef(mod_gr_nb_bestfit)
-
-df_gr$nb_predicted <- predict(mod_gr_nb_2, type = "response")
-ggplot(df_gr, aes(x = logsize_t0, y = size_t1)) +
-  geom_point(alpha = 0.4) +
-  geom_line(aes(y = nb_predicted), color = "red", size = 1.2) +
-  labs(x = "log(size_t0)", y = "size_t1")
-
-
 # Growth model volume -----------------------------------------
 mod_gr_vol_0 <- lm(logvol_t1 ~ 1, data = df_gr)
 mod_gr_vol_1 <- lm(logvol_t1 ~ logvol_t0, data = df_gr)
@@ -441,7 +451,7 @@ mod_gr_vol_2 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr)
 mod_gr_vol_3 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr)
 
 mods_gr_vol      <- list(mod_gr_vol_0, mod_gr_vol_1, mod_gr_vol_2, mod_gr_vol_3)
-mods_gr_vol_dAIC <- AICtab(mods_gr_vol, weights = T, sort = F)$dAIC
+mods_gr_vol_dAIC <- AICctab(mods_gr_vol, weights = T, sort = F)$dAIC
 
 mods_gr_vol_sorted       <- order(mods_gr_vol_dAIC)
 mod_gr_vol_index_bestfit <- mods_gr_vol_sorted[1]
@@ -455,30 +465,9 @@ ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1)) +
   labs(x = "volumen t0 (log)", y = "volumen t1 (log)")
 
 
-# Growth model volume negative binomial ----------------------------------------
-mod_gr_vol_nb_0 <- glm.nb(volume_t1 ~ 1, data = df_gr)
-mod_gr_vol_nb_1 <- glm.nb(volume_t1 ~ logvol_t0, data = df_gr)
-mod_gr_vol_nb_2 <- glm.nb(volume_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr)  
-mod_gr_vol_nb_3 <- glm.nb(volume_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr)
-
-mods_gr_vol_nb      <- list(mod_gr_vol_nb_0, mod_gr_vol_nb_1, mod_gr_vol_nb_2, mod_gr_vol_nb_3)
-mods_gr_vol_nb_dAIC <- AICtab(mods_gr_vol_nb, weights = T, sort = F)$dAIC
-
-mods_gr_vol_nb_sorted       <- order(mods_gr_vol_nb_dAIC)
-mod_gr_vol_nb_index_bestfit <- mods_gr_vol_nb_sorted[1]
-mod_gr_vol_nb_bestfit       <- mods_gr_vol_nb[[mod_gr_vol_nb_index_bestfit]]
-mod_gr_vol_nb_ranef         <- coef(mod_gr_vol_nb_bestfit)
-
-df_gr$pred_vol_nb <- predict(mod_gr_vol_nb_1, type = "response")
-ggplot(df_gr, aes(x = logvol_t0, y = volume_t1)) +
-  geom_point(alpha = 0.4) +
-  geom_line(aes(y = pred_vol), color = "red", size = 1.2) +
-  labs(x = "volumen t0 (log)", y = "volumen t1")
-
-
 # Survival ---------------------------------------------------------------------
 df_su <- df %>% 
-  filter(!is.na(survives)) %>%
+  filter(!is.na(survives), !is.na(logsize_t0), !is.na(logsize_t0_2), !is.na(logsize_t0_3)) %>%
   filter(size_t0 != 0) %>%
   dplyr::select(id, year, size_t0, survives, size_t1, 
                 logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
@@ -562,7 +551,7 @@ mod_su_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
 
 # Compare models using AIC
 mods_su      <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
-mods_su_dAIC <- AICtab(mods_su, weights = T, sort = F)$dAIC
+mods_su_dAIC <- AICctab(mods_su, weights = T, sort = F)$dAIC
 
 # Get the sorted indices of dAIC values
 mods_su_sorted <- order(mods_su_dAIC)
@@ -623,7 +612,7 @@ ggsave(file.path(dir_result, 'mean_survival.png'),
 
 # Survival by volume -----------------------------------------------------------
 df_su_vol <- df %>% 
-  filter(!is.na(survives)) %>%
+  filter(!is.na(survives), !is.na(logvol_t0), !is.na(logvol_t0_2), !is.na(logvol_t0_3)) %>%
   filter(size_t0 != 0) %>%
   dplyr::select(id, year, size_t0, survives, size_t1, 
                 logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
@@ -658,7 +647,7 @@ mod_su_vol_2 <- glm(survives ~ logvol_t0 + logvol_t0_2, data = df_su_vol, family
 mod_su_vol_3 <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_su_vol, family = 'binomial')  
 
 mods_su_vol        <- list(mod_su_vol_0, mod_su_vol_1, mod_su_vol_2, mod_su_vol_3)
-mods_su_vol_dAIC   <- AICtab(mods_su_vol, weights = T, sort = F)$dAIC
+mods_su_vol_dAIC   <- AICctab(mods_su_vol, weights = T, sort = F)$dAIC
 mods_su_vol_sorted <- order(mods_su_vol_dAIC)
 
 mod_su_vol_index_bestfit <- mods_su_vol_sorted[1]
@@ -699,3 +688,161 @@ fig_su_vol <- fig_su_vol_line + fig_su_vol_bin + plot_layout()
 fig_su_vol
 
 fig_su_line + fig_su_bin + fig_su_vol_line + fig_su_vol_bin + plot_layout()
+
+
+
+# Flower data ------------------------------------------------------------------
+df_fl <- df %>% 
+  filter(!is.na(flowering_stems), !is.na(logvol_t0), !is.na(logvol_t0_2), !is.na(logvol_t0_3)) %>%
+  dplyr::select(id, year, size_t0, flowering_stems, size_t1, 
+                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+                volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
+                stage) %>% 
+  rename(flower = flowering_stems) %>% 
+  mutate(flower = if_else(flower > 0, 1, flower))
+
+fig_fl_overall <- ggplot(
+  data = plot_binned_prop(df_fl, 10, logsize_t0, flower)) +
+  geom_jitter(data = df_fl, aes(x = logsize_t0, y = flower), alpha = 0.1, 
+              position = position_jitter(width = 0.1, height = 0.3)) +
+  geom_point(aes(x = logsize_t0, y = flower),
+             alpha = 1, pch = 16, color = 'red') +
+  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                linewidth = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  theme_bw() +
+  theme(axis.text     = element_text(size = 8),
+        title         = element_text(size = 10),
+        plot.subtitle = element_text(size = 8)) +
+  labs(title    = 'Flowering',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(size)'[t0]),
+       y        = expression('Flowering probability in t0'))
+fig_fl_overall
+
+
+# Flower by volume -------------------------------------------------------------
+ggplot(
+  data = plot_binned_prop(df_fl, 10, logvol_t0, flower)) +
+  geom_jitter(data = df_fl, aes(x = logvol_t0, y = flower), alpha = 0.1, 
+              position = position_jitter(width = 0.1, height = 0.3)) +
+  geom_point(aes(x = logvol_t0, y = flower),
+             alpha = 1, pch = 16, color = 'red') +
+  geom_errorbar(aes(x = logvol_t0, ymin = lwr, ymax = upr),
+                linewidth = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  theme_bw() +
+  theme(axis.text     = element_text(size = 8),
+        title         = element_text(size = 10),
+        plot.subtitle = element_text(size = 8)) +
+  labs(title    = 'Flowering',
+       subtitle = v_ggp_suffix,
+       x        = expression('log(volume)'[t0]),
+       y        = expression('Flowering probability in t0'))
+
+
+# Flower by volume model -------------------------------------------------------
+# Logistic regression
+mod_fl_0 <- glm(flower ~ 1,
+                data = df_fl, family = 'binomial') 
+# Logistic regression
+mod_fl_1 <- glm(flower ~ logvol_t0,
+                data = df_fl, family = 'binomial') 
+# Quadratic logistic model
+mod_fl_2 <- glm(flower ~ logvol_t0 + logvol_t0_2,
+                data = df_fl, family = 'binomial')  
+# Cubic logistic model
+mod_fl_3 <- glm(flower ~ logvol_t0 + logvol_t0_2 + logvol_t0_3,
+                data = df_fl, family = 'binomial')  
+
+
+# Compare models using AIC
+mods_fl      <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
+mods_fl_dAIC <- AICctab(mods_fl, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_fl_sorted <- order(mods_fl_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_fl) == 0) {
+  mod_fl_index_bestfit <- mods_fl_sorted[1]
+  v_mod_fl_index       <- mod_fl_index_bestfit - 1 
+} else {
+  mod_fl_index_bestfit <- v_mod_set_fl +1
+  v_mod_fl_index       <- v_mod_set_fl
+}
+
+mod_fl_bestfit <- mods_fl[[mod_fl_index_bestfit]]
+mod_fl_ranef   <- coef(mod_fl_bestfit)
+
+# Generate predictions for survival across a range of sizes
+mod_fl_x <- seq(
+  min(df_fl$logvol_t0, na.rm = T),
+  max(df_fl$logvol_t0, na.rm = T), length.out = 100)
+
+# Prepare data for survival plot
+df_fl_pred <- predictor_fun(mod_fl_x, mod_fl_ranef) %>% 
+  # Inverse logit for predictions
+  boot::inv.logit() %>% 
+  data.frame(logvol_t0 = mod_fl_x, flower = .)
+
+# Survival plots
+fig_fl_line <- ggplot() +
+  geom_jitter(data = df_fl, aes(x = logvol_t0, y = flower),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_fl_pred, aes(x = logvol_t0, y = flower),
+            color = line_color_pred_fun(mod_fl_ranef), lwd = 2) +  
+  theme_bw() + 
+  labs(title    = 'Flowering prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+fig_fl_bin <- ggplot() +
+  geom_point(data = plot_binned_prop(df_fl, 10, logvol_t0, flower), 
+             aes(x = logvol_t0, y = flower)) +
+  geom_errorbar(
+    data = plot_binned_prop(df_fl, 10, logvol_t0, flower), 
+    aes(x = logvol_t0, ymin = lwr, ymax = upr)) +
+  geom_line(data = df_fl_pred, aes(x = logvol_t0, y = flower),
+            color = 'red', lwd   = 2) + 
+  theme_bw() +
+  ylim(0, 1)
+
+# Combine survival plots
+fig_fl <- fig_fl_line + fig_fl_bin + plot_layout()
+fig_fl
+
+
+# # Flower to Recruit -------------------------------------------------------------
+# flower_to_recruit_by_year <- {
+#   flower_by_year <- df %>%
+#     filter(!is.na(flowering_stems)) %>%
+#     group_by(year) %>%
+#     summarise(total_flower = sum(flowering_stems , na.rm = TRUE)) %>%
+#     mutate(year = year + 1)  # Shift by one year assuming recruitment is next year
+#   
+#   recruits_by_year <- df %>%
+#     filter(recruit == 1) %>%
+#     group_by(year) %>%
+#     summarise(n_recruits = n())
+#   
+#   recruits_by_year %>%
+#     left_join(flower_by_year, by = "year") %>%
+#     mutate(repr_pc_mean = n_recruits / total_flower)
+# }
+# 
+# # Summary stats
+# flower_to_recruit_by_year %>%
+#   summarise(
+#     mean   = mean(repr_pc_mean, na.rm = TRUE),
+#     sd     = sd  (repr_pc_mean, na.rm = TRUE),
+#     median = median(repr_pc_mean, na.rm = TRUE)
+#   )
+# 
+# # Histogram
+# hist(flower_to_recruit_by_year$repr_pc_mean)
+# 
+# # Extract values if needed
+# repr_pc_mean_flower   <- mean(flower_to_recruit_by_year$repr_pc_mean, na.rm = TRUE)
+# repr_pc_median_flower <- median(flower_to_recruit_by_year$repr_pc_mean, na.rm = TRUE)
+# 

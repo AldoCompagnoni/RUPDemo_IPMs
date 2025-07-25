@@ -249,7 +249,7 @@ df_org %>%
   filter(survival == 0 | !is.na(height)) %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
-  arrange(unit, id, year, month) %>% view()
+  arrange(unit, id, year, month) #%>% view()
 ''
 
 
@@ -340,8 +340,14 @@ ggpairs(df_selected)
 
 # Growth data ------------------------------------------------------------------
 df_gr <- df %>% 
-  subset(size_t0 != 0,
-         size_t1 != 0) %>% 
+  filter(
+    !is.na(size_t1),      !is.na(size_t0), 
+    !is.na(logsize_t0),   !is.na(logsize_t1), 
+    !is.na(logsize_t0_2), !is.na(logsize_t0_3),
+    !is.na(volume_t0),    !is.na(volume_t1), 
+    !is.na(logvol_t0),    !is.na(logvol_t1), 
+    !is.na(logvol_t0_2),  !is.na(logvol_t0_3)
+    ) %>% 
   dplyr::select(
     id, year, size_t0, size_t1,
     logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
@@ -442,9 +448,7 @@ mod_gr_vol_index_bestfit <- mods_gr_vol_sorted[1]
 mod_gr_vol_bestfit       <- mods_gr_vol[[mod_gr_vol_index_bestfit]]
 mod_gr_vol_ranef         <- coef(mod_gr_vol_bestfit)
 
-predicted_rows <- as.numeric(rownames(model.frame(mod_gr_vol_bestfit)))
-df_gr$pred_vol <- NA
-df_gr$pred_vol[predicted_rows] <- predict(mod_gr_vol_bestfit, type = "response")
+df_gr$pred_vol <- predict(mod_gr_vol_bestfit, type = "response")
 ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1)) +
   geom_point(alpha = 0.4) +
   geom_line(aes(y = pred_vol), color = "red", size = 1.2) +
@@ -465,9 +469,7 @@ mod_gr_vol_nb_index_bestfit <- mods_gr_vol_nb_sorted[1]
 mod_gr_vol_nb_bestfit       <- mods_gr_vol_nb[[mod_gr_vol_nb_index_bestfit]]
 mod_gr_vol_nb_ranef         <- coef(mod_gr_vol_nb_bestfit)
 
-pred_row_vol_nb <- as.numeric(rownames(model.frame(mod_gr_vol_nb_1)))
-df_gr$pred_vol_nb <- NA
-df_gr$pred_vol_nb[pred_row_vol_nb] <- predict(mod_gr_vol_nb_1, type = "response")
+df_gr$pred_vol_nb <- predict(mod_gr_vol_nb_1, type = "response")
 ggplot(df_gr, aes(x = logvol_t0, y = volume_t1)) +
   geom_point(alpha = 0.4) +
   geom_line(aes(y = pred_vol), color = "red", size = 1.2) +

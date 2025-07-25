@@ -145,7 +145,7 @@ df_org %>%
 # Explore quad ------------------------------------------------------------------
 df_org %>% 
   group_by(unit) %>% 
-  count(quad) %>% view()
+  count(quad) #%>% view()
 'Quad is indeed a unique identifier'
 
 
@@ -249,7 +249,7 @@ df_org %>%
   filter(survival == 0 | !is.na(height)) %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
-  arrange(unit, id, year, month) #%>% view()
+  arrange(unit, id, year, month) %>% view()
 ''
 
 
@@ -257,7 +257,11 @@ df_org %>%
 df_gen <- df_org %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
-  arrange(unit, id, year, month) %>%
+  arrange(unit, id, year, month) %>% #view()
+  # Month of death
+  group_by(id) %>%
+  mutate(death = paste0(year, "_", month)[which(survival == 0)[1]]) %>%
+  ungroup() %>% #view()
   # Code 2 survival: individual not found, 5 in total. REMOVE
   filter(!id %in% (df_org %>% 
                      mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
@@ -265,7 +269,7 @@ df_gen <- df_org %>%
                      pull(id) %>% 
                      unique())) %>% #view()
 # Fire: For now we will just drag the maximum value of each year with us
-  select(!c(angle, dist)) %>% #view()
+  dplyr::select(!c(angle, dist)) %>% #view()
   group_by(id, year) %>%
   mutate(postburn_plant = if_else(all(is.na(postburn_plant)), NA_real_,
                                   max(postburn_plant, na.rm = TRUE))) %>%
@@ -297,11 +301,11 @@ df_gen <- df_org %>%
   mutate(survival = if_else(survival == 3, 1, survival)) %>% 
   # Growth:
   group_by(id) %>%
-  mutate(size_t1    = lead(height),
-         c_dim_t1   = lead(crown_diameter),
-         stems_t1   = lead(stems),
-         volumen_t0 = ((crown_diameter / 2) ^ 2) * pi * height,
-         volumen_t1 = lead(volumen_t0)) %>%
+  mutate(size_t1   = lead(height),
+         c_dim_t1  = lead(crown_diameter),
+         stems_t1  = lead(stems),
+         volume_t0 = ((crown_diameter / 2) ^ 2) * pi * height,
+         volume_t1 = lead(volume_t0)) %>%
   ungroup() #%>% view()
 
 
@@ -314,18 +318,20 @@ df <- df_gen %>%
          logsize_t1   = log(size_t1),    
          logsize_t0_2 = logsize_t0^2,     
          logsize_t0_3 = logsize_t0^3,
-         logvol_t0    = log(volumen_t0),
-         logvol_t1    = log(volumen_t1)) %>% 
-  select(site, quad, cohort, id, year, 
+         logvol_t0    = log(volume_t0),
+         logvol_t1    = log(volume_t1),
+         logvol_t0_2  = logvol_t0^2,
+         logvol_t0_3  = logvol_t0^3) %>%
+  dplyr::select(site, quad, cohort, id, year, 
          stage, survives, size_t0, flowering_stems, recruit, 
          size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
          crown_diameter, stems, 
-         volumen_t0, volumen_t1, logvol_t0, logvol_t1)
+         volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3)
 
 
 # GROWTH -----------------------------------------------------------------------
 df_selected <- df %>%
-  select(height = size_t0, crown_diameter, stems, volumen) %>%
+  dplyr::select(height = size_t0, crown_diameter, stems, volume_t0) %>%
   filter(!if_any(everything(), is.na))  # remove rows with any NAs
 
 # Create the pair plot
@@ -334,12 +340,13 @@ ggpairs(df_selected)
 
 # Growth data ------------------------------------------------------------------
 df_gr <- df %>% 
-  subset(size_t0 != 0) %>%
-  subset(size_t1 != 0) %>% 
-  dplyr::select(id, year, size_t0, size_t1,
-                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
-                volumen_t0, volumen_t1, logvol_t0, logvol_t1,
-                stage)
+  subset(size_t0 != 0,
+         size_t1 != 0) %>% 
+  dplyr::select(
+    id, year, size_t0, size_t1,
+    logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+    volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
+    stage)
 
 ggplot(
   data  = df_gr, aes(x = logsize_t0, y = logsize_t1)) +
@@ -356,48 +363,32 @@ ggplot(
 
 ggplot(df_gr) + geom_point(aes(logsize_t0, size_t1))
 ggplot(df_gr) + geom_point(aes(logvol_t0, logsize_t1))
-ggplot(df_gr) + geom_point(aes(logvol_t0, volumen_t1))
+ggplot(df_gr) + geom_point(aes(logvol_t0, volume_t1))
 
 
 # Growth model -----------------------------------------------------------------
-# Intercept model 
-mod_gr_0 <- lm(logsize_t1 ~ 1,
-               data = df_gr)
-# Linear model
-mod_gr_1 <- lm(logsize_t1 ~ logsize_t0, 
-               data = df_gr)
-# Quadratic model
-mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, 
-               data = df_gr)  
-# Cubic model
-mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, 
-               data = df_gr)
+mod_gr_0 <- lm(logsize_t1 ~ 1, data = df_gr)
+mod_gr_1 <- lm(logsize_t1 ~ logsize_t0, data = df_gr)
+mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2, data = df_gr)  
+mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, data = df_gr)
 
 mods_gr      <- list(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
 mods_gr_dAIC <- AICtab(mods_gr, weights = T, sort = F)$dAIC
-
-# Get the sorted indices of dAIC values
 mods_gr_sorted <- order(mods_gr_dAIC)
 
-# Establish the index of model complexity
 if (length(v_mod_set_gr) == 0) {
   mod_gr_index_bestfit <- mods_gr_sorted[1]
   v_mod_gr_index       <- mod_gr_index_bestfit - 1 
 } else {
   mod_gr_index_bestfit <- v_mod_set_gr +1
-  v_mod_gr_index       <- v_mod_set_gr
-}
+  v_mod_gr_index       <- v_mod_set_gr}
 
 mod_gr_bestfit         <- mods_gr[[mod_gr_index_bestfit]]
 mod_gr_ranef           <- coef(mod_gr_bestfit)
 
-# Predict size at time t1 using the mean growth model
 df_gr$pred <- predict(mod_gr_bestfit, type = 'response')
-
-# Growth plot
 fig_gr_line <- ggplot(
   df_gr, aes(x = logsize_t0, y = logsize_t1)) +
-  # Plot observed data
   geom_point() +
   geom_function(fun = function(x) predictor_fun(x, mod_gr_ranef), 
                 color = line_color_pred_fun(mod_gr_ranef), lwd = 2) +
@@ -434,15 +425,62 @@ df_gr$nb_predicted <- predict(mod_gr_nb_2, type = "response")
 ggplot(df_gr, aes(x = logsize_t0, y = size_t1)) +
   geom_point(alpha = 0.4) +
   geom_line(aes(y = nb_predicted), color = "red", size = 1.2) +
-  labs(x = "log(size_t0)",
-       y = "size_t1")
+  labs(x = "log(size_t0)", y = "size_t1")
+
+
+# Growth model volume -----------------------------------------
+mod_gr_vol_0 <- lm(logvol_t1 ~ 1, data = df_gr)
+mod_gr_vol_1 <- lm(logvol_t1 ~ logvol_t0, data = df_gr)
+mod_gr_vol_2 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr)  
+mod_gr_vol_3 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr)
+
+mods_gr_vol      <- list(mod_gr_vol_0, mod_gr_vol_1, mod_gr_vol_2, mod_gr_vol_3)
+mods_gr_vol_dAIC <- AICtab(mods_gr_vol, weights = T, sort = F)$dAIC
+
+mods_gr_vol_sorted       <- order(mods_gr_vol_dAIC)
+mod_gr_vol_index_bestfit <- mods_gr_vol_sorted[1]
+mod_gr_vol_bestfit       <- mods_gr_vol[[mod_gr_vol_index_bestfit]]
+mod_gr_vol_ranef         <- coef(mod_gr_vol_bestfit)
+
+predicted_rows <- as.numeric(rownames(model.frame(mod_gr_vol_bestfit)))
+df_gr$pred_vol <- NA
+df_gr$pred_vol[predicted_rows] <- predict(mod_gr_vol_bestfit, type = "response")
+ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1)) +
+  geom_point(alpha = 0.4) +
+  geom_line(aes(y = pred_vol), color = "red", size = 1.2) +
+  labs(x = "volumen t0 (log)", y = "volumen t1 (log)")
+
+
+# Growth model volume negative binomial ----------------------------------------
+mod_gr_vol_nb_0 <- glm.nb(volume_t1 ~ 1, data = df_gr)
+mod_gr_vol_nb_1 <- glm.nb(volume_t1 ~ logvol_t0, data = df_gr)
+mod_gr_vol_nb_2 <- glm.nb(volume_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr)  
+mod_gr_vol_nb_3 <- glm.nb(volume_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr)
+
+mods_gr_vol_nb      <- list(mod_gr_vol_nb_0, mod_gr_vol_nb_1, mod_gr_vol_nb_2, mod_gr_vol_nb_3)
+mods_gr_vol_nb_dAIC <- AICtab(mods_gr_vol_nb, weights = T, sort = F)$dAIC
+
+mods_gr_vol_nb_sorted       <- order(mods_gr_vol_nb_dAIC)
+mod_gr_vol_nb_index_bestfit <- mods_gr_vol_nb_sorted[1]
+mod_gr_vol_nb_bestfit       <- mods_gr_vol_nb[[mod_gr_vol_nb_index_bestfit]]
+mod_gr_vol_nb_ranef         <- coef(mod_gr_vol_nb_bestfit)
+
+pred_row_vol_nb <- as.numeric(rownames(model.frame(mod_gr_vol_nb_1)))
+df_gr$pred_vol_nb <- NA
+df_gr$pred_vol_nb[pred_row_vol_nb] <- predict(mod_gr_vol_nb_1, type = "response")
+ggplot(df_gr, aes(x = logvol_t0, y = volume_t1)) +
+  geom_point(alpha = 0.4) +
+  geom_line(aes(y = pred_vol), color = "red", size = 1.2) +
+  labs(x = "volumen t0 (log)", y = "volumen t1")
+
 
 # Survival ---------------------------------------------------------------------
 df_su <- df %>% 
   filter(!is.na(survives)) %>%
   filter(size_t0 != 0) %>%
   dplyr::select(id, year, size_t0, survives, size_t1, 
-                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
+                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+                stage)
 
 fig_su_overall <- ggplot(
   data = plot_binned_prop(df, 10, logsize_t0, survives)) +
@@ -465,4 +503,197 @@ fig_su_overall <- ggplot(
 fig_su_overall 
 
 
+# Survival per stage -----------------------------------------------------------
+fun_make_survival_plot <- function(df_stage, bin_data, stage_label) {
+  ggplot(data = bin_data) +
+    geom_jitter(data = df_stage, aes(x = logsize_t0, y = survives), 
+                position = position_jitter(width = 0.1, height = 0.3),
+                alpha = 0.1) +
+    geom_point(aes(x = logsize_t0, y = survives),
+               alpha = 1, pch = 16, color = 'red') +
+    geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                  linewidth = 0.5, width = 0.5) +
+    scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+    theme_bw() +
+    theme(axis.text = element_text(size = 8),
+          title = element_text(size = 10),
+          plot.subtitle = element_text(size = 8)) +
+    labs(title = paste("Survival — Stage", stage_label),
+         subtitle = v_ggp_suffix,
+         x = expression('log(size)'[t0]),
+         y = expression('Survival to time t1'))}
 
+# Filter and bin each stage
+df_su_s1     <- df_su %>% filter(stage == 1)
+df_su_s1_bin <- plot_binned_prop(df_su_s1, 10, logsize_t0, survives)
+
+df_su_s2     <- df_su %>% filter(stage == 2)
+df_su_s2_bin <- plot_binned_prop(df_su_s2, 10, logsize_t0, survives)
+
+df_su_s3     <- df_su %>% filter(stage == 3)
+df_su_s3_bin <- plot_binned_prop(df_su_s3, 10, logsize_t0, survives)
+
+# Create plots
+fig_su_s1 <- fun_make_survival_plot(df_su_s1, df_su_s1_bin, 1)
+fig_su_s2 <- fun_make_survival_plot(df_su_s2, df_su_s2_bin, 2)
+fig_su_s3 <- fun_make_survival_plot(df_su_s3, df_su_s3_bin, 3)
+
+# Combine with patchwork
+fig_su_s <- fig_su_s1 + fig_su_s2 + fig_su_s3 + 
+  plot_layout(nrow = 1)
+
+
+# Survival model ---------------------------------------------------------------
+# Logistic regression
+mod_su_0 <- glm(survives ~ 1,
+                data = df_su, family = 'binomial') 
+# Logistic regression
+mod_su_1 <- glm(survives ~ logsize_t0,
+                data = df_su, family = 'binomial') 
+# Quadratic logistic model
+mod_su_2 <- glm(survives ~ logsize_t0 + logsize_t0_2,
+                data = df_su, family = 'binomial')  
+# Cubic logistic model
+mod_su_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+                data = df_su, family = 'binomial')  
+
+
+# Compare models using AIC
+mods_su      <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
+mods_su_dAIC <- AICtab(mods_su, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_su_sorted <- order(mods_su_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_su) == 0) {
+  mod_su_index_bestfit <- mods_su_sorted[1]
+  v_mod_su_index       <- mod_su_index_bestfit - 1 
+} else {
+  mod_su_index_bestfit <- v_mod_set_su +1
+  v_mod_su_index       <- v_mod_set_su
+}
+
+mod_su_bestfit   <- mods_su[[mod_su_index_bestfit]]
+mod_su_ranef         <- coef(mod_su_bestfit)
+
+# Generate predictions for survival across a range of sizes
+mod_su_x <- seq(
+  min(df_su$logsize_t0, na.rm = T),
+  max(df_su$logsize_t0, na.rm = T), length.out = 100)
+
+# Prepare data for survival plot
+df_su_pred <- predictor_fun(mod_su_x, mod_su_ranef) %>% 
+  # Inverse logit for predictions
+  boot::inv.logit() %>% 
+  data.frame(logsize_t0 = mod_su_x, survives = .)
+
+# Survival plots
+fig_su_line <- ggplot() +
+  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives),
+            color = line_color_pred_fun(mod_su_ranef), lwd = 2) +  
+  theme_bw() + 
+  labs(title    = 'Survival prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+fig_su_bin <- ggplot() +
+  geom_point(data =  plot_binned_prop(
+    df, 10, logsize_t0, survives), 
+    aes(x = logsize_t0, y = survives) ) +
+  geom_errorbar(
+    data = plot_binned_prop(df, 10, logsize_t0, survives), 
+    aes(x = logsize_t0, ymin = lwr, ymax = upr) ) +
+  geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives),
+            color = 'red', lwd   = 2) + 
+  theme_bw() +
+  ylim(0, 1)
+
+# Combine survival plots
+fig_su <- fig_su_line + fig_su_bin + plot_layout()
+fig_su
+
+ggsave(file.path(dir_result, 'mean_survival.png'), 
+       plot = fig_su, width = 10, height = 5, dpi = 300)
+
+
+# Survival by volume -----------------------------------------------------------
+df_su_vol <- df %>% 
+  filter(!is.na(survives)) %>%
+  filter(size_t0 != 0) %>%
+  dplyr::select(id, year, size_t0, survives, size_t1, 
+                logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+                volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
+                stage)
+
+fig_su_vol <- ggplot(
+  data = plot_binned_prop(df_su_vol, 10, logvol_t0, survives)) +
+  geom_jitter(data = df_su_vol, aes(x = logvol_t0, y = survives), 
+              position = position_jitter(width = 0.1, height = 0.3)
+              , alpha = .1) +
+  geom_point(aes(x = logvol_t0, y = survives),
+             alpha = 1, pch = 16, color = 'red') +
+  geom_errorbar(aes(x = logvol_t0, ymin = lwr, ymax = upr),
+                linewidth = 0.5, width = 0.5) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  theme_bw() +
+  theme(axis.text = element_text(size = 8),
+        title = element_text(size = 10),
+        plot.subtitle = element_text(size = 8)) +
+  labs(title = 'Survival',
+       subtitle = v_ggp_suffix,
+       x = expression('log(volume)'[t0]),
+       y = expression('Survival to time t1'))
+fig_su_vol
+
+
+# Survival by volume model -----------------------------------------------------
+mod_su_vol_0 <- glm(survives ~ 1, data = df_su_vol, family = 'binomial') 
+mod_su_vol_1 <- glm(survives ~ logvol_t0, data = df_su_vol, family = 'binomial') 
+mod_su_vol_2 <- glm(survives ~ logvol_t0 + logvol_t0_2, data = df_su_vol, family = 'binomial')  
+mod_su_vol_3 <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_su_vol, family = 'binomial')  
+
+mods_su_vol        <- list(mod_su_vol_0, mod_su_vol_1, mod_su_vol_2, mod_su_vol_3)
+mods_su_vol_dAIC   <- AICtab(mods_su_vol, weights = T, sort = F)$dAIC
+mods_su_vol_sorted <- order(mods_su_vol_dAIC)
+
+mod_su_vol_index_bestfit <- mods_su_vol_sorted[1]
+mod_su_vol_bestfit       <- mods_su_vol[[mod_su_vol_index_bestfit]]
+mod_su_vol_ranef         <- coef(mod_su_vol_bestfit)
+
+mod_su_vol_x <- seq(
+  min(df_su_vol$logvol_t0, na.rm = T),
+  max(df_su_vol$logvol_t0, na.rm = T), length.out = 100)
+df_su_vol_pred <- predictor_fun(mod_su_vol_x, mod_su_vol_ranef) %>% 
+  boot::inv.logit() %>% 
+  data.frame(logvol_t0 = mod_su_vol_x, survives = .)
+
+fig_su_vol_line <- ggplot() +
+  geom_jitter(data = df_su_vol, aes(x = logvol_t0, y = survives),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_su_vol_pred, aes(x = logvol_t0, y = survives),
+            color = line_color_pred_fun(mod_su_vol_ranef), lwd = 2) +  
+  theme_bw() + 
+  labs(title    = 'Survival prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+fig_su_vol_bin <- ggplot() +
+  geom_point(data =  plot_binned_prop(
+    df_su_vol, 10, logvol_t0, survives), 
+    aes(x = logvol_t0, y = survives) ) +
+  geom_errorbar(
+    data = plot_binned_prop(df_su_vol, 10, logvol_t0, survives), 
+    aes(x = logvol_t0, ymin = lwr, ymax = upr) ) +
+  geom_line(data = df_su_vol_pred, aes(x = logvol_t0, y = survives),
+            color = 'red', lwd   = 2) + 
+  theme_bw() +
+  ylim(0, 1)
+
+# Combine survival plots
+fig_su_vol <- fig_su_vol_line + fig_su_vol_bin + plot_layout()
+fig_su_vol
+
+fig_su_line + fig_su_bin + fig_su_vol_line + fig_su_vol_bin + plot_layout()

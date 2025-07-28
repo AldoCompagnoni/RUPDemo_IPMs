@@ -354,7 +354,8 @@ df <- df_gen %>%
          logvol_t1    = log(volume_t1),
          logvol_t0_2  = logvol_t0^2,
          logvol_t0_3  = logvol_t0^3,
-         year         = as.numeric(year)) %>%
+         year         = as.numeric(year),
+         stage        = as.factor( stage)) %>%
   dplyr::select(site, quad, cohort, id, year, 
          stage, survives, size_t0, flowering_stems, recruit, 
          size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
@@ -462,6 +463,92 @@ df_gr$pred_vol <- predict(mod_gr_vol_bestfit, type = "response")
 ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1)) +
   geom_point(alpha = 0.4) +
   geom_line(aes(y = pred_vol), color = "red", size = 1.2) +
+  labs(x = "volumen t0 (log)", y = "volumen t1 (log)")
+
+
+# Growth volume with stage -----------------------------------------------------
+# Stage as a category
+mod_gr_vol_01 <- lm(logvol_t1 ~ stage, data = df_gr)
+mod_gr_vol_11 <- lm(logvol_t1 ~ logvol_t0 + stage, data = df_gr)
+mod_gr_vol_21 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + stage, data = df_gr)  
+mod_gr_vol_31 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + stage, data = df_gr)
+mod_gr_vol_12 <- lm(logvol_t1 ~ logvol_t0 * stage, data = df_gr)
+mod_gr_vol_22 <- lm(logvol_t1 ~ logvol_t0 * stage + logvol_t0_2:stage, data = df_gr)  
+mod_gr_vol_32 <- lm(logvol_t1 ~ logvol_t0 * stage + logvol_t0_2:stage + logvol_t0_3:stage, data = df_gr)
+
+mods_gr_vol_2      <- list(
+  mod_gr_vol_0,  mod_gr_vol_1,  mod_gr_vol_2,  mod_gr_vol_3,
+  mod_gr_vol_01, mod_gr_vol_11, mod_gr_vol_21, mod_gr_vol_31,
+                 mod_gr_vol_12, mod_gr_vol_22, mod_gr_vol_32)
+mods_gr_vol_2_dAIC <- AICctab(mods_gr_vol_2, weights = T, sort = F)$dAIC
+
+mods_gr_vol_2_sorted       <- order(mods_gr_vol_2_dAIC)
+mod_gr_vol_2_index_bestfit <- mods_gr_vol_2_sorted[1]
+mod_gr_vol_2_bestfit       <- mods_gr_vol_2[[mod_gr_vol_2_index_bestfit]]
+mod_gr_vol_2_ranef         <- coef(mod_gr_vol_2_bestfit)
+
+df_gr$pred_vol_2 <- predict(mod_gr_vol_2_bestfit, type = "response")
+ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1)) +
+  geom_point(alpha = 0.4) +
+  geom_line(aes(y = pred_vol_2, color = stage), size = 1.2) +
+  labs(x = "volumen t0 (log)", y = "volumen t1 (log)", color = "Stage") +
+  theme_minimal()
+
+
+# Growth volume by stage -------------------------------------------------------
+df_gr_s1     <- df_gr %>% filter(stage == 1)
+df_gr_s2     <- df_gr %>% filter(stage == 2)
+df_gr_s3     <- df_gr %>% filter(stage == 3)
+
+mod_gr_vol_s1_0 <- lm(logvol_t1 ~ 1, data = df_gr_s1)
+mod_gr_vol_s1_1 <- lm(logvol_t1 ~ logvol_t0, data = df_gr_s1)
+mod_gr_vol_s1_2 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr_s1)  
+mod_gr_vol_s1_3 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr_s1)
+
+mods_gr_vol_s1              <- list(mod_gr_vol_s1_0, mod_gr_vol_s1_1, mod_gr_vol_s1_2, mod_gr_vol_s1_3)
+mods_gr_vol_s1_dAIC         <- AICctab(mods_gr_vol_s1, weights = T, sort = F)$dAIC
+mods_gr_vol_s1_sorted       <- order(mods_gr_vol_s1_dAIC)
+mod_gr_vol_s1_index_bestfit <- mods_gr_vol_s1_sorted[1]
+mod_gr_vol_s1_bestfit       <- mods_gr_vol_s1[[mod_gr_vol_s1_index_bestfit]]
+
+df_gr_s1$pred_vol_s1 <- predict(mod_gr_vol_s1_bestfit, type = "response")
+ggplot(df_gr_s1, aes(x = logvol_t0, y = logvol_t1)) +
+  geom_point(alpha = 0.4) +
+  geom_line(aes(y = pred_vol_s1), color = "red", size = 1.2) +
+  labs(x = "volumen t0 (log)", y = "volumen t1 (log)")
+
+mod_gr_vol_s2_0 <- lm(logvol_t1 ~ 1, data = df_gr_s2)
+mod_gr_vol_s2_1 <- lm(logvol_t1 ~ logvol_t0, data = df_gr_s2)
+mod_gr_vol_s2_2 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr_s2)  
+mod_gr_vol_s2_3 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr_s2)
+
+mods_gr_vol_s2              <- list(mod_gr_vol_s2_0, mod_gr_vol_s2_1, mod_gr_vol_s2_2, mod_gr_vol_s2_3)
+mods_gr_vol_s2_dAIC         <- AICctab(mods_gr_vol_s2, weights = T, sort = F)$dAIC
+mods_gr_vol_s2_sorted       <- order(mods_gr_vol_s2_dAIC)
+mod_gr_vol_s2_index_bestfit <- mods_gr_vol_s2_sorted[1]
+mod_gr_vol_s2_bestfit       <- mods_gr_vol_s2[[mod_gr_vol_s2_index_bestfit]]
+
+df_gr_s2$pred_vol_s2 <- predict(mod_gr_vol_s2_bestfit, type = "response")
+ggplot(df_gr_s2, aes(x = logvol_t0, y = logvol_t1)) +
+  geom_point(alpha = 0.4) +
+  geom_line(aes(y = pred_vol_s2), color = "red", size = 1.2) +
+  labs(x = "volumen t0 (log)", y = "volumen t1 (log)")
+
+mod_gr_vol_s3_0 <- lm(logvol_t1 ~ 1, data = df_gr_s3)
+mod_gr_vol_s3_1 <- lm(logvol_t1 ~ logvol_t0, data = df_gr_s3)
+mod_gr_vol_s3_2 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr_s3)  
+mod_gr_vol_s3_3 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr_s3)
+
+mods_gr_vol_s3              <- list(mod_gr_vol_s3_0, mod_gr_vol_s3_1, mod_gr_vol_s3_2, mod_gr_vol_s3_3)
+mods_gr_vol_s3_dAIC         <- AICctab(mods_gr_vol_s3, weights = T, sort = F)$dAIC
+mods_gr_vol_s3_sorted       <- order(mods_gr_vol_s3_dAIC)
+mod_gr_vol_s3_index_bestfit <- mods_gr_vol_s3_sorted[1]
+mod_gr_vol_s3_bestfit       <- mods_gr_vol_s3[[mod_gr_vol_s3_index_bestfit]]
+
+df_gr_s3$pred_vol_s3 <- predict(mod_gr_vol_s3_bestfit, type = "response")
+ggplot(df_gr_s3, aes(x = logvol_t0, y = logvol_t1)) +
+  geom_point(alpha = 0.4) +
+  geom_line(aes(y = pred_vol_s3), color = "red", size = 1.2) +
   labs(x = "volumen t0 (log)", y = "volumen t1 (log)")
 
 
@@ -689,6 +776,62 @@ fig_su_vol
 
 fig_su_line + fig_su_bin + fig_su_vol_line + fig_su_vol_bin + plot_layout()
 
+
+# Survival volume with stage -----------------------------------------------------
+# Stage as a category
+mod_su_vol_01 <- glm(survives ~ stage, data = df_su_vol, family = 'binomial')
+mod_su_vol_11 <- glm(survives ~ logvol_t0 + stage, data = df_su_vol, family = 'binomial')
+mod_su_vol_21 <- glm(survives ~ logvol_t0 + logvol_t0_2 + stage, data = df_su_vol, family = 'binomial')  
+mod_su_vol_31 <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + stage, data = df_su_vol, family = 'binomial')
+mod_su_vol_12 <- glm(survives ~ logvol_t0 * stage, data = df_su_vol, family = 'binomial')
+mod_su_vol_22 <- glm(survives ~ logvol_t0 * stage + logvol_t0_2:stage, data = df_su_vol, family = 'binomial')  
+mod_su_vol_32 <- glm(survives ~ logvol_t0 * stage + logvol_t0_2:stage + logvol_t0_3:stage, data = df_su_vol, family = 'binomial')
+
+mods_su_vol_2      <- list(
+  mod_su_vol_0,  mod_su_vol_1,  mod_su_vol_2,  mod_su_vol_3,
+  mod_su_vol_01, mod_su_vol_11, mod_su_vol_21, mod_su_vol_31,
+  mod_su_vol_12, mod_su_vol_22, mod_su_vol_32)
+mods_su_vol_2_dAIC <- AICctab(mods_su_vol_2, weights = T, sort = F)$dAIC
+
+mods_su_vol_2_sorted       <- order(mods_su_vol_2_dAIC)
+mod_su_vol_2_index_bestfit <- mods_su_vol_2_sorted[1]
+mod_su_vol_2_bestfit       <- mods_su_vol_2[[mod_su_vol_2_index_bestfit]]
+mod_su_vol_2_ranef         <- coef(mod_su_vol_2_bestfit)
+
+mod_su_vol_2_x <- seq(
+  min(df_su_vol$logvol_t0, na.rm = T),
+  max(df_su_vol$logvol_t0, na.rm = T), length.out = 100)
+df_su_vol_2_pred <- predictor_fun(mod_su_vol_2_x, mod_su_vol_2_ranef) %>% 
+  boot::inv.logit() %>% 
+  data.frame(logvol_t0 = mod_su_vol_x, survives = .)
+
+fig_su_vol_2_line <- ggplot() +
+  geom_jitter(data = df_su_vol, aes(x = logvol_t0, y = survives),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_su_vol_2_pred, aes(x = logvol_t0, y = survives),
+            color = line_color_pred_fun(mod_su_vol_2_ranef), lwd = 2) +  
+  theme_bw() + 
+  labs(title    = 'Survival prediction',
+       subtitle = v_ggp_suffix) +
+  theme(plot.subtitle = element_text(size = 8))
+
+fig_su_vol_bin <- ggplot() +
+  geom_point(data =  plot_binned_prop(
+    df_su_vol, 10, logvol_t0, survives), 
+    aes(x = logvol_t0, y = survives) ) +
+  geom_errorbar(
+    data = plot_binned_prop(df_su_vol, 10, logvol_t0, survives), 
+    aes(x = logvol_t0, ymin = lwr, ymax = upr) ) +
+  geom_line(data = df_su_vol_pred, aes(x = logvol_t0, y = survives),
+            color = 'red', lwd   = 2) + 
+  theme_bw() +
+  ylim(0, 1)
+
+# Combine survival plots
+fig_su_vol <- fig_su_vol_line + fig_su_vol_bin + plot_layout()
+fig_su_vol
+
+fig_su_line + fig_su_bin + fig_su_vol_line + fig_su_vol_bin + plot_layout()
 
 
 # Flower data ------------------------------------------------------------------

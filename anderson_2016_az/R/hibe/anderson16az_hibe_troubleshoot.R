@@ -329,7 +329,7 @@ ggplotly(g_gr_overall)
 #     req(h)                          # ignore NULL on app start
 #     out <- grow_df[h$pointNumber + 1, 
 #                    c('quad','year','track_id') ]  # row in the original data
-#     write_clip(out)                 # copies to system clipboard
+#     clipr::write_clip(out)                 # copies to system clipboard
 #     out
 #   })
 #   

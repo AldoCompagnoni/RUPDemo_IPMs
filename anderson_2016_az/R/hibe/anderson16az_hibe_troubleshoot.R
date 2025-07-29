@@ -164,9 +164,10 @@ v_clonal  <- if_else(v_gr_form == 'forb', F, T)
 #                 '_',v_sp_abb,'_raw.rds') )
 
 # track species
-datTrackSpp <- readRDS( paste0(dir_data, '/', gsub('20','',v_author_year),
-                                v_region_abb,
-                                '_',v_sp_abb,'_raw.rds') )
+datTrackSpp <- readRDS( paste0(dir_data, '/', 
+                               gsub('20','',v_author_year),
+                               v_region_abb,
+                               '_',v_sp_abb,'_raw.rds') )
 
 # CHECK -- Adaptions -----------------------------------------------------------
 
@@ -287,53 +288,56 @@ grow_df <- df %>%
 
 # Growth analysis
 g_gr_overall <- grow_df %>% 
-  mutate( hover = paste(quad,year,track_id,
-                        sep=" ") ) %>% 
+  mutate( id_quad_year = paste(track_id,quad,year,
+                               sep="; ") ) %>% 
   ggplot( aes( x = logsize_t0, 
                y = logsize_t1,
-               group = hover) ) +
+               group = id_quad_year) ) +
   geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') 
 
 # check the plot
 g_gr_overall
 
+# Run
+ggplotly(g_gr_overall)
+
 
 # SHINYAPP ---------------------------------------------------------------------
 
-# First, plot using plotly (shiny below doesn't seem to work otherwise)
-ggplotly(g_gr_overall)
-
-# Create the "page" for visualization
-ui <- fluidPage(
-  h3("Hover a point and look below:"),
-  plotlyOutput("plt"),
-  verbatimTextOutput("row")
-)
-
-# set up the way to visualize the plot
-server <- function(input, output, session){
-  
-  # build the plot and tell Plotly we'll listen for hover
-  output$plt <- renderPlotly({
-    (ggplotly(g_gr_overall,tooltip = "text")) |>
-      event_register("plotly_hover")
-  })
-  
-  # whenever you hover, grab the row and copy it
-  row_r <- eventReactive(event_data("plotly_hover"), {
-    h <- event_data("plotly_hover")
-    req(h)                          # ignore NULL on app start
-    out <- grow_df[h$pointNumber + 1, 
-                   c('quad','year','track_id') ]  # row in the original data
-    write_clip(out)                 # copies to system clipboard
-    out
-  })
-  
-  output$row <- renderPrint(row_r())
-}
-
-# finally launch shiny (select a dot, and copy-paste it typing Ctrl+C)
-shinyApp(ui, server)
+# # First, plot using plotly (shiny below doesn't seem to work otherwise)
+# ggplotly(g_gr_overall)
+# 
+# # Create the "page" for visualization
+# ui <- fluidPage(
+#   h3("Hover a point and look below:"),
+#   plotlyOutput("plt"),
+#   verbatimTextOutput("row")
+# )
+# 
+# # set up the way to visualize the plot
+# server <- function(input, output, session){
+#   
+#   # build the plot and tell Plotly we'll listen for hover
+#   output$plt <- renderPlotly({
+#     (ggplotly(g_gr_overall,tooltip = "text")) |>
+#       event_register("plotly_hover")
+#   })
+#   
+#   # whenever you hover, grab the row and copy it
+#   row_r <- eventReactive(event_data("plotly_hover"), {
+#     h <- event_data("plotly_hover")
+#     req(h)                          # ignore NULL on app start
+#     out <- grow_df[h$pointNumber + 1, 
+#                    c('quad','year','track_id') ]  # row in the original data
+#     write_clip(out)                 # copies to system clipboard
+#     out
+#   })
+#   
+#   output$row <- renderPrint(row_r())
+# }
+# 
+# # finally launch shiny (select a dot, and copy-paste it typing Ctrl+C)
+# shinyApp(ui, server)
 
 
 # Final tests ------------------------------------------------------------------ 
@@ -342,12 +346,13 @@ shinyApp(ui, server)
 bbox <- st_bbox(datTrackSpp)
 
 # Plot the polygons
-plot_polygons <- function( df,  ){
+plot_polygons <- function( df ){
   ggplot( df ) +
     geom_sf( fill = "lightblue") +
     coord_sf(xlim = c(bbox["xmin"], bbox["xmax"]),
              ylim = c(bbox["ymin"], bbox["ymax"])) +
-    theme_minimal()
+    theme_bw() 
+    
 }
 
 # plot individual 
@@ -382,7 +387,10 @@ plot_before_after <- function( track_id, quad, yr ){
 }
 
 
-# IMPRTAN 	Copy paste here:
+# identify "suspect" individuals 
+ggplotly(g_gr_overall)
+
+# IMPOTANT 	Copy paste here:
   # ID NUMBER
   # QUAD NUMBER
   # YEAR (without the "19" in front of it)

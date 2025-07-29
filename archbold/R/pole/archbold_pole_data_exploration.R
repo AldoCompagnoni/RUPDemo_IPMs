@@ -9,9 +9,8 @@
 # Study organism: Polygala lewtonii
 # Link: https://portal.edirepository.org/nis/mapbrowse?packageid=edi.318.1
 # Meta data link: https://portal.edirepository.org/nis/metadataviewer?packageid=edi.318.1
-# Citing publication: 
+# Citing publication: https://doi.org/10.1071/BT11271
 # Time periode: 2001-2017
-# Plants were censused during their peak of reproduction annually in July and August
 
 
 # Setting the stage ------------------------------------------------------------
@@ -81,11 +80,11 @@ source('helper_functions/predictor_fun.R')
 
 
 # Data -------------------------------------------------------------------------
-df_org <- read_csv(file.path(dir_data, 'polygala_lewtonii_data.csv')) %>% 
+df_og <- read_csv(file.path(dir_data, 'polygala_lewtonii_data.csv')) %>% 
   janitor::clean_names()
 
 df_meta <- data.frame(
-  var = names(df_org),
+  var = names(df_og),
   describtion = c(
     'census year and month', 'management unit', 
     '25 cm circular quadrat unique ID number', 
@@ -98,7 +97,9 @@ df_meta <- data.frame(
 
 
 # Tails from meta --------------------------------------------------------------
-" In 220 permanent 25 cm radius circular plots, plants were marked with plastic toothpick"
+"Plants were censused during their peak of reproduction annually in July and August"
+
+"In 220 permanent 25 cm radius circular plots, plants were marked with plastic toothpick"
 
 "Data collection occurred quarterly with survival and recruitment recorded in 
 March, June, September and December and more detailed measures of size and fecundity taken in March"
@@ -125,7 +126,7 @@ scorched (no green but brown leaves remained), or consumed (little to no plant m
 
 
 # Sampling design --------------------------------------------------------------
-df_org %>% 
+df_og %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>%
   mutate(quad = paste0(unit, '_', quad)) %>% 
   group_by(quad, year) %>% 
@@ -143,21 +144,21 @@ df_org %>%
 
 
 # Explore quad ------------------------------------------------------------------
-df_org %>% 
+df_og %>% 
   group_by(unit) %>% 
   count(quad) #%>% view()
 'Quad is indeed a unique identifier'
 
 
 # Explore tag ------------------------------------------------------------------
-df_org %>% 
+df_og %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id)) %>% 
   arrange(unit, id, year, month) #%>% view()
 ''
 
 # Exploring duplicates
-df_org %>%
+df_og %>%
   separate(col = date, into = c('year', 'month'), sep = '-') %>%
   mutate(id = paste0(unit, '_', quad, '_', id)) %>%
   group_by(id, year, month) %>%
@@ -181,7 +182,7 @@ Therefore, I suggest to use angle/ distance as part of the ID.
 
 The publication does not mention anything about duplications (in the methods)'
 
-df_org %>%
+df_og %>%
   separate(date, into = c("year", "month"), sep = "-") %>%
   mutate(id_full = paste0(unit, "_", quad, "_", id)) %>%
   group_by(id_full, year, month) %>%
@@ -197,7 +198,7 @@ df_org %>%
   filter(!(has_5 & has_9))
 'there are 9 cases where the original plant is not dead and they have a new one with the same id'
 
-df_org %>%
+df_og %>%
   separate(col = date, into = c('year', 'month'), sep = '-') %>%
   mutate(id = paste0(unit, '_', quad, '_', id)) %>%
   group_by(id, year, month) %>%
@@ -205,14 +206,14 @@ df_org %>%
   ungroup() %>%
   distinct(id) %>%
   inner_join(
-    df_org %>%
+    df_og %>%
       separate(col = date, into = c('year', 'month'), sep = '-') %>%
       mutate(id = paste0(unit, '_', quad, '_', id)),
     by = "id") %>%
   arrange(unit, id, year, month) #%>% view()
 
 # Data aggregation
-df_org %>% 
+df_og %>% 
   # since there is no dormancy we can just filter for growth
   filter(!is.na(height)) %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
@@ -221,7 +222,7 @@ df_org %>%
 'We found that there are actually only about 6500 observations in total'
 
 # Exploring recruits
-df_org %>% 
+df_og %>% 
   filter(survival < 9,
          !c(survival == 1 & is.na(height))) %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
@@ -233,11 +234,11 @@ These individuals should be excluded, as they can distort our analysis of recrui
 Specifically, they contribute to the total count of recruits at the plot level but 
 do not provide any data for survival within the recruitment size category.'
 
-df_org %>% 
+df_og %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
   arrange(unit, id, year, month) %>% 
-  filter(id %in% (df_org %>% 
+  filter(id %in% (df_og %>% 
                        mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
                        filter(survival == 3) %>% 
                        pull(id) %>% 
@@ -256,7 +257,7 @@ Crowndiameter of 1, stems of 2, and reproducitve stem of 0 is also relatively lo
 *** Individual 4_502_127_NA-NA, March 2009, also dies with the next cencus. 
 It is at stage 3, with 9cm height, crowndiameter of 5, 6 stems, and 3 reproductive stems.
 *** many of them survive many years after'
-df_org %>% 
+df_og %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>%
   filter(survival == 3) %>% group_by(year, month) %>% count()
 'We conculde that it is some measurement of how they were added to the sampling campain,
@@ -264,11 +265,11 @@ but sice all of them are not recruits we just convert them to survival == 1 and 
 -> it is new individuals added (meta-data)'
 
 # Exploring survival == 2
-df_org %>% 
+df_og %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
   arrange(unit, id, year, month) %>% 
-  filter(id %in% (df_org %>% 
+  filter(id %in% (df_og %>% 
                     mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
                     filter(survival == 2) %>% 
                     pull(id) %>% 
@@ -277,7 +278,7 @@ df_org %>%
 -> remove them from the data set!?'
 
 # Exploring plant death
-df_org %>% 
+df_og %>% 
   filter(survival == 0 | !is.na(height)) %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
@@ -286,7 +287,7 @@ df_org %>%
 
 
 # Generating data --------------------------------------------------------------
-df_gen <- df_org %>% 
+df_gen <- df_og %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
   arrange(unit, id, year, month) %>% #view()
@@ -295,7 +296,7 @@ df_gen <- df_org %>%
   mutate(death = paste0(year, "_", month)[which(survival == 0)[1]]) %>%
   ungroup() %>% #view()
   # Code 2 survival: individual not found, 5 in total. REMOVE
-  filter(!id %in% (df_org %>% 
+  filter(!id %in% (df_og %>% 
                      mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
                      filter(survival == 2) %>% 
                      pull(id) %>% 
@@ -319,9 +320,9 @@ df_gen <- df_org %>%
     recruit = if_else(
       (lag(survival) == 5 & is.na(lag(stage))), 2, 0, missing = 0)) %>% 
   mutate(recruit = if_else(survival == 5, 1, recruit)) %>% 
-  mutate(recruit = if_else(as.numeric(year) == 2001, NA_real_, recruit)) %>% #view()
-  filter(survival < 5) %>% 
-  ungroup() %>%
+  mutate(recruit = if_else(as.numeric(year) == 2001, NA_real_, recruit)) %>% 
+  mutate(recruit = if_else(stage == 1, 1, recruit)) %>% 
+  ungroup() %>% #view()
   # Survival: 
   #  Since there is no dormancy I can remove everything that does not have a size 
   filter(!is.na(stage)) %>% #view()
@@ -330,7 +331,8 @@ df_gen <- df_org %>%
     survival = if_else(row_number() == n(), 0, survival)) %>%
   ungroup() %>% #view()
   # Include the NEW ADDITIONS (survival == 3)
-  mutate(survival = if_else(survival == 3, 1, survival)) %>% 
+  mutate(survival = if_else(survival == 3, 1, survival),
+         survival = if_else(survival == 5, 1, survival)) %>% 
   # Growth:
   group_by(id) %>%
   mutate(size_t1   = lead(height),
@@ -355,9 +357,11 @@ df <- df_gen %>%
          logvol_t0_2  = logvol_t0^2,
          logvol_t0_3  = logvol_t0^3,
          year         = as.numeric(year),
-         stage        = as.factor( stage)) %>%
+         stage        = as.factor( stage),
+         recruits     = if_else(recruit > 0, 1, recruit),
+         flower       = if_else(stage == 3, 1, 0)) %>%
   dplyr::select(site, quad, cohort, id, year, 
-         stage, survives, size_t0, flowering_stems, recruit, 
+         stage, survives, size_t0, flower, flowering_stems, recruits, recruit, 
          size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
          crown_diameter, stems, 
          volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3)
@@ -386,11 +390,11 @@ df_gr <- df %>%
     id, year, size_t0, size_t1,
     logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
     volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
-    stage)
+    stage, recruits)
 
 ggplot(
   data  = df_gr, aes(x = logsize_t0, y = logsize_t1)) +
-  geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') +
+  geom_point(alpha = 0.5, pch = 16, size = 0.7) +
   theme_bw() +
   theme(axis.text = element_text(size = 8),
         title     = element_text(size = 10)) +
@@ -548,8 +552,63 @@ mod_gr_vol_s3_bestfit       <- mods_gr_vol_s3[[mod_gr_vol_s3_index_bestfit]]
 df_gr_s3$pred_vol_s3 <- predict(mod_gr_vol_s3_bestfit, type = "response")
 ggplot(df_gr_s3, aes(x = logvol_t0, y = logvol_t1)) +
   geom_point(alpha = 0.4) +
+  geom_abline(intercept = 0, slope = 1) +
   geom_line(aes(y = pred_vol_s3), color = "red", size = 1.2) +
   labs(x = "volumen t0 (log)", y = "volumen t1 (log)")
+
+
+# Growth volume with recruits --------------------------------------------------
+df_gr_r <- df_gr %>% filter(
+  !is.na(recruits)) %>%
+  mutate(recruits = as.factor(recruits))
+
+mod_gr_vol_r_0  <- lm(logvol_t1 ~ 1, data = df_gr_r)
+mod_gr_vol_r_1  <- lm(logvol_t1 ~ logvol_t0, data = df_gr_r)
+mod_gr_vol_r_2  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr_r)  
+mod_gr_vol_r_3  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr_r)
+mod_gr_vol_r_01 <- lm(logvol_t1 ~ recruits, data = df_gr_r)
+mod_gr_vol_r_11 <- lm(logvol_t1 ~ logvol_t0 + recruits, data = df_gr_r)
+mod_gr_vol_r_21 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + recruits, data = df_gr_r)  
+mod_gr_vol_r_31 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + recruits, data = df_gr_r)
+mod_gr_vol_r_12 <- lm(logvol_t1 ~ logvol_t0 * recruits, data = df_gr_r)
+mod_gr_vol_r_22 <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits, data = df_gr_r)  
+mod_gr_vol_r_32 <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits, data = df_gr_r)
+
+mods_gr_vol_r      <- list(
+  mod_gr_vol_r_0,  mod_gr_vol_r_1,  mod_gr_vol_r_2,  mod_gr_vol_r_3,
+  mod_gr_vol_r_01, mod_gr_vol_r_11, mod_gr_vol_r_21, mod_gr_vol_r_31,
+  mod_gr_vol_r_12, mod_gr_vol_r_22, mod_gr_vol_r_32)
+mods_gr_vol_r_dAIC <- AICctab(mods_gr_vol_r, weights = T, sort = F)$dAIC
+
+mods_gr_vol_r_sorted       <- order(mods_gr_vol_r_dAIC)
+mod_gr_vol_r_index_bestfit <- mods_gr_vol_r_sorted[1]
+mod_gr_vol_r_bestfit       <- mods_gr_vol_r[[mod_gr_vol_r_index_bestfit]]
+mod_gr_vol_r_ranef         <- coef(mod_gr_vol_r_bestfit)
+
+df_gr_r_newdata <- df_gr_r %>%
+  group_by(recruits) %>%
+  summarise(range = list(seq(min(logvol_t0), max(logvol_t0), length.out = 100)), .groups = 'drop') %>%
+  unnest(range) %>%
+  mutate(
+    logvol_t0 = range,
+    logvol_t0_2 = logvol_t0^2,
+    recruits = factor(recruits)
+  ) %>%
+  dplyr::select(-range) %>%
+  mutate(predicted = predict(mod_gr_vol_r_bestfit, newdata = .))
+
+ggplot(df_gr_r, aes(x = logvol_t0, y = logvol_t1, color = recruits)) +
+  geom_point(alpha = 0.4) +
+  geom_line(data = df_gr_r_newdata, aes(y = predicted), size = 1) +
+  scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
+  labs(
+    title    = 'Growth prediction',
+    subtitle = v_ggp_suffix,
+    x = 'Volumen t0 (log)',
+    y = 'Volumen t1 (log)',
+    color = 'Recruit'
+  ) +
+  theme_minimal()
 
 
 # Survival ---------------------------------------------------------------------
@@ -699,12 +758,14 @@ ggsave(file.path(dir_result, 'mean_survival.png'),
 
 # Survival by volume -----------------------------------------------------------
 df_su_vol <- df %>% 
-  filter(!is.na(survives), !is.na(logvol_t0), !is.na(logvol_t0_2), !is.na(logvol_t0_3)) %>%
+  filter(!is.na(survives), !is.na(logvol_t0), !is.na(logvol_t0_2), !is.na(logvol_t0_3),
+         !is.na(recruits)) %>%
   filter(size_t0 != 0) %>%
+  mutate(recruits = as.factor(recruits)) %>% 
   dplyr::select(id, year, size_t0, survives, size_t1, 
                 logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
                 volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
-                stage)
+                stage, recruits)
 
 fig_su_vol <- ggplot(
   data = plot_binned_prop(df_su_vol, 10, logvol_t0, survives)) +
@@ -799,20 +860,26 @@ mod_su_vol_2_bestfit       <- mods_su_vol_2[[mod_su_vol_2_index_bestfit]]
 mod_su_vol_2_ranef         <- coef(mod_su_vol_2_bestfit)
 
 mod_su_vol_2_x <- seq(
-  min(df_su_vol$logvol_t0, na.rm = T),
-  max(df_su_vol$logvol_t0, na.rm = T), length.out = 100)
-df_su_vol_2_pred <- predictor_fun(mod_su_vol_2_x, mod_su_vol_2_ranef) %>% 
-  boot::inv.logit() %>% 
-  data.frame(logvol_t0 = mod_su_vol_x, survives = .)
+  min(df_su_vol$logvol_t0, na.rm = TRUE),
+  max(df_su_vol$logvol_t0, na.rm = TRUE), length.out = 100)
+df_su_vol_2_pred <- bind_rows(
+  data.frame(logvol_t0 = mod_su_vol_2_x, stage = "1"),
+  data.frame(logvol_t0 = mod_su_vol_2_x, stage = "2"),
+  data.frame(logvol_t0 = mod_su_vol_2_x, stage = "3")
+) %>%
+  mutate(
+    logvol_t0_2 = logvol_t0^2)
+
+df_su_vol_2_pred$survives <- predict(mod_su_vol_2_bestfit, newdata = df_su_vol_2_pred, type = "response")
 
 fig_su_vol_2_line <- ggplot() +
   geom_jitter(data = df_su_vol, aes(x = logvol_t0, y = survives),
               alpha = 0.25, width = 0.08, height = 0.3) +
-  geom_line(data = df_su_vol_2_pred, aes(x = logvol_t0, y = survives),
-            color = line_color_pred_fun(mod_su_vol_2_ranef), lwd = 2) +  
-  theme_bw() + 
-  labs(title    = 'Survival prediction',
-       subtitle = v_ggp_suffix) +
+  geom_line(data = df_su_vol_2_pred, aes(x = logvol_t0, y = survives, color = stage), size = 1.2) +
+  labs(title = "Survival prediction",
+       subtitle = v_ggp_suffix,
+       color = "Stage") +
+  theme_bw() +
   theme(plot.subtitle = element_text(size = 8))
 
 fig_su_vol_bin <- ggplot() +
@@ -834,15 +901,104 @@ fig_su_vol
 fig_su_line + fig_su_bin + fig_su_vol_line + fig_su_vol_bin + plot_layout()
 
 
+# Survival volume with recruits ------------------------------------------------
+mod_su_vol_r_0  <- glm(survives ~ 1, data = df_su_vol, family = 'binomial') 
+mod_su_vol_r_1  <- glm(survives ~ logvol_t0, data = df_su_vol, family = 'binomial') 
+mod_su_vol_r_2  <- glm(survives ~ logvol_t0 + logvol_t0_2, data = df_su_vol, family = 'binomial')  
+mod_su_vol_r_3  <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_su_vol, family = 'binomial')  
+mod_su_vol_r_01 <- glm(survives ~ recruits, data = df_su_vol, family = 'binomial')
+mod_su_vol_r_11 <- glm(survives ~ logvol_t0 + recruits, data = df_su_vol, family = 'binomial')
+mod_su_vol_r_21 <- glm(survives ~ logvol_t0 + logvol_t0_2 + recruits, data = df_su_vol, family = 'binomial')  
+mod_su_vol_r_31 <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + recruits, data = df_su_vol, family = 'binomial')
+mod_su_vol_r_12 <- glm(survives ~ logvol_t0 * recruits, data = df_su_vol, family = 'binomial')
+mod_su_vol_r_22 <- glm(survives ~ logvol_t0 * recruits + logvol_t0_2:recruits, data = df_su_vol, family = 'binomial')  
+mod_su_vol_r_32 <- glm(survives ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits, data = df_su_vol, family = 'binomial')
+
+mods_su_vol_r      <- list(
+  mod_su_vol_r_0,  mod_su_vol_r_1,  mod_su_vol_r_2,  mod_su_vol_r_3,
+  mod_su_vol_r_01, mod_su_vol_r_11, mod_su_vol_r_21, mod_su_vol_r_31,
+                   mod_su_vol_r_12, mod_su_vol_r_22, mod_su_vol_r_32)
+mods_su_vol_r_dAIC <- AICctab(mods_su_vol_r, weights = T, sort = F)$dAIC
+
+mods_su_vol_r_sorted       <- order(mods_su_vol_r_dAIC)
+mod_su_vol_r_index_bestfit <- mods_su_vol_r_sorted[1]
+mod_su_vol_r_bestfit       <- mods_su_vol_r[[mod_su_vol_r_index_bestfit]]
+mod_su_vol_r_ranef         <- coef(mod_su_vol_r_bestfit)
+
+df_su_vol_r_newdata <- df_su_vol %>%
+  group_by(recruits) %>%
+  summarise(x = list(seq(min(logvol_t0), max(logvol_t0), length.out = 100)), .groups = "drop") %>%
+  unnest(x) %>%
+  mutate(
+    logvol_t0 = x,
+    logvol_t0_2 = logvol_t0^2,
+    recruits = factor(recruits)) %>% 
+  mutate(predicted = predict(mod_su_vol_r_bestfit, newdata = ., type = "response"))
+
+fig_su_vol_r_line <- ggplot(df_su_vol, aes(x = logvol_t0, y = survives, color = factor(recruits))) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.3) +
+  geom_line(data = df_su_vol_r_newdata, aes(y = predicted), size = 1) +
+  labs(
+    title    = "Survival probability by volume and recruits",
+    x        = "Volumen t0 (log)",
+    y        = "Probability of survival",
+    color    = "Recruits"
+  ) +
+  scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+df_su_vol_r_bindata <- df_su_vol %>%
+  group_by(recruits) %>%
+  group_modify(~ plot_binned_prop(.x, 10, logvol_t0, survives)) %>%
+  ungroup() %>%
+  mutate(recruits = factor(recruits))
+
+df_su_vol_r_pred <- df_su_vol %>%
+  group_by(recruits) %>%
+  reframe(logvol_t0 = seq(min(logvol_t0), max(logvol_t0), length.out = 100)) %>%
+  mutate(
+    logvol_t0_2 = logvol_t0^2,
+    recruits = factor(recruits)
+  ) %>%
+  mutate(
+    survives = predict(mod_su_vol_r_bestfit, newdata = ., type = 'response')
+  )
+
+fig_su_vol_r_bin <- ggplot() +
+  geom_point(data = df_su_vol_r_bindata, aes(x = logvol_t0, y = survives, color = recruits)) +
+  geom_errorbar(
+    data = df_su_vol_r_bindata,
+    aes(x = logvol_t0, ymin = lwr, ymax = upr, color = recruits),
+    width = 0.1
+  ) +
+  geom_line(
+    data = df_su_vol_r_pred,
+    aes(x = logvol_t0, y = survives, color = recruits),
+    size = 1.2
+  ) +
+  scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
+  labs(
+    x      = 'Volumen t0 (log)',
+    y      = '',
+    color  = 'Recruit'
+  ) +
+  theme_bw() +
+  ylim(0, 1)
+
+fig_su_vol_r <- fig_su_vol_r_line + fig_su_vol_r_bin + plot_layout()
+fig_su_vol_r
+
+
 # Flower data ------------------------------------------------------------------
+# We exclude all recruits form the probablity to flower
 df_fl <- df %>% 
-  filter(!is.na(flowering_stems), !is.na(logvol_t0), !is.na(logvol_t0_2), !is.na(logvol_t0_3)) %>%
-  dplyr::select(id, year, size_t0, flowering_stems, size_t1, 
+  filter(!is.na(flower), !is.na(logvol_t0), !is.na(logvol_t0_2), !is.na(logvol_t0_3)) %>%
+  filter(recruits == 0) %>% 
+  dplyr::select(id, year, size_t0, flower, size_t1, 
                 logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
                 volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
-                stage) %>% 
-  rename(flower = flowering_stems) %>% 
-  mutate(flower = if_else(flower > 0, 1, flower))
+                stage)
 
 fig_fl_overall <- ggplot(
   data = plot_binned_prop(df_fl, 10, logsize_t0, flower)) +
@@ -956,36 +1112,167 @@ fig_fl <- fig_fl_line + fig_fl_bin + plot_layout()
 fig_fl
 
 
-# # Flower to Recruit -------------------------------------------------------------
-# flower_to_recruit_by_year <- {
-#   flower_by_year <- df %>%
-#     filter(!is.na(flowering_stems)) %>%
-#     group_by(year) %>%
-#     summarise(total_flower = sum(flowering_stems , na.rm = TRUE)) %>%
-#     mutate(year = year + 1)  # Shift by one year assuming recruitment is next year
-#   
-#   recruits_by_year <- df %>%
-#     filter(recruit == 1) %>%
-#     group_by(year) %>%
-#     summarise(n_recruits = n())
-#   
-#   recruits_by_year %>%
-#     left_join(flower_by_year, by = "year") %>%
-#     mutate(repr_pc_mean = n_recruits / total_flower)
-# }
-# 
-# # Summary stats
-# flower_to_recruit_by_year %>%
-#   summarise(
-#     mean   = mean(repr_pc_mean, na.rm = TRUE),
-#     sd     = sd  (repr_pc_mean, na.rm = TRUE),
-#     median = median(repr_pc_mean, na.rm = TRUE)
-#   )
-# 
-# # Histogram
-# hist(flower_to_recruit_by_year$repr_pc_mean)
-# 
-# # Extract values if needed
-# repr_pc_mean_flower   <- mean(flower_to_recruit_by_year$repr_pc_mean, na.rm = TRUE)
-# repr_pc_median_flower <- median(flower_to_recruit_by_year$repr_pc_mean, na.rm = TRUE)
-# 
+# Fecundity volume -------------------------------------------------------------
+# Conditional on flowering
+df_fec <- df %>%
+  filter(flower == 1)
+
+# Since there are no 0s in the dataset we go for a truncated nb model
+df_fec$flowering_stems %>% summary()
+'I couldnt find a functioning truncated nb function'
+
+mod_fe_nb <- glm.nb(flowering_stems ~ logvol_t0, data = df_fec)
+
+df_fec_preddata <- tibble(
+  logvol_t0 = seq(min(df_fec$logvol_t0, na.rm = TRUE),
+                  max(df_fec$logvol_t0, na.rm = TRUE),
+                  length.out = 100))
+df_fec_preddata$predicted_stems <- predict(mod_fe_nb, newdata = df_fec_preddata, type = 'response')
+
+# Plot
+ggplot(df_fec, aes(x = logvol_t0, y = flowering_stems)) +
+  geom_jitter(width = 0.1, height = 0.2, alpha = 0.4) +
+  geom_line(data = df_fec_preddata, aes(y = predicted_stems), color = 'darkgreen', size = 1.2) +
+  labs(
+    title = 'Fecundity Model (Negative Binomial)',
+    x = 'Volume t0 (log)',
+    y = 'Number of Flowering Stems'
+  ) +
+  theme_minimal()
+
+
+# Flowering stock to Recruit transition ----------------------------------------
+stocks_by_plot <- df %>%
+  filter(!is.na(flowering_stems)) %>%
+  group_by(site, quad, year) %>%
+  summarise(total_stocks = sum(flowering_stems, na.rm = TRUE), .groups = "drop") %>%
+  mutate(year_recruits = year + 1)
+
+recruits_by_plot <- df %>%
+  filter(recruits == 1) %>%
+  group_by(site, quad, year) %>%
+  summarise(recruits_present = 1, .groups = "drop")  # binary presence
+
+stocks_to_recruits <- stocks_by_plot %>%
+  left_join(recruits_by_plot, by = c("site", "quad", "year_recruits" = "year")) %>%
+  mutate(recruits_present = ifelse(is.na(recruits_present), 0, recruits_present))
+
+mod_stocks_to_recruits <- glm(recruits_present ~ total_stocks, data = stocks_to_recruits, family = binomial)
+summary(mod_stocks_to_recruits)
+
+ggplot(stocks_to_recruits, aes(x = total_stocks, y = recruits_present)) +
+  geom_jitter(height = 0.05, alpha = 0.4) +
+  stat_smooth(method = "glm", method.args = list(family = "binomial"), color = "blue", se = TRUE) +
+  labs(
+    title = "Probability of Recruitment by Total Flowering Stems",
+    x = "Total Flowering Stems (per site/plot/year)",
+    y = "Recruitment Presence (Next Year)"
+  ) +
+  theme_minimal()
+
+
+mod_log <- glm(recruits_present ~ log1p(total_stocks), data = stocks_to_recruits, family = binomial)
+summary(mod_log)
+
+
+
+
+# Aggregate flowering stems by year and shift forward
+stock_to_recruit_by_year <- {
+  
+  # Total number of flowering stems per year
+  stocks_by_year <- df %>%
+    filter(!is.na(flowering_stems)) %>%
+    group_by(year) %>%
+    summarise(total_stocks = sum(flowering_stems, na.rm = TRUE)) %>%
+    mutate(year = year + 1)  # Shift forward: flowering stems in year → recruits in year + 1
+  
+  # Count recruits by year
+  recruits_by_year <- df %>%
+    filter(recruit == 1) %>%
+    group_by(year) %>%
+    summarise(n_recruits = n())
+  
+  # Combine and compute per-stock recruitment
+  recruits_by_year %>%
+    left_join(stocks_by_year, by = "year") %>%
+    mutate(recruits_per_stock = n_recruits / total_stocks)
+}
+
+stock_to_recruit_by_year %>%
+  summarise(
+    mean   = mean(recruits_per_stock, na.rm = TRUE),
+    sd     = sd  (recruits_per_stock, na.rm = TRUE),
+    median = median(recruits_per_stock, na.rm = TRUE)
+  )
+
+hist(stock_to_recruit_by_year$recruits_per_stock,
+     main = "Recruitment Efficiency (Recruits per Flowering Stem)",
+     xlab = "Recruits per Stock", col = "lightblue", border = "white")
+
+
+repr_pc_mean_stock   <- mean(stock_to_recruit_by_year$recruits_per_stock, na.rm = TRUE)
+repr_pc_median_stock <- median(stock_to_recruit_by_year$recruits_per_stock, na.rm = TRUE)
+
+
+stock_to_recruit_by_year_site <- {
+  # Total flowering stems by site and year
+  stocks_by_year_site <- df %>%
+    filter(!is.na(flowering_stems)) %>%
+    group_by(site, year) %>%
+    summarise(total_stocks = sum(flowering_stems, na.rm = TRUE), .groups = "drop") %>%
+    mutate(year = year + 1)
+  
+  # Recruits by site and year
+  recruits_by_year_site <- df %>%
+    filter(recruit == 1) %>%
+    group_by(site, year) %>%
+    summarise(n_recruits = n(), .groups = "drop")
+  
+  # Join and compute ratio
+  recruits_by_year_site %>%
+    left_join(stocks_by_year_site, by = c("site", "year")) %>%
+    mutate(recruits_per_stock = n_recruits / total_stocks)
+}
+
+stock_to_recruit_by_year_plot <- {
+  # Flowering stems per plot and year
+  stocks_by_year_plot <- df %>%
+    filter(!is.na(flowering_stems)) %>%
+    group_by(site, quad, year) %>%
+    summarise(total_stocks = sum(flowering_stems, na.rm = TRUE), .groups = "drop") %>%
+    mutate(year = year + 1)
+  
+  # Recruits per plot and year
+  recruits_by_year_plot <- df %>%
+    filter(recruit == 1) %>%
+    group_by(site, quad, year) %>%
+    summarise(n_recruits = n(), .groups = "drop")
+  
+  # Join and compute
+  recruits_by_year_plot %>%
+    left_join(stocks_by_year_plot, by = c("site", "quad", "year")) %>%
+    mutate(recruits_per_stock = n_recruits / total_stocks)
+}
+
+stock_to_recruit_by_year_site <- stock_to_recruit_by_year_site %>%
+  filter(!is.na(total_stocks) & total_stocks > 0)
+
+stock_to_recruit_by_year_plot <- stock_to_recruit_by_year_plot %>%
+  filter(!is.na(total_stocks) & total_stocks > 0)
+
+# Summary for site-level
+stock_to_recruit_by_year_site %>%
+  summarise(
+    mean   = mean(recruits_per_stock, na.rm = TRUE),
+    sd     = sd  (recruits_per_stock, na.rm = TRUE),
+    median = median(recruits_per_stock, na.rm = TRUE)
+  )
+
+# Summary for plot-level
+stock_to_recruit_by_year_plot %>%
+  summarise(
+    mean   = mean(recruits_per_stock, na.rm = TRUE),
+    sd     = sd  (recruits_per_stock, na.rm = TRUE),
+    median = median(recruits_per_stock, na.rm = TRUE)
+  )

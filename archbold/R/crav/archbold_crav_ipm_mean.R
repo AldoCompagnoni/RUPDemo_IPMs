@@ -769,7 +769,7 @@ coef_fl <- Reduce(function(...) rbind(...), list(coef_fl_fe)) %>%
 coef_fr_fe  <- data.frame(coefficient = names(coef(fr_mod_best)),
                           value       =       coef(fr_mod_best))
 
-coef_fr <- Reduce(function(...) rbind(...), list(coef_fl_fe)) %>%
+coef_fr <- Reduce(function(...) rbind(...), list(coef_fr_fe)) %>%
   mutate(coefficient = as.character(coefficient)) %>%
   mutate(coefficient = replace(
     coefficient, grepl('Intercept', coefficient), 'b0'))

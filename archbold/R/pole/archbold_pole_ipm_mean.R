@@ -52,6 +52,7 @@ v_ggp_suffix    <- paste(
 v_mod_set_su <- c()
 v_mod_set_gr <- c()
 v_mod_set_fl <- c()
+v_mod_set_fe <- c()
 
 # Directory --------------------------------------------------------------------
 dir_pub    <- file.path(paste0(v_head))
@@ -136,7 +137,13 @@ mods_su      <- list(
 mods_su_dAIC <- AICctab(mods_su, weights = T, sort = F)$dAIC
 
 mods_su_sorted       <- order(mods_su_dAIC)
-mod_su_index_bestfit <- mods_su_sorted[1]
+if (length(v_mod_set_su) == 0) {
+  mod_su_index_bestfit <- mods_su_sorted[1]
+  v_mod_su_index       <- mod_su_index_bestfit - 1 
+} else {
+  mod_su_index_bestfit <- v_mod_set_su +1
+  v_mod_su_index       <- v_mod_set_su
+  }
 mod_su_bestfit       <- mods_su[[mod_su_index_bestfit]]
 mod_su_ranef         <- coef(mod_su_bestfit)
 
@@ -213,15 +220,16 @@ df_gr <- df %>%
     stage, recruits)
 
 fig_gr_raw <- ggplot(
-  data  = df_gr, aes(logvol_t0, logsize_t1)) +
+  data  = df_gr, aes(logvol_t0, logvol_t1)) +
   geom_point(alpha = 0.5, pch = 16, size = 0.7) +
+  geom_abline(intercept = 0, slope = 1) +
   theme_bw() +
   theme(axis.text = element_text(size = 8),
         title     = element_text(size = 10)) +
   labs(title    = 'Growth',
        subtitle = v_ggp_suffix,
-       x        = expression('log(size) ' [t0]),
-       y        = expression('log(size)  '[t1])) +
+       x        = expression('log(volume) ' [t0]),
+       y        = expression('log(volume)  '[t1])) +
   theme(plot.subtitle = element_text(size = 8))
 fig_gr_raw
 
@@ -246,7 +254,13 @@ mods_gr      <- list(
 mods_gr_dAIC <- AICctab(mods_gr, weights = T, sort = F)$dAIC
 
 mods_gr_sorted       <- order(mods_gr_dAIC)
-mod_gr_index_bestfit <- mods_gr_sorted[1]
+if (length(v_mod_set_gr) == 0) {
+  mod_gr_index_bestfit <- mods_gr_sorted[1]
+  v_mod_gr_index       <- mod_gr_index_bestfit - 1 
+} else {
+  mod_gr_index_bestfit <- v_mod_set_gr +1
+  v_mod_gr_index       <- v_mod_set_gr
+}
 mod_gr_bestfit       <- mods_gr[[mod_gr_index_bestfit]]
 mod_gr_ranef         <- coef(mod_gr_bestfit)
 
@@ -265,6 +279,7 @@ df_gr_newdata <- df_gr %>%
 fig_gr <- ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1, color = recruits)) +
   geom_point(alpha = 0.4) +
   geom_line(data = df_gr_newdata, aes(y = predicted), size = 1) +
+  geom_abline(intercept = 0, slope = 1) +
   scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
   labs(
     title    = 'Growth prediction',
@@ -275,6 +290,17 @@ fig_gr <- ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1, color = recruits)) +
   theme_minimal()
 
 fig_gr
+
+
+# Growth variance --------------------------------------------------------------
+# Fitted values from growth model
+mod_gr_x   <- fitted(mod_gr_bestfit)  
+# Squared residuals
+mod_gr_y   <- resid(mod_gr_bestfit)^2  
+# Non-linear model for variance
+mod_gr_var <- nls(
+  mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
+  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE)) 
 
 
 # Flower data ------------------------------------------------------------------
@@ -320,7 +346,6 @@ mod_fl_2 <- glm(flower ~ logvol_t0 + logvol_t0_2,
 # Cubic logistic model
 mod_fl_3 <- glm(flower ~ logvol_t0 + logvol_t0_2 + logvol_t0_3,
                 data = df_fl, family = 'binomial')  
-
 
 # Compare models using AIC
 mods_fl      <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
@@ -380,19 +405,40 @@ fig_fl
 # Fecundity --------------------------------------------------------------------
 # Conditional on flowering
 df_fec <- df %>%
-  filter(flower == 1)
+  filter(flower == 1, !is.na(logvol_t0))
 
 # Since there are no 0s in the dataset we go for a truncated nb model
 df_fec$flowering_stems %>% summary()
 'I couldnt find a functioning truncated nb function'
 
-mod_fe_nb <- glm.nb(flowering_stems ~ logvol_t0, data = df_fec)
+mod_fe_0 <- glm.nb(flowering_stems ~ 1, data = df_fec)
+mod_fe_1 <- glm.nb(flowering_stems ~ logvol_t0, data = df_fec)
+mod_fe_2 <- glm.nb(flowering_stems ~ logvol_t0 + logvol_t0_2, data = df_fec)
+mod_fe_3 <- glm.nb(flowering_stems ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_fec)
+
+mods_fe      <- list(mod_fe_0, mod_fe_1, mod_fe_2, mod_fe_3)
+mods_fe_dAIC <- AICctab(mods_fe, weights = T, sort = F)$dAIC
+mods_fe_i_sort <- order(mods_fe_dAIC)
+
+if (length(v_mod_set_fe) == 0) {
+  mod_fe_i_best <- mods_fe_i_sort[1]
+  v_mod_fe_i    <- mod_fe_i_best - 1 
+} else {
+  mod_fe_i_best <- v_mod_set_fe +1
+  v_mod_fe_i    <- v_mod_set_fe
+}
+
+mod_fe_best  <- mods_fe[[mod_fe_i_best]]
+mod_fe_ranef <- coef(mod_fe_best)
 
 df_fec_preddata <- tibble(
   logvol_t0 = seq(min(df_fec$logvol_t0, na.rm = TRUE),
                   max(df_fec$logvol_t0, na.rm = TRUE),
-                  length.out = 100))
-df_fec_preddata$predicted_stems <- predict(mod_fe_nb, newdata = df_fec_preddata, type = 'response')
+                  length.out = 100),
+  logvol_t0_2 = logvol_t0^2,
+  logvol_t0_3 = logvol_t0^3)
+df_fec_preddata$predicted_stems <- predict(
+  mod_fe_best, newdata = df_fec_preddata, type = 'response')
 
 # Plot
 fig_fe <- ggplot(df_fec, aes(x = logvol_t0, y = flowering_stems)) +
@@ -406,6 +452,7 @@ fig_fe <- ggplot(df_fec, aes(x = logvol_t0, y = flowering_stems)) +
   theme_minimal()
 fig_fe
 
+
 # Flowering stock to Recruit transition ----------------------------------------
 stocks_by_plot <- df %>%
   filter(!is.na(flowering_stems)) %>%
@@ -416,123 +463,494 @@ stocks_by_plot <- df %>%
 recruits_by_plot <- df %>%
   filter(recruits == 1) %>%
   group_by(site, quad, year) %>%
-  summarise(recruits_present = 1, .groups = 'drop')  # binary presence
+  summarise(recruit_count = n(), .groups = 'drop')
 
 stocks_to_recruits <- stocks_by_plot %>%
   left_join(recruits_by_plot, by = c('site', 'quad', 'year_recruits' = 'year')) %>%
-  mutate(recruits_present = ifelse(is.na(recruits_present), 0, recruits_present))
+  mutate(recruit_count = ifelse(is.na(recruit_count), 0, recruit_count))
 
-mod_stocks_to_recruits <- glm(recruits_present ~ total_stocks, data = stocks_to_recruits, family = binomial)
-summary(mod_stocks_to_recruits)
+filtered_data <- stocks_to_recruits %>%
+  filter(total_stocks < 100)
 
-ggplot(stocks_to_recruits, aes(x = total_stocks, y = recruits_present)) +
-  geom_jitter(height = 0.05, alpha = 0.4) +
-  stat_smooth(method = 'glm', method.args = list(family = 'binomial'), color = 'blue', se = TRUE) +
+mod_poisson <- glm(recruit_count ~ total_stocks, data = filtered_data, family = poisson)
+summary(mod_poisson)
+
+mod_nb <- glm.nb(recruit_count ~ total_stocks, data = filtered_data)
+summary(mod_nb)
+
+ggplot(filtered_data, aes(x = total_stocks, y = recruit_count)) +
+  geom_jitter(height = 0.2, width = 0.5, alpha = 0.4) +
+  stat_smooth(method = 'glm', method.args = list(family = 'poisson'), se = TRUE, color = 'blue') +
   labs(
-    title = 'Probability of Recruitment by Total Flowering Stems',
+    title = 'Number of Recruits vs Flowering Stems (Next Year)',
     x = 'Total Flowering Stems (per site/plot/year)',
-    y = 'Recruitment Presence (Next Year)'
+    y = 'Number of Recruits (Next Year)'
   ) +
   theme_minimal()
 
+new_data <- data.frame(total_stocks = seq(min(filtered_data$total_stocks, na.rm = TRUE),
+                                          max(filtered_data$total_stocks, na.rm = TRUE),
+                                          length.out = 100))
 
-mod_log <- glm(recruits_present ~ log1p(total_stocks), data = stocks_to_recruits, family = binomial)
-summary(mod_log)
+preds <- predict(mod_nb, newdata = new_data, type = "link", se.fit = TRUE)
+new_data$fit <- exp(preds$fit)  # inverse link (log)
+new_data$lower <- exp(preds$fit - 1.96 * preds$se.fit)
+new_data$upper <- exp(preds$fit + 1.96 * preds$se.fit)
 
-
-
-
-# Aggregate flowering stems by year and shift forward
-stock_to_recruit_by_year <- {
-  
-  # Total number of flowering stems per year
-  stocks_by_year <- df %>%
-    filter(!is.na(flowering_stems)) %>%
-    group_by(year) %>%
-    summarise(total_stocks = sum(flowering_stems, na.rm = TRUE)) %>%
-    mutate(year = year + 1)  # Shift forward: flowering stems in year → recruits in year + 1
-  
-  # Count recruits by year
-  recruits_by_year <- df %>%
-    filter(recruit == 1) %>%
-    group_by(year) %>%
-    summarise(n_recruits = n())
-  
-  # Combine and compute per-stock recruitment
-  recruits_by_year %>%
-    left_join(stocks_by_year, by = 'year') %>%
-    mutate(recruits_per_stock = n_recruits / total_stocks)}
-
-stock_to_recruit_by_year %>%
-  summarise(
-    mean   = mean(recruits_per_stock, na.rm = TRUE),
-    sd     = sd  (recruits_per_stock, na.rm = TRUE),
-    median = median(recruits_per_stock, na.rm = TRUE))
-
-hist(stock_to_recruit_by_year$recruits_per_stock,
-     main = 'Recruitment Efficiency (Recruits per Flowering Stem)',
-     xlab = 'Recruits per Stock', col = 'lightblue', border = 'white')
+ggplot(filtered_data, aes(x = total_stocks, y = recruit_count)) +
+  geom_jitter(height = 0.2, width = 0.5, alpha = 0.4, color = 'gray40') +
+  geom_ribbon(data = new_data, aes(x = total_stocks, ymin = lower, ymax = upper), inherit.aes = FALSE,
+              alpha = 0.2, fill = 'red') +
+  geom_line(data = new_data, aes(x = total_stocks, y = fit), inherit.aes = FALSE,
+            color = 'darkred', size = 1.2) +
+  labs(
+    title = 'Negative Binomial Fit: Recruits vs Flowering Stems (Next Year)',
+    x = 'Total Flowering Stems (per site/plot/year)',
+    y = 'Number of Recruits (Next Year)'
+  ) +
+  theme_bw()
 
 
-repr_pc_mean_stock   <- mean(stock_to_recruit_by_year$recruits_per_stock, na.rm = TRUE)
-repr_pc_median_stock <- median(stock_to_recruit_by_year$recruits_per_stock, na.rm = TRUE)
+
+# ---------
+filtered_positive <- filtered_data %>%
+  filter(recruit_count > 0)
+# 
+# #install.packages("VGAM")
+# library(VGAM)
+# mod_trunc_nb <- vglm(recruit_count ~ total_stocks, 
+#                      family = posnegbinomial(), data = filtered_positive)
+summary(mod_trunc_nb)
 
 
-stock_to_recruit_by_year_site <- {
-  # Total flowering stems by site and year
-  stocks_by_year_site <- df %>%
-    filter(!is.na(flowering_stems)) %>%
-    group_by(site, year) %>%
-    summarise(total_stocks = sum(flowering_stems, na.rm = TRUE), .groups = 'drop') %>%
-    mutate(year = year + 1)
-  
-  # Recruits by site and year
-  recruits_by_year_site <- df %>%
-    filter(recruit == 1) %>%
-    group_by(site, year) %>%
-    summarise(n_recruits = n(), .groups = 'drop')
-  
-  # Join and compute ratio
-  recruits_by_year_site %>%
-    left_join(stocks_by_year_site, by = c('site', 'year')) %>%
-    mutate(recruits_per_stock = n_recruits / total_stocks)}
 
-stock_to_recruit_by_year_plot <- {
-  # Flowering stems per plot and year
-  stocks_by_year_plot <- df %>%
-    filter(!is.na(flowering_stems)) %>%
-    group_by(site, quad, year) %>%
-    summarise(total_stocks = sum(flowering_stems, na.rm = TRUE), .groups = 'drop') %>%
-    mutate(year = year + 1)
-  
-  # Recruits per plot and year
-  recruits_by_year_plot <- df %>%
-    filter(recruit == 1) %>%
-    group_by(site, quad, year) %>%
-    summarise(n_recruits = n(), .groups = 'drop')
-  
-  # Join and compute
-  recruits_by_year_plot %>%
-    left_join(stocks_by_year_plot, by = c('site', 'quad', 'year')) %>%
-    mutate(recruits_per_stock = n_recruits / total_stocks)}
 
-stock_to_recruit_by_year_site <- stock_to_recruit_by_year_site %>%
-  filter(!is.na(total_stocks) & total_stocks > 0)
 
-stock_to_recruit_by_year_plot <- stock_to_recruit_by_year_plot %>%
-  filter(!is.na(total_stocks) & total_stocks > 0)
+# Recruitment data -------------------------------------------------------------
+df_re <- df %>%
+  group_by(year, site, quad) %>%
+  summarise(tot_p_volume = sum(volume_t0, na.rm = TRUE), .groups = "drop") %>%
+  {
+    df_quad <- .
+    df_group <- df_quad %>%
+      group_by(year) %>%
+      summarise(g_cov = mean(tot_p_volume), .groups = "drop")
+    
+    df_cover <- left_join(df_quad, df_group, by = "year") %>%
+      mutate(year = as.integer(year + 1)) %>%
+      drop_na()
+    
+    df_re <- df %>%
+      group_by(year, site, quad) %>%
+      summarise(nr_recs = sum(recruits, na.rm = TRUE), .groups = "drop")
+    
+    left_join(df_cover, df_re, by = c("year", "site", "quad"))
+  }
 
-# Summary for site-level
-stock_to_recruit_by_year_site %>%
-  summarise(
-    mean   = mean(recruits_per_stock, na.rm = TRUE),
-    sd     = sd  (recruits_per_stock, na.rm = TRUE),
-    median = median(recruits_per_stock, na.rm = TRUE))
+ggplot(
+  df_re, aes(x = tot_p_volume, y = nr_recs)) + 
+  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
+  theme_bw() + 
+  labs(title    = 'Recruitment',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant volume '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
 
-# Summary for plot-level
-stock_to_recruit_by_year_plot %>%
-  summarise(
-    mean   = mean(recruits_per_stock, na.rm = TRUE),
-    sd     = sd  (recruits_per_stock, na.rm = TRUE),
-    median = median(recruits_per_stock, na.rm = TRUE))
+# Density dependency
+df_re_qd <- df %>% 
+  group_by(site, quad, year) %>%
+  dplyr::select(recruits) %>% 
+  summarise(rec_qd_t1 = sum(recruits, na.rm = T)) %>%
+  left_join(df %>% 
+              group_by(site, quad, year) %>% 
+              summarise(nr_ind = sum(!is.na(volume_t0))) %>% 
+              mutate(year = year - 1),
+            by = c('site', 'quad', 'year'))
 
+fig_re_dens <- ggplot(data = df_re_qd) + 
+  geom_jitter(aes(y = rec_qd_t1, x = nr_ind)) + 
+  geom_smooth(aes(y = rec_qd_t1, x = nr_ind), method = 'lm') + 
+  theme_bw() + 
+  labs(title    = 'Recruitment - desity dependence: Quad level',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant volume '[t0]),   
+       y        = expression('Number of recruits '       [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
+
+ggsave(file.path(dir_result, 'mean_rec_density_dependency.png'), 
+       plot = fig_re_dens, width = 10, height = 5, dpi = 300)
+
+
+# Recruitment model ------------------------------------------------------------
+df_re_mod <- df_re %>% filter(!is.na(nr_recs))
+# Fit a negative binomial model for recruitment
+mod_rec <- MASS::glm.nb(nr_recs ~ 1, data = df_re_mod)
+
+# Generate predictions for recruitment
+df_re_mod <- df_re_mod %>% 
+  mutate(mod_pred = predict(mod_rec, type = 'response')) 
+
+
+# Per-capita reproduction ------------------------------------------------------
+df_repr_pc <- df %>%
+  filter(!is.na(volume_t0)) %>% 
+  summarize(n_adults = n()) %>%
+  bind_cols(
+    df_re_mod %>%
+      summarize(nr_recs = sum(nr_recs, na.rm = TRUE),
+                mod_pred = sum(mod_pred, na.rm = TRUE))) %>%
+  mutate(repr_pc_mean = mod_pred / n_adults,
+         repr_pc_obs  = nr_recs  / n_adults) %>%
+  drop_na()
+
+# overall level
+df %>% 
+  filter(!is.na(volume_t0)) %>% 
+  summarize(n_adults = n()) %>% 
+  bind_cols(df %>% 
+              filter(!is.na(recruits)) %>%
+              summarize(n_rec = n())) %>% 
+  mutate(rp_pc_m = n_rec / n_adults)
+
+
+# site level
+df %>% 
+  filter(!is.na(volume_t0)) %>%
+  group_by(site) %>% 
+  summarize(n_adults = n()) %>% 
+  left_join(df %>% 
+              filter(!is.na(recruits)) %>%
+              group_by(site) %>%
+              summarize(n_rec = n()),
+            by = 'site') %>% 
+  mutate(n_rec = ifelse(is.na(n_rec), 0, n_rec)) %>%
+  mutate(repr_pc_mean = n_rec / n_adults) %>% 
+  summarise(n_adults = sum(n_adults),
+            n_rec    = sum(n_rec),
+            rp_pc_m  = mean(repr_pc_mean))
+
+
+# quad level
+df %>% 
+  filter(!is.na(volume_t0)) %>%
+  group_by(quad) %>% 
+  summarize(n_adults = n()) %>% 
+  left_join(df %>% 
+              filter(!is.na(recruits)) %>%
+              group_by(quad) %>%
+              summarize(n_rec = n()),
+            by = 'quad') %>% 
+  mutate(n_rec = ifelse(is.na(n_rec), 0, n_rec)) %>%
+  mutate(repr_pc_mean = n_rec / n_adults) %>% 
+  summarise(n_adults = sum(n_adults),
+            n_rec    = sum(n_rec),
+            rp_pc_m  = mean(repr_pc_mean))
+
+
+# Extracting parameter estimates -----------------------------------------------
+# Survival
+coef_su_fe  <- data.frame(coefficient = names(coef(mod_su_bestfit)),
+                          value       =       coef(mod_su_bestfit))
+
+coef_su <- Reduce(function(...) rbind(...), list(coef_su_fe)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# Growth
+coef_gr_fe  <- data.frame(coefficient = names(coef(mod_gr_bestfit)),
+                          value       =       coef(mod_gr_bestfit))
+coef_gr_var <- data.frame(coefficient = names(coef(mod_gr_var)),
+                          value       =       coef(mod_gr_var))
+
+coef_gr <- Reduce(function(...) rbind(...), list(coef_gr_fe, coef_gr_var)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# Flower
+coef_fl_fe  <- data.frame(coefficient = names(coef(mod_fl_bestfit)),
+                          value       =       coef(mod_fl_bestfit))
+
+coef_fl <- Reduce(function(...) rbind(...), list(coef_fl_fe)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# Fruit
+coef_fe_fe  <- data.frame(coefficient = names(coef(mod_fe_best)),
+                          value       =       coef(mod_fe_best))
+
+coef_fr <- Reduce(function(...) rbind(...), list(coef_fe_fe)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# Recruitment 
+df_re_size <- df %>% subset(recruits == 1)
+
+# Miscellany
+coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
+                                          'fecu_b0', 
+                                          'max_siz', 'min_siz'),
+                          value       = c(mean(log(df_re_size$size_t0), na.rm = T), 
+                                          sd(  log(df_re_size$size_t0), na.rm = T),
+                                          repr_pc_mean_stock,
+                                          df_gr$logsize_t0 %>% max, 
+                                          df_gr$logsize_t0 %>% min))
+
+extr_value <- function(x, field){
+  subset(x, coefficient == field)$value
+}
+
+pars <- Filter(function(x) length(x) > 0, list(
+  prefix      = v_script_prefix,
+  species     = v_species,
+  surv_b0     = extr_value(coef_su, 'b0'),
+  surv_b1     = extr_value(coef_su, 'logvol_t0'),
+  surv_b2     = extr_value(coef_su, 'logvol_t0_2'),
+  surv_b3     = extr_value(coef_su, 'logvol_t0_3'),
+  surv_br     = extr_value(coef_su, 'recruits1'),
+  grow_b0     = extr_value(coef_gr, 'b0'),
+  grow_b1     = extr_value(coef_gr, 'logvol_t0'),
+  grow_b2     = extr_value(coef_gr, 'logvol_t0_2'),
+  grow_b3     = extr_value(coef_gr, 'logvol_t0_3'),
+  grow_br     = extr_value(coef_gr, 'recruits1'),
+  grow_b1_br  = extr_value(coef_gr, 'logvol_t0:recruits1'),
+  grow_b2_br0 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
+  grow_b2_br1 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
+  a           = extr_value(coef_gr, 'a'),
+  b           = extr_value(coef_gr, 'b'),
+  fl_b0       = extr_value(coef_fl, 'b0'),
+  fl_b1       = extr_value(coef_fl, 'logvol_t0'),
+  fl_b2       = extr_value(coef_fl, 'logvol_t0_2'),
+  fl_b3       = extr_value(coef_fl, 'logvol_t0_3'),
+  fr_b0       = extr_value(coef_fl, 'b0'),
+  fr_b1       = extr_value(coef_fr, 'logvol_t0'),
+  fr_b2       = extr_value(coef_fr, 'logvol_t0_2'),
+  fr_b3       = extr_value(coef_fr, 'logvol_t0_3'),
+  fecu_b0     = extr_value(coef_misc, 'fecu_b0'),
+  recr_sz     = extr_value(coef_misc, 'rec_siz'),
+  recr_sd     = extr_value(coef_misc, 'rec_sd'),
+  L           = extr_value(coef_misc, 'min_siz'),
+  U           = extr_value(coef_misc, 'max_siz'),
+  mat_siz     = 200,
+  mod_su_index = v_mod_su_index,
+  mod_gr_index = v_mod_gr_index,
+  mod_gr_index = v_mod_fl_index
+))
+
+
+# # Building the IPM -------------------------------------------------------------
+# # Function describing the invert logit
+# inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+# 
+# # Survival of x-sized individual to time t1
+# sx <- function(x, pars, num_pars = v_mod_su_index) {
+#   survival_value <- pars$surv_b0
+#   for (i in 1:num_pars) {
+#     param_name <- paste0('surv_b', i)
+#     if (!is.null(pars[[param_name]])) {
+#       survival_value <- survival_value + pars[[param_name]] * x^(i)
+#     }
+#   }
+#   return(inv_logit(survival_value))
+# }
+# 
+# # Function describing standard deviation of growth model
+# grow_sd <- function(x, pars) {
+#   pars$a * (exp(pars$b* x)) %>% sqrt 
+# }
+# 
+# # Growth from size x to size y
+# gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
+#   mean_value <- 0
+#   for (i in 0:num_pars) {
+#     param_name <- paste0('grow_b', i)
+#     if (!is.null(pars[[param_name]])) {
+#       mean_value <- mean_value + pars[[param_name]] * x^i
+#     }
+#   }
+#   sd_value <- grow_sd(x, pars)
+#   return(dnorm(y, mean = mean_value, sd = sd_value))
+# }
+# 
+# # Function describing the transition kernel
+# pxy <- function(x, y, pars) {
+#   return(sx(x, pars) * gxy(x, y, pars))
+# }
+# 
+# # Flowering of x-sized individual at time t0
+# fl_x <- function(x, pars, num_pars = v_mod_fl_index) {
+#   val <- pars$fl_b0
+#   for (i in 1:num_pars) {
+#     param <- paste0('fl_b', i)
+#     if (!is.null(pars[[param]])) {
+#       val <- val + pars[[param]] * x^i
+#     }
+#   }
+#   inv_logit(val)
+# }
+# 
+# # Fruiting of x-sized individuals at time t0
+# fr_x <- function(x, pars, num_pars = v_mod_fr_i) {
+#   val <- pars$fr_b0
+#   for (i in 1:num_pars) {
+#     param <- paste0('fr_b', i)
+#     if (!is.null(pars[[param]])) {
+#       val <- val + pars[[param]] * x^i
+#     }
+#   }
+#   exp(val)  # Negative binomial uses log link
+# }
+# 
+# # Recruitment size distribution at time t1
+# re_y_dist <- function(y, pars) {
+#   dnorm(y, mean = pars$recr_sz, sd = pars$recr_sd)
+# }
+# 
+# # F-kernel
+# fyx <- function(y, x, pars) {
+#   fl_x(x, pars) *
+#     fr_x(x, pars) *
+#     pars$fecu_b0 *
+#     re_y_dist(y, pars)
+# }
+# 
+# # Kernel
+# kernel <- function(pars) {
+#   
+#   # number of bins over which to integrate
+#   n   <- pars$mat_siz 
+#   # lower limit of integration
+#   L   <- pars$L  
+#   # upper limit of integration
+#   U   <- pars$U       
+#   # bin size
+#   h   <- (U - L) / n  
+#   # lower boundaries of bins
+#   b   <- L + c(0:n) * h             
+#   # midpoints of bins
+#   y   <- 0.5 * (b[1:n] + b[2:(n + 1)]) 
+#   
+#   # Survival vector
+#   Smat   <- c()
+#   Smat   <- sx(y, pars)
+#   
+#   # Growth matrix
+#   Gmat   <- matrix(0, n, n)
+#   Gmat[] <- t(outer(y, y, gxy, pars)) * h
+#   
+#   # Growth/survival transition matrix
+#   Tmat   <- matrix(0, n, n)
+#   
+#   # Correct for eviction of offspring
+#   for(i in 1:(n / 2)) {
+#     Gmat[1,i] <- Gmat[1,i] + 1 - sum(Gmat[,i])
+#     Tmat[,i]  <- Gmat[,i] * Smat[i]
+#   }
+#   
+#   # Correct eviction of large adults
+#   for(i in (n / 2 + 1):n) {
+#     Gmat[n,i] <- Gmat[n,i] + 1 - sum(Gmat[,i])
+#     Tmat[,i]  <- Gmat[,i] * Smat[i]
+#   }
+#   
+#   # Fertility matrix
+#   Fmat <- outer(y, y, Vectorize(function(x, y) fyx(x, y, pars))) * h
+#   
+#   # Full Kernel is simply a summation of fertility and transition matrices
+#   k_yx <- Fmat + Tmat
+#   
+#   return(list(k_yx    = k_yx,
+#               Fmat    = Fmat,
+#               Tmat    = Tmat,
+#               Gmat    = Gmat,
+#               meshpts = y))
+# }
+# 
+# lambda_ipm <- function(i) {
+#   return(Re(eigen(kernel(i)$k_yx)$value[1]))
+# }
+# 
+# # mean population growth rate
+# lam_mean <- lambda_ipm(pars)
+# lam_mean
+# 
+# 
+# # Observed population growth ---------------------------------------------------
+# df_counts_year <- df %>%
+#   group_by(year) %>%
+#   filter(!is.na(survives)) %>% 
+#   summarise(n = n())
+# 
+# # Then compute observed lambda
+# lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
+# lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
+# 
+# 
+# # IPM investigation ------------------------------------------------------------
+# summary(df$size_t0, na.rm = TRUE)
+# hist(df$size_t0, na.rm = TRUE)
+# 
+# # Use actual observed size limits
+# min_x <- min(df$size_t0, na.rm = TRUE)
+# max_x <- max(df$size_t0, na.rm = TRUE)
+# 
+# # Recalculate mesh points
+# n_mesh <- 200  # resolution
+# x_vals <- seq(min_x, max_x, length.out = n_mesh)
+# y_vals <- x_vals  # assuming y follows same range
+# 
+# 
+# fl_vals <- sapply(x_vals, function(x) fl_x(x, pars))
+# plot(x_vals, fl_vals, type = "l", main = "Flowering Probability vs Size",
+#      xlab = "Size (x)", ylab = "Flowering Probability")
+# 
+# 
+# fr_vals <- sapply(x_vals, function(x) fr_x(x, pars))
+# plot(x_vals, fr_vals, type = "l", main = "Fruiting Counts vs Size",
+#      xlab = "Size (x)", ylab = "Mean Number of Fruits")
+# 
+# 
+# re_vals <- sapply(y_vals, function(y) re_y_dist(y, pars))
+# plot(y_vals, re_vals, type = "l", main = "Recruitment Size Distribution",
+#      xlab = "Size (y)", ylab = "Density")
+# 
+# 
+# fyx_vals <- outer(x_vals, y_vals, Vectorize(function(x, y) fyx(x, y, pars)))
+# selected_x <- c(2, 5, 8)  # example sizes
+# matplot(y_vals, t(fyx_vals[selected_x, ]), type = "l", lty = 1, col = 1:length(selected_x),
+#         main = "Kernel fyx across y for selected x",
+#         xlab = "Size (y)", ylab = "fyx value")
+# legend("topright", legend = paste("x =", selected_x), col = 1:length(selected_x), lty = 1)
+# 
+# 
+# # Approximated lambda
+# dx <- x_vals[2] - x_vals[1]
+# dy <- y_vals[2] - y_vals[1]
+# lambda_approx <- sum(fyx_vals) * dx * dy
+# 
+# cat("F-only lambda (approx):", lambda_approx, "\n")
+# cat("Full IPM lambda (eigen):", lam_mean, "\n")
+# 
+# 
+# # Save data --------------------------------------------------------------------
+# write.csv(df_og, row.names = F,
+#           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_original.csv')))
+# write.csv(df_meta, row.names = F,
+#           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_meta.csv')))
+# write.csv(df, row.names = F,
+#           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_workdata.csv')))
+# write.csv(df_su, row.names = F,
+#           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_survival.csv')))
+# write.csv(df_gr, row.names = F,
+#           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_growth.csv')))
+# write.csv(df_fl, row.names = F,
+#           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_flower.csv')))
+# write.csv(df_fr, row.names = F,
+#           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_fruit.csv')))
+# write.csv(df_re, row.names = F,
+#           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_recruit.csv')))
+# 

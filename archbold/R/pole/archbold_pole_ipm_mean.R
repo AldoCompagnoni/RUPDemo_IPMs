@@ -98,6 +98,20 @@ df %>%
 
 # Remove all of them 
 # Send the id and other info on them to Aldo
+
+
+# Variability in the number of individuals per quadrats ------------------------
+df %>%
+  group_by(site, quad) %>%
+  summarise(n_individuals = n_distinct(id), .groups = "drop") %>%
+  summarise(
+    total_quadrats   = n(),
+    min_indivs       = min(n_individuals),
+    max_indivs       = max(n_individuals),
+    mean_indivs      = mean(n_individuals),
+    median_indivs    = median(n_individuals),
+    nr_quad_above3   = sum( n_individuals <= 3),
+    prop_quad_above3 = mean(n_individuals <= 3))
   
 
 # Survival ---------------------------------------------------------------------
@@ -431,7 +445,6 @@ fig_fl
 
 # Fecundity --------------------------------------------------------------------
 # Conditional on flowering
-library(vgam)
 df_fec <- df %>%
   filter(flower == 1, !is.na(logvol_t0))
 
@@ -509,10 +522,14 @@ df_fs2r <- df %>%
       filter(recruits == 1) %>%
       group_by(site, quad, year) %>%
       summarise(recruit_count = n(), .groups = 'drop'),
-    by = c("year_recruits" = "year")
+    by = c('site', 'quad', 'year_recruits' = 'year')
   ) %>%
   mutate(recruit_count = ifelse(is.na(recruit_count), 0, recruit_count)) %>%
   filter(total_stocks < 100)
+
+df_fs2r %>% 
+  group_by(year) %>% 
+  summarise(total_stocks = sum(total_stocks))
 
 mod_fs2r <- glm.nb(recruit_count ~ total_stocks, data = df_fs2r)
 
@@ -574,6 +591,62 @@ ggplot(df_fs2r_0t_pred, aes(x = total_stocks, y = recruit_count)) +
     title = 'Posterior mean and 95% credible interval'
   ) +
   theme_minimal()
+
+
+# Recruits by number of individuals per quadrat --------------------------------
+ggplot(df %>%
+         group_by(site, quad, year) %>%
+         summarise(
+           n_individuals = n_distinct(id),
+           n_recruits = sum(recruits, na.rm = TRUE),
+           .groups = 'drop'), aes(x = n_individuals, y = n_recruits)) +
+  geom_jitter(width = 0.2, height = 0.2, alpha = 0.5) +
+  geom_smooth(method = 'glm', method.args = list(family = 'poisson'), color = 'darkred') +
+  labs(
+    x = 'Number of Individuals per Quadrat-Year',
+    y = 'Number of Recruits',
+    title = 'Recruitment vs. Density') +
+  theme_bw()
+
+
+# Recruits by total volume per quadrat and fire---------------------------------
+ggplot(df %>%
+         group_by(site, quad, year) %>%
+         summarise(
+           total_volume = sum(volume_t0, na.rm = TRUE),
+           n_recruits   = sum(recruits, na.rm = TRUE),
+           fire = as.factor(
+             if (all(is.na(postburn_plant))) {'_NA_ture'} else {
+               max(postburn_plant, na.rm = TRUE)}),
+           .groups = 'drop'),
+       aes(x = total_volume, y = n_recruits, color = fire)) +
+  geom_point(alpha = 0.6) +
+  scale_color_manual(values = c('0' = 'darkred', '1' = 'forestgreen', '_NA_ture' = 'gray50')) +
+  theme_bw() +
+  labs(x = 'Total Volume per Quadrat', y = 'Number of Recruits', color = 'Postburn Status')
+
+
+# Tails from the publication ---------------------------------------------------
+# Seedbank
+"P. lewtonii plants are usually killed by fire and seedlings recruit
+post-fire from a soil seedbank (B. Pace-Aldana, pers. comm.;
+C. W. Weekley, unpubl. data)."
+"A separate field
+experiment demonstrated that buried seeds may retain viability
+for at least 2 years (C. W. Weekley and E. S. Menges, unpubl.
+data), indicating that P. lewtonii is capable of accumulating a
+persistent (sensuThompson and Grime 1979) soil seedbank. The
+sudden appearance of large cohorts of seedling recruits suggests
+that the persistent seedbanks of P. lewtonii are ecologically
+relevant."
+" In the March 2002 census,
+burned quadrats out-recruited unburned quadrats 3.7–1
+(184.0% v. 49.2%; c2 = 48.880, d.f. = 1, P < 0.001). Over the 2
+censuses, burned quadrats had proportional recruitment of
+between 75.8% and 79.0% of seedlings recruited into burned
+quadrats with no surviving reproductive adults, indicating that
+most recruitment was from the preburn seedbank rather than
+from newly produced seeds."
 
 
 # Recruitment data -------------------------------------------------------------

@@ -365,7 +365,7 @@ df <- df_gen %>%
   dplyr::select(site, quad, cohort, id, year, 
                 stage, survives, size_t0, flower, flowering_stems, recruits, recruit, 
                 size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
-                crown_diameter, stems, 
+                crown_diameter, stems, postburn_plant,
                 volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3)
 
 
@@ -376,3 +376,4 @@ write.csv(df_meta, row.names = F,
           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_meta.csv')))
 write.csv(df, row.names = F,
           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_workdata.csv')))
+

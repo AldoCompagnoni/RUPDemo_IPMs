@@ -95,6 +95,9 @@ df %>%
   group_by(site, quad, year, id_part1) %>%
   filter(n() > 1) %>%  # Keep only groups with more than one row
   ungroup()
+
+# Remove all of them 
+# Send the id and other info on them to Aldo
   
 
 # Survival ---------------------------------------------------------------------
@@ -428,6 +431,7 @@ fig_fl
 
 # Fecundity --------------------------------------------------------------------
 # Conditional on flowering
+library(vgam)
 df_fec <- df %>%
   filter(flower == 1, !is.na(logvol_t0))
 
@@ -505,7 +509,7 @@ df_fs2r <- df %>%
       filter(recruits == 1) %>%
       group_by(site, quad, year) %>%
       summarise(recruit_count = n(), .groups = 'drop'),
-    by = c("site", "quad", "year_recruits" = "year")
+    by = c("year_recruits" = "year")
   ) %>%
   mutate(recruit_count = ifelse(is.na(recruit_count), 0, recruit_count)) %>%
   filter(total_stocks < 100)

@@ -85,6 +85,18 @@ df_meta <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_meta.csv')
 df      <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_workdata.csv')))
 
 
+# Double ID --------------------------------------------------------------------
+
+df %>%
+  mutate(
+    id_part1 = str_extract(id, "^([^_]+_[^_]+_[^_]+)"),
+    id_part2 = sub("^[^_]+_[^_]+_[^_]+_", "", id)
+  ) %>%
+  group_by(site, quad, year, id_part1) %>%
+  filter(n() > 1) %>%  # Keep only groups with more than one row
+  ungroup()
+  
+
 # Survival ---------------------------------------------------------------------
 df_su <- df %>% 
   filter(!is.na(survives), !is.na(logvol_t0), !is.na(logvol_t0_2), !is.na(logvol_t0_3),
@@ -418,6 +430,9 @@ fig_fl
 # Conditional on flowering
 df_fec <- df %>%
   filter(flower == 1, !is.na(logvol_t0))
+
+df_fec %>% filter(recruits == 1 & flowering_stems > 0)
+'there are no recruits that produce a flowering stock in t0'
 
 # Since there are no 0s in the dataset we go for a truncated nb model
 df_fec$flowering_stems %>% summary()

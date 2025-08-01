@@ -235,22 +235,23 @@ fig_gr_raw
 
 
 # Growth model -----------------------------------------------------------------
-mod_gr_0  <- lm(logvol_t1 ~ 1, data = df_gr)
-mod_gr_1  <- lm(logvol_t1 ~ logvol_t0, data = df_gr)
-mod_gr_2  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr)  
-mod_gr_3  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr)
-mod_gr_01 <- lm(logvol_t1 ~ recruits, data = df_gr)
-mod_gr_11 <- lm(logvol_t1 ~ logvol_t0 + recruits, data = df_gr)
-mod_gr_21 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + recruits, data = df_gr)  
-mod_gr_31 <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + recruits, data = df_gr)
-mod_gr_12 <- lm(logvol_t1 ~ logvol_t0 * recruits, data = df_gr)
-mod_gr_22 <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits, data = df_gr)  
-mod_gr_32 <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits, data = df_gr)
+mod_gr_0   <- lm(logvol_t1 ~ 1, data = df_gr)
+mod_gr_1   <- lm(logvol_t1 ~ logvol_t0, data = df_gr)
+mod_gr_2   <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr)  
+mod_gr_3   <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr)
+mod_gr_01  <- lm(logvol_t1 ~ recruits, data = df_gr)
+mod_gr_11  <- lm(logvol_t1 ~ logvol_t0 + recruits, data = df_gr)
+mod_gr_21  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + recruits, data = df_gr)  
+mod_gr_31  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + recruits, data = df_gr)
+mod_gr_12  <- lm(logvol_t1 ~ logvol_t0 * recruits, data = df_gr)
+mod_gr_221 <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2, data = df_gr)  
+mod_gr_22  <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits, data = df_gr)  
+mod_gr_32  <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits, data = df_gr)
 
 mods_gr      <- list(
-  mod_gr_0,  mod_gr_1,  mod_gr_2,  mod_gr_3,
-  mod_gr_01, mod_gr_11, mod_gr_21, mod_gr_31,
-  mod_gr_12, mod_gr_22, mod_gr_32)
+  mod_gr_0,  mod_gr_1,  mod_gr_2,   mod_gr_3,
+  mod_gr_01, mod_gr_11, mod_gr_21,  mod_gr_31,
+  mod_gr_12, mod_gr_22, mod_gr_221, mod_gr_32)
 mods_gr_dAIC <- AICctab(mods_gr, weights = T, sort = F)$dAIC
 
 mods_gr_sorted       <- order(mods_gr_dAIC)
@@ -261,7 +262,7 @@ if (length(v_mod_set_gr) == 0) {
   mod_gr_index_bestfit <- v_mod_set_gr +1
   v_mod_gr_index       <- v_mod_set_gr
 }
-mod_gr_bestfit       <- mods_gr[[mod_gr_index_bestfit]]
+mod_gr_bestfit       <- mod_gr_221
 mod_gr_ranef         <- coef(mod_gr_bestfit)
 
 df_gr_newdata <- df_gr %>%
@@ -271,23 +272,34 @@ df_gr_newdata <- df_gr %>%
   mutate(
     logvol_t0 = range,
     logvol_t0_2 = logvol_t0^2,
-    recruits = factor(recruits)
-  ) %>%
-  dplyr::select(-range) %>%
-  mutate(predicted = predict(mod_gr_bestfit, newdata = .))
+    recruits = factor(recruits)) %>%
+  dplyr::select(-range)
+
+df_gr_newdata <- cbind(df_gr_newdata, as.data.frame(predict(
+  mod_gr_bestfit,
+  newdata = df_gr_newdata,
+  interval = 'confidence')))
+
 
 fig_gr <- ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1, color = recruits)) +
   geom_point(alpha = 0.4) +
-  geom_line(data = df_gr_newdata, aes(y = predicted), size = 1) +
+  geom_line(data = df_gr_newdata, aes(y = fit), size = 1) +
+  geom_ribbon(
+    data = df_gr_newdata,
+    aes(y = fit, ymin = lwr, ymax = upr, fill = recruits),
+    alpha = 0.2,
+    color = NA) +
   geom_abline(intercept = 0, slope = 1) +
   scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
+  scale_fill_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
   labs(
-    title    = 'Growth prediction',
+    title = 'Growth prediction',
     subtitle = v_ggp_suffix,
     x = 'Volumen t0 (log)',
     y = 'Volumen t1 (log)',
-    color = 'Recruit') +
-  theme_minimal()
+    color = 'Recruit',
+    fill = 'Recruit') + 
+  theme_bw()
 
 fig_gr
 
@@ -434,117 +446,136 @@ mod_fe_ranef <- coef(mod_fe_best)
 df_fec_preddata <- tibble(
   logvol_t0 = seq(min(df_fec$logvol_t0, na.rm = TRUE),
                   max(df_fec$logvol_t0, na.rm = TRUE),
-                  length.out = 100),
-  logvol_t0_2 = logvol_t0^2,
-  logvol_t0_3 = logvol_t0^3)
-df_fec_preddata$predicted_stems <- predict(
-  mod_fe_best, newdata = df_fec_preddata, type = 'response')
+                  length.out = 100)) %>%
+  mutate(logvol_t0_2 = logvol_t0^2,
+         logvol_t0_3 = logvol_t0^3)
 
-# Plot
+mod_fe_pred <- predict(mod_fe_best, newdata = df_fec_preddata, type = 'link', se.fit = TRUE)
+
+df_fec_preddata <- df_fec_preddata %>%
+  mutate(
+    fit_link = mod_fe_pred$fit,
+    se_link = mod_fe_pred$se.fit,
+    fit_link_lower = fit_link - 1.96 * se_link,
+    fit_link_upper = fit_link + 1.96 * se_link,
+    predicted_stems = exp(fit_link),
+    predicted_stems_lower = exp(fit_link_lower),
+    predicted_stems_upper = exp(fit_link_upper))
+
 fig_fe <- ggplot(df_fec, aes(x = logvol_t0, y = flowering_stems)) +
   geom_jitter(width = 0.1, height = 0.2, alpha = 0.4) +
-  geom_line(data = df_fec_preddata, aes(y = predicted_stems), color = 'darkgreen', size = 1.2) +
+  geom_line(data = df_fec_preddata, aes(x = logvol_t0, y = predicted_stems), color = 'darkgreen', size = 1.2) +
+  geom_ribbon(
+    data = df_fec_preddata,
+    aes(x = logvol_t0, ymin = predicted_stems_lower, ymax = predicted_stems_upper),
+    fill = 'darkgreen', alpha = 0.2,
+    inherit.aes = FALSE) +
   labs(
     title    = 'Fecundity',
     subtitle = v_ggp_suffix,
     x        = 'Volume t0 (log)',
     y        = 'Number of Flowering Stems') +
-  theme_minimal()
+  theme_bw()
 fig_fe
 
 
 # Flowering stock to Recruit transition ----------------------------------------
-stocks_by_plot <- df %>%
+df_fs2r <- df %>%
   filter(!is.na(flowering_stems)) %>%
   group_by(site, quad, year) %>%
   summarise(total_stocks = sum(flowering_stems, na.rm = TRUE), .groups = 'drop') %>%
-  mutate(year_recruits = year + 1)
-
-recruits_by_plot <- df %>%
-  filter(recruits == 1) %>%
-  group_by(site, quad, year) %>%
-  summarise(recruit_count = n(), .groups = 'drop')
-
-stocks_to_recruits <- stocks_by_plot %>%
-  left_join(recruits_by_plot, by = c('site', 'quad', 'year_recruits' = 'year')) %>%
-  mutate(recruit_count = ifelse(is.na(recruit_count), 0, recruit_count))
-
-filtered_data <- stocks_to_recruits %>%
+  mutate(year_recruits = year + 1) %>%
+  left_join(
+    df %>%
+      filter(recruits == 1) %>%
+      group_by(site, quad, year) %>%
+      summarise(recruit_count = n(), .groups = 'drop'),
+    by = c("site", "quad", "year_recruits" = "year")
+  ) %>%
+  mutate(recruit_count = ifelse(is.na(recruit_count), 0, recruit_count)) %>%
   filter(total_stocks < 100)
 
-mod_poisson <- glm(recruit_count ~ total_stocks, data = filtered_data, family = poisson)
-summary(mod_poisson)
+mod_fs2r <- glm.nb(recruit_count ~ total_stocks, data = df_fs2r)
 
-mod_nb <- glm.nb(recruit_count ~ total_stocks, data = filtered_data)
-summary(mod_nb)
+df_fs2r_newdata <- data.frame(
+  total_stocks = seq(min(df_fs2r$total_stocks, na.rm = TRUE),
+                     max(df_fs2r$total_stocks, na.rm = TRUE), length.out = 100))
 
-ggplot(filtered_data, aes(x = total_stocks, y = recruit_count)) +
-  geom_jitter(height = 0.2, width = 0.5, alpha = 0.4) +
-  stat_smooth(method = 'glm', method.args = list(family = 'poisson'), se = TRUE, color = 'blue') +
-  labs(
-    title = 'Number of Recruits vs Flowering Stems (Next Year)',
-    x = 'Total Flowering Stems (per site/plot/year)',
-    y = 'Number of Recruits (Next Year)'
-  ) +
-  theme_minimal()
+mod_fs2r_preds <- predict(mod_fs2r, newdata = df_fs2r_newdata, type = 'link', se.fit = TRUE)
+df_fs2r_newdata$fit <- exp(mod_fs2r_preds$fit)  # inverse link (log)
+df_fs2r_newdata$lower <- exp(mod_fs2r_preds$fit - 1.96 * mod_fs2r_preds$se.fit)
+df_fs2r_newdata$upper <- exp(mod_fs2r_preds$fit + 1.96 * mod_fs2r_preds$se.fit)
 
-new_data <- data.frame(total_stocks = seq(min(filtered_data$total_stocks, na.rm = TRUE),
-                                          max(filtered_data$total_stocks, na.rm = TRUE),
-                                          length.out = 100))
-
-preds <- predict(mod_nb, newdata = new_data, type = "link", se.fit = TRUE)
-new_data$fit <- exp(preds$fit)  # inverse link (log)
-new_data$lower <- exp(preds$fit - 1.96 * preds$se.fit)
-new_data$upper <- exp(preds$fit + 1.96 * preds$se.fit)
-
-ggplot(filtered_data, aes(x = total_stocks, y = recruit_count)) +
+ggplot(df_fs2r, aes(x = total_stocks, y = recruit_count)) +
   geom_jitter(height = 0.2, width = 0.5, alpha = 0.4, color = 'gray40') +
-  geom_ribbon(data = new_data, aes(x = total_stocks, ymin = lower, ymax = upper), inherit.aes = FALSE,
+  geom_ribbon(data = df_fs2r_newdata, aes(x = total_stocks, ymin = lower, ymax = upper), inherit.aes = FALSE,
               alpha = 0.2, fill = 'red') +
-  geom_line(data = new_data, aes(x = total_stocks, y = fit), inherit.aes = FALSE,
+  geom_line(data = df_fs2r_newdata, aes(x = total_stocks, y = fit), inherit.aes = FALSE,
             color = 'darkred', size = 1.2) +
   labs(
-    title = 'Negative Binomial Fit: Recruits vs Flowering Stems (Next Year)',
-    x = 'Total Flowering Stems (per site/plot/year)',
-    y = 'Number of Recruits (Next Year)'
+    title = 'Recruits t1 by Flowering Stems t0 - Negative Binomial',
+    x = 'Total Flowering Stems t0 (per site/plot/year)',
+    y = 'Number of Recruits t1'
   ) +
   theme_bw()
 
 
+# Flowering stock to Recruit transition - Zero truncated, Bayesian -------------
+#install.packages('brms') 
+library(brms)
 
-# ---------
-filtered_positive <- filtered_data %>%
+df_fs2r_0t <- df_fs2r %>%
   filter(recruit_count > 0)
-# 
-# #install.packages("VGAM")
-# library(VGAM)
-# mod_trunc_nb <- vglm(recruit_count ~ total_stocks, 
-#                      family = posnegbinomial(), data = filtered_positive)
-summary(mod_trunc_nb)
 
+# mod_fs2r_0t <- brm(
+#   bf(recruit_count | trunc(lb = 1) ~ total_stocks),
+#   data = df_fs2r_0t,
+#   family = negbinomial(link = 'log'),
+#   chains = 4,
+#   cores = 4,
+#   iter = 2000,
+#   control = list(adapt_delta = 0.95)
+# )
+# saveRDS(mod_fs2r_0t, file = file.path(dir_data, 'bayes_recruit_model.rds'))
+mod_fs2r_0t <- readRDS(file.path(dir_data, 'bayes_recruit_model.rds'))
+summary(mod_fs2r_0t)
+plot(mod_fs2r_0t)
+pp_check(mod_fs2r_0t)
 
+df_fs2r_0t_pred <- df_fs2r_0t %>%
+  bind_cols(fitted(mod_fs2r_0t, newdata = df_fs2r_0t, re_formula = NA, summary = TRUE))
 
+ggplot(df_fs2r_0t_pred, aes(x = total_stocks, y = recruit_count)) +
+  geom_point(alpha = 0.4, color = 'black') + 
+  geom_line(aes(y = Estimate), color = 'blue', size = 1) +  
+  geom_ribbon(aes(ymin = Q2.5, ymax = Q97.5), alpha = 0.2, fill = 'blue') +
+  labs(
+    x = 'Total Stocks (year t)',
+    y = 'Recruits (year t+1, truncated at >0)',
+    title = 'Posterior mean and 95% credible interval'
+  ) +
+  theme_minimal()
 
 
 # Recruitment data -------------------------------------------------------------
 df_re <- df %>%
   group_by(year, site, quad) %>%
-  summarise(tot_p_volume = sum(volume_t0, na.rm = TRUE), .groups = "drop") %>%
+  summarise(tot_p_volume = sum(volume_t0, na.rm = TRUE), .groups = 'drop') %>%
   {
     df_quad <- .
     df_group <- df_quad %>%
       group_by(year) %>%
-      summarise(g_cov = mean(tot_p_volume), .groups = "drop")
+      summarise(g_cov = mean(tot_p_volume), .groups = 'drop')
     
-    df_cover <- left_join(df_quad, df_group, by = "year") %>%
+    df_cover <- left_join(df_quad, df_group, by = 'year') %>%
       mutate(year = as.integer(year + 1)) %>%
       drop_na()
     
     df_re <- df %>%
       group_by(year, site, quad) %>%
-      summarise(nr_recs = sum(recruits, na.rm = TRUE), .groups = "drop")
+      summarise(nr_recs = sum(recruits, na.rm = TRUE), .groups = 'drop')
     
-    left_join(df_cover, df_re, by = c("year", "site", "quad"))
+    left_join(df_cover, df_re, by = c('year', 'site', 'quad'))
   }
 
 ggplot(
@@ -690,58 +721,58 @@ coef_fr <- Reduce(function(...) rbind(...), list(coef_fe_fe)) %>%
 # Recruitment 
 df_re_size <- df %>% subset(recruits == 1)
 
-# Miscellany
-coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
-                                          'fecu_b0', 
-                                          'max_siz', 'min_siz'),
-                          value       = c(mean(log(df_re_size$size_t0), na.rm = T), 
-                                          sd(  log(df_re_size$size_t0), na.rm = T),
-                                          repr_pc_mean_stock,
-                                          df_gr$logsize_t0 %>% max, 
-                                          df_gr$logsize_t0 %>% min))
-
-extr_value <- function(x, field){
-  subset(x, coefficient == field)$value
-}
-
-pars <- Filter(function(x) length(x) > 0, list(
-  prefix      = v_script_prefix,
-  species     = v_species,
-  surv_b0     = extr_value(coef_su, 'b0'),
-  surv_b1     = extr_value(coef_su, 'logvol_t0'),
-  surv_b2     = extr_value(coef_su, 'logvol_t0_2'),
-  surv_b3     = extr_value(coef_su, 'logvol_t0_3'),
-  surv_br     = extr_value(coef_su, 'recruits1'),
-  grow_b0     = extr_value(coef_gr, 'b0'),
-  grow_b1     = extr_value(coef_gr, 'logvol_t0'),
-  grow_b2     = extr_value(coef_gr, 'logvol_t0_2'),
-  grow_b3     = extr_value(coef_gr, 'logvol_t0_3'),
-  grow_br     = extr_value(coef_gr, 'recruits1'),
-  grow_b1_br  = extr_value(coef_gr, 'logvol_t0:recruits1'),
-  grow_b2_br0 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
-  grow_b2_br1 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
-  a           = extr_value(coef_gr, 'a'),
-  b           = extr_value(coef_gr, 'b'),
-  fl_b0       = extr_value(coef_fl, 'b0'),
-  fl_b1       = extr_value(coef_fl, 'logvol_t0'),
-  fl_b2       = extr_value(coef_fl, 'logvol_t0_2'),
-  fl_b3       = extr_value(coef_fl, 'logvol_t0_3'),
-  fr_b0       = extr_value(coef_fl, 'b0'),
-  fr_b1       = extr_value(coef_fr, 'logvol_t0'),
-  fr_b2       = extr_value(coef_fr, 'logvol_t0_2'),
-  fr_b3       = extr_value(coef_fr, 'logvol_t0_3'),
-  fecu_b0     = extr_value(coef_misc, 'fecu_b0'),
-  recr_sz     = extr_value(coef_misc, 'rec_siz'),
-  recr_sd     = extr_value(coef_misc, 'rec_sd'),
-  L           = extr_value(coef_misc, 'min_siz'),
-  U           = extr_value(coef_misc, 'max_siz'),
-  mat_siz     = 200,
-  mod_su_index = v_mod_su_index,
-  mod_gr_index = v_mod_gr_index,
-  mod_gr_index = v_mod_fl_index
-))
-
-
+# # Miscellany
+# coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
+#                                           'fecu_b0', 
+#                                           'max_siz', 'min_siz'),
+#                           value       = c(mean(log(df_re_size$size_t0), na.rm = T), 
+#                                           sd(  log(df_re_size$size_t0), na.rm = T),
+#                                           repr_pc_mean_stock,
+#                                           df_gr$logsize_t0 %>% max, 
+#                                           df_gr$logsize_t0 %>% min))
+# 
+# extr_value <- function(x, field){
+#   subset(x, coefficient == field)$value
+# }
+# 
+# pars <- Filter(function(x) length(x) > 0, list(
+#   prefix      = v_script_prefix,
+#   species     = v_species,
+#   surv_b0     = extr_value(coef_su, 'b0'),
+#   surv_b1     = extr_value(coef_su, 'logvol_t0'),
+#   surv_b2     = extr_value(coef_su, 'logvol_t0_2'),
+#   surv_b3     = extr_value(coef_su, 'logvol_t0_3'),
+#   surv_br     = extr_value(coef_su, 'recruits1'),
+#   grow_b0     = extr_value(coef_gr, 'b0'),
+#   grow_b1     = extr_value(coef_gr, 'logvol_t0'),
+#   grow_b2     = extr_value(coef_gr, 'logvol_t0_2'),
+#   grow_b3     = extr_value(coef_gr, 'logvol_t0_3'),
+#   grow_br     = extr_value(coef_gr, 'recruits1'),
+#   grow_b1_br  = extr_value(coef_gr, 'logvol_t0:recruits1'),
+#   grow_b2_br0 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
+#   grow_b2_br1 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
+#   a           = extr_value(coef_gr, 'a'),
+#   b           = extr_value(coef_gr, 'b'),
+#   fl_b0       = extr_value(coef_fl, 'b0'),
+#   fl_b1       = extr_value(coef_fl, 'logvol_t0'),
+#   fl_b2       = extr_value(coef_fl, 'logvol_t0_2'),
+#   fl_b3       = extr_value(coef_fl, 'logvol_t0_3'),
+#   fr_b0       = extr_value(coef_fl, 'b0'),
+#   fr_b1       = extr_value(coef_fr, 'logvol_t0'),
+#   fr_b2       = extr_value(coef_fr, 'logvol_t0_2'),
+#   fr_b3       = extr_value(coef_fr, 'logvol_t0_3'),
+#   fecu_b0     = extr_value(coef_misc, 'fecu_b0'),
+#   recr_sz     = extr_value(coef_misc, 'rec_siz'),
+#   recr_sd     = extr_value(coef_misc, 'rec_sd'),
+#   L           = extr_value(coef_misc, 'min_siz'),
+#   U           = extr_value(coef_misc, 'max_siz'),
+#   mat_siz     = 200,
+#   mod_su_index = v_mod_su_index,
+#   mod_gr_index = v_mod_gr_index,
+#   mod_gr_index = v_mod_fl_index
+# ))
+# 
+# 
 # # Building the IPM -------------------------------------------------------------
 # # Function describing the invert logit
 # inv_logit <- function(x) {exp(x) / (1 + exp(x))}

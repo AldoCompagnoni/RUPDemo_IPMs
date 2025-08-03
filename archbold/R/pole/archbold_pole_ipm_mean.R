@@ -592,6 +592,61 @@ ggplot(df_fs2r_0t_pred, aes(x = total_stocks, y = recruit_count)) +
   ) +
   theme_minimal()
 
+# Models using Beverton-Hold and GAM -------------------------------------------
+
+# NOTE: This data indicate that there is POSITIVE density dependence. 
+#   Hence, the ugly-fitting glm.nb model above is correct
+# Fit the Beverton-Holt model in a Maximum Likelihood framework
+fit_bh <- function(params, df){
+  
+  lambda.F  <- params[1]
+  b_stocks  <- params[2]
+  
+  y         <- lambda.F / (1 + (b_stocks*df$total_stocks) )
+  
+  NLL       <- -sum(dnorm(df$recruit_count,mean=y,sd=params[3],log=T))
+  
+  return(NLL)
+  
+}
+
+# using a Beverton hold model
+bh_mod <-optim(par=c(10,0.1,1), 
+               fn=fit_full, gr=NULL, df_fs2r, control=list(maxit=5000))
+
+# bundle predictions and number of stocks in a function
+bh_pred <- bh_mod$par[1] / (1 + (bh_mod$par[2]*(0:44)) )
+bh_df   <- data.frame( total_stocks = 0:44,
+                       bh_pred      = bh_pred ) 
+
+# POSITIVE (!) density dependence!!!
+ggplot(df_fs2r, aes(x = total_stocks, y = recruit_count)) +
+  geom_point() +
+  geom_line( data = bh_df,
+             aes( x = total_stocks,
+                  y = bh_pred),
+             lwd = 1 ) +
+  theme_bw()
+
+
+# Fit a negative binomial GAM
+gam_mod  <- mgcv::gam( recruit_count ~ total_stocks,
+                       data = df_fs2r, family = 'nb')
+
+gam_pred <- predict(gam_mod, type='response', 
+                    newdata = data.frame(total_stocks = 0:44))
+gam_df   <- data.frame(total_stocks = 0:44,
+                       gam_pred = gam_pred ) 
+
+# Plot GAM prediction. Looks bad, but it is increasing.
+ggplot(df_fs2r, aes(x = total_stocks, y = recruit_count)) +
+  geom_point() +
+  geom_line( data = gam_df,
+             aes( x = total_stocks,
+                  y = gam_pred),
+             lwd = 1 ) +
+  theme_bw()
+
 
 # Recruits by number of individuals per quadrat --------------------------------
 ggplot(df %>%

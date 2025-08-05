@@ -592,7 +592,7 @@ ggplot(df_fs2r_0t_pred, aes(x = total_stocks, y = recruit_count)) +
   ) +
   theme_minimal()
 
-# Models using Beverton-Hold and GAM -------------------------------------------
+# Models using Beverton-Hold, Ricker, and GAM ----------------------------------
 
 # NOTE: This data indicate that there is POSITIVE density dependence. 
 #   Hence, the ugly-fitting glm.nb model above is correct
@@ -610,9 +610,28 @@ fit_bh <- function(params, df){
   
 }
 
+# Ricker model
+fit_ricker <- function(params, df){
+  
+  r <- params[1]
+  k <- params[2]
+  
+  y         <- df$total_stocks*exp(r*(1-(df$total_stocks/k)))
+  
+  NLL       <- -sum(dnorm(df$recruit_count,mean=y,sd=params[3],log=T))
+  
+  return(NLL)
+  
+}
+
+
 # using a Beverton hold model
-bh_mod <-optim(par=c(10,0.1,1), 
-               fn=fit_full, gr=NULL, df_fs2r, control=list(maxit=5000))
+bh_mod    <- optim(par=c(10,0.1,1), fn=fit_bh, 
+                   gr=NULL, df_fs2r, control=list(maxit=5000))
+
+# using a Beverton hold model
+rick_mod  <- optim(par=c(10,0.1,1), fn=fit_ricker, 
+                   gr=NULL, df_fs2r, control=list(maxit=5000))
 
 # bundle predictions and number of stocks in a function
 bh_pred <- bh_mod$par[1] / (1 + (bh_mod$par[2]*(0:44)) )

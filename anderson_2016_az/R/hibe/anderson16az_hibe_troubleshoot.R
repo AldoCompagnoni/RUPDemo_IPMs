@@ -131,7 +131,6 @@ dat_target_spec <- data %>%
          Quad    = matches("quad"),
          Year    = year)
 
-
 # set the buffer to 0.05 or 5 depending on the unit of measure used in GIS file
 buff <- v_buff <- if_else(
   st_bbox(dat_target_spec)[3] < 1.1 | st_bbox(dat_target_spec)[3] > 100, 
@@ -304,40 +303,40 @@ ggplotly(g_gr_overall)
 
 # SHINYAPP ---------------------------------------------------------------------
 
-# # First, plot using plotly (shiny below doesn't seem to work otherwise)
-# ggplotly(g_gr_overall)
-# 
-# # Create the "page" for visualization
-# ui <- fluidPage(
-#   h3("Hover a point and look below:"),
-#   plotlyOutput("plt"),
-#   verbatimTextOutput("row")
-# )
-# 
-# # set up the way to visualize the plot
-# server <- function(input, output, session){
-#   
-#   # build the plot and tell Plotly we'll listen for hover
-#   output$plt <- renderPlotly({
-#     (ggplotly(g_gr_overall,tooltip = "text")) |>
-#       event_register("plotly_hover")
-#   })
-#   
-#   # whenever you hover, grab the row and copy it
-#   row_r <- eventReactive(event_data("plotly_hover"), {
-#     h <- event_data("plotly_hover")
-#     req(h)                          # ignore NULL on app start
-#     out <- grow_df[h$pointNumber + 1, 
-#                    c('quad','year','track_id') ]  # row in the original data
-#     clipr::write_clip(out)                 # copies to system clipboard
-#     out
-#   })
-#   
-#   output$row <- renderPrint(row_r())
-# }
-# 
-# # finally launch shiny (select a dot, and copy-paste it typing Ctrl+C)
-# shinyApp(ui, server)
+# First, plot using plotly (shiny below doesn't seem to work otherwise)
+ggplotly(g_gr_overall)
+
+# Create the "page" for visualization
+ui <- fluidPage(
+  h3("Hover a point and look below:"),
+  plotlyOutput("plt"),
+  verbatimTextOutput("row")
+)
+
+# set up the way to visualize the plot
+server <- function(input, output, session){
+
+  # build the plot and tell Plotly we'll listen for hover
+  output$plt <- renderPlotly({
+    (ggplotly(g_gr_overall,tooltip = "text")) |>
+      event_register("plotly_hover")
+  })
+
+  # whenever you hover, grab the row and copy it
+  row_r <- eventReactive(event_data("plotly_hover"), {
+    h <- event_data("plotly_hover")
+    req(h)                          # ignore NULL on app start
+    out <- grow_df[h$pointNumber + 1,
+                   c('quad','year','track_id') ]  # row in the original data
+    clipr::write_clip(out)                 # copies to system clipboard
+    out
+  })
+
+  output$row <- renderPrint(row_r())
+}
+
+# finally launch shiny (select a dot, and copy-paste it typing Ctrl+C)
+shinyApp(ui, server)
 
 
 # Final tests ------------------------------------------------------------------ 
@@ -397,5 +396,69 @@ ggplotly(g_gr_overall)
   
 # Use these in the function to check before and after
 #   IMPORTANT: useyear need be without "19" in front of it!!!
-plot_before_after('HILBEL_21_7', 'C1P', 30)
+plot_before_after('HILBEL_29_1', 'C1P', 29)
 
+
+
+# TO DO: show the transition directly from clicking the figure -----------------
+
+# Exapmle code that works:
+
+# Create the "page" for visualization
+ui <- fluidPage(
+  h3("Click a point to see the full profile"),
+  fluidRow(
+    column(6, plotlyOutput("scatter")),
+    column(6, uiOutput("detail_ui"))  # placeholder that appears only after a click
+  )
+)
+
+# set up the way to visualize the plot
+server <- function(input, output, session) {
+  
+  #---- 1. base scatter plot ---------------------------------------
+  output$scatter <- renderPlotly({
+    # Build a ggplot object first (so you can facet, add aesthetics, etc.)
+    base_plot <- ggplot(df, aes(wt, mpg, text = paste("model:", model))) +
+      geom_point(size = 3)
+    
+    # Convert to plotly; assign a source ID so we know **which** plot
+    # the click came from (helpful if you have multiple plots).
+    (base_plot) |>
+      ggplotly(tooltip = "text", source = "scatterSrc") |>
+      layout(dragmode = "select")  # enabling box select also works
+  })
+  
+  #---- 2. listen for a click --------------------------------------
+  observeEvent(event_data("plotly_click", source = "scatterSrc"), {
+    click <- event_data("plotly_click", source = "scatterSrc")
+    req(click)                       # guard against NULL
+    
+    # Look up the row corresponding to pointNumber
+    row <- df[click$pointNumber + 1, ]
+    
+    # Reshape that row to long format for a bar chart
+    bar_data <- row %>%
+      select(-model) %>%             # drop non‑numeric if needed
+      pivot_longer(everything(),
+                   names_to  = "variable",
+                   values_to = "value")
+    
+    #---- 3. render the bar chart ----------------------------------
+    output$detail <- renderPlotly({
+      plot_ly(bar_data,
+              x = ~variable, y = ~value,
+              type = "bar") |>
+        layout(title = paste0("All variables for ", row$model),
+               xaxis = list(title = "Variable"),
+               yaxis = list(title = "Value"))
+    })
+    
+    # Insert (or replace) the UI slot with the new plotlyOutput
+    output$detail_ui <- renderUI({
+      plotlyOutput("detail")
+    })
+    
+  }, ignoreNULL = TRUE)
+  
+}

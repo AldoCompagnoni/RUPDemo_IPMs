@@ -1,0 +1,38 @@
+--- 
+title: "Archbold - Polygala lewtonii - Summary"
+#author: "Niklas Neisse"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+output: 
+  bookdown::gitbook:
+    code_folding: hide
+documentclass: book
+# bibliography: [book.bib, packages.bib]
+# biblio-style: apalike
+# link-citations: yes
+# github-repo: rstudio/bookdown-demo
+description: "This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation. "
+# rmd_files: ["index.Rmd", "01-intro.Rmd", "02-data.Rmd", "03-investigation.Rmd", "04-models.Rmd", "666-bug.Rmd"]
+---
+
+**Authors:**
+Niklas Neisse ([neisse.n@protonmail.com](mailto:neisse.n@protonmail.com)),
+Aspen Workman,
+**Aldo Compagnoni** ([aldo.compagnoni@idiv.de](mailto:aldo.compagnoni@idiv.de))
+
+
+```{r include=FALSE}
+# automatically create a bib database for R packages
+knitr::write_bib(
+  c(.packages(), 'bookdown', 'knitr', 'rmarkdown'), 'packages.bib')
+```
+
+```{r FTS, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# First time setup:
+# load bookdown
+# library(bookdown)
+# in case the build tab does show in the right upper pannel
+# build the book
+# bookdown::render_book("index.Rmd", output_format = "bookdown::gitbook")
+```
+

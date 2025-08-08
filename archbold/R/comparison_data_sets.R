@@ -1,4 +1,4 @@
-library(ggplot2)
+library(tidyverse)
 
 # # Download all data ------------------------------------------------------------
 # # Set the root folder
@@ -61,6 +61,7 @@ ggplot(yearly_counts, aes(x = as.numeric(year), y = n, color = species)) +
     x = "Year",
     y = "Number of Observations",
     color = "Species") +
+  ylim(0,10000) +
   theme_minimal()
 
 yearly_counts %>% filter(species == 'sood')

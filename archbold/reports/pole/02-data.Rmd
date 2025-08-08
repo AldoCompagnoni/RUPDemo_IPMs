@@ -1,0 +1,188 @@
+# Data {#data}
+This [dataset](https://portal.edirepository.org/nis/metadataviewer?packageid=edi.318.1) documents the long-term demographic monitoring of 5,060 individually marked *Polygala lewtonii* (Lewton’s milkwort) plants at the Lake Wales Ridge National Wildlife Refuge, Carter Creek, in south-central Florida. From December 2001 to December 2017—and continuing beyond—data were collected quarterly from 220 permanent 25 cm-radius circular plots across six management units in yellow sandhill habitat.
+
+Each plant was marked with a uniquely coded plastic toothpick and flag, and its spatial position within the plot was recorded by angle and distance from the center. Survival and recruitment were recorded four times per year (March, June, September, December), while detailed measurements of size (height, crown diameter, number of stems) and reproductive effort (flowering stem count) were collected each March. Due to the amphicarphic nature of P. lewtonii, only aboveground (chasmogamous) flower data were recorded.
+
+The site experienced four prescribed fires (2001, 2007, 2009, 2015). Post-fire observations included plant-level fire exposure (e.g., singed, scorched, consumed) and percent area burned per plot (except for the 2001 fire). The dataset captures both mortality and recruitment following fire, contributing to an understanding of population responses to disturbance. Importantly, the species does not exhibit dormancy, and plants marked as dead were rarely observed alive in subsequent censuses.
+
+## Tails from meta
+
+*"Plants were censused during their peak of reproduction annually in July and August"*
+
+*"In 220 permanent 25 cm radius circular plots, plants were marked with plastic toothpick"*
+
+*"Data collection occurred quarterly with survival and recruitment recorded in March, June, September and December and more detailed measures of size and fecundity taken in March"*
+
+*"This species is amphicarphic with both showy-open flowers produced in spring (chasmogamy) and closed, self-pollinating flowers both above- and belowground produced in late summer (cleistogamy). Therefore, our fecundity data are based only on chasmogamy."*
+
+*"This dataset also captures post-fire mortality and recruitment events following four prescribed burns."*
+
+*"Plants that had died were given a 'dead' code (0) indicating first time dead but toothpicks and marking flags remained in the field. At the next census, if the plant was still dead, it was given a 'previously dead' code (9) and the toothpick and marking flag were removed from the field."*
+
+*"Plant dormancy does not occur in this species and very few individuals marked as dead were alive in the subsequent census."*
+
+*"In March, we took additional size measures"*
+
+*"four prescribed burns during the 2001-2017 study, although not all plots were affected"*
+
+*"status of the plant as unburned, singed (some green), scorched (no green but brown leaves remained), or consumed (little to no plant material remained)."*
+
+*"P. lewtonii plants are usually killed by fire and seedlings recruit post-fire from a soil seedbank (B. Pace-Aldana, pers. comm.; C. W. Weekley, unpubl. data)."*
+
+*"A separate field experiment demonstrated that buried seeds may retain viability for at least 2 years (C. W. Weekley and E. S. Menges, unpubl. data), indicating that P. lewtonii is capable of accumulating a persistent (sensuThompson and Grime 1979) soil seedbank. The sudden appearance of large cohorts of seedling recruits suggests that the persistent seedbanks of P. lewtonii are ecologically relevant."*
+
+*"In the March 2002 census, burned quadrats out-recruited unburned quadrats 3.7–1 (184.0% v. 49.2%; c2 = 48.880, d.f. = 1, P < 0.001). Over the 2 censuses, burned quadrats had proportional recruitment of between 75.8% and 79.0% of seedlings recruited into burned quadrats with no surviving reproductive adults, indicating that most recruitment was from the preburn seedbank rather than from newly produced seeds."*
+
+
+## Original data
+
+```{r data ab crav}
+df_og <- read_csv(file.path(dir_data, 'polygala_lewtonii_data.csv')) %>% 
+  janitor::clean_names()
+
+df_meta <- data.frame(
+  var = names(df_og),
+  describtion = c(
+    'census year and month', 'management unit', 
+    '25 cm circular quadrat unique ID number', 
+    'cohort month and year when plant first recruited', 
+    'plant id', 'degree angle of plant within plot', 
+    'distance (cm) of plant from plot center', 'survival', 
+    'life history stage', 'stem height (cm)', 
+    'maximum crown diameter (cm)', 'number of stems', 
+    'number of flowering stems', 'status of the plant post-fire'))
+```
+
+<details>
+<summary>Expand to skim the raw dataframe</summary>
+```{r data ab crav skim}
+skimr::skim(df_og)
+```
+</details>
+
+## Data exploration
+
+From the [data portal](https://portal.edirepository.org/nis/mapbrowse?packageid=edi.318.1) we get two datasets. 
+The first data set contains information about burn status across various quadrants over time. It includes columns for the date, unit number, quadrant identifier, burn status (likely indicating whether a burn event occurred), and the percentage of the area burned. The data spans different dates and quadrants, showing no burn events (burn_status = 0) and mostly zero or NA values for percentage burned, indicating areas that were unburned or had no available data on burning.
+
+The second dataset consists of 196,099 records documenting the life histories of Polygala lewtonii individuals monitored quarterly from 2001 to 2017 across 220 fixed circular plots. Each plant was uniquely located within a plot using a combination of its spatial position (plot unit, quadrat, angle, and distance from plot center), and observed repeatedly through time. For each census, field staff recorded whether the plant was alive, newly dead, or previously dead (plant status), its developmental stage (seedling, juvenile, or adult), structural size (plant height, crown spread, number of stems), and reproductive output (number of flowering stems). Additionally, some plants were flagged as post-fire recruits if they appeared following one of four prescribed burns conducted during the study period.
+
+Initial exploration revealed inconsistencies in plant identification across time. Plant IDs were sometimes reused, with different individuals appearing under the same identifier in different years, occasionally with different spatial coordinates. To resolve this, we redefined plant identity to include both its original tag and its spatial position within the plot, allowing us to track unique individuals throughout the study.
+
+We also identified duplicated entries for the same plant and census period, some with conflicting information about size or status. These duplicates were reviewed and filtered out when necessary. A small number of records had a status code indicating the plant could not be relocated; these were removed due to their ambiguity. Another subset of plants entered the dataset with an undefined status code not described in the field protocol; based on their behavior in subsequent years, we reclassified these as living individuals rather than new recruits.
+
+Several individuals marked as new recruits were never measured for size and died within the same census interval. These contributed no usable demographic information and were excluded to avoid inflating recruitment or mortality rates. For the remaining plants, we reconstructed continuous life histories by ordering observations over time and linking size measurements across consecutive censuses to estimate individual growth trajectories. We calculated derived variables such as above-ground volume (from crown diameter and height) and next-step size values to enable later demographic modeling.
+
+Fire exposure was inconsistently recorded, but we inferred post-fire recruitment by marking individuals that appeared shortly after known burn events. When fire status was missing within a year, we carried forward the highest fire exposure level reported for any individual within that group.
+
+The final processed dataset contains consistently tracked individuals with complete life histories, including identity, spatial location, observation date, survival status, plant developmental stage, structural size, reproductive effort, and fire exposure history. This curated dataset forms a reliable basis for examining how individual-level traits and disturbance history influence population-level dynamics over space and time.
+
+
+
+```{r data mean updated}
+df <- df_og %>% 
+  separate(col = date, into = c('year', 'month'), sep = '-') %>% 
+  mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
+  arrange(unit, id, year, month) %>% #view()
+  # Month of death
+  group_by(id) %>%
+  mutate(death = paste0(year, "_", month)[which(survival == 0)[1]]) %>%
+  ungroup() %>% #view()
+  # Code 2 survival: individual not found, 5 in total. REMOVE
+  filter(!id %in% (df_og %>% 
+                     mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
+                     filter(survival == 2) %>% 
+                     pull(id) %>% 
+                     unique())) %>% #view()
+# Fire: For now we will just drag the maximum value of each year with us
+  dplyr::select(!c(angle, dist)) %>% #view()
+  group_by(id, year) %>%
+  mutate(postburn_plant = if_else(all(is.na(postburn_plant)), NA_real_,
+                                  max(postburn_plant, na.rm = TRUE))) %>%
+  ungroup() %>% #view()
+  filter(survival < 9) %>% 
+  # Recruits: 5 indicates that the plant was detected for the first time. 
+  #  however, there are plants that were detected in a month without size measurement
+  #  many of them are present in the next year too.. for now I will count them as recruits too
+  #  actually I can give them a 2 - I like it, easy to change later too..
+  # Furthermore, 1_609_101_100-19 is an example of how it is not considered a recruit in the original data set
+  #  if the plant was there already in the fist year of the sampling campaign (i.e. 2001)
+  #  We also don't know if it was or wasn't a recruit and thus it gets an NA
+  group_by(id) %>%
+  mutate(
+    recruit = if_else(
+      (lag(survival) == 5 & is.na(lag(stage))), 2, 0, missing = 0)) %>% 
+  mutate(recruit = if_else(survival == 5, 1, recruit)) %>% 
+  mutate(recruit = if_else(as.numeric(year) == 2001, NA_real_, recruit)) %>% 
+  mutate(recruit = if_else(stage == 1, 1, recruit)) %>% 
+  ungroup() %>% #view()
+  # Survival: 
+  #  Since there is no dormancy I can remove everything that does not have a size 
+  filter(!is.na(stage)) %>% #view()
+  group_by(id) %>%
+  mutate(
+    survival = if_else(row_number() == n(), 0, survival)) %>%
+  ungroup() %>% #view()
+  # Include the NEW ADDITIONS (survival == 3)
+  mutate(survival = if_else(survival == 3, 1, survival),
+         survival = if_else(survival == 5, 1, survival)) %>% 
+  # Growth:
+  group_by(id) %>%
+  mutate(size_t1   = lead(height),
+         c_dim_t1  = lead(crown_diameter),
+         stems_t1  = lead(stems),
+         volume_t0 = ((crown_diameter / 2) ^ 2) * pi * height,
+         volume_t1 = lead(volume_t0)) %>%
+  ungroup()%>% 
+  rename(survives = survival,
+         size_t0  = height,
+         site     = unit) %>% 
+  mutate(logsize_t0   = log(size_t0),
+         logsize_t1   = log(size_t1),    
+         logsize_t0_2 = logsize_t0^2,     
+         logsize_t0_3 = logsize_t0^3,
+         logvol_t0    = log(volume_t0),
+         logvol_t1    = log(volume_t1),
+         logvol_t0_2  = logvol_t0^2,
+         logvol_t0_3  = logvol_t0^3,
+         year         = as.numeric(year),
+         stage        = as.factor( stage),
+         recruits     = if_else(recruit > 0, 1, recruit),
+         flower       = if_else(stage == 3, 1, 0)) %>%
+  dplyr::select(site, quad, cohort, id, year, 
+         stage, survives, size_t0, flower, flowering_stems, recruits, recruit, 
+         size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
+         crown_diameter, stems, postburn_plant,
+         volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3)
+
+```
+
+<details>
+<summary>Expand to skim the working dataframe</summary>
+```{r}
+skimr::skim(df)
+```
+</details>
+
+
+## Open questions
+
+There are 5 individuals that were lost during the sampling campaign, thus far we just remove them from the data set, but would that not influence all metrics that use the number of individuals, such as XXX to recruitment transition?
+
+```{r OQ}
+df_og %>% 
+  separate(col = date, into = c('year', 'month'), sep = '-') %>% 
+  mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>% 
+  arrange(unit, id, year, month) %>% #view()
+  # Month of death
+  group_by(id) %>%
+  mutate(death = paste0(year, "_", month)[which(survival == 0)[1]]) %>%
+  ungroup() %>% #view()
+  # Code 2 survival: individual not found, 5 in total. REMOVE
+  filter(id %in% (df_og %>% 
+                     mutate(id = paste0(unit, '_', quad, '_', id, '_', angle, '-', dist)) %>%
+                     filter(survival == 2) %>% 
+                     pull(id) %>% 
+                     unique())) %>% #view()
+  head(30)
+```

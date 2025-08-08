@@ -78,10 +78,10 @@ source('helper_functions/plot_binned_prop.R')
 
 
 # Data -------------------------------------------------------------------------
-df_org <- read_csv(file.path(dir_data, 'eriogonum_longifolium_data.csv')) %>% 
+df_og <- read_csv(file.path(dir_data, 'eriogonum_longifolium_data.csv')) %>% 
   janitor::clean_names() 
 
-df_meta <- data.frame(variable = colnames(df_org)) %>% 
+df_meta <- data.frame(variable = colnames(df_og)) %>% 
   mutate(definition = c(
     'year and month data were collected', 'study site',	'population number',	
     'quadrat number', 'unique plant ID', 'annual survival',
@@ -91,7 +91,7 @@ df_meta <- data.frame(variable = colnames(df_org)) %>%
     'mammalian herbivory', 'plant status following prescribed fire',
     'comments'))
 
-skimr::skim(df_org)
+skimr::skim(df_og)
 
 
 # Tails from meta --------------------------------------------------------------
@@ -102,7 +102,7 @@ new seedlings (basal diameter less than or equal to 2cm) or new adults."
 
 "Extended dormancy exist in this plant therefore flags were never removed from the field."
 
-"We stopped counting leaves in 2000 and stopped counting the number of rosettes in 2008."
+"We stopped counting leaves in [year] 2000 and stopped counting the number of rosettes in 2008."
 
 "Following a prescribed burn, we scored all previous alive plants as unburned or burned."
 
@@ -112,7 +112,7 @@ new seedlings (basal diameter less than or equal to 2cm) or new adults."
 
 
 # Sampling desing --------------------------------------------------------------
-df_org %>% 
+df_og %>% 
   separate(date, c('year','month'), sep='-') %>% 
   mutate(site = paste0(site, '_', pop, '_', qu)) %>% 
   count(site, year) %>% 
@@ -126,13 +126,13 @@ df_org %>%
 
 
 # Working data -----------------------------------------------------------------
-df <- df_org %>% 
+df <- df_og %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(qu = paste0(site, '_', pop, '_', qu))
 
 
 # Explore qu -------------------------------------------------------------------
-df_org %>% 
+df_og %>% 
   group_by(site, pop) %>% 
   count(qu) %>% view()
 
@@ -143,7 +143,7 @@ but these plots do not have unique identifiers across the full dataset.'
 
 
 # Explore tag ------------------------------------------------------------------
-df_org %>% 
+df_og %>% 
   separate(col = date, into = c('year', 'month'), sep = '-') %>% 
   mutate(plant = paste0(site, '_', pop, '_', qu, '_', plant)) %>% 
   arrange(site, pop, plant, year, month) %>% view()
@@ -151,7 +151,7 @@ df_org %>%
 ''
 
 # Data aggregation
-df_org %>% 
+df_og %>% 
   # there is dormancy but from what I saw so far it is only coded as s == 1
   #  but definitive we have the information in what month the fire was
   filter(s == 1 | !is.na(dia) | !is.na(burn)) %>% 
@@ -161,16 +161,16 @@ df_org %>%
 
 ''
 
-df_org %>% 
+df_og %>% 
   filter(s > 1 & s < 9 & is.na(dia)) %>% 
   mutate(id = paste0(site, '_', pop, '_', qu, '_', plant)) %>% 
   pull(id) %>% 
   unique()
 
-df_org %>% 
+df_og %>% 
   mutate(id = paste0(site, '_', pop, '_', qu, '_', plant)) %>% 
   filter(id %in% (
-    df_org %>% 
+    df_og %>% 
       filter(s > 1 & s < 9 & is.na(dia)) %>% 
       mutate(id = paste0(site, '_', pop, '_', qu, '_', plant)) %>% 
       pull(id) %>% 
@@ -185,14 +185,14 @@ df_org %>%
 # IMPORTANT: ignore month for now: vast majority of sampling done in June!
 
 # data from year t0
-df_t0 <- df_org %>% 
+df_t0 <- df_og %>% 
           separate( date, c('year','month'), sep='-') %>% 
           mutate( year = as.numeric(year) ) %>% 
           # rename number of basal rosettes to show what time the data is from
           rename( nb_t0 = nb ) %>% 
           # retain only relevant variables
           dplyr::select(year, site, pop, qu, plant, nb_t0 ) 
-df_t1 <- df_org %>% 
+df_t1 <- df_og %>% 
           separate( date, c('year','month'), sep='-') %>% 
           mutate( year = as.numeric(year) ) %>% 
           mutate( year = year + 1 ) %>% 

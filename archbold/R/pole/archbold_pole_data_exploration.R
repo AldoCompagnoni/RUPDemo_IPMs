@@ -275,7 +275,7 @@ df_og %>%
                     pull(id) %>% 
                     unique())) #%>% view()
 'it is 5 individuals in total
--> remove them from the data set!?'
+-> remove them from the data set!? -> yes!!'
 
 # Exploring plant death
 df_og %>% 

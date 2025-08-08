@@ -74,6 +74,62 @@ df %>%
   filter(n_fire > 0)
 
 ```
+What is up with site 3 quad 539 year 2009
+```{r}
+df_3_539_2009 <- df %>% 
+  filter(site == 3 & quad == 539 & year == 2009)
+
+# Bar plot: Stage by recruits
+fig_stage <- ggplot() +
+  geom_bar(data = df_3_539_2009, 
+           aes(x = stage, 
+               fill = as.factor(recruits), 
+               color = as.factor(survives)), 
+           linewidth = 1) + 
+  scale_fill_manual(values = c('0' = '#1b7837', '1' = '#74add1')) + 
+  scale_color_manual(values = c('0' = '#FFD700', '1' = '#7E57C2')) +
+  theme_bw() +
+  labs(fill = 'Recruit',
+       color = 'Survives',
+       title = 'Suspect stage, recruitment & survival')
+
+# Histogram: logvol_t0 by recruitment
+fig_hist <- ggplot() + 
+  geom_histogram(data = df_3_539_2009, binwidth = 0.4, 
+                 aes(x = logvol_t0, fill = as.factor(recruits))) + 
+  scale_fill_manual(values = c('0' = '#1b7837', '1' = '#74add1')) + 
+  theme_bw() +
+  labs(fill = 'Recruit',
+       title = 'Suspect size by recruitment status')
+
+# Flat jitter plot for overlap
+fig_jitter <- ggplot() +
+  geom_jitter(data = df %>% filter(recruits == 1),
+              aes(x = logvol_t0, y = 0), 
+              height = 0.05, color = '#1ABC9C', alpha = 0.1) +
+  geom_jitter(data = df_3_539_2009 %>% filter(logvol_t0 < 0),
+              aes(x = logvol_t0, y = 0), 
+              height = 0.05, width = 0.1, color = '#8E44AD', alpha = 1, size = 2) +
+  theme_bw() +
+  labs(x = "logvol_t0", y = "",
+       title = "Suepects against recruit size")
+
+# Matching median logvol_t0
+fig_median <- df %>% 
+  filter(logvol_t0 == (df_3_539_2009 %>%
+                         filter(logvol_t0 < 0) %>%
+                         summarise(median(logvol_t0)) %>% pull())) %>% 
+  ggplot() +
+  geom_bar(aes(x = as.factor(recruits))) +
+  labs(x = 'Recruit', y = 'Count',
+       title = 'Missed recurits potential') +
+  theme_bw()
+
+# Combine all plots
+(fig_stage | fig_hist) / (fig_jitter | fig_median)
+
+```
+
 
 To better understand the temporal patterns of fire effects on individual plants, we summarized the presence of fire damage signs (postburn_plant > 0) across months and years. By grouping observations by year and month, we quantified both the number and proportion of individuals exhibiting scorch damage. 
 ```{r}
@@ -637,7 +693,7 @@ ggplot(df_fs2r_predgrid, aes(x = total_stocks, y = fit, color = fire_label, fill
     aes(x = total_stocks, y = recruit_count_t1, color = fire_label),
     alpha = 0.5, size = 1.8, width = 0.3, height = 0) +
   scale_color_manual(values = c('No Fire' = '#1b9e77', 'Fire' = '#d95f02')) +
-  scale_fill_manual(values = c('No Fire' = '#1b9e77', 'Fire' = '#d95f02')) +
+  scale_fill_manual( values = c('No Fire' = '#1b9e77', 'Fire' = '#d95f02')) +
   labs(
     x = 'Total Flowering Stems (t)',
     y = 'Predicted Recruitment Count (t+1)',

@@ -22,15 +22,7 @@ target_spec <- sp_list %>% .[c(4),]
 
 # Second part of the plant tracker pipeline ------------------------------------
 
-# Author: Niklas Neisse
-# Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
-# Email : neisse.n@protonmail.com
-# Main  : aldo.compagnoni@idiv.de
-# Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2024.10.29
 
-# Code adapted from: https://github.com/aestears/plantTracker
-# Adapted from plantTracker How to (Stears et al. 2022)
 
 
 # Specifications ----------------------------------------------------------------
@@ -139,28 +131,28 @@ buff <- v_buff <- if_else(
 # Forbs are not "clonal"; we assume non-forbs are clonal.
 v_clonal  <- if_else(v_gr_form == 'forb', F, T)
 
-# # Prepare data for the trackSpp function
-# datTrackSpp <- trackSpp(
-#   dat = dat_target_spec,
-#   inv = inv,
-#   # Dormancy flag
-#   dorm         = 1,
-#   # Buffer size
-#   buff         = v_buff,
-#   # Allow for clonal tracking
-#   clonal       = v_clonal,
-#   # Buffer for genet
-#   buffGenet    = v_buff,
-#   # Aggregate by genet
-#   aggByGenet   = TRUE,
-#   # Flag potential issues
-#   flagSuspects = TRUE)   
-# 
-# # store (takes too long!)
-# saveRDS( datTrackSpp, 
-#          paste0(dir_data, '/', gsub('20','',v_author_year), 
-#                                     v_region_abb,
-#                 '_',v_sp_abb,'_raw.rds') )
+# Prepare data for the trackSpp function
+datTrackSpp <- trackSpp(
+  dat = dat_target_spec,
+  inv = inv,
+  # Dormancy flag
+  dorm         = 1,
+  # Buffer size
+  buff         = v_buff, # A buffer of a distance defined by 'buff' is applied around each genet polygon.
+  # Allow for clonal tracking
+  clonal       = v_clonal,
+  # Buffer for genet
+  buffGenet    = v_buff,
+  # Aggregate by genet
+  aggByGenet   = TRUE,
+  # Flag potential issues
+  flagSuspects = TRUE)
+
+# store (takes too long!)
+saveRDS( datTrackSpp,
+         paste0(dir_data, '/', gsub('20','',v_author_year),
+                                    v_region_abb,
+                '_',v_sp_abb,'_raw.rds') )
 
 # track species
 datTrackSpp <- readRDS( paste0(dir_data, '/', 
@@ -301,45 +293,45 @@ g_gr_overall
 ggplotly(g_gr_overall)
 
 
-# SHINYAPP ---------------------------------------------------------------------
-
-# First, plot using plotly (shiny below doesn't seem to work otherwise)
-ggplotly(g_gr_overall)
-
-# Create the "page" for visualization
-ui <- fluidPage(
-  h3("Hover a point and look below:"),
-  plotlyOutput("plt"),
-  verbatimTextOutput("row")
-)
-
-# set up the way to visualize the plot
-server <- function(input, output, session){
-
-  # build the plot and tell Plotly we'll listen for hover
-  output$plt <- renderPlotly({
-    (ggplotly(g_gr_overall,tooltip = "text")) |>
-      event_register("plotly_hover")
-  })
-
-  # whenever you hover, grab the row and copy it
-  row_r <- eventReactive(event_data("plotly_hover"), {
-    h <- event_data("plotly_hover")
-    req(h)                          # ignore NULL on app start
-    out <- grow_df[h$pointNumber + 1,
-                   c('quad','year','track_id') ]  # row in the original data
-    clipr::write_clip(out)                 # copies to system clipboard
-    out
-  })
-
-  output$row <- renderPrint(row_r())
-}
-
-# finally launch shiny (select a dot, and copy-paste it typing Ctrl+C)
-shinyApp(ui, server)
-
-
-# Final tests ------------------------------------------------------------------ 
+# # SHINYAPP ---------------------------------------------------------------------
+# 
+# # First, plot using plotly (shiny below doesn't seem to work otherwise)
+# ggplotly(g_gr_overall)
+# 
+# # Create the "page" for visualization
+# ui <- fluidPage(
+#   h3("Hover a point and look below:"),
+#   plotlyOutput("plt"),
+#   verbatimTextOutput("row")
+# )
+# 
+# # set up the way to visualize the plot
+# server <- function(input, output, session){
+# 
+#   # build the plot and tell Plotly we'll listen for hover
+#   output$plt <- renderPlotly({
+#     (ggplotly(g_gr_overall,tooltip = "text")) |>
+#       event_register("plotly_hover")
+#   })
+# 
+#   # whenever you hover, grab the row and copy it
+#   row_r <- eventReactive(event_data("plotly_hover"), {
+#     h <- event_data("plotly_hover")
+#     req(h)                          # ignore NULL on app start
+#     out <- grow_df[h$pointNumber + 1,
+#                    c('quad','year','track_id') ]  # row in the original data
+#     clipr::write_clip(out)                 # copies to system clipboard
+#     out
+#   })
+# 
+#   output$row <- renderPrint(row_r())
+# }
+# 
+# # finally launch shiny (select a dot, and copy-paste it typing Ctrl+C)
+# shinyApp(ui, server)
+# 
+# 
+# Final tests ------------------------------------------------------------------
 
 # set bounding box ()
 bbox <- st_bbox(datTrackSpp)
@@ -350,115 +342,118 @@ plot_polygons <- function( df ){
     geom_sf( fill = "lightblue") +
     coord_sf(xlim = c(bbox["xmin"], bbox["xmax"]),
              ylim = c(bbox["ymin"], bbox["ymax"])) +
-    theme_bw() 
-    
+    theme_bw()
+
 }
 
-# plot individual 
+# plot individual
 #   before (single indiv in year t0)
 #   after (all individuals in a single plot. PlantTracker doesn't allow
 #   us to track the "geometry" as well
 plot_before_after <- function( track_id, quad, yr ){
-  
+
   # TARGET INDIVIDUAL IN YEAR T0!
-  year_t0 <- datTrackSpp %>% 
-    subset( trackID == track_id ) %>% 
-    subset( Quad == quad ) %>% 
-    subset( Year == yr ) %>% 
-    select( trackID, geometry ) %>% 
+  year_t0 <- datTrackSpp %>%
+    subset( trackID == track_id ) %>%
+    subset( Quad == quad ) %>%
+    subset( Year == yr ) %>%
+    select( trackID, geometry ) %>%
     plot_polygons() +
     labs( title = 'Year t0' )
-    
-  # This is all of the individuals in the plot the next year. 
+
+  # This is all of the individuals in the plot the next year.
   # Unfortunately plant tracker doesn't give us the plot geometries in year t1
-  feature_year_t1 <- dat_target_spec %>% 
-    subset( Quad == quad ) %>% 
-    subset( Year == yr+1 ) %>% 
-    select( geometry ) %>% 
+  feature_year_t1 <- dat_target_spec %>%
+    subset( Quad == quad ) %>%
+    subset( Year == yr+1 ) %>%
+    select( geometry ) %>%
     plot_polygons +
     labs( title = 'Year t1' )
-    
-  # compare before and after    
-  grid.arrange( year_t0, 
+
+  # compare before and after
+  grid.arrange( year_t0,
                 feature_year_t1,
                 nrow = 1)
 
 }
 
 
-# identify "suspect" individuals 
+# identify "suspect" individuals
 ggplotly(g_gr_overall)
 
 # IMPOTANT 	Copy paste here:
   # ID NUMBER
   # QUAD NUMBER
   # YEAR (without the "19" in front of it)
-  
+
 # Use these in the function to check before and after
 #   IMPORTANT: useyear need be without "19" in front of it!!!
 plot_before_after('HILBEL_29_1', 'C1P', 29)
 
 
 
-# TO DO: show the transition directly from clicking the figure -----------------
-
-# Exapmle code that works:
-
-# Create the "page" for visualization
-ui <- fluidPage(
-  h3("Click a point to see the full profile"),
-  fluidRow(
-    column(6, plotlyOutput("scatter")),
-    column(6, uiOutput("detail_ui"))  # placeholder that appears only after a click
-  )
-)
-
-# set up the way to visualize the plot
-server <- function(input, output, session) {
-  
-  #---- 1. base scatter plot ---------------------------------------
-  output$scatter <- renderPlotly({
-    # Build a ggplot object first (so you can facet, add aesthetics, etc.)
-    base_plot <- ggplot(df, aes(wt, mpg, text = paste("model:", model))) +
-      geom_point(size = 3)
-    
-    # Convert to plotly; assign a source ID so we know **which** plot
-    # the click came from (helpful if you have multiple plots).
-    (base_plot) |>
-      ggplotly(tooltip = "text", source = "scatterSrc") |>
-      layout(dragmode = "select")  # enabling box select also works
-  })
-  
-  #---- 2. listen for a click --------------------------------------
-  observeEvent(event_data("plotly_click", source = "scatterSrc"), {
-    click <- event_data("plotly_click", source = "scatterSrc")
-    req(click)                       # guard against NULL
-    
-    # Look up the row corresponding to pointNumber
-    row <- df[click$pointNumber + 1, ]
-    
-    # Reshape that row to long format for a bar chart
-    bar_data <- row %>%
-      select(-model) %>%             # drop non‑numeric if needed
-      pivot_longer(everything(),
-                   names_to  = "variable",
-                   values_to = "value")
-    
-    #---- 3. render the bar chart ----------------------------------
-    output$detail <- renderPlotly({
-      plot_ly(bar_data,
-              x = ~variable, y = ~value,
-              type = "bar") |>
-        layout(title = paste0("All variables for ", row$model),
-               xaxis = list(title = "Variable"),
-               yaxis = list(title = "Value"))
-    })
-    
-    # Insert (or replace) the UI slot with the new plotlyOutput
-    output$detail_ui <- renderUI({
-      plotlyOutput("detail")
-    })
-    
-  }, ignoreNULL = TRUE)
-  
-}
+# # TO DO: show the transition directly from clicking the figure -----------------
+# 
+# # Exapmle code that works:
+# 
+# # Create the "page" for visualization
+# # 'ui' is the user interface of the shiny app
+# ui <- fluidPage(
+#   h3("Click a point to see the full profile"),
+#   fluidRow(
+#     column(6, plotlyOutput("scatter")), # Scatter plot
+#     column(6, uiOutput("detail_ui"))  # empty placeholder that appears only after a click
+#   )
+# )
+# 
+# # set up the way to visualize the plot
+# server <- function(input, output, session) { # server logic, how the app reacts to user interaction
+#   
+#   #---- 1. base scatter plot ---------------------------------------
+#   output$scatter <- renderPlotly({ # a
+#     # Build a ggplot object first (so you can facet, add aesthetics, etc.)
+#     base_plot <- ggplot(df, aes(wt, mpg, text = paste("model:", model))) +
+#       geom_point(size = 3)
+#     
+#     # Convert to plotly; assign a source ID so we know **which** plot
+#     # the click came from (helpful if you have multiple plots).
+#     (base_plot) |>
+#       ggplotly(tooltip = "text", source = "scatterSrc") |>
+#       layout(dragmode = "select")  # enabling box select also works
+#   })
+#   
+#   #---- 2. listen for a click --------------------------------------
+#   observeEvent(event_data("plotly_click", source = "scatterSrc"), {
+#     click <- event_data("plotly_click", source = "scatterSrc")
+#     req(click)                       # guard against NULL
+#     
+#     # Look up the row corresponding to pointNumber
+#     row <- df[click$pointNumber + 1, ]
+#     
+#     # Reshape that row to long format for a bar chart
+#     bar_data <- row %>%
+#       select(-model) %>%             # drop non‑numeric if needed
+#       pivot_longer(everything(),
+#                    names_to  = "variable",
+#                    values_to = "value")
+#     
+#     #---- 3. render the bar chart ----------------------------------
+#     output$detail <- renderPlotly({
+#       plot_ly(bar_data,
+#               x = ~variable, y = ~value,
+#               type = "bar") |>
+#         layout(title = paste0("All variables for ", row$model),
+#                xaxis = list(title = "Variable"),
+#                yaxis = list(title = "Value"))
+#     })
+#     
+#     # Insert (or replace) the UI slot with the new plotlyOutput
+#     output$detail_ui <- renderUI({
+#       plotlyOutput("detail")
+#     })
+#     
+#   }, ignoreNULL = TRUE)
+#   
+# }
+# 
+# shinyApp(ui, server)

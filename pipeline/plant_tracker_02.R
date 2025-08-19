@@ -159,3 +159,13 @@ datTrackSpp %>%
     dir_data, paste0(
       v_script_prefix, '_', v_sp_abb, '.csv')), row.names = FALSE)
 
+# Save the tracked data with geometry as RDS
+datTrackSpp %>%
+  clean_names() %>% 
+  dplyr::mutate(
+    year = ifelse(year < 100, as.integer(
+      paste0("19", sprintf("%02d", year))), year),
+    year_t0 = year) %>%
+  saveRDS(file.path(
+    dir_data, paste0(
+      v_script_prefix, '_', v_sp_abb, '_raw.rds')))

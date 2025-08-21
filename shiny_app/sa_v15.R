@@ -6,7 +6,7 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2025.08.19
 
-# Version 15: Clean-up
+# Version 15: Clean-up & jitter sliders & toggle for selected point highlight
 
 # ---- PACKAGES ----
 source('helper_functions/load_packages.R')
@@ -221,6 +221,33 @@ ui <- fluidPage(
     
     column(
       width = 7,
+      
+      # ---- JITTER CONTROLS ----
+      tags$div(
+        class = "panel panel-default", style = "font-size:85%; margin-bottom: 10px;",
+        tags$div(class="panel-heading",
+                 tags$h5(class="panel-title",
+                         tags$a(href="#collapseJitter","data-toggle"="collapse",
+                                tags$strong("Jitter controls")))),
+        tags$div(id="collapseJitter", class="panel-collapse collapse",
+                 tags$div(class="panel-body",
+                          fluidRow(
+                            column(6,
+                                   sliderInput("jit_w", "Width (x-axis):",
+                                               min = 0, max = 0.5, value = 0, step = 0.01)
+                            ),
+                            column(6,
+                                   sliderInput("jit_h", "Height (y-axis):",
+                                               min = 0, max = 0.5, value = 0, step = 0.01)
+                            )
+                          )
+                 )
+        )
+      ),
+      
+      # ---- Highlight toggle ----
+      checkboxInput("highlight_point", "Highlight selected point", value = TRUE),
+      
       plotlyOutput("plt", height = "400px"),
       br(),
       
@@ -275,12 +302,12 @@ server <- function(input, output, session) {
     req(input$misfit_input)
     cur <- misfits_df()
     if (!(input$misfit_input %in% cur$id_quad_year)) {
-      misfits_df(bind_rows(cur, tibble(
+      misfits_df(bind_rows(tibble(
         id_quad_year = input$misfit_input,
         comment = "",
         status = "include",
         group = "A"
-      )))
+      ), cur))
     }
   })
   
@@ -450,8 +477,9 @@ server <- function(input, output, session) {
     clipr::write_clip(sel[, c("track_id","quad","year")]) # or as you wish
   })
   
-  # ---- Scatter plot ----
+  # ---- Scatter plot (uses jitter sliders) ----
   output$plt <- renderPlotly({
+    suppressWarnings({
     dat <- grow_df_filtered()
     validate(need(nrow(dat) > 0, "No rows match the current filter."))
     
@@ -460,20 +488,22 @@ server <- function(input, output, session) {
     dat <- dat %>%
       mutate(is_misfit = id_quad_year %in% misfits_ids)
     
-    # Tooltip
+    # (Tooltip text prepared but we only show x/y in plotly)
     dat <- dat %>%
       mutate(tooltip = paste0(
         "id_quad_year: ", id_quad_year,
-        "<br>track_id: ", as.character(track_id),
-        "<br>quad: ", quad,
-        "<br>year: ", year,
-        "<br>logsize_t0: ", round(as.numeric(logsize_t0),3),
-        "<br>logsize_t1: ", round(as.numeric(logsize_t1),3)
+        "<br>logsize_t0 (x): ", round(as.numeric(logsize_t0), 3),
+        "<br>logsize_t1 (y): ", round(as.numeric(logsize_t1), 3),
+        "<br>size_t0: ", round(as.numeric(size_t0), 3),
+        "<br>size_t1: ", round(as.numeric(size_t1), 3)
       ))
     
-    # Base plot
+    # Base plot with reproducible jitter
+    set.seed(123)
     g <- ggplot(dat, aes(x = logsize_t0, y = logsize_t1, group = id_quad_year)) +
-      geom_point(aes(color = is_misfit, alpha = is_misfit), size = 0.7, pch = 16) +
+      geom_jitter(aes(color = is_misfit, alpha = is_misfit, text = tooltip),
+                  size = 0.7, pch = 16,
+                  width = input$jit_w, height = input$jit_h) +
       scale_color_manual(values = c("FALSE"="#D55E00","TRUE"="grey50")) +
       scale_alpha_manual(values = c("FALSE"=0.7,"TRUE"=0.3)) +
       theme_bw(base_size = 11) +
@@ -484,13 +514,14 @@ server <- function(input, output, session) {
     
     # Highlight selected point
     sel <- selected_point()
-    if(!is.null(sel) && nrow(sel) > 0){
+    if(!is.null(sel) && nrow(sel) > 0 && isTRUE(input$highlight_point)){
       g <- g + geom_point(data = sel, aes(x = logsize_t0, y = logsize_t1),
                           color = "black", size = 2, shape = 17)
     }
     
-    ggplotly(g, tooltip = c("x","y")) %>%
-      event_register("plotly_click")
+    ggplotly(g, tooltip = "text") %>%
+        event_register("plotly_click")
+    })
   })
   
   # ---- Show clicked row ----

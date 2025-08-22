@@ -1,10 +1,12 @@
 # Shiny app data - Anderson 2016 Arizona - Hilaria belangeri
+
 # Author: Niklas Neisse (neisse.n@protonmail.com)
 # Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2025.08.21
-# Version: Integrated misfit include/exclude
+
+# Version 16: Integrated misfit include/exclude
 
 # ---- PACKAGES ----
 source('helper_functions/load_packages.R')

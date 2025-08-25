@@ -20,6 +20,7 @@ load_packages(tidyverse, sf, shiny, plotly, gridExtra, clipr)
 v_author_year <- 'anderson_2016'
 v_region_abb  <- 'az'
 v_species     <- 'Hilaria belangeri'
+
 v_size_threshold <- -10.7
 
 # Species abbreviation
@@ -88,13 +89,20 @@ bbox <- st_bbox(df)
 # ----------------------------------------------------------------------
 # HELPERS
 # ----------------------------------------------------------------------
+# Generate a placeholder plot when no spatial data is available.
 empty_plotly <- function(src) {
-  p <- ggplot() + geom_blank() + theme_void()
+  p <- ggplot() + 
+    # no geometries (geom_blank) and no axes (theme_void)
+    geom_blank() + theme_void()
+  # Convert to an interactive plotly object
+  # Posts an event hook for plotly_relayout so interactions are still handled
   ggplotly(p, dynamicTicks = TRUE, source = src) |> event_register("plotly_relayout")
 }
 
+# Draw polygons (plant outlines) spatially for a given quadrat and year
 plot_polygons_with_others <- function(df_selected, quad_val, year_val, show_buffer = TRUE, show_others = TRUE, src) {
   if (nrow(df_selected) == 0 || !"geometry" %in% names(df_selected)) {
+    # If no data or missing geometry, show message “No data available” with bounding box extents
     p <- ggplot() +
       annotate("text", x = mean(bbox[c("xmin","xmax")]), y = mean(bbox[c("ymin","ymax")]),
                label = "No data available") +
@@ -104,25 +112,33 @@ plot_polygons_with_others <- function(df_selected, quad_val, year_val, show_buff
   }
   
   # Cast and buffer (use a small, fixed buffer to avoid bbox-dependent errors)
-  suppressWarnings({ df_selected <- st_cast(df_selected, "MULTIPOLYGON") })
+  suppressWarnings({ df_selected <- 
+    # Geometry casting
+    st_cast(df_selected, "MULTIPOLYGON") })
   if (show_buffer) {
+    # Buffer of 0.05 since the plot is at x and ymax == 1
     df_buffer <- tryCatch(st_buffer(df_selected, dist = 0.05), error = function(e) NULL)
   } else df_buffer <- NULL
   
+  # Extract other plants in the quadrat for the same year
   df_others <- df %>% filter(quad == quad_val, year == year_val, !(track_id %in% df_selected$track_id))
+  # Cast them to polygons
   if (nrow(df_others) > 0) suppressWarnings({ df_others <- st_cast(df_others, "MULTIPOLYGON") })
   
+  # Final layer stack
   p <- ggplot()
   if (show_buffer && !is.null(df_buffer)) p <- p + geom_sf(data = df_buffer, fill = "lightblue", alpha = 0.3)
   if (show_others && nrow(df_others) > 0) p <- p + geom_sf(data = df_others, fill = "lightgrey", alpha = 0.5)
   p <- p + geom_sf(data = df_selected, fill = "dodgerblue") +
+    # Ensure plots always align with bounding box of original dataset
     coord_sf(xlim = c(bbox["xmin"], bbox["xmax"]), ylim = c(bbox["ymin"], bbox["ymax"])) +
     theme_bw()
   
   ggplotly(p, dynamicTicks = TRUE, source = src) |> event_register("plotly_relayout")
 }
 
-# Convenience: map state codes to human labels & colors
+
+# Define how individuals are shown in the scatter
 .state_labels <- c(
   `0` = "Filtered out",
   `1` = "Default",
@@ -139,12 +155,17 @@ plot_polygons_with_others <- function(df_selected, quad_val, year_val, show_buff
   `4` = "#FFFFFF"       # white
 )
 
+
 # ----------------------------------------------------------------------
 # SHINY UI
 # ----------------------------------------------------------------------
+# The UI is organized in fluidPage → fluidRow → 2 columns
+# We define the UI at the colum level
 ui <- fluidPage(
   fluidRow(
+    # Column 1 (Filters + Misfits + Controls)
     column(width = 5,
+           # Filter panel:
            tags$div(style = "font-size:90%;", class = "panel panel-default",
                     tags$div(class = "panel-heading",
                              tags$h5(class = "panel-title",
@@ -171,17 +192,23 @@ ui <- fluidPage(
                     )
            ),
            hr(),
+           
+           # Selected Point Info box:
            tags$div(class = "panel panel-default",
                     tags$div(class = "panel-heading",
                              tags$h5(class = "panel-title", tags$strong("Selected point (purple = state 2)"))
                     ),
                     tags$div(class = "panel-body", verbatimTextOutput("row"))
            ),
+           
+           # Misfit inputs:
            selectizeInput("misfit_input", "Add to misfits list (id_quad_year):",
                           choices = c("", sort(unique(as.character(grow_df$id_quad_year)))),
                           selected = "", multiple = FALSE),
            actionButton("add_misfit", "Add", class = "btn btn-sm btn-danger"),
            br(), br(),
+           
+           # Misfits panel:
            tags$div(class = "panel panel-default",
                     tags$div(class = "panel-heading",
                              tags$h5(class = "panel-title",
@@ -195,12 +222,20 @@ ui <- fluidPage(
                     )
            ),
            br(),
+           
+           # Download misfits CSV:
            downloadButton("download_misfits", "Download misfits CSV", class = "btn btn-sm btn-primary"),
            br(), br(),
+           
+           # Upload misfits CSV:
            fileInput("upload_misfits", "Upload misfits CSV:", accept = c(".csv"),
                      buttonLabel = "Browse...", placeholder = "No file selected")
     ),
+    
+    # Column 2 (Plots + Maps)
     column(width = 7,
+           
+           # Jitter control panel:
            tags$div(class = "panel panel-default", style = "font-size:85%; margin-bottom:10px;",
                     tags$div(class = "panel-heading",
                              tags$h5(class = "panel-title",
@@ -216,12 +251,20 @@ ui <- fluidPage(
                              )
                     )
            ),
+           
+           # Scatter plot:
            plotlyOutput("plt", height = "400px"),
            br(),
+           
+           # Geometry plots
            tags$div(class = "panel panel-default", style = "padding:10px; margin-top:12px;",
+                    
+                    # Another level of fluidRow → 2 columns
                     fluidRow(
                       column(6,
+                             # Another level of fluidRow → 2 columns
                              fluidRow(column(6, uiOutput("map_t0_title")),
+                                      # Buffer checkboxes:
                                       column(6, checkboxInput("show_buffer", "Show buffer", value = TRUE))),
                              plotlyOutput("map_t0", height = "400px")
                       ),
@@ -236,6 +279,7 @@ ui <- fluidPage(
   )
 )
 
+
 # ----------------------------------------------------------------------
 # SHINY SERVER
 # ----------------------------------------------------------------------
@@ -244,11 +288,16 @@ server <- function(input, output, session) {
   # -------------------------
   # Misfits reactive storage
   # -------------------------
+
+  # A reactive state holder for the misfit list
   misfits_df <- reactiveVal(tibble(id_quad_year = character(), comment = character(), status = character(), group = character()))
   
+  # When user clicks actionButton("add_misfit" [...])
   observeEvent(input$add_misfit, {
+    # Check for non-null
     req(input$misfit_input)
     cur <- misfits_df()
+    # If not already in misfits_df, a new row is added
     if (!(input$misfit_input %in% cur$id_quad_year)) {
       misfits_df(bind_rows(tibble(id_quad_year = input$misfit_input, comment = "", status = "include", group = "A"), cur))
     }
@@ -259,6 +308,7 @@ server <- function(input, output, session) {
   # -------------------------
   output$misfits_list <- renderUI({
     df_ex <- misfits_df()
+    # If the list is empty: Returns “None”
     if (nrow(df_ex) == 0) return("None")
     safe_id <- function(x) gsub("[^A-Za-z0-9_]", "_", x)
     tagList(
@@ -268,8 +318,11 @@ server <- function(input, output, session) {
         this_stat <- df_ex$status[i]
         this_group <- df_ex$group[i]
         sid <- safe_id(this_id)
+        
+        # A visually distinct div for each item (with a border and padding)
         tags$div(
           style = "padding:8px 0; border-bottom:1px solid #ddd;",
+          # First row
           fluidRow(
             column(5, tags$b(this_id),
                    tags$div(style = "font-size:90%; color:#555; margin-top:2px;",

@@ -6,7 +6,8 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2025.09.05
 
-# Version 21: Colored "other individual" polygons by track_id, relinked zoom on maps
+# Version 21: Colored "other individual" polygons by track_id, relinked zoom on
+  # maps, defined "groups" for misfits list
 
 # ----------------------------------------------------------------------
 # PACKAGES
@@ -21,7 +22,7 @@ v_author_year <- 'anderson_2016'
 v_region_abb  <- 'mt'
 v_species     <- 'Bouteloua gracilis'
 
-v_size_threshold <- -10.7
+v_size_threshold <- NULL
 
 # Species abbreviation
 v_sp_abb <- tolower(gsub(' ', '', paste(substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
@@ -299,7 +300,7 @@ server <- function(input, output, session) {
     cur <- misfits_df()
     # If not already in misfits_df, a new row is added
     if (!(input$misfit_input %in% cur$id_quad_year)) {
-      misfits_df(bind_rows(tibble(id_quad_year = input$misfit_input, comment = "", status = "include", group = "A"), cur))
+      misfits_df(bind_rows(tibble(id_quad_year = input$misfit_input, comment = "", status = "include", group = "Actually shrunk"), cur))
     }
   })
   
@@ -333,7 +334,7 @@ server <- function(input, output, session) {
           ),
           fluidRow(
             column(6, selectInput(paste0("status_", sid), "Status:", choices = c("include", "exclude"), selected = this_stat, width = "100%")),
-            column(6, selectInput(paste0("group_", sid), "Group:", choices = c("A", "B", "C"), selected = this_group, width = "100%"))
+            column(6, selectInput(paste0("group_", sid), "Group:", choices = c("Actually shrunk", "Died (new recruit in t1)", "New recruit given old ID", "Split incorrectly", "Difference in mapper precision", "Buffer issues", "Other..."), selected = this_group, width = "100%"))
           )
         )
       })

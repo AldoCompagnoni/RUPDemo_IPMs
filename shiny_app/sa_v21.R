@@ -129,7 +129,7 @@ plot_polygons_with_others <- function(df_selected, quad_val, year_val, show_buff
   # Final layer stack
   p <- ggplot()
   if (show_buffer && !is.null(df_buffer)) p <- p + geom_sf(data = df_buffer, fill = "lightblue", alpha = 0.3)
-  if (show_others && nrow(df_others) > 0) p <- p + geom_sf(data = df_others, aes( fill = track_id ), alpha = 0.5 ) + guides(fill = NULL )
+  if (show_others && nrow(df_others) > 0) p <- p + geom_sf(data = df_others, aes( fill = track_id ), alpha = 0.5 ) + guides(fill = "none" )
   p <- p + geom_sf(data = df_selected, fill = "dodgerblue") +
     # Ensure plots always align with bounding box of original dataset
     coord_sf(xlim = c(bbox["xmin"], bbox["xmax"]), ylim = c(bbox["ymin"], bbox["ymax"])) +
@@ -300,7 +300,7 @@ server <- function(input, output, session) {
     cur <- misfits_df()
     # If not already in misfits_df, a new row is added
     if (!(input$misfit_input %in% cur$id_quad_year)) {
-      misfits_df(bind_rows(tibble(id_quad_year = input$misfit_input, comment = "", status = "include", group = "Actually shrunk"), cur))
+      misfits_df(bind_rows(tibble(id_quad_year = input$misfit_input, comment = "", status = "include", group = "A"), cur))
     }
   })
   
@@ -334,7 +334,7 @@ server <- function(input, output, session) {
           ),
           fluidRow(
             column(6, selectInput(paste0("status_", sid), "Status:", choices = c("include", "exclude"), selected = this_stat, width = "100%")),
-            column(6, selectInput(paste0("group_", sid), "Group:", choices = c("Actually shrunk", "Died (new recruit in t1)", "New recruit given old ID", "Split incorrectly", "Difference in mapper precision", "Buffer issues", "Other..."), selected = this_group, width = "100%"))
+            column(6, selectInput(paste0("group_", sid), "Group:", choices = c("A", "AM", "AP", "B", "BM", "C", "CM", "S", "M", "Other..."), selected = this_group, width = "100%"))
           )
         )
       })

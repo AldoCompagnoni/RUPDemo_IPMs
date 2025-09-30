@@ -18,8 +18,8 @@ run_plant_tracker <- function( spp_code_x ){
   print( spp_code_x )
   
   source( paste0(dir, spp_code_x, '/',
-                 'kansas_tracker_',spp_code_x,'.R') )
+                 'adler07_',spp_code_x,'_tracker.R') )
 }
 
 # Run plant tracker for all species
-lapply( spp_codes_v[6], run_plant_tracker )
+lapply( spp_codes_v, run_plant_tracker )

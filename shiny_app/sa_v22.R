@@ -345,7 +345,7 @@ server <- function(input, output, session) {
           ),
           fluidRow(
             column(6, selectInput(paste0("status_", sid), "Status:", choices = c("include", "exclude"), selected = this_stat, width = "100%")),
-            column(6, selectInput(paste0("group_", sid), "Group:", choices = c("A", "AM", "AP", "B", "BM", "C", "CM", "S", "M", "Other..."), selected = this_group, width = "100%"))
+            column(6, selectInput(paste0("group_", sid), "Group:", choices = c("A", "AM", "AP", "B", "BM", "C", "CM", "S", "M", "MAB", "Other..."), selected = this_group, width = "100%"))
           )
         )
       })

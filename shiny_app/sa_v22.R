@@ -6,7 +6,8 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2025.09.05
 
-# Version 22: Added ability to a priori filter data by year
+# Version 22: Added ability to a priori filter data by year and define buffer
+  # size to account for different scaling between datasets
 
 # ----------------------------------------------------------------------
 # PACKAGES
@@ -17,14 +18,15 @@ load_packages(tidyverse, sf, shiny, plotly, gridExtra, clipr)
 # ----------------------------------------------------------------------
 # SPECIFICATION
 # ----------------------------------------------------------------------
-v_author_year <- 'anderson_2016'
-v_region_abb  <- 'mt'
-v_species     <- 'Poa secunda'
+v_author_year <- 'adler_2007'
+v_region_abb  <- 'ks'
+v_species     <- 'Panicum virgatum'
+v_buff        <- 5
 
 v_size_threshold <- NULL
 
-v_yeart0_min <- 1932
-v_yeart0_max <- 1938
+v_yeart0_min <- NULL
+v_yeart0_max <- NULL
 
 # Species abbreviation
 v_sp_abb <- tolower(gsub(' ', '', paste(substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
@@ -127,7 +129,7 @@ plot_polygons_with_others <- function(df_selected, quad_val, year_val, show_buff
     st_cast(df_selected, "MULTIPOLYGON") })
   if (show_buffer) {
     # Buffer of 0.05 since the plot is at x and ymax == 1
-    df_buffer <- tryCatch(st_buffer(df_selected, dist = 0.05), error = function(e) NULL)
+    df_buffer <- tryCatch(st_buffer(df_selected, dist = v_buff), error = function(e) NULL)
   } else df_buffer <- NULL
   
   # Extract other plants in the quadrat for the same year

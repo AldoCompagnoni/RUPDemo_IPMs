@@ -6,8 +6,8 @@
 # Web   : https://aldocompagnoni.weebly.com/
 # Date  : 2025.09.05
 
-# Version 22: Added ability to a priori filter data by year and define buffer
-  # size to account for different scaling between datasets
+# Version 22: Added ability to a priori filter data by year and size, and define
+  # buffer size to account for different scaling between datasets
 
 # ----------------------------------------------------------------------
 # PACKAGES
@@ -18,15 +18,17 @@ load_packages(tidyverse, sf, shiny, plotly, gridExtra, clipr)
 # ----------------------------------------------------------------------
 # SPECIFICATION
 # ----------------------------------------------------------------------
-v_author_year <- 'adler_2007'
-v_region_abb  <- 'ks'
-v_species     <- 'Panicum virgatum'
-v_buff        <- 5
+v_author_year <- 'anderson_2016'
+v_region_abb  <- 'az'
+v_species     <- 'Bouteloua eriopoda'
+v_buff        <- 0.05
 
-v_size_threshold <- NULL
+v_size_threshold <- -10.7 # NULL to turn off size threshold (keep impossibly small individuals)
 
-v_yeart0_min <- NULL
-v_yeart0_max <- NULL
+v_size_max <- NULL # NOT WORKING YET -10.5 # NULL to turn off size filtering (show all individuals)
+
+v_yeart0_min <- NULL # 4-digit year; NULL to turn off year filtering
+v_yeart0_max <- NULL # NULL to turn off year filtering
 
 # Species abbreviation
 v_sp_abb <- tolower(gsub(' ', '', paste(substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
@@ -83,11 +85,17 @@ if (!is.null(v_size_threshold)) {
            logsize_t1 > v_size_threshold | is.na(logsize_t1))
 }
 
+# Apply max size filter (if provided)
+if (!is.null(v_size_max)) {
+  df <- df %>%
+    filter(logsize_t1 < v_size_max | is.na(logsize_t1))
+}
+
 # Apply year filter (if provided)
 if (!is.null(v_yeart0_min)) {
   df <- df %>%
     filter(year >= v_yeart0_min | is.na(year),
-           year <= v_yeart0_max | is.na(year))
+           year <= v_yeart0_max + 1 | recruit != 0 | is.na(year))
 }
 
 # Growth data (non-zero)
@@ -439,6 +447,11 @@ server <- function(input, output, session) {
   # 4. Clicked point overrides all -> 2 (purple)
   state_data <- reactive({
     dat <- grow_df %>% mutate(state_code = 1L) # start all at 1
+    
+    # if implementing year filters, plot points in max year + 1 in white
+    if(!is.null(v_yeart0_max)){
+      dat$state_code[dat$year == (v_yeart0_max + 1)] <- 4L
+    }
     
     # Active filters
     matches <- rep(TRUE, nrow(dat))

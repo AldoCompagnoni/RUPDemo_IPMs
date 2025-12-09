@@ -1,6 +1,6 @@
 # Second part of the plant tracker pipeline
 
-# Author: Niklas Neisse
+# Author: Niklas Neisse 
 # Co    : Aspen Workman, Diāna Spurīte, Aldo Compagnoni*
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de

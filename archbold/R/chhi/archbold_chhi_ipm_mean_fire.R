@@ -169,8 +169,15 @@ df <- df_og_extended %>%
 # Survival data frame
 surv_df <- subset(df, !is.na(survives)) %>%
   subset(size_t0 != 0) %>%
-  select(site, plant_id, year, size_t0, survives, size_t1, 
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
+  select(site, plant_id, year, size_t0, survives, size_t1,
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+         fire) %>% 
+  filter(!is.na(fire)) %>%
+  mutate(
+    fire = factor(fire,
+                  levels = c(0, 1),
+                  labels = c("No fire", "Fire")))
+
 
 # Growth data frame
 grow_df <- df %>% 
@@ -212,28 +219,32 @@ recr_df <- full_join(cover_df, recr_df, by = c('site', 'year'))
 source('helper_functions/plot_binned_prop.R')
 
 # Generate a plot for overall survival based on size at t0
-g_surv_overall <- ggplot(
-  data = plot_binned_prop(df, 10, logsize_t0, survives)) +
-  geom_point(aes(x = logsize_t0, 
-                 y = survives),
-             alpha = 1, pch = 16, color = 'red' ) +
-  geom_errorbar(aes(x = logsize_t0, ymin = lwr, ymax = upr),
-                size = 0.5, width = 0.5) +
-  scale_y_continuous(breaks = c(0.1, 0.5, 0.9)) +
-  ylim(0, 1.01) +
-  theme_bw() +
-  theme(axis.text = element_text(size = 8),
-        title     = element_text(size = 10)) +
-  labs(title    = 'Survival',
-       subtitle = v_ggp_suffix,
-       x        = expression('log(size)'[t0]),
-       y        = expression('Survival to time t1')) +
-  theme(plot.subtitle = element_text(size = 8))
+df_su_binned <- surv_df %>%
+  group_split(fire) %>%
+  purrr::map_df(~ plot_binned_prop(.x, 10, logsize_t0, survives) %>%
+                  mutate(fire = unique(.x$fire)))
 
-# Save the survival plot to a file
-ggsave(paste0(dir_result, '/1.1_overall_surv', v_suffix,'.png'), 
-       plot = g_surv_overall, 
-       width = 4, height = 3, units = 'in', dpi = 150)
+fig_su_overall <- ggplot(df_su_binned, aes(x = logsize_t0, y = survives, color = fire)) +
+  geom_jitter(data = surv_df, aes(x = logsize_t0, y = survives, color = fire),
+              position = position_jitter(width = 0.1, height = 0.3), alpha = 0.1) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
+  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 8),
+    title = element_text(size = 10),
+    plot.subtitle = element_text(size = 8),
+    legend.title = element_blank(),
+    legend.position = "top") +
+  labs(
+    title = "Survival",
+    subtitle = v_ggp_suffix,
+    x = expression('log(size)'[t0]),
+    y = "Survival Probability")
+
+fig_su_overall
 
 # Growth analysis
 # Create a scatter plot of size at t0 versus size at t1

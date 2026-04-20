@@ -296,8 +296,7 @@ mod_su_ranef   <- coef(mod_su_bestfit)
 # Create prediction data frames for fire = 0 and fire = 1
 df_su_pred <- data.frame(
   logsize_t0 = rep(seq(min(df_su$logsize_t0), max(df_su$logsize_t0), length.out = 100), 2),
-  fire = rep(c(0, 1), each = 100)
-) %>%
+  fire = rep(c(0, 1), each = 100)) %>%
   mutate(fire_label = ifelse(fire == 1, "Fire", "No fire"),
          survives = predict(mod_su_bestfit, newdata = ., type = "response"))
 

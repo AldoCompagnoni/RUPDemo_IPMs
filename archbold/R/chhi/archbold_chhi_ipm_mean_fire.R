@@ -5,72 +5,46 @@
 # Email : neisse.n@protonmail.com
 # Main  : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2026.04.02
-
-
-# Website    : 
-# Publication: 
+# Date  : 2026.04.20
 
 
 # Setting the stage ------------------------------------------------------------
-# Remove all objects in the global environment
-# rm(list = ls()) 
-# Set seed for reproducibility
 set.seed(100)
-options(stringsAsFactors = F)
+options(stringsAsFactors = FALSE)
+
 
 # Packages ---------------------------------------------------------------------
-
-# load packages
 source('helper_functions/load_packages.R')
 load_packages(
-  # negative binomial modeling
   MASS,
-  # load tidyverse after MASS to not mask the select function
   tidyverse,
-  # bbmle is for AICtab
   bbmle,
-  # patchwork plot alingment
   patchwork,
-  # binom.cofint for the survival plot
   binom,
   skimr,
   lubridate,
   ipmr,
-  janitor) # , skimr, binom, lme4
+  janitor)
 
 
 # Specification ----------------------------------------------------------------
-# Define head-directory 
 v_head <- c('archbold')
-# Define species
 v_species <- c('Chrysopsis highlandsensis')
-# Customized delimiter for `read_delim` function, comma is predefined
 v_custom_delimiter <- c()
 
-
-# Create a unique species abbreviation for file naming
 v_sp_abb  <- tolower(
   gsub(' ', '', paste(
     substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
 
-# Define script prefix
 v_script_prefix <- str_c(v_head)
-
 v_suffix <- ''
 
-# Plot subtitle
-v_ggp_suffix    <- paste(
+v_ggp_suffix <- paste(
   tools::toTitleCase(v_head), '-', v_species)
 
-
-# Models
 v_mod_set_gr <- c()
-# fig_gr
 v_mod_set_su <- c()
-# fig_su
 v_mod_set_fl <- c()
-# fig_fl
 v_mod_set_fr <- c()
 
 
@@ -80,20 +54,12 @@ dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
 dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
 dir_result <- file.path(dir_pub, 'results', v_sp_abb)
 
-if (!dir.exists(paste0(dir_pub, '/R'))) {
-  dir.create(paste0(dir_pub, '/R'))}
-if (!dir.exists(paste0(dir_pub, '/data'))) {
-  dir.create(paste0(dir_pub, '/data'))}
-if (!dir.exists(paste0(dir_pub, '/results'))) {
-  dir.create(paste0(dir_pub, '/results'))}
-
-if (!dir.exists(dir_R     )) {dir.create(dir_R     )}
-if (!dir.exists(dir_data  )) {dir.create(dir_data  )}
-if (!dir.exists(dir_result)) {dir.create(dir_result)}
+dir.create(dir_R,      showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_data,   showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_result, showWarnings = FALSE, recursive = TRUE)
 
 
 # Functions --------------------------------------------------------------------
-# function to plot your survival data 'binned' (instead of 'jittered')
 source('helper_functions/plot_binned_prop.R')
 source('helper_functions/line_color_pred_fun.R')
 source('helper_functions/predictor_fun.R')
@@ -108,125 +74,312 @@ df_og <- read_csv(file.path(dir_data, 'chrysopsis_highlandsensis_data.csv')) %>%
     survival = survival_1) %>%  
   mutate(
     plant_id = as.factor(plant_id)) %>%
-  arrange(site, plant_id, year, survival) # quad, quad_id, plant, , month
-
-# df_meta <- data.frame(variable = colnames(df_og)) %>% 
-#   mutate(definition = c(
-#     'study site', 'quadrat number',	'macroplot number',	
-#     'plant number (within quad)', 'direction within circular quad',	
-#     'distance from quad center',	'was quad caged from 2012 onward',	
-#     'vegetation type', 'year quadrat was initiated', 
-#     'year-month of observation',	'fire severity Dec. 2014 or Jan. 2015',
-#     'fire severity Aug. 2005',	'fire severity May/June 2009',
-#     "fire severity B's ridge 2016", 'fire severity Feb. 2017',
-#     'fire severity Oct. 2017', 'survival code for month', 'number of stems',
-#     'number of branch tips', 'number of flowers (corolla showing)', 
-#     'number of developing fruits', 'number of mature fruits', 'herbivory code',
-#     'plant identification', 'quadrat identification', 'sample year', 
-#     'sample month'))
+  arrange(site, plant_id, year, survival)
 
 df_og_extended <- df_og %>%
-    # Recruits
-  mutate(
-    recruit = ifelse(astg == 1, 1, 0))
+  mutate(recruit = ifelse(astg == 1, 1, 0))
 
 
-# Fire data
+# Fire data --------------------------------------------------------------------
 df_fire <- read_csv(file.path(dir_data, 'chrysopsis_highlandsensis_fire.csv')) %>% 
   janitor::clean_names() %>% 
   rename(
     year = burn_yr,
     fire = treatment) %>% 
-  mutate(fire = as.factor(fire)) %>%  
   select(!c(year0, notes))
+
 
 # Mean data frame --------------------------------------------------------------
 df <- df_og_extended %>%
   group_by(site , plant_id, year) %>%
   summarise(
-    survives = if_else(all(is.na(survival )), NA_real_, min(survival,  na.rm = T)),
-    size_t0  = if_else(all(is.na(dia)),       NA_real_, max(dia,        na.rm = T)), # height of tallest scape (cm)
-    size_t1  = if_else(all(is.na(dia_1)),     NA_real_, max(dia_1,      na.rm = T)),
-    flower   = if_else(all(is.na(hd)),        NA_real_, max(hd,        na.rm = T)),  
-    recruit  = if_else(all(is.na(recruit)),   NA_real_, min(recruit,   na.rm = T)),
-  ) %>% 
-  ungroup() %>% 
+    survives = if (all(is.na(survival))) NA_real_ else min(survival, na.rm = TRUE),
+    size_t0  = if (all(is.na(dia)))      NA_real_ else max(dia,      na.rm = TRUE),
+    size_t1  = if (all(is.na(dia_1)))    NA_real_ else max(dia_1,    na.rm = TRUE),
+    flower   = if (all(is.na(hd)))       NA_real_ else max(hd,       na.rm = TRUE),
+    recruit  = if (all(is.na(recruit)))  NA_real_ else min(recruit,  na.rm = TRUE),
+    .groups = 'drop') %>% 
   mutate(
-    logsize_t0   = log(size_t0), # avoiding size_t0 = 0    
-    logsize_t1   = log(size_t1),    
-    logsize_t0_2 = logsize_t0^2,     
+    logsize_t0   = log(size_t0),
+    logsize_t1   = log(size_t1),
+    logsize_t0_2 = logsize_t0^2,
     logsize_t0_3 = logsize_t0^3) %>%
-  full_join(df_fire, by = c("site", "year")) %>%
+  full_join(df_fire, by = c('site', 'year')) %>%
   mutate(
     fire = case_when(
-      is.na(fire)      ~ 0,
-      fire == "burn"   ~ 1,
-      TRUE             ~ NA)) # since there is also mechanical return we have them as NA
-  
+      is.na(fire)    ~ 'No fire',
+      fire == 'burn' ~ 'Fire',
+      TRUE           ~ NA_character_),
+    fire = factor(fire, levels = c('No fire', 'Fire')))
 
 
-# Prepare data frames for analysis ---------------------------------------------
-# Survival data frame
-surv_df <- subset(df, !is.na(survives)) %>%
-  subset(size_t0 != 0) %>%
+# Prepare data frames ----------------------------------------------------------
+df_su <- df %>%
+  filter(!is.na(survives), size_t0 != 0, !is.na(fire)) %>%
   select(site, plant_id, year, size_t0, survives, size_t1,
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
-         fire) %>% 
-  filter(!is.na(fire)) %>%
-  mutate(
-    fire = factor(fire,
-                  levels = c(0, 1),
-                  labels = c("No fire", "Fire")))
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire)
 
 
-# Growth data frame
-grow_df <- df %>% 
-  subset(size_t0 != 0) %>%
-  subset(size_t1 != 0) %>% 
-  select(site, plant_id, year, size_t0, survives, size_t1, 
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3)
-
-# Recruit data frame
-# Parent area cover data at year t0
-# Total area data frame
-site_df <- df %>%  
-  group_by (site, year) %>% 
-  summarise(tot_p_area = sum(size_t0, na.rm = T)) %>% 
-  ungroup
-
-group_df <- site_df %>% 
-  group_by (year) %>% 
-  summarise(g_cov = mean(tot_p_area)) %>% 
-  ungroup
-
-cover_df <- left_join(site_df, group_df) %>%
-  mutate(year = year + 1) %>%
-  mutate(year = as.integer(year)) %>% 
-  drop_na()
-
-# Recruitment data at year t1
-recr_df <- df %>% 
-  group_by (year, site) %>%
-  summarise(nr_rec = sum(recruit, na.rm = T)) %>% 
-  ungroup
-
-recr_df <- full_join(cover_df, recr_df, by = c('site', 'year'))
-
-
-# Plotting the data --------------------------------------------------------
-# Survival analysis
-# Load custom function for plotting binned proportions
-source('helper_functions/plot_binned_prop.R')
-
-# Generate a plot for overall survival based on size at t0
-df_su_binned <- surv_df %>%
+# Survival plotting ------------------------------------------------------------
+df_su_binned <- df_su %>%
   group_split(fire) %>%
   purrr::map_df(~ plot_binned_prop(.x, 10, logsize_t0, survives) %>%
                   mutate(fire = unique(.x$fire)))
 
 fig_su_overall <- ggplot(df_su_binned, aes(x = logsize_t0, y = survives, color = fire)) +
-  geom_jitter(data = surv_df, aes(x = logsize_t0, y = survives, color = fire),
+  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives, color = fire),
               position = position_jitter(width = 0.1, height = 0.3), alpha = 0.1) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 8),
+    title = element_text(size = 10),
+    plot.subtitle = element_text(size = 8),
+    legend.title = element_blank(),
+    legend.position = 'top') +
+  labs(
+    title = 'Survival',
+    subtitle = v_ggp_suffix,
+    x = expression('log(size)'[t0]),
+    y = 'Survival Probability')
+
+fig_su_overall
+
+
+# Survival models --------------------------------------------------------------
+mod_su_0 <- glm(survives ~ fire, data = df_su, family = 'binomial') 
+mod_su_1 <- glm(survives ~ logsize_t0 + fire, data = df_su, family = 'binomial') 
+mod_su_2 <- glm(survives ~ logsize_t0 + logsize_t0_2 + fire, data = df_su, family = 'binomial')  
+mod_su_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire, data = df_su, family = 'binomial')  
+
+mods_su <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
+mods_su_dAIC <- AICtab(mods_su, weights = TRUE, sort = FALSE)$dAIC
+mods_su_sorted <- order(mods_su_dAIC)
+
+mod_su_bestfit <- mods_su[[mods_su_sorted[1]]]
+
+
+# Prediction -------------------------------------------------------------------
+df_su_pred <- data.frame(
+  logsize_t0   = rep(seq(min(df_su$logsize_t0), max(df_su$logsize_t0), length.out = 100), 2),
+  logsize_t0_2 = rep(seq(min(df_su$logsize_t0_2), max(df_su$logsize_t0_2), length.out = 100), 2),
+  fire = rep(c('No fire', 'Fire'), each = 100)) %>%
+  mutate(
+    fire = factor(fire, levels = c('No fire', 'Fire')),
+    survives = predict(mod_su_bestfit, newdata = ., type = 'response'))
+
+
+# Binned data ------------------------------------------------------------------
+df_su_binned <- bind_rows(
+  plot_binned_prop(filter(df_su, fire == 'No fire'), 10, logsize_t0, survives) %>%
+    mutate(fire = 'No fire'),
+  plot_binned_prop(filter(df_su, fire == 'Fire'), 10, logsize_t0, survives) %>%
+    mutate(fire = 'Fire'))
+
+
+# Survival plot ----------------------------------------------------------------
+# Plot 1
+fig_su_line_combined <- ggplot() +
+  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives, color = fire),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives, color = fire),
+            linewidth = 0.9) +  
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
+  theme_bw() +
+  labs(title = NULL, x = 'Size at time t0 (log())', y = 'Survival to time t1') +
+  theme(legend.position = 'none')
+
+# Plot 2 
+fig_su_bin_combined <- ggplot() +
+  geom_point(data = df_su_binned, aes(x = logsize_t0, y = survives, color = fire)) +
+  geom_errorbar(data = df_su_binned, aes(x = logsize_t0, ymin = lwr, ymax = upr, color = fire),
+                width = 0.2) +
+  geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives, color = fire),
+            linewidth = 0.9) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
+  theme_bw() +
+  ylim(0, 1) +
+  labs(title = NULL, x = 'Size at time t0 (log())', y = 'Survival to time t1') +
+  theme(legend.title = element_blank(), legend.position = 'top')
+
+# Combine
+fig_su_all <- fig_su_line_combined + fig_su_bin_combined +
+  plot_annotation(
+    title = 'Survival',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 14, face = 'bold'),
+      plot.subtitle = element_text(size = 10, face = 'italic'))  )
+
+fig_su_all
+
+
+# Growth data ------------------------------------------------------------------
+df_gr <- df %>%
+  filter(size_t0 != 0,
+         !is.na(size_t1),
+         size_t1 > 0,
+         !is.na(fire)) %>%
+  mutate(
+    logsize_t0   = log(size_t0),
+    logsize_t1   = log(size_t1),
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3
+  ) %>%
+  select(plant_id, year, size_t0, size_t1,
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+         fire)
+
+fig_gr_overall <- ggplot(df_gr, aes(x = logsize_t0, y = logsize_t1, color = fire)) +
+  geom_point(alpha = 0.5, size = 0.7) +
+  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  theme_bw() +
+  theme(
+    axis.text       = element_text(size = 8),
+    title           = element_text(size = 10),
+    plot.subtitle   = element_text(size = 8),
+    legend.title    = element_blank(),
+    legend.position = "top"
+  ) +
+  labs(
+    title    = "Growth",
+    subtitle = v_ggp_suffix,
+    x        = expression('log(size)'[t0]),
+    y        = expression('log(size)'[t1])
+  )
+
+fig_gr_overall
+
+
+
+# Growth model -----------------------------------------------------------------
+mod_gr_0 <- lm(logsize_t1 ~ fire, data = df_gr)
+
+mod_gr_1 <- lm(logsize_t1 ~ logsize_t0 + fire, data = df_gr)
+
+mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + fire, data = df_gr)
+
+mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire, 
+               data = df_gr)
+
+mods_gr      <- list(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
+mods_gr_dAIC <- AICtab(mods_gr, weights = TRUE, sort = FALSE)$dAIC
+mods_gr_sorted <- order(mods_gr_dAIC)
+
+if (length(v_mod_set_gr) == 0) {
+  mod_gr_index_bestfit <- mods_gr_sorted[1]
+  v_mod_gr_index       <- mod_gr_index_bestfit - 1 
+} else {
+  mod_gr_index_bestfit <- v_mod_set_gr + 1
+  v_mod_gr_index       <- v_mod_set_gr
+}
+
+mod_gr_bestfit <- mods_gr[[mod_gr_index_bestfit]]
+mod_gr_ranef   <- coef(mod_gr_bestfit)
+
+
+# Prediction -------------------------------------------------------------------
+df_gr_pred <- data.frame(
+  logsize_t0 = rep(
+    seq(min(df_gr$logsize_t0, na.rm = TRUE),
+        max(df_gr$logsize_t0, na.rm = TRUE), length.out = 100), 2),
+  fire = rep(c("No fire", "Fire"), each = 100)
+) %>%
+  mutate(
+    fire = factor(fire, levels = c("No fire", "Fire")),
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3   # ✅ ADD THIS
+  )
+
+df_gr_pred$logsize_t1 <- predict(mod_gr_bestfit, newdata = df_gr_pred)
+
+
+# Growth plots ----------------------------------------------------------------- 
+# Plot 1: Observed points + prediction lines
+fig_gr_line_combined <- ggplot(df_gr, aes(x = logsize_t0, y = logsize_t1, color = fire)) +
+  geom_point(alpha = 0.4, size = 0.8) +
+  geom_line(data = df_gr_pred, aes(x = logsize_t0, y = logsize_t1, color = fire),
+            linewidth = 1) +
+  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  theme_bw() +
+  labs(x = expression('log(size)'[t0]),
+       y = expression('log(size)'[t1])) +
+  theme(
+    legend.position = "top",
+    legend.title = element_blank(),
+    plot.title = element_blank(),
+    plot.subtitle = element_blank()  )
+
+# Plot 2: Predicted vs observed
+fig_gr_pred_combined <- ggplot(df_gr, aes(x = predict(mod_gr_bestfit, newdata = df_gr),
+                                          y = logsize_t1, color = fire)) +
+  geom_point(alpha = 0.4, size = 0.8) +
+  geom_abline(intercept = 0, slope = 1, color = 'black',
+              linetype = "dashed", linewidth = 1) +
+  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  theme_bw() +
+  labs(x = "Predicted", y = "Observed") +
+  theme(
+    legend.position = "top",
+    legend.title = element_blank(),
+    plot.title = element_blank(),
+    plot.subtitle = element_blank()  )
+
+# Combine plots
+fig_gr_all_combined <- fig_gr_line_combined + fig_gr_pred_combined +
+  plot_annotation(
+    title = "Growth Prediction",
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 10, face = "italic")))
+
+fig_gr_all_combined
+
+
+
+# Growth variance --------------------------------------------------------------
+# Fitted values from growth model
+mod_gr_x   <- fitted(mod_gr_bestfit)  
+# Squared residuals
+mod_gr_y   <- resid(mod_gr_bestfit)^2  
+# Non-linear model for variance
+mod_gr_var <- nls(
+  mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
+  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE)) 
+
+
+
+
+# Flowering data ----------------------------------------------------------------
+df_fl <- df %>%
+  filter(!is.na(flower),
+         !is.na(fire),
+         !is.na(size_t0),
+         !is.na(survives)) %>%
+  select(plant_id, year, size_t0, flower, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire) %>%
+  mutate(
+    flower = if_else(flower > 0, 1, flower)
+  )
+
+# Create binned flowering probability by fire group
+df_fl_binned <- df_fl %>%
+  group_split(fire) %>%
+  map_df(~ plot_binned_prop(.x, 10, logsize_t0, flower) %>%
+           mutate(fire = unique(.x$fire)))
+
+# Plot overlapped flowering probability
+fig_fl_overall <- ggplot(df_fl_binned, aes(x = logsize_t0, y = flower, color = fire)) +
+  geom_jitter(
+    data = df_fl,
+    aes(x = logsize_t0, y = flower, color = fire),
+    position = position_jitter(width = 0.1, height = 0.3),
+    alpha = 0.1
+  ) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
   scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
@@ -237,39 +390,149 @@ fig_su_overall <- ggplot(df_su_binned, aes(x = logsize_t0, y = survives, color =
     title = element_text(size = 10),
     plot.subtitle = element_text(size = 8),
     legend.title = element_blank(),
-    legend.position = "top") +
+    legend.position = "top"
+  ) +
   labs(
-    title = "Survival",
+    title = "Flowering probability by fire status",
     subtitle = v_ggp_suffix,
     x = expression('log(size)'[t0]),
-    y = "Survival Probability")
+    y = "Flowering Probability"
+  )
 
-fig_su_overall
+fig_fl_overall
 
-# Growth analysis
-# Create a scatter plot of size at t0 versus size at t1
-g_gr_overall <- ggplot(
-  data  = grow_df, aes( x = logsize_t0, y = logsize_t1)) +
-  geom_point(alpha = 0.5, pch = 16, size = 0.7, color = 'red') +
+
+# Flower model -----------------------------------------------------------------
+mod_fl_0 <- glm(flower ~ fire, data = df_fl, family = 'binomial') 
+
+mod_fl_1 <- glm(flower ~ logsize_t0 + fire, data = df_fl, family = 'binomial') 
+
+mod_fl_2 <- glm(flower ~ logsize_t0 + logsize_t0_2 + fire,
+                data = df_fl, family = 'binomial')  
+
+mod_fl_3 <- glm(flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire,
+                data = df_fl, family = 'binomial')  
+
+mods_fl      <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
+mods_fl_dAIC <- AICtab(mods_fl, weights = TRUE, sort = FALSE)$dAIC
+mods_fl_sorted <- order(mods_fl_dAIC)
+
+if (length(v_mod_set_fl) == 0) {
+  mod_fl_index_bestfit <- mods_fl_sorted[1]
+  v_mod_fl_index       <- mod_fl_index_bestfit - 1 
+} else {
+  mod_fl_index_bestfit <- v_mod_set_fl + 1
+  v_mod_fl_index       <- v_mod_set_fl
+}
+
+mod_fl_bestfit <- mods_fl[[mod_fl_index_bestfit]]
+mod_fl_ranef   <- coef(mod_fl_bestfit)
+
+
+# Prediction -------------------------------------------------------------------
+df_fl_pred <- data.frame(
+  logsize_t0 = rep(seq(min(df_fl$logsize_t0, na.rm = TRUE),
+                       max(df_fl$logsize_t0, na.rm = TRUE), length.out = 100), 2),
+  fire = rep(c("No fire", "Fire"), each = 100)
+) %>%
+  mutate(
+    fire = factor(fire, levels = c("No fire", "Fire")),
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3
+  )
+
+df_fl_pred$flower <- predict(mod_fl_bestfit, newdata = df_fl_pred, type = "response")
+
+
+
+# Binned observed data for both fire levels
+df_fl_binned <- bind_rows(
+  plot_binned_prop(filter(df_fl, fire == "No fire"), 10, logsize_t0, flower) %>%
+    mutate(fire = "No fire"),
+  plot_binned_prop(filter(df_fl, fire == "Fire"), 10, logsize_t0, flower) %>%
+    mutate(fire = "Fire")
+)
+
+
+
+# Plot 1: Raw jitter + prediction lines
+fig_fl_line_combined <- ggplot() +
+  geom_jitter(data = df_fl, aes(x = logsize_t0, y = flower, color = fire),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_fl_pred, aes(x = logsize_t0, y = flower, color = fire),
+            linewidth = 0.9) +
+  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
   theme_bw() +
-  theme(axis.text = element_text(size = 8),
-        title     = element_text(size = 10)) +
-  labs(title    = 'Growth',
-       subtitle = v_ggp_suffix,
-       x        = expression('log(size) ' [t0]),
-       y        = expression('log(size)  '[t1])) +
-  theme(plot.subtitle = element_text(size = 8))
+  labs(title = NULL, x = 'Size at time t0 (log())', y = 'Flowering Probability') +
+  theme(legend.position = "none")
 
-ggsave(paste0(dir_result, '/1.2_overall_gr', v_suffix,'.png'), 
-       plot = g_gr_overall, 
-       width = 4, height = 3, units = 'in', dpi = 150)
 
-# Recruitment analysis
-# Create a scatter plot showing the relationship between 
-# total parent plant area and number of recruits
-g_rec_overall <- ggplot(
-  recr_df, aes(x = tot_p_area, y = nr_rec)) + 
-  geom_point(alpha = 0.5, pch = 16, size = 1, color = 'red') +  
+
+# Plot 2: Binned + prediction
+fig_fl_bin_combined <- ggplot() +
+  geom_point(data = df_fl_binned, aes(x = logsize_t0, y = flower, color = fire)) +
+  geom_errorbar(data = df_fl_binned, aes(x = logsize_t0, ymin = lwr, ymax = upr, color = fire),
+                width = 0.2) +
+  geom_line(data = df_fl_pred, aes(x = logsize_t0, y = flower, color = fire),
+            linewidth = 0.9) +
+  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  theme_bw() +
+  ylim(0, 1) +
+  labs(title = NULL, x = 'Size at time t0 (log())', y = 'Flowering Probability') +
+  theme(legend.title = element_blank(), legend.position = "top")
+
+
+# Combine ----------------------------------------------------------------------
+fig_fl_all <- fig_fl_line_combined + fig_fl_bin_combined +
+  plot_annotation(
+    title = "Flowering",
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 10, face = "italic")
+    )
+  )
+
+fig_fl_all
+
+
+
+# Number of flowers (conditional on flowering) 
+mod_fl_count <- MASS::glm.nb(flower ~ logsize_t0 + logsize_t0_2 + fire, 
+                             data = df_fl %>% filter(flower > 0)) 
+flc_coefs <- coef(mod_fl_count)
+
+
+# Recruitment ------------------------------------------------------------------
+df_re <- df %>%
+  group_by(year, site) %>%
+  summarise(
+    fire = if_else(any(fire == "Fire", na.rm = TRUE), "Fire", "No fire"),
+    tot_p_area = sum(size_t0, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  {
+    df_quad <- .
+    
+    df_group <- df_quad %>%
+      group_by(year) %>%
+      summarise(g_cov = mean(tot_p_area), .groups = "drop")
+    
+    df_cover <- left_join(df_quad, df_group, by = "year") %>%
+      mutate(year = as.integer(year + 1)) %>%
+      drop_na()
+    
+    df_recruit <- df %>%
+      group_by(year, site) %>%
+      summarise(nr_quad = sum(recruit, na.rm = TRUE), .groups = "drop")
+    
+    left_join(df_cover, df_recruit, by = c("year", "site"))
+  } %>%
+  mutate(fire = factor(fire, levels = c("No fire", "Fire")))
+
+# Plot: recruitment vs parent area
+ggplot(df_re, aes(x = tot_p_area, y = nr_quad, colour = fire)) + 
+  geom_point(alpha = 0.5, pch = 16, size = 1) +  
   theme_bw() + 
   labs(title    = 'Recruitment',
        subtitle = v_ggp_suffix,
@@ -277,252 +540,127 @@ g_rec_overall <- ggplot(
        y        = expression('Number of recruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8))
 
-# Save the recruitment plot as a PNG file
-ggsave(paste0(dir_result, '/1.3_overall_rec', v_suffix,'.png'), 
-       plot = g_rec_overall, 
-       width = 4, height = 3, units = 'in', dpi = 150)
 
+# Density dependence -----------------------------------------------------------
+df_re_qd <- df %>% 
+  group_by(site, year) %>%
+  summarise(rec_qd_t1 = sum(recruit, na.rm = TRUE), .groups = "drop") %>%
+  left_join(
+    df %>% 
+      group_by(site, year) %>% 
+      summarise(
+        nr_ind = sum(!is.na(size_t0)),
+        fire = if_else(any(fire == "Fire", na.rm = TRUE), "Fire", "No fire"),
+        .groups = "drop") %>% 
+      mutate(year = year - 1),
+    by = c('site', 'year')) %>%
+  mutate(fire = factor(fire, levels = c("No fire", "Fire")))
 
-# Fit vital rate models for the mean IPM ---------------------------------------
-# Survival
-# Fit models to predict survival based on size at time t0
-# Logistic regression
-su_mod_mean_0 <- glm(survives ~ 1, 
-                     data = surv_df, family = 'binomial') 
-# Logistic regression
-su_mod_mean   <- glm(survives ~ logsize_t0, 
-                     data = surv_df, family = 'binomial') 
-# Quadratic logistic model
-su_mod_mean_2 <- glm(survives ~ logsize_t0 + logsize_t0_2, 
-                     data = surv_df, family = 'binomial')  
-# Cubic logistic model
-su_mod_mean_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3, 
-                     data = surv_df, family = 'binomial')  
-
-# Compare models using AIC
-su_mods              <- list(su_mod_mean_0, su_mod_mean, su_mod_mean_2, su_mod_mean_3)
-su_dAIC_values       <- bbmle::AICctab(su_mods, weights = T, sort = F)$dAIC
-
-# Get the sorted indices of dAIC values
-su_sorted_indices    <- order(su_dAIC_values)
-
-# Establish the index of model complexity
-if (length(v_mod_set_su) == 0) {
-  mod_su_index_bestfit <- su_sorted_indices[1]
-  v_mod_su_index <- mod_su_index_bestfit - 1 
-} else {
-  mod_su_index_bestfit <- v_mod_set_su +1
-  v_mod_su_index <- v_mod_set_su
-}
-
-su_mod_bestfit   <- su_mods[[mod_su_index_bestfit]]
-su_ranef         <- coef(su_mod_bestfit)
-
-# Generate predictions for survival across a range of sizes
-surv_x <- seq(min(surv_df$logsize_t0, na.rm = T), 
-              max(surv_df$logsize_t0, na.rm = T), length.out = 100)
-
-# Prepare data for survival plot
-surv_pred_df <- predictor_fun(surv_x, su_ranef) %>% 
-  # Inverse logit for predictions
-  boot::inv.logit() %>% 
-  data.frame(logsize_t0 = surv_x, survives = .)
-
-# Plot observed survival with fitted line
-g_surv_line <- ggplot() +
-  geom_jitter(data = surv_df, aes(x = logsize_t0, 
-                                  y = survives),
-              alpha = 0.25, width = 0, height = 0.25) + 
-  geom_line(data = surv_pred_df, aes(x = logsize_t0, 
-                                     y = survives),
-            color = line_color_pred_fun(su_ranef), 
-            lwd   = 2) +  
+fig_re_dens <- ggplot(data = df_re_qd) + 
+  geom_jitter(aes(y = rec_qd_t1, x = nr_ind, color = fire)) + 
+  geom_smooth(aes(y = rec_qd_t1, x = nr_ind, color = fire), method = 'lm') + 
   theme_bw() + 
-  labs(title    = 'Survival prediction',
-       subtitle = v_ggp_suffix) +
+  labs(title    = 'Recruitment - density dependence: Quad level',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),   
+       y        = expression('Number of recruits '     [t1])) +
   theme(plot.subtitle = element_text(size = 8))
 
-# Plot binned survival proportions with error bars
-g_surv_bin <- ggplot() +
-  geom_point(data =  plot_binned_prop(
-    df, 10, logsize_t0, survives), 
-    aes(x = logsize_t0, 
-        y = survives) ) +
-  geom_errorbar(data =  plot_binned_prop(
-    df, 10, logsize_t0, survives), 
-    aes(x = logsize_t0, 
-        ymin = lwr,
-        ymax = upr) ) +
-  geom_line(data = surv_pred_df, aes(x = logsize_t0, 
-                                     y = survives),
-            color = 'red', lwd   = 2) + 
-  theme_bw() +
-  ylim(0, 1)
-
-# Combine survival plots
-g_surv_overall_pred <- g_surv_line + g_surv_bin + plot_layout()
-g_surv_overall_pred
-
-# Save the survival prediction plot
-ggsave(paste0(dir_result, '/2.2_overall_surv_pred_logs', v_suffix, '.png'),
-       plot = g_surv_overall_pred,
-       width = 8, height = 3, units = 'in', dpi = 150)
+fig_re_dens
 
 
-# Growth
-# Fit growth models to predict size at time t1 based on size at time t0
-# Intercept model
-gr_mod_mean_0 <- lm(logsize_t1 ~ 
-                      1, data = grow_df)
-# Linear model
-gr_mod_mean   <- lm(logsize_t1 ~ 
-                      logsize_t0, data = grow_df)
-# Quadratic model
-gr_mod_mean_2 <- lm(logsize_t1 ~ 
-                      logsize_t0 + logsize_t0_2, data = grow_df)  
-# Cubic model
-gr_mod_mean_3 <- lm(logsize_t1 ~ 
-                      logsize_t0 + logsize_t0_2 + logsize_t0_3, data = grow_df)
 
-# Compare models using AIC
-gr_mods              <- list(gr_mod_mean_0, gr_mod_mean, gr_mod_mean_2, gr_mod_mean_3)
-gr_dAIC_values       <- bbmle::AICctab(gr_mods, weights = T, sort = F)$dAIC
-
-# Get the sorted indices of dAIC values
-gr_sorted_indices    <- order(gr_dAIC_values)
-
-# Establish the index of model complexity
-if (length(v_mod_set_gr) == 0) {
-  mod_gr_index_bestfit <- gr_sorted_indices[1]
-  v_mod_gr_index       <- mod_gr_index_bestfit - 1 
-} else {
-  mod_gr_index_bestfit <- v_mod_set_gr +1
-  v_mod_gr_index       <- v_mod_set_gr
-}
-
-gr_mod_bestfit       <- gr_mods[[mod_gr_index_bestfit]]
-gr_ranef             <- coef(gr_mod_bestfit)
-
-# Predict size at time t1 using the mean growth model
-grow_df$pred <- predict(gr_mod_bestfit, type = 'response')
-
-# Plot observed size at time t1 against size at time t0 with the fitted line
-# Define functions
-source('helper_functions/line_color_pred_fun.R')
-source('helper_functions/predictor_fun.R')
-
-g_grow_line <- ggplot(
-  grow_df, aes(x = logsize_t0, y = logsize_t1)) +
-  # Plot observed data
-  geom_point() +
-  geom_function(fun = function(x) predictor_fun(x, gr_ranef), 
-                color = line_color_pred_fun(gr_ranef), 
-                lwd = 2) +
-  theme_bw() + 
-  labs(title    = 'Growth prediction',
-       subtitle = v_ggp_suffix) +
-  theme(plot.subtitle = element_text(size = 8))
-
-# Plot predicted versus observed size at time t1
-g_grow_pred <- ggplot(
-  grow_df, aes(x = pred, y = logsize_t1)) +
-  geom_point() +  
-  geom_abline(aes(intercept = 0, slope = 1),  
-              color = 'red', lwd = 2) + 
-  theme_bw()
-
-# Combine growth line and prediction plots
-g_grow_overall_pred <- g_grow_line + g_grow_pred + plot_layout() 
-g_grow_overall_pred
-
-# Save the growth prediction plot
-ggsave(paste0(dir_result, '/2.1_overall_grow_pred_logs', v_suffix, '.png'),
-       plot = g_grow_overall_pred,
-       width = 8, height = 4, units = 'in', dpi = 150)
-
-# Fit a model to assess variance in growth
-# Fitted values from growth model
-x         <- fitted(gr_mod_bestfit)  
-# Squared residuals
-y         <- resid(gr_mod_bestfit)^2  
-# Non-linear model for variance
-gr_var_m  <- nls(y ~ a * exp(b * x), start = list(a = 1, b = 0),
-                 control = nls.control(
-                   maxiter = 1000, tol = 1e-6, warnOnly = TRUE))
-
-
-# Recruitment
-# Filter recruitment data to exclude NAs
-recr_nona_nr_rec <- recr_df %>% filter(!is.na(nr_rec))
+# Recruitment model ------------------------------------------------------------
+df_re_mod <- df_re %>% filter(!is.na(nr_quad))
 # Fit a negative binomial model for recruitment
-rec_mod_mean <- MASS::glm.nb(nr_rec ~ 1, data = recr_nona_nr_rec)
+mod_rec <- MASS::glm.nb(nr_quad ~ fire, data = df_re_mod)
 
 # Generate predictions for recruitment
-recr_nona_nr_rec <- recr_nona_nr_rec %>% 
-  mutate(pred_mod_mean = predict(rec_mod_mean, type = 'response')) 
-
-# Summarize total number of recruits and predictions
-rec_sums_df_m <- recr_nona_nr_rec %>%
-  summarize(nr_rec = sum(nr_rec),
-            pred_mod_mean = sum(pred_mod_mean))
-
-# Count number of adult individuals
-indiv_m <- surv_df %>%
-  summarize(n_adults = n())
-
-# Calculate reproduction per capita (both observed and predicted)
-repr_pc_m <- indiv_m %>%
-  bind_cols(rec_sums_df_m) %>%
-  mutate(repr_pc_mean = pred_mod_mean / n_adults) %>%
-  mutate(repr_pc_obs = nr_rec / n_adults) %>%
-  drop_na 
+df_re_mod <- df_re_mod %>% 
+  mutate(mod_pred = predict(mod_rec, type = 'response')) 
 
 
-# Exporting parameter estimates ------------------------------------------------
-# Growth
-grow_fe <- data.frame(coefficient = names(coef(gr_mod_bestfit)),
-                      value       = coef(gr_mod_bestfit))
-var_m   <- data.frame(coefficient = names(coef(gr_var_m)),
-                      value       = coef(gr_var_m))
+# Per-capita reproduction ------------------------------------------------------
+df_repr_pc <- df %>%
+  filter(!is.na(size_t0)) %>% 
+  summarize(n_adults = n()) %>%
+  bind_cols(
+    df_re_mod %>%
+      summarize(nr_quad = sum(nr_quad, na.rm = TRUE),
+                mod_pred = sum(mod_pred, na.rm = TRUE))) %>%
+  mutate(
+    repr_pc_mean = mod_pred / n_adults,
+    repr_pc_obs = nr_quad / n_adults) %>%
+  drop_na()
 
-grow_out <- Reduce(function(...) rbind(...), list(grow_fe, var_m)) %>%
-  mutate(coefficient = as.character(coefficient)) %>%
-  mutate(coefficient = replace(
-    coefficient, grepl('Intercept', coefficient), 'b0'))
+# overall level
+df %>% 
+  filter(!is.na(size_t0)) %>% 
+  summarize(n_adults = n()) %>% 
+  bind_cols(df %>% 
+              filter(!is.na(recruit)) %>%
+              summarize(n_rec = n())) %>% 
+  mutate(rp_pc_m = n_rec / n_adults)
 
-write.csv(grow_out, row.names = F, paste0(
-  dir_data, '/', v_script_prefix, '_', v_sp_abb, '_grow_pars_mean.csv'))
+
+# site level
+df %>% 
+  filter(!is.na(size_t0)) %>%
+  group_by(site) %>% 
+  summarize(n_adults = n()) %>% 
+  left_join(df %>% 
+              filter(!is.na(recruit)) %>%
+              group_by(site) %>%
+              summarize(n_rec = n()),
+            by = 'site') %>% 
+  mutate(n_rec = ifelse(is.na(n_rec), 0, n_rec)) %>%
+  mutate(repr_pc_mean = n_rec / n_adults) %>% 
+  summarise(n_adults = sum(n_adults),
+            n_rec    = sum(n_rec),
+            rp_pc_m  = mean(repr_pc_mean))
 
 
+# Extracting parameter estimates -----------------------------------------------
 # Survival
-surv_fe <- data.frame(coefficient = names(coef(su_mod_bestfit)),
-                      value       = coef(su_mod_bestfit))
+coef_su_fe  <- data.frame(coefficient = names(coef(mod_su_bestfit)),
+                          value       =       coef(mod_su_bestfit))
 
-surv_out<- Reduce(function(...) rbind(...), list(surv_fe)) %>%
+coef_su <- Reduce(function(...) rbind(...), list(coef_su_fe)) %>%
   mutate(coefficient = as.character(coefficient)) %>%
   mutate(coefficient = replace(
     coefficient, grepl('Intercept', coefficient), 'b0'))
 
-write.csv(surv_out, row.names = F, paste0(
-  dir_data, '/', v_script_prefix, '_', v_sp_abb, '_surv_pars_mean.csv'))
+# Growth
+coef_gr_fe  <- data.frame(coefficient = names(coef(mod_gr_bestfit)),
+                          value       =       coef(mod_gr_bestfit))
+coef_gr_var <- data.frame(coefficient = names(coef(mod_gr_var)),
+                          value       =       coef(mod_gr_var))
+
+coef_gr <- Reduce(function(...) rbind(...), list(coef_gr_fe, coef_gr_var)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
+
+# Flower
+coef_fl_fe  <- data.frame(coefficient = names(coef(mod_fl_bestfit)),
+                          value       =       coef(mod_fl_bestfit))
+
+coef_fl <- Reduce(function(...) rbind(...), list(coef_fl_fe)) %>%
+  mutate(coefficient = as.character(coefficient)) %>%
+  mutate(coefficient = replace(
+    coefficient, grepl('Intercept', coefficient), 'b0'))
 
 # Recruitment 
-rec_size <- df %>% subset(recruit == 1)
+df_re_size <- df %>% subset(recruit == 1)
 
-others   <- data.frame(coefficient = c('rec_siz', 'rec_sd', 
-                                       'max_siz', 'min_siz',
-                                       'fecu_b0'),
-                       value       = c(mean(log(rec_size$size_t0), na.rm = TRUE), 
-                                       sd(  log(rec_size$size_t0), na.rm = TRUE),
-                                       grow_df$logsize_t0 %>% max, 
-                                       grow_df$logsize_t0 %>% min,
-                                       repr_pc_m$repr_pc_mean))
+# Miscellany
+coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
+                                          'max_siz', 'min_siz'),
+                          value       = c(mean(log(df_re_size$size_t0), na.rm = T), 
+                                          sd(  log(df_re_size$size_t0), na.rm = T),
+                                          df_gr$logsize_t0 %>% max, 
+                                          df_gr$logsize_t0 %>% min))
 
-write.csv(others, row.names = F, paste0(
-  dir_data, '/', v_script_prefix, '_', v_sp_abb, '_other_pars_mean.csv'))
-
-
-# Building the IPM from scratch ------------------------------------------------
 extr_value <- function(x, field){
   subset(x, coefficient == field)$value
 }
@@ -530,25 +668,32 @@ extr_value <- function(x, field){
 pars <- Filter(function(x) length(x) > 0, list(
   prefix  = v_script_prefix,
   species = v_species,
-  surv_b0 = extr_value(surv_out, 'b0'),
-  surv_b1 = extr_value(surv_out, 'logsize_t0'),
-  surv_b2 = extr_value(surv_out, 'logsize_t0_2'),
-  surv_b3 = extr_value(surv_out, 'logsize_t0_3'),
-  grow_b0 = extr_value(grow_out, 'b0'),
-  grow_b1 = extr_value(grow_out, 'logsize_t0'),
-  grow_b2 = extr_value(grow_out, 'logsize_t0_2'),
-  grow_b3 = extr_value(grow_out, 'logsize_t0_3'),
-  a       = extr_value(grow_out, 'a'),
-  b       = extr_value(grow_out, 'b'),
-  fecu_b0 = extr_value(others, 'fecu_b0'),
-  recr_sz = extr_value(others, 'rec_siz'),
-  recr_sd = extr_value(others, 'rec_sd'),
-  L       = extr_value(others, 'min_siz'),
-  U       = extr_value(others, 'max_siz'),
+  surv_b0 = extr_value(coef_su, 'b0'),
+  surv_b1 = extr_value(coef_su, 'logsize_t0'),
+  surv_b2 = extr_value(coef_su, 'logsize_t0_2'),
+  surv_b3 = extr_value(coef_su, 'logsize_t0_3'),
+  surv_bf = extr_value(coef_su, 'fire'),
+  grow_b0 = extr_value(coef_gr, 'b0'),
+  grow_b1 = extr_value(coef_gr, 'logsize_t0'),
+  grow_b2 = extr_value(coef_gr, 'logsize_t0_2'),
+  grow_b3 = extr_value(coef_gr, 'logsize_t0_3'),
+  grow_bf = extr_value(coef_gr, 'fire'),
+  a       = extr_value(coef_gr, 'a'),
+  b       = extr_value(coef_gr, 'b'),
+  fl_b0   = extr_value(coef_fl, 'b0'),
+  fl_b1   = extr_value(coef_fl, 'logsize_t0'),
+  fl_b2   = extr_value(coef_fl, 'logsize_t0_2'),
+  fl_b3   = extr_value(coef_fl, 'logsize_t0_3'),
+  fl_bf   = extr_value(coef_fl, 'fire'),
+  recr_sz = extr_value(coef_misc, 'rec_siz'),
+  recr_sd = extr_value(coef_misc, 'rec_sd'),
+  L       = extr_value(coef_misc, 'min_siz'),
+  U       = extr_value(coef_misc, 'max_siz'),
   mat_siz = 200,
+  mod_su_index = v_mod_su_index,
   mod_gr_index = v_mod_gr_index,
-  mod_su_index = v_mod_su_index
-))
+  mod_gr_index = v_mod_fl_index))
+
 
 write.csv(pars, row.names = F, paste0(
   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_pars.csv'))

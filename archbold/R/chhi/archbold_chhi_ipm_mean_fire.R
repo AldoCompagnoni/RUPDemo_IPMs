@@ -98,7 +98,10 @@ df <- df_og_extended %>%
     size_t1  = if (all(is.na(dia_1)))    NA_real_ else max(dia_1,    na.rm = TRUE),
     flower   = if (all(is.na(hd)))       NA_real_ else max(hd,       na.rm = TRUE),
     recruit  = if (all(is.na(recruit)))  NA_real_ else min(recruit,  na.rm = TRUE),
-    .groups = 'drop') %>% 
+    .groups = 'drop') %>%
+  mutate(
+    fl_nr  = flower,
+    flower = if_else(flower > 0, 1, flower)) %>% 
   mutate(
     logsize_t0   = log(size_t0),
     logsize_t1   = log(size_t1),
@@ -113,14 +116,14 @@ df <- df_og_extended %>%
     fire = factor(fire, levels = c('No fire', 'Fire')))
 
 
-# Prepare data frames ----------------------------------------------------------
+# Survival data ----------------------------------------------------------------
 df_su <- df %>%
   filter(!is.na(survives), size_t0 != 0, !is.na(fire)) %>%
   select(site, plant_id, year, size_t0, survives, size_t1,
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire)
 
 
-# Survival plotting ------------------------------------------------------------
+# Survival plotting
 df_su_binned <- df_su %>%
   group_split(fire) %>%
   purrr::map_df(~ plot_binned_prop(.x, 10, logsize_t0, survives) %>%
@@ -155,14 +158,27 @@ mod_su_1 <- glm(survives ~ logsize_t0 + fire, data = df_su, family = 'binomial')
 mod_su_2 <- glm(survives ~ logsize_t0 + logsize_t0_2 + fire, data = df_su, family = 'binomial')  
 mod_su_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire, data = df_su, family = 'binomial')  
 
-mods_su <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
-mods_su_dAIC <- AICtab(mods_su, weights = TRUE, sort = FALSE)$dAIC
+# Compare models using AIC
+mods_su      <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
+mods_su_dAIC <- AICtab(mods_su, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
 mods_su_sorted <- order(mods_su_dAIC)
 
-mod_su_bestfit <- mods_su[[mods_su_sorted[1]]]
+# Establish the index of model complexity
+if (length(v_mod_set_su) == 0) {
+  mod_su_index_bestfit <- mods_su_sorted[1]
+  v_mod_su_index       <- mod_su_index_bestfit - 1 
+} else {
+  mod_su_index_bestfit <- v_mod_set_su +1
+  v_mod_su_index       <- v_mod_set_su
+}
+
+mod_su_bestfit <- mods_su[[mod_su_index_bestfit]]
+mod_su_ranef   <- coef(mod_su_bestfit)
 
 
-# Prediction -------------------------------------------------------------------
+# Prediction 
 df_su_pred <- data.frame(
   logsize_t0   = rep(seq(min(df_su$logsize_t0), max(df_su$logsize_t0), length.out = 100), 2),
   logsize_t0_2 = rep(seq(min(df_su$logsize_t0_2), max(df_su$logsize_t0_2), length.out = 100), 2),
@@ -172,7 +188,7 @@ df_su_pred <- data.frame(
     survives = predict(mod_su_bestfit, newdata = ., type = 'response'))
 
 
-# Binned data ------------------------------------------------------------------
+# Binned data
 df_su_binned <- bind_rows(
   plot_binned_prop(filter(df_su, fire == 'No fire'), 10, logsize_t0, survives) %>%
     mutate(fire = 'No fire'),
@@ -212,7 +228,7 @@ fig_su_all <- fig_su_line_combined + fig_su_bin_combined +
     subtitle = v_ggp_suffix,
     theme = theme(
       plot.title = element_text(size = 14, face = 'bold'),
-      plot.subtitle = element_text(size = 10, face = 'italic'))  )
+      plot.subtitle = element_text(size = 10, face = 'italic')))
 
 fig_su_all
 
@@ -227,8 +243,7 @@ df_gr <- df %>%
     logsize_t0   = log(size_t0),
     logsize_t1   = log(size_t1),
     logsize_t0_2 = logsize_t0^2,
-    logsize_t0_3 = logsize_t0^3
-  ) %>%
+    logsize_t0_3 = logsize_t0^3) %>%
   select(plant_id, year, size_t0, size_t1,
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
          fire)
@@ -242,17 +257,14 @@ fig_gr_overall <- ggplot(df_gr, aes(x = logsize_t0, y = logsize_t1, color = fire
     title           = element_text(size = 10),
     plot.subtitle   = element_text(size = 8),
     legend.title    = element_blank(),
-    legend.position = "top"
-  ) +
+    legend.position = "top") +
   labs(
     title    = "Growth",
     subtitle = v_ggp_suffix,
     x        = expression('log(size)'[t0]),
-    y        = expression('log(size)'[t1])
-  )
+    y        = expression('log(size)'[t1]))
 
 fig_gr_overall
-
 
 
 # Growth model -----------------------------------------------------------------
@@ -281,18 +293,16 @@ mod_gr_bestfit <- mods_gr[[mod_gr_index_bestfit]]
 mod_gr_ranef   <- coef(mod_gr_bestfit)
 
 
-# Prediction -------------------------------------------------------------------
+# Prediction 
 df_gr_pred <- data.frame(
   logsize_t0 = rep(
     seq(min(df_gr$logsize_t0, na.rm = TRUE),
         max(df_gr$logsize_t0, na.rm = TRUE), length.out = 100), 2),
-  fire = rep(c("No fire", "Fire"), each = 100)
-) %>%
+  fire = rep(c("No fire", "Fire"), each = 100)) %>%
   mutate(
     fire = factor(fire, levels = c("No fire", "Fire")),
     logsize_t0_2 = logsize_t0^2,
-    logsize_t0_3 = logsize_t0^3   # ✅ ADD THIS
-  )
+    logsize_t0_3 = logsize_t0^3)
 
 df_gr_pred$logsize_t1 <- predict(mod_gr_bestfit, newdata = df_gr_pred)
 
@@ -311,7 +321,7 @@ fig_gr_line_combined <- ggplot(df_gr, aes(x = logsize_t0, y = logsize_t1, color 
     legend.position = "top",
     legend.title = element_blank(),
     plot.title = element_blank(),
-    plot.subtitle = element_blank()  )
+    plot.subtitle = element_blank())
 
 # Plot 2: Predicted vs observed
 fig_gr_pred_combined <- ggplot(df_gr, aes(x = predict(mod_gr_bestfit, newdata = df_gr),
@@ -326,7 +336,7 @@ fig_gr_pred_combined <- ggplot(df_gr, aes(x = predict(mod_gr_bestfit, newdata = 
     legend.position = "top",
     legend.title = element_blank(),
     plot.title = element_blank(),
-    plot.subtitle = element_blank()  )
+    plot.subtitle = element_blank())
 
 # Combine plots
 fig_gr_all_combined <- fig_gr_line_combined + fig_gr_pred_combined +
@@ -340,7 +350,6 @@ fig_gr_all_combined <- fig_gr_line_combined + fig_gr_pred_combined +
 fig_gr_all_combined
 
 
-
 # Growth variance --------------------------------------------------------------
 # Fitted values from growth model
 mod_gr_x   <- fitted(mod_gr_bestfit)  
@@ -352,19 +361,14 @@ mod_gr_var <- nls(
   control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE)) 
 
 
-
-
 # Flowering data ----------------------------------------------------------------
 df_fl <- df %>%
   filter(!is.na(flower),
          !is.na(fire),
          !is.na(size_t0),
          !is.na(survives)) %>%
-  select(plant_id, year, size_t0, flower, size_t1, 
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire) %>%
-  mutate(
-    flower = if_else(flower > 0, 1, flower)
-  )
+  select(plant_id, year, size_t0, size_t1, flower, fl_nr, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3, fire)
 
 # Create binned flowering probability by fire group
 df_fl_binned <- df_fl %>%
@@ -378,8 +382,7 @@ fig_fl_overall <- ggplot(df_fl_binned, aes(x = logsize_t0, y = flower, color = f
     data = df_fl,
     aes(x = logsize_t0, y = flower, color = fire),
     position = position_jitter(width = 0.1, height = 0.3),
-    alpha = 0.1
-  ) +
+    alpha = 0.1) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
   scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
@@ -390,14 +393,12 @@ fig_fl_overall <- ggplot(df_fl_binned, aes(x = logsize_t0, y = flower, color = f
     title = element_text(size = 10),
     plot.subtitle = element_text(size = 8),
     legend.title = element_blank(),
-    legend.position = "top"
-  ) +
+    legend.position = "top") +
   labs(
     title = "Flowering probability by fire status",
     subtitle = v_ggp_suffix,
     x = expression('log(size)'[t0]),
-    y = "Flowering Probability"
-  )
+    y = "Flowering Probability"  )
 
 fig_fl_overall
 
@@ -429,20 +430,17 @@ mod_fl_bestfit <- mods_fl[[mod_fl_index_bestfit]]
 mod_fl_ranef   <- coef(mod_fl_bestfit)
 
 
-# Prediction -------------------------------------------------------------------
+# Prediction
 df_fl_pred <- data.frame(
   logsize_t0 = rep(seq(min(df_fl$logsize_t0, na.rm = TRUE),
                        max(df_fl$logsize_t0, na.rm = TRUE), length.out = 100), 2),
-  fire = rep(c("No fire", "Fire"), each = 100)
-) %>%
+  fire = rep(c("No fire", "Fire"), each = 100)) %>%
   mutate(
     fire = factor(fire, levels = c("No fire", "Fire")),
     logsize_t0_2 = logsize_t0^2,
-    logsize_t0_3 = logsize_t0^3
-  )
+    logsize_t0_3 = logsize_t0^3)
 
 df_fl_pred$flower <- predict(mod_fl_bestfit, newdata = df_fl_pred, type = "response")
-
 
 
 # Binned observed data for both fire levels
@@ -450,11 +448,10 @@ df_fl_binned <- bind_rows(
   plot_binned_prop(filter(df_fl, fire == "No fire"), 10, logsize_t0, flower) %>%
     mutate(fire = "No fire"),
   plot_binned_prop(filter(df_fl, fire == "Fire"), 10, logsize_t0, flower) %>%
-    mutate(fire = "Fire")
-)
+    mutate(fire = "Fire"))
 
 
-
+# Flower plots -----------------------------------------------------------------
 # Plot 1: Raw jitter + prediction lines
 fig_fl_line_combined <- ggplot() +
   geom_jitter(data = df_fl, aes(x = logsize_t0, y = flower, color = fire),
@@ -465,7 +462,6 @@ fig_fl_line_combined <- ggplot() +
   theme_bw() +
   labs(title = NULL, x = 'Size at time t0 (log())', y = 'Flowering Probability') +
   theme(legend.position = "none")
-
 
 
 # Plot 2: Binned + prediction
@@ -482,25 +478,45 @@ fig_fl_bin_combined <- ggplot() +
   theme(legend.title = element_blank(), legend.position = "top")
 
 
-# Combine ----------------------------------------------------------------------
+# Combine
 fig_fl_all <- fig_fl_line_combined + fig_fl_bin_combined +
   plot_annotation(
     title = "Flowering",
     subtitle = v_ggp_suffix,
     theme = theme(
       plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 10, face = "italic")
-    )
-  )
+      plot.subtitle = element_text(size = 10, face = "italic")))
 
 fig_fl_all
 
 
 
-# Number of flowers (conditional on flowering) 
-mod_fl_count <- MASS::glm.nb(flower ~ logsize_t0 + logsize_t0_2 + fire, 
-                             data = df_fl %>% filter(flower > 0)) 
-flc_coefs <- coef(mod_fl_count)
+# Number of flowers conditional on flowering -----------------------------------
+df_fl_cond <- df_fl %>%
+  filter(flower == 1) %>%
+  filter(fl_nr %% 1 == 0) # exclude plant_id 2658 that has 11.9 flowers
+  
+
+mod_fl_n_0 <- glm.nb(fl_nr ~ 1, data = df_fl_cond)
+
+mod_fl_n_1 <- glm.nb(fl_nr ~ logsize_t0,
+                     data = df_fl_cond)
+
+mod_fl_n_2 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2,
+                     data = df_fl_cond)
+
+mod_fl_n_3 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+                     data = df_fl_cond)
+
+
+mods_fl_n <- list(mod_fl_n_0, mod_fl_n_1, mod_fl_n_2, mod_fl_n_3)
+
+mods_fl_n_dAIC <- AICtab(mods_fl_n, weights = TRUE, sort = FALSE)$dAIC
+mods_fl_n_sorted <- order(mods_fl_n_dAIC)
+
+mod_fl_n_bestfit <- mods_fl_n[[mods_fl_n_sorted[1]]]
+v_mod_fl_n_index <- mods_fl_n_sorted[1] - 1
+
 
 
 # Recruitment ------------------------------------------------------------------
@@ -509,8 +525,7 @@ df_re <- df %>%
   summarise(
     fire = if_else(any(fire == "Fire", na.rm = TRUE), "Fire", "No fire"),
     tot_p_area = sum(size_t0, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
+    .groups = "drop") %>%
   {
     df_quad <- .
     
@@ -569,7 +584,6 @@ fig_re_dens <- ggplot(data = df_re_qd) +
 fig_re_dens
 
 
-
 # Recruitment model ------------------------------------------------------------
 df_re_mod <- df_re %>% filter(!is.na(nr_quad))
 # Fit a negative binomial model for recruitment
@@ -620,6 +634,26 @@ df %>%
             rp_pc_m  = mean(repr_pc_mean))
 
 
+# Recruits per flower ----------------------------------------------------------
+df_fl_by_year <- df %>%
+  filter(!is.na(fl_nr)) %>%
+  group_by(year) %>%
+  summarise(total_flowers = sum(fl_nr, na.rm = TRUE)) %>%
+  mutate(year = year + 1)
+
+df_rec_by_year <- df %>%
+  filter(recruit == 1) %>%
+  group_by(year) %>%
+  summarise(n_recruits = n())
+
+df_rep_fl_ratio <- df_fl_by_year %>%
+  left_join(df_rec_by_year, by = "year") %>%
+  mutate(recruits_per_flower = n_recruits / total_flowers)
+
+repr_flower_mean   <- mean(df_rep_fl_ratio$recruits_per_flower, na.rm = TRUE)
+repr_flower_median <- median(df_rep_fl_ratio$recruits_per_flower, na.rm = TRUE)
+
+
 # Extracting parameter estimates -----------------------------------------------
 # Survival
 coef_su_fe  <- data.frame(coefficient = names(coef(mod_su_bestfit)),
@@ -641,7 +675,7 @@ coef_gr <- Reduce(function(...) rbind(...), list(coef_gr_fe, coef_gr_var)) %>%
   mutate(coefficient = replace(
     coefficient, grepl('Intercept', coefficient), 'b0'))
 
-# Flower
+# Flower probability
 coef_fl_fe  <- data.frame(coefficient = names(coef(mod_fl_bestfit)),
                           value       =       coef(mod_fl_bestfit))
 
@@ -650,19 +684,28 @@ coef_fl <- Reduce(function(...) rbind(...), list(coef_fl_fe)) %>%
   mutate(coefficient = replace(
     coefficient, grepl('Intercept', coefficient), 'b0'))
 
+# Flower number conditional
+coef_fln <- data.frame(coefficient = names(coef(mod_fl_n_bestfit)),
+                       value       = coef(mod_fl_n_bestfit)) %>%
+  mutate(coefficient = as.character(coefficient),
+         coefficient = replace(coefficient, grepl('Intercept', coefficient), 'b0'))
+
 # Recruitment 
 df_re_size <- df %>% subset(recruit == 1)
 
 # Miscellany
-coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
+coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd', 'fecu_b0',
                                           'max_siz', 'min_siz'),
                           value       = c(mean(log(df_re_size$size_t0), na.rm = T), 
                                           sd(  log(df_re_size$size_t0), na.rm = T),
+                                          repr_flower_median,
                                           df_gr$logsize_t0 %>% max, 
                                           df_gr$logsize_t0 %>% min))
 
 extr_value <- function(x, field){
-  subset(x, coefficient == field)$value
+  val <- subset(x, coefficient == field)$value
+  if(length(val) == 0) return(0)
+  return(val)
 }
 
 pars <- Filter(function(x) length(x) > 0, list(
@@ -672,19 +715,24 @@ pars <- Filter(function(x) length(x) > 0, list(
   surv_b1 = extr_value(coef_su, 'logsize_t0'),
   surv_b2 = extr_value(coef_su, 'logsize_t0_2'),
   surv_b3 = extr_value(coef_su, 'logsize_t0_3'),
-  surv_bf = extr_value(coef_su, 'fire'),
+  surv_bf = extr_value(coef_su, grep('^fire', coef_su$coefficient, value = TRUE)),
   grow_b0 = extr_value(coef_gr, 'b0'),
   grow_b1 = extr_value(coef_gr, 'logsize_t0'),
   grow_b2 = extr_value(coef_gr, 'logsize_t0_2'),
   grow_b3 = extr_value(coef_gr, 'logsize_t0_3'),
-  grow_bf = extr_value(coef_gr, 'fire'),
+  grow_bf = extr_value(coef_gr, grep('^fire', coef_gr$coefficient, value = TRUE)),
   a       = extr_value(coef_gr, 'a'),
   b       = extr_value(coef_gr, 'b'),
   fl_b0   = extr_value(coef_fl, 'b0'),
   fl_b1   = extr_value(coef_fl, 'logsize_t0'),
   fl_b2   = extr_value(coef_fl, 'logsize_t0_2'),
   fl_b3   = extr_value(coef_fl, 'logsize_t0_3'),
-  fl_bf   = extr_value(coef_fl, 'fire'),
+  fl_bf   = extr_value(coef_fl, grep('^fire', coef_fl$coefficient, value = TRUE)),
+  fln_b0 = extr_value(coef_fln, 'b0'),
+  fln_b1 = extr_value(coef_fln, 'logsize_t0'),
+  fln_b2 = extr_value(coef_fln, 'logsize_t0_2'),
+  fln_b3 = extr_value(coef_fln, 'logsize_t0_3'),
+  fecu_b0 = extr_value(coef_misc, 'fecu_b0'),
   recr_sz = extr_value(coef_misc, 'rec_siz'),
   recr_sd = extr_value(coef_misc, 'rec_sd'),
   L       = extr_value(coef_misc, 'min_siz'),
@@ -698,56 +746,96 @@ pars <- Filter(function(x) length(x) > 0, list(
 write.csv(pars, row.names = F, paste0(
   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_pars.csv'))
 
-# Function describing standard deviation of growth model
+
+# Function describing standard deviation of growth model -----------------------
+# Function describing the invert logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, fire = 0, num_pars = v_mod_su_index) {
+  survival_value <- pars$surv_b0 + pars$surv_bf * fire
+  for (i in 1:num_pars) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^i
+    }
+  }
+  inv_logit(survival_value)
+}
+
+# Growth variation
 grow_sd <- function(x, pars) {
   pars$a * (exp(pars$b* x)) %>% sqrt 
 }
 
 # Growth from size x to size y
-gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
-  mean_value <- 0
-  for (i in 0:num_pars) {
+gxy <- function(x, y, pars, fire = 0, num_pars = v_mod_gr_index) {
+  mean_value <- pars$grow_b0 + pars$grow_bf * fire
+  for (i in 1:num_pars) {
     param_name <- paste0('grow_b', i)
     if (!is.null(pars[[param_name]])) {
       mean_value <- mean_value + pars[[param_name]] * x^i
     }
   }
   sd_value <- grow_sd(x, pars)
-  return(dnorm(y, mean = mean_value, sd = sd_value))
+  dnorm(y, mean = mean_value, sd = sd_value)
 }
 
-# Function describing the invert logit
-inv_logit <- function(x) {exp(x) / (1 + exp(x))}
-
-
-# Survival of x-sized individual to time t1
-sx <- function(x, pars, num_pars = v_mod_su_index) {
-  survival_value <- pars$surv_b0
+# Flowering of x-sized individual at time t0
+fl_x <- function(x, pars, fire = 0, num_pars = v_mod_fl_index) {
+  val <- pars$fl_b0 + pars$fl_bf * fire
   for (i in 1:num_pars) {
-    param_name <- paste0('surv_b', i)
-    if (!is.null(pars[[param_name]])) {
-      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    param <- paste0('fl_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
     }
   }
-  return(inv_logit(survival_value))
+  inv_logit(val)
 }
 
-# Function describing the transition kernel
-pxy <- function(x, y, pars) {
-  return(sx(x, pars) * gxy(x, y, pars))
+
+# Flowering of x-sized individual at time t0
+fl_n_x <- function(x, pars, num_pars = v_mod_fl_n_index) {
+  val <- pars$fln_b0
+  for (i in 1:num_pars) {
+    param <- paste0('fln_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  exp(val)
 }
 
-# Function describing the recruitment 
-fy <- function(y, pars, h){
-  n_recr  <- pars$fecu_b0
-  recr_y  <- dnorm(y, pars$recr_sz, max(h/10, pars$recr_sd)) * h
-  recr_y  <- recr_y / sum(recr_y)
-  f       <- n_recr * recr_y
-  return(f)
+# Recruitment size distribution at time t1
+re_y_dist <- function(y, pars) {
+  dnorm(y, mean = pars$recr_sz, sd = pars$recr_sd)
 }
 
-# Kernel
-kernel <- function(pars) {
+# F-kernel
+fyx <- function(y, x, pars, fire = 0) {
+  fl_x(x, pars, fire) *
+    fl_n_x(x, pars) *
+    pars$fecu_b0 *
+    re_y_dist(y, pars)
+}
+
+# # Function describing the transition kernel
+# pxy <- function(x, y, pars) {
+#   return(sx(x, pars) * gxy(x, y, pars))
+# }
+# 
+# # Function describing the recruitment 
+# fy <- function(y, pars, h){
+#   n_recr  <- pars$fecu_b0
+#   recr_y  <- dnorm(y, pars$recr_sz, max(h/10, pars$recr_sd)) * h
+#   recr_y  <- recr_y / sum(recr_y)
+#   f       <- n_recr * recr_y
+#   return(f)
+# }
+
+
+# Kernel -----------------------------------------------------------------------
+kernel <- function(pars, fire = 0) {
   
   # number of bins over which to integrate
   n   <- pars$mat_siz 
@@ -762,17 +850,13 @@ kernel <- function(pars) {
   # midpoints of bins
   y   <- 0.5 * (b[1:n] + b[2:(n + 1)]) 
   
-  # Fertility matrix
-  Fmat        <- matrix(0, n, n)
-  Fmat[]      <- matrix(fy(y, pars, h), n, n)
-  
   # Survival vector
   Smat   <- c()
-  Smat   <- sx(y, pars)
+  Smat <- sx(y, pars, fire)
   
   # Growth matrix
   Gmat   <- matrix(0, n, n)
-  Gmat[] <- t(outer(y, y, gxy, pars)) * h
+  Gmat[] <- t(outer(y, y, gxy, pars, fire)) * h
   
   # Growth/survival transition matrix
   Tmat   <- matrix(0, n, n)
@@ -789,6 +873,9 @@ kernel <- function(pars) {
     Tmat[,i]  <- Gmat[,i] * Smat[i]
   }
   
+  # Fertility matrix
+  Fmat <- outer(y, y, Vectorize(function(x, y) fyx(x, y, pars))) * h
+  
   # Full Kernel is simply a summation of fertility and transition matrices
   k_yx <- Fmat + Tmat
   
@@ -799,115 +886,41 @@ kernel <- function(pars) {
               meshpts = y))
 }
 
-lambda_ipm <- function(i) {
-  return(Re(eigen(kernel(i)$k_yx)$value[1]))
+lambda_ipm <- function(pars, fire = 0) {
+  Re(eigen(kernel(pars, fire)$k_yx)$value[1])
 }
 
 # mean population growth rate
 lam_mean <- lambda_ipm(pars)
 lam_mean
 
-# observed population growth rate
-# Population counts at time t0
-pop_counts_t0 <- df %>%
-  group_by(year, site) %>%
-  summarize(n_t0 = n()) %>% 
-  ungroup %>% 
-  mutate(year = year + 1)
 
-# Population counts at time t1
-pop_counts_t1 <- df %>%
-  group_by(year, site) %>%
-  summarize(n_t1 = n()) %>% 
-  ungroup 
+# Compute deterministic lambdas
+lam_nofire <- lambda_ipm(pars, fire = 0)
+lam_fire   <- lambda_ipm(pars, fire = 1)
 
-# Calculate observed population growth rates, 
-# accounting for discontinued sampling!
-pop_counts <- left_join(pop_counts_t0, 
-                        pop_counts_t1) %>% 
-  # by dropping NAs, we remove gaps in sampling!
-  drop_na %>% 
-  group_by(year) %>% 
-  summarise(n_t0 = sum(n_t0),
-            n_t1 = sum(n_t1)) %>% 
-  ungroup %>% 
-  mutate(obs_pgr = n_t1 / n_t0)
-
-# Geometric mean of yearly population growth rates
-lam_mean_count <- exp(mean(log(pop_counts$obs_pgr), na.rm = T))
-
-# Overall (aggregated) population growth rate
-lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
+# Expected growth under fire regime (mean exposure per plant)
+p_fire <- mean(df %>% 
+                 filter(!is.na(survives)) %>%
+                 mutate(fire = ifelse(fire == "Fire", 1, 0)) %>% 
+                 .$fire, na.rm = TRUE)
+# Expected growth under fire regime (mean exposure per year)
+p_fire2 <- df %>% 
+  group_by(year) %>%
+  mutate(fire = ifelse(fire == "Fire", 1, 0)) %>% 
+  summarise(fire = max(fire, na.rm = TRUE)) %>%
+  pull(fire) %>% 
+  mean()
+lam_avg <- (1 - p_fire2) * lam_nofire + p_fire2 * lam_fire
 
 
-# Building the IPM with ipmr ---------------------------------------------------
-proto_ipm_p <- init_ipm(sim_gen   = 'simple',
-                        di_dd     = 'di',
-                        det_stoch = 'det') %>% 
-  define_kernel(
-    name      = 'P',
-    family    = 'CC',
-    formula   = s * g,
-    s         = plogis(
-      surv_b0 + 
-        (if (mod_su_index >= 1) surv_b1 * size_1   else 0) +
-        (if (mod_su_index >= 2) surv_b2 * size_1^2 else 0) +
-        (if (mod_su_index >= 3) surv_b3 * size_1^3 else 0)),
-    
-    mu_g      = grow_b0 + 
-      (if (mod_gr_index >= 1) grow_b1 * size_1   else 0) +
-      (if (mod_gr_index >= 2) grow_b2 * size_1^2 else 0) +
-      (if (mod_gr_index >= 3) grow_b3 * size_1^3 else 0),
-    
-    g         = dnorm(size_2, mu_g, grow_sig),
-    grow_sig  = sqrt(a * exp(b * size_1)),
-    data_list = pars,
-    states    = list(c('size')),
-    evict_cor = TRUE,
-    evict_fun = truncated_distributions(fun = 'norm', target = 'g')
-  ) %>% 
-  
-  define_kernel(
-    name      = 'F',
-    family    = 'CC',
-    formula   = fecu_b0 * r_d,
-    r_d       = dnorm(size_2, recr_sz, recr_sd),
-    data_list = pars,
-    states    = list(c('size')),
-    evict_cor = TRUE,
-    evict_fun = truncated_distributions('norm', 'r_d')
-  ) %>% 
-  
-  define_impl(
-    make_impl_args_list(
-      kernel_names = c(  'P', 'F'),
-      int_rule     = rep('midpoint', 2),
-      state_start  = rep('size', 2),
-      state_end    = rep('size', 2))
-  ) %>%
-  
-  define_domains(
-    size = c(pars$L,
-             pars$U,
-             pars$mat_siz)
-  ) %>%
-  
-  define_pop_state(
-    n_size = rep(1 / 200, 200)
-  )
+# Observed population growth ---------------------------------------------------
+df_counts_year <- df %>%
+  group_by(year) %>%
+  filter(!is.na(size_t0)) %>% 
+  summarise(n = n())
 
-ipmr_p <- make_ipm(proto_ipm  = proto_ipm_p, iterations = 200)
+# Then compute observed lambda
+lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
+lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
 
-lam_mean_ipmr <- lambda(ipmr_p)
-
-lam_out       <- data.frame(coefficient = names(lam_mean_ipmr), 
-                            value       = lam_mean_ipmr)
-write.csv(lam_out, row.names = F, paste0(
-  dir_data, '/', v_script_prefix, '_',v_sp_abb, '_lambda_vec.csv'))
-
-lam_out_wide  <- as.list(pivot_wider(lam_out, 
-                                     names_from  = 'coefficient', 
-                                     values_from = 'value'))
-
-write.csv(lam_out_wide, row.names = F, paste0(
-  dir_data, '/', v_script_prefix, '_',v_sp_abb, '_lambda.csv'))

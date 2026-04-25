@@ -494,21 +494,21 @@ fig_fl_all
 # Number of flowers conditional on flowering -----------------------------------
 df_fl_cond <- df_fl %>%
   filter(flower == 1) %>%
-  filter(fl_nr %% 1 == 0) # exclude plant_id 2658 that has 11.9 flowers
-  
+  filter(fl_nr %% 1 == 0)
 
-mod_fl_n_0 <- glm.nb(fl_nr ~ 1, data = df_fl_cond)
+# Models INCLUDING fire
+mod_fl_n_0 <- glm.nb(fl_nr ~ fire, data = df_fl_cond)
 
-mod_fl_n_1 <- glm.nb(fl_nr ~ logsize_t0,
+mod_fl_n_1 <- glm.nb(fl_nr ~ logsize_t0 + fire,
                      data = df_fl_cond)
 
-mod_fl_n_2 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2,
+mod_fl_n_2 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2 + fire,
                      data = df_fl_cond)
 
-mod_fl_n_3 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+mod_fl_n_3 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire,
                      data = df_fl_cond)
 
-
+# Model selection
 mods_fl_n <- list(mod_fl_n_0, mod_fl_n_1, mod_fl_n_2, mod_fl_n_3)
 
 mods_fl_n_dAIC <- AICtab(mods_fl_n, weights = TRUE, sort = FALSE)$dAIC
@@ -517,6 +517,95 @@ mods_fl_n_sorted <- order(mods_fl_n_dAIC)
 mod_fl_n_bestfit <- mods_fl_n[[mods_fl_n_sorted[1]]]
 v_mod_fl_n_index <- mods_fl_n_sorted[1] - 1
 
+
+# Predictions for flower number -----------------------------------------------
+# Create prediction grid
+df_fl_n_pred <- expand.grid(
+  logsize_t0 = seq(min(df_fl_cond$logsize_t0),
+                   max(df_fl_cond$logsize_t0),
+                   length.out = 100),
+  fire = c("No fire", "Fire")
+)
+
+# Ensure correct factor structure
+df_fl_n_pred <- df_fl_n_pred %>%
+  mutate(
+    fire = factor(fire, levels = levels(df_fl_cond$fire)),
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3
+  )
+
+# Predict
+df_fl_n_pred$fl_nr <- predict(mod_fl_n_bestfit,
+                              newdata = df_fl_n_pred,
+                              type = "response")
+
+
+# Binned observed data (manual binning) ----------------------------------------
+
+df_fl_n_binned <- df_fl_cond %>%
+  mutate(bin = cut(logsize_t0, breaks = 10)) %>%
+  group_by(fire, bin) %>%
+  summarise(
+    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+    fl_nr = mean(fl_nr, na.rm = TRUE),
+    se = sd(fl_nr, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    lwr = fl_nr - 1.96 * se,
+    upr = fl_nr + 1.96 * se
+  )
+
+
+# Flower number plots ----------------------------------------------------------
+
+# Plot 1: Raw jitter + prediction lines
+fig_fl_n_line_combined <- ggplot() +
+  geom_jitter(data = df_fl_cond,
+              aes(x = logsize_t0, y = fl_nr, color = fire),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_fl_n_pred,
+            aes(x = logsize_t0, y = fl_nr, color = fire),
+            linewidth = 0.9) +
+  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  theme_bw() +
+  labs(title = NULL,
+       x = 'Size at time t0 (log())',
+       y = 'Number of flowers') +
+  theme(legend.position = "none")
+
+
+# Plot 2: Binned + prediction
+fig_fl_n_bin_combined <- ggplot() +
+  geom_point(data = df_fl_n_binned,
+             aes(x = logsize_t0, y = fl_nr, color = fire)) +
+  geom_errorbar(data = df_fl_n_binned,
+                aes(x = logsize_t0, ymin = lwr, ymax = upr, color = fire),
+                width = 0.2) +
+  geom_line(data = df_fl_n_pred,
+            aes(x = logsize_t0, y = fl_nr, color = fire),
+            linewidth = 0.9) +
+  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  theme_bw() +
+  labs(title = NULL,
+       x = 'Size at time t0 (log())',
+       y = 'Number of flowers') +
+  theme(legend.title = element_blank(),
+        legend.position = "top")
+
+
+# Combine
+fig_fl_n_all <- fig_fl_n_line_combined + fig_fl_n_bin_combined +
+  plot_annotation(
+    title = "Flower number",
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 10, face = "italic"))
+  )
+
+fig_fl_n_all
 
 
 # Recruitment ------------------------------------------------------------------
@@ -732,6 +821,7 @@ pars <- Filter(function(x) length(x) > 0, list(
   fln_b1 = extr_value(coef_fln, 'logsize_t0'),
   fln_b2 = extr_value(coef_fln, 'logsize_t0_2'),
   fln_b3 = extr_value(coef_fln, 'logsize_t0_3'),
+  fln_bf   = extr_value(coef_fl, grep('^fire', coef_fl$coefficient, value = TRUE)),
   fecu_b0 = extr_value(coef_misc, 'fecu_b0'),
   recr_sz = extr_value(coef_misc, 'rec_siz'),
   recr_sd = extr_value(coef_misc, 'rec_sd'),
@@ -795,8 +885,8 @@ fl_x <- function(x, pars, fire = 0, num_pars = v_mod_fl_index) {
 
 
 # Flowering of x-sized individual at time t0
-fl_n_x <- function(x, pars, num_pars = v_mod_fl_n_index) {
-  val <- pars$fln_b0
+fl_n_x <- function(x, pars, fire = 0, num_pars = v_mod_fl_n_index) {
+  val <- pars$fln_b0 + pars$fln_bf * fire
   for (i in 1:num_pars) {
     param <- paste0('fln_b', i)
     if (!is.null(pars[[param]])) {
@@ -814,24 +904,10 @@ re_y_dist <- function(y, pars) {
 # F-kernel
 fyx <- function(y, x, pars, fire = 0) {
   fl_x(x, pars, fire) *
-    fl_n_x(x, pars) *
+    fl_n_x(x, pars, fire) *
     pars$fecu_b0 *
     re_y_dist(y, pars)
 }
-
-# # Function describing the transition kernel
-# pxy <- function(x, y, pars) {
-#   return(sx(x, pars) * gxy(x, y, pars))
-# }
-# 
-# # Function describing the recruitment 
-# fy <- function(y, pars, h){
-#   n_recr  <- pars$fecu_b0
-#   recr_y  <- dnorm(y, pars$recr_sz, max(h/10, pars$recr_sd)) * h
-#   recr_y  <- recr_y / sum(recr_y)
-#   f       <- n_recr * recr_y
-#   return(f)
-# }
 
 
 # Kernel -----------------------------------------------------------------------
@@ -923,4 +999,5 @@ df_counts_year <- df %>%
 # Then compute observed lambda
 lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
 lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
+mean(log(lam_obs_y), na.rm = TRUE) |> exp()
 

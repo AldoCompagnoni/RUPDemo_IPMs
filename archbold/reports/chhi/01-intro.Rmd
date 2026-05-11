@@ -4,17 +4,25 @@ The supplementary material to the  *Chrysopsis highlandsensis* dataset from Arch
 
 The GIS and Data Management program at [Archbold Biological Station](https://www.archbold-station.org/gis-and-data-mgmt/) maintains a comprehensive collection of ecological and environmental data gathered through various research initiatives and ongoing long-term monitoring projects. One key platform for accessing this data is the Archbold Biological Station' [Ecological Data Inventory (EDI)](https://portal.edirepository.org/nis/home.jsp), which hosts extensive datasets related to biodiversity, land cover, climate, and ecological patterns.
 
+From source we gathered the following information:
+
+1. Data were collected from 1999-2025 from 11 subpopulations at three properties – Archbold, Highlands Hammock State Park, and the Lake Wales Ridge State Forest.
+2. From 1999-2022, censusing was conducted quarterly in March, June, September, and December, and only in December beginning in 2023. All demographic data were collected in December, and only survival and recruitment were recorded in the other censuses. 
+3. Data were collected from permanent quadrats or transects. The dimensions can be found in the provided excel worksheet under ‘plot_data’.
+4. The species might respond to fire and disturbance. Dates of prescribed burns, hurricanes, and mechanical treatment should be considered when analyzing these data.
 
 
 ## Setup
 
-We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom`, `bbmle`, `gridExtra`, `lme4`
+We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom`, `bbmle`, `gridExtra`, `lme4`, `GGally`, `viridis`, `scales`
 
 ```{r setup, message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 # Packages
-packages <- c('tidyverse', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 'lme4')
+packages <- c('patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 
+              'gridExtra', 'lme4', 'GGally', 'viridis', 'scales', 'MASS',
+              'lubridate', 'tidyverse', 'mgcv')
 lapply(packages, library, character.only = TRUE)
 
 

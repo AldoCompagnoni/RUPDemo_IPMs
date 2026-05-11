@@ -1,46 +1,131 @@
 # Data {#data}
 
-This dataset provides demographic information from a long-term study of *Crotalaria avonensis*, an endangered small perennial herbaceous legume native to the Lake Wales Ridge in central Florida. The [study](https://portal.edirepository.org/nis/metadataviewer?packageid=edi.219.1) spans from 1998 to 2017 and monthly during the growing season tracks individual plant survival, size, and reproduction, recorded within permanent quadrats - 25 cm radius circles in stratified random positions within subjectively located belt transects. Additionally, the dataset contains information on fires, herbivory reduction through caging, and other events that might be of effect. Individuals were defined as groups of stems separated by 5 cm or more and marked with plastic toothpicks. Transplant data suggests this species has clonal growth. 
+This dataset provides demographic information on *Chrysopsis highlandsensis*.
+Four datasets were provided by source. 
+1. ‘demography_cleaned’ - transition between years
+2. ‘site_history_data’ - site level disturbances
+3. ‘plot_data’ - info on quadrats and transects
+4. ‘demog_data’ - raw data
 
-```{r data ab crav}
+
+```{r data ab chhi}
 df_og <- read_csv(file.path(dir_data, 'chrysopsis_highlandsensis_data.csv')) %>% 
   janitor::clean_names()
 
 df_meta <- read_csv(file.path(dir_data, 'chrysopsis_highlandsensis_data_meta.csv')) %>% 
   janitor::clean_names()
+
+df_fire <- read_csv(file.path(dir_data, 'chrysopsis_highlandsensis_fire.csv')) %>% 
+  janitor::clean_names()
 ```
 
+
+## Data exploration
+The original dataset (`df_og`) contains 11,031 observations and 24 variables, primarily numeric, representing repeated measurements of individual plants across multiple sites and years. Each row corresponds to a plant observation at a given census interval, with identifiers linking individuals across time.
+
+1. The temporal coverage spans from 1999 to 2024 with a relatively balanced distribution across the study period.
+
+2. Plant size is recorded as diameter (`dia`), which serves as our key state variable for demographic analyses. More on that in **chapter 03XXX**. Diameter values range from very small individuals (≈0.2 cm) up to about 50.7, with a median of 5.4, indicating a right-skewed size distribution. It contains a substantial proportion of missing data (~46%).
+
+3. Survival (`survival_1`) is a binary variable (0 = dead, 1 = alive in the next census) and is nearly complete across the dataset. The mean survival probability is approximately 0.59, indicating that just over half of the individuals survive between consecutive census intervals.
+
+4. Flowering (`hd`) represents reproductive output (e.g. number of flower heads) and is highly zero-inflated and sparse, with a large proportion of missing values (~88%). When present, values range widely (0 to 594), suggesting strong variability in reproductive effort among individuals.
+
+
 <details>
-<summary>Expand to skim the raw dataframe</summary>
-```{r data ab crav skim}
-skimr::skim(df_og)
+<summary>Expand for metadata</summary>
+```{r data meta}
+df_meta %>% print(n = nrow(.))
 ```
 </details>
 
-## Data exploration
 
-
-```{r data mean original}
+```{r data original}
 df_og
 ```
 
 <details>
-<summary>Expand to skim the condenced raw dataframe</summary> 
-```{r}
-skimr::skim(df_og_extended)
+<summary>Expand for data summary</summary> 
+```{r data skim}
+skimr::skim(df_og)
 ```
 </details>
 
 ## Work dataframe/ adjustments
 
+The original dataset (`df_og`) was systematically cleaned and restructured to produce a consistent, analysis-ready dataset for demographic modelling.
 
-```{r data mean updated}
-df <- 
+First, key variables were renamed to improve clarity and standardisation: the individual identifier (`identifier`) became `plant_id`, the census year (`year0`) became `year`, and the survival indicator (`survival_1`) was renamed to `survival.` The `plant_id` variable was then converted to a categorical (factor) variable to ensure proper handling of individual identities in subsequent analyses.
+
+The data were ordered by site, plant identity, year, and survival status to ensure a consistent structure for grouped operations. A new binary variable, recruit, was created to indicate whether an individual was a recruit (astg == 1) or not.
+
+Next, the dataset was aggregated to the level of site × plant × year. Within each group, summary variables were constructed:
+
+1. Survival (`survives`) was defined as the minimum observed survival value, capturing mortality if it occurred, while returning NA if all values were missing.
+2. Size at time t (`size_t0`) and size at time t+1 (`size_t1`) were defined as the maximum recorded diameters (`dia`,`dia_1`) within each group.
+3. Flowering (`flower`) was summarized as the maximum observed flowering status (`hd`), indicating whether flowering occurred.
+4. Recruitment (`recruit`) was summarized as the minimum value within the group, preserving the presence of recruits.
+
+After summarization, the flowering variable was further processed: a copy (`fl_nr`) retained the original counts, while the main flower variable was converted to a binary indicator (flowering vs. non-flowering).
+
+To support modelling within an integral projection framework, size variables were log-transformed. Specifically, the natural logarithm of size at times t and t+1 was calculated, and polynomial terms (squared and cubed) of log-size at time t were added to allow for nonlinear size effects in subsequent models.
+
+The dataset was then augmented with external fire-treatment information (`df_fire`). This involved renaming variables for consistency, removing unnecessary columns, and joining the fire data to the main dataset by site and year.
+
+Finally, the fire variable was recoded into a clear categorical factor with two levels: “No fire” (including missing values) and “Fire” (corresponding to burn treatments). T
+
+
+
+```{r data extention}
+df <- df_og %>% 
+  rename(
+    plant_id = identifier,
+    year     = year0,
+    survival = survival_1) %>%  
+  mutate(
+    plant_id = as.factor(plant_id)) %>%
+  arrange(site, plant_id, year, survival) %>%
+  mutate(recruit = ifelse(astg == 1, 1, 0)) %>%
+  group_by(site , plant_id, year) %>%
+  summarise(
+    survives = if (all(is.na(survival))) NA_real_ else min(survival, na.rm = TRUE),
+    size_t0  = if (all(is.na(dia)))      NA_real_ else max(dia,      na.rm = TRUE),
+    size_t1  = if (all(is.na(dia_1)))    NA_real_ else max(dia_1,    na.rm = TRUE),
+    flower   = if (all(is.na(hd)))       NA_real_ else max(hd,       na.rm = TRUE),
+    recruit  = if (all(is.na(recruit)))  NA_real_ else min(recruit,  na.rm = TRUE),
+    .groups = 'drop') %>%
+  mutate(
+    fl_nr  = flower,
+    flower = if_else(flower > 0, 1, flower)) %>% 
+  mutate(
+    logsize_t0   = log(size_t0),
+    logsize_t1   = log(size_t1),
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  full_join(
+    
+    df_fire %>%
+      rename(year = burn_yr, fire = treatment) %>%
+      select(!c(year0, notes)), 
+    
+    by = c('site', 'year')) %>%
+  
+  mutate(
+    fire = case_when(
+      is.na(fire)    ~ 'No fire',
+      fire == 'burn' ~ 'Fire',
+      TRUE           ~ NA_character_),
+    fire = factor(fire, levels = c('No fire', 'Fire')))
 ```
 
-<details>
-<summary>Expand to skim the working dataframe</summary>
-```{r}
-skimr::skim(df)
+
+## Graphical data exploration
+
+```{r message=FALSE, warning=FALSE}
+ggpairs(df %>%
+          mutate(fire = case_when(
+            fire == 'No fire' ~ 0,
+            fire == 'Fire'    ~ 1)) %>%
+          dplyr::select(survives, logsize_t0, logsize_t1, fl_nr, recruit, fire))
 ```
-</details>
+

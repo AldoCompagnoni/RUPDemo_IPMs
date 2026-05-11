@@ -28,7 +28,7 @@ load_packages(
   MASS,
   # load tidyverse after MASS to not mask the select function
   tidyverse,
-  # bbmle is for AICtab
+  # bbmle is for AICctab
   bbmle,
   # patchwork plot alingment
   patchwork,

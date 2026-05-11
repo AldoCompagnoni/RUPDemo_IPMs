@@ -67,17 +67,7 @@ source('helper_functions/predictor_fun.R')
 
 # Data -------------------------------------------------------------------------
 df_og <- read_csv(file.path(dir_data, 'chrysopsis_highlandsensis_data.csv')) %>% 
-  janitor::clean_names() %>% 
-  rename(
-    plant_id = identifier,
-    year     = year0,
-    survival = survival_1) %>%  
-  mutate(
-    plant_id = as.factor(plant_id)) %>%
-  arrange(site, plant_id, year, survival)
-
-df_og_extended <- df_og %>%
-  mutate(recruit = ifelse(astg == 1, 1, 0))
+  janitor::clean_names()
 
 
 # Fire data --------------------------------------------------------------------
@@ -90,7 +80,15 @@ df_fire <- read_csv(file.path(dir_data, 'chrysopsis_highlandsensis_fire.csv')) %
 
 
 # Mean data frame --------------------------------------------------------------
-df <- df_og_extended %>%
+df <- df_og %>% 
+  rename(
+    plant_id = identifier,
+    year     = year0,
+    survival = survival_1) %>%  
+  mutate(
+    plant_id = as.factor(plant_id)) %>%
+  arrange(site, plant_id, year, survival) %>%
+  mutate(recruit = ifelse(astg == 1, 1, 0)) %>%
   group_by(site , plant_id, year) %>%
   summarise(
     survives = if (all(is.na(survival))) NA_real_ else min(survival, na.rm = TRUE),
@@ -160,7 +158,7 @@ mod_su_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire, data
 
 # Compare models using AIC
 mods_su      <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
-mods_su_dAIC <- AICtab(mods_su, weights = T, sort = F)$dAIC
+mods_su_dAIC <- AICctab(mods_su, weights = T, sort = F)$dAIC
 
 # Get the sorted indices of dAIC values
 mods_su_sorted <- order(mods_su_dAIC)
@@ -250,16 +248,16 @@ df_gr <- df %>%
 
 fig_gr_overall <- ggplot(df_gr, aes(x = logsize_t0, y = logsize_t1, color = fire)) +
   geom_point(alpha = 0.5, size = 0.7) +
-  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
   theme_bw() +
   theme(
     axis.text       = element_text(size = 8),
     title           = element_text(size = 10),
     plot.subtitle   = element_text(size = 8),
     legend.title    = element_blank(),
-    legend.position = "top") +
+    legend.position = 'top') +
   labs(
-    title    = "Growth",
+    title    = 'Growth',
     subtitle = v_ggp_suffix,
     x        = expression('log(size)'[t0]),
     y        = expression('log(size)'[t1]))
@@ -278,7 +276,7 @@ mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire,
                data = df_gr)
 
 mods_gr      <- list(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
-mods_gr_dAIC <- AICtab(mods_gr, weights = TRUE, sort = FALSE)$dAIC
+mods_gr_dAIC <- AICctab(mods_gr, weights = TRUE, sort = FALSE)$dAIC
 mods_gr_sorted <- order(mods_gr_dAIC)
 
 if (length(v_mod_set_gr) == 0) {
@@ -298,9 +296,9 @@ df_gr_pred <- data.frame(
   logsize_t0 = rep(
     seq(min(df_gr$logsize_t0, na.rm = TRUE),
         max(df_gr$logsize_t0, na.rm = TRUE), length.out = 100), 2),
-  fire = rep(c("No fire", "Fire"), each = 100)) %>%
+  fire = rep(c('No fire', 'Fire'), each = 100)) %>%
   mutate(
-    fire = factor(fire, levels = c("No fire", "Fire")),
+    fire = factor(fire, levels = c('No fire', 'Fire')),
     logsize_t0_2 = logsize_t0^2,
     logsize_t0_3 = logsize_t0^3)
 
@@ -313,12 +311,12 @@ fig_gr_line_combined <- ggplot(df_gr, aes(x = logsize_t0, y = logsize_t1, color 
   geom_point(alpha = 0.4, size = 0.8) +
   geom_line(data = df_gr_pred, aes(x = logsize_t0, y = logsize_t1, color = fire),
             linewidth = 1) +
-  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
   theme_bw() +
   labs(x = expression('log(size)'[t0]),
        y = expression('log(size)'[t1])) +
   theme(
-    legend.position = "top",
+    legend.position = 'top',
     legend.title = element_blank(),
     plot.title = element_blank(),
     plot.subtitle = element_blank())
@@ -328,12 +326,12 @@ fig_gr_pred_combined <- ggplot(df_gr, aes(x = predict(mod_gr_bestfit, newdata = 
                                           y = logsize_t1, color = fire)) +
   geom_point(alpha = 0.4, size = 0.8) +
   geom_abline(intercept = 0, slope = 1, color = 'black',
-              linetype = "dashed", linewidth = 1) +
-  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+              linetype = 'dashed', linewidth = 1) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
   theme_bw() +
-  labs(x = "Predicted", y = "Observed") +
+  labs(x = 'Predicted', y = 'Observed') +
   theme(
-    legend.position = "top",
+    legend.position = 'top',
     legend.title = element_blank(),
     plot.title = element_blank(),
     plot.subtitle = element_blank())
@@ -341,11 +339,11 @@ fig_gr_pred_combined <- ggplot(df_gr, aes(x = predict(mod_gr_bestfit, newdata = 
 # Combine plots
 fig_gr_all_combined <- fig_gr_line_combined + fig_gr_pred_combined +
   plot_annotation(
-    title = "Growth Prediction",
+    title = 'Growth Prediction',
     subtitle = v_ggp_suffix,
     theme = theme(
-      plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 10, face = "italic")))
+      plot.title = element_text(size = 14, face = 'bold'),
+      plot.subtitle = element_text(size = 10, face = 'italic')))
 
 fig_gr_all_combined
 
@@ -385,20 +383,19 @@ fig_fl_overall <- ggplot(df_fl_binned, aes(x = logsize_t0, y = flower, color = f
     alpha = 0.1) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
-  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
-  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
   theme_bw() +
   theme(
     axis.text = element_text(size = 8),
     title = element_text(size = 10),
     plot.subtitle = element_text(size = 8),
     legend.title = element_blank(),
-    legend.position = "top") +
+    legend.position = 'top') +
   labs(
-    title = "Flowering probability by fire status",
+    title = 'Flowering probability by fire status',
     subtitle = v_ggp_suffix,
     x = expression('log(size)'[t0]),
-    y = "Flowering Probability"  )
+    y = 'Flowering Probability')
 
 fig_fl_overall
 
@@ -415,7 +412,7 @@ mod_fl_3 <- glm(flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire,
                 data = df_fl, family = 'binomial')  
 
 mods_fl      <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
-mods_fl_dAIC <- AICtab(mods_fl, weights = TRUE, sort = FALSE)$dAIC
+mods_fl_dAIC <- AICctab(mods_fl, weights = TRUE, sort = FALSE)$dAIC
 mods_fl_sorted <- order(mods_fl_dAIC)
 
 if (length(v_mod_set_fl) == 0) {
@@ -434,21 +431,21 @@ mod_fl_ranef   <- coef(mod_fl_bestfit)
 df_fl_pred <- data.frame(
   logsize_t0 = rep(seq(min(df_fl$logsize_t0, na.rm = TRUE),
                        max(df_fl$logsize_t0, na.rm = TRUE), length.out = 100), 2),
-  fire = rep(c("No fire", "Fire"), each = 100)) %>%
+  fire = rep(c('No fire', 'Fire'), each = 100)) %>%
   mutate(
-    fire = factor(fire, levels = c("No fire", "Fire")),
+    fire = factor(fire, levels = c('No fire', 'Fire')),
     logsize_t0_2 = logsize_t0^2,
     logsize_t0_3 = logsize_t0^3)
 
-df_fl_pred$flower <- predict(mod_fl_bestfit, newdata = df_fl_pred, type = "response")
+df_fl_pred$flower <- predict(mod_fl_bestfit, newdata = df_fl_pred, type = 'response')
 
 
 # Binned observed data for both fire levels
 df_fl_binned <- bind_rows(
-  plot_binned_prop(filter(df_fl, fire == "No fire"), 10, logsize_t0, flower) %>%
-    mutate(fire = "No fire"),
-  plot_binned_prop(filter(df_fl, fire == "Fire"), 10, logsize_t0, flower) %>%
-    mutate(fire = "Fire"))
+  plot_binned_prop(filter(df_fl, fire == 'No fire'), 10, logsize_t0, flower) %>%
+    mutate(fire = 'No fire'),
+  plot_binned_prop(filter(df_fl, fire == 'Fire'), 10, logsize_t0, flower) %>%
+    mutate(fire = 'Fire'))
 
 
 # Flower plots -----------------------------------------------------------------
@@ -458,10 +455,10 @@ fig_fl_line_combined <- ggplot() +
               alpha = 0.25, width = 0.08, height = 0.3) +
   geom_line(data = df_fl_pred, aes(x = logsize_t0, y = flower, color = fire),
             linewidth = 0.9) +
-  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
   theme_bw() +
   labs(title = NULL, x = 'Size at time t0 (log())', y = 'Flowering Probability') +
-  theme(legend.position = "none")
+  theme(legend.position = 'none')
 
 
 # Plot 2: Binned + prediction
@@ -471,21 +468,21 @@ fig_fl_bin_combined <- ggplot() +
                 width = 0.2) +
   geom_line(data = df_fl_pred, aes(x = logsize_t0, y = flower, color = fire),
             linewidth = 0.9) +
-  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
   theme_bw() +
   ylim(0, 1) +
   labs(title = NULL, x = 'Size at time t0 (log())', y = 'Flowering Probability') +
-  theme(legend.title = element_blank(), legend.position = "top")
+  theme(legend.title = element_blank(), legend.position = 'top')
 
 
 # Combine
 fig_fl_all <- fig_fl_line_combined + fig_fl_bin_combined +
   plot_annotation(
-    title = "Flowering",
+    title = 'Flowering',
     subtitle = v_ggp_suffix,
     theme = theme(
-      plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 10, face = "italic")))
+      plot.title = element_text(size = 14, face = 'bold'),
+      plot.subtitle = element_text(size = 10, face = 'italic')))
 
 fig_fl_all
 
@@ -511,7 +508,7 @@ mod_fl_n_3 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire,
 # Model selection
 mods_fl_n <- list(mod_fl_n_0, mod_fl_n_1, mod_fl_n_2, mod_fl_n_3)
 
-mods_fl_n_dAIC <- AICtab(mods_fl_n, weights = TRUE, sort = FALSE)$dAIC
+mods_fl_n_dAIC <- AICctab(mods_fl_n, weights = TRUE, sort = FALSE)$dAIC
 mods_fl_n_sorted <- order(mods_fl_n_dAIC)
 
 mod_fl_n_bestfit <- mods_fl_n[[mods_fl_n_sorted[1]]]
@@ -524,21 +521,19 @@ df_fl_n_pred <- expand.grid(
   logsize_t0 = seq(min(df_fl_cond$logsize_t0),
                    max(df_fl_cond$logsize_t0),
                    length.out = 100),
-  fire = c("No fire", "Fire")
-)
+  fire = c('No fire', 'Fire'))
 
 # Ensure correct factor structure
 df_fl_n_pred <- df_fl_n_pred %>%
   mutate(
     fire = factor(fire, levels = levels(df_fl_cond$fire)),
     logsize_t0_2 = logsize_t0^2,
-    logsize_t0_3 = logsize_t0^3
-  )
+    logsize_t0_3 = logsize_t0^3)
 
 # Predict
 df_fl_n_pred$fl_nr <- predict(mod_fl_n_bestfit,
                               newdata = df_fl_n_pred,
-                              type = "response")
+                              type = 'response')
 
 
 # Binned observed data (manual binning) ----------------------------------------
@@ -550,12 +545,10 @@ df_fl_n_binned <- df_fl_cond %>%
     logsize_t0 = mean(logsize_t0, na.rm = TRUE),
     fl_nr = mean(fl_nr, na.rm = TRUE),
     se = sd(fl_nr, na.rm = TRUE) / sqrt(n()),
-    .groups = "drop"
-  ) %>%
+    .groups = 'drop') %>%
   mutate(
     lwr = fl_nr - 1.96 * se,
-    upr = fl_nr + 1.96 * se
-  )
+    upr = fl_nr + 1.96 * se )
 
 
 # Flower number plots ----------------------------------------------------------
@@ -568,12 +561,12 @@ fig_fl_n_line_combined <- ggplot() +
   geom_line(data = df_fl_n_pred,
             aes(x = logsize_t0, y = fl_nr, color = fire),
             linewidth = 0.9) +
-  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
   theme_bw() +
   labs(title = NULL,
        x = 'Size at time t0 (log())',
        y = 'Number of flowers') +
-  theme(legend.position = "none")
+  theme(legend.position = 'none')
 
 
 # Plot 2: Binned + prediction
@@ -586,23 +579,23 @@ fig_fl_n_bin_combined <- ggplot() +
   geom_line(data = df_fl_n_pred,
             aes(x = logsize_t0, y = fl_nr, color = fire),
             linewidth = 0.9) +
-  scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
   theme_bw() +
   labs(title = NULL,
        x = 'Size at time t0 (log())',
        y = 'Number of flowers') +
   theme(legend.title = element_blank(),
-        legend.position = "top")
+        legend.position = 'top')
 
 
 # Combine
 fig_fl_n_all <- fig_fl_n_line_combined + fig_fl_n_bin_combined +
   plot_annotation(
-    title = "Flower number",
+    title = 'Flower number',
     subtitle = v_ggp_suffix,
     theme = theme(
-      plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 10, face = "italic"))
+      plot.title = element_text(size = 14, face = 'bold'),
+      plot.subtitle = element_text(size = 10, face = 'italic'))
   )
 
 fig_fl_n_all
@@ -612,27 +605,27 @@ fig_fl_n_all
 df_re <- df %>%
   group_by(year, site) %>%
   summarise(
-    fire = if_else(any(fire == "Fire", na.rm = TRUE), "Fire", "No fire"),
+    fire = if_else(any(fire == 'Fire', na.rm = TRUE), 'Fire', 'No fire'),
     tot_p_area = sum(size_t0, na.rm = TRUE),
-    .groups = "drop") %>%
+    .groups = 'drop') %>%
   {
     df_quad <- .
     
     df_group <- df_quad %>%
       group_by(year) %>%
-      summarise(g_cov = mean(tot_p_area), .groups = "drop")
+      summarise(g_cov = mean(tot_p_area), .groups = 'drop')
     
-    df_cover <- left_join(df_quad, df_group, by = "year") %>%
+    df_cover <- left_join(df_quad, df_group, by = 'year') %>%
       mutate(year = as.integer(year + 1)) %>%
       drop_na()
     
     df_recruit <- df %>%
       group_by(year, site) %>%
-      summarise(nr_quad = sum(recruit, na.rm = TRUE), .groups = "drop")
+      summarise(nr_quad = sum(recruit, na.rm = TRUE), .groups = 'drop')
     
-    left_join(df_cover, df_recruit, by = c("year", "site"))
+    left_join(df_cover, df_recruit, by = c('year', 'site'))
   } %>%
-  mutate(fire = factor(fire, levels = c("No fire", "Fire")))
+  mutate(fire = factor(fire, levels = c('No fire', 'Fire')))
 
 # Plot: recruitment vs parent area
 ggplot(df_re, aes(x = tot_p_area, y = nr_quad, colour = fire)) + 
@@ -648,17 +641,17 @@ ggplot(df_re, aes(x = tot_p_area, y = nr_quad, colour = fire)) +
 # Density dependence -----------------------------------------------------------
 df_re_qd <- df %>% 
   group_by(site, year) %>%
-  summarise(rec_qd_t1 = sum(recruit, na.rm = TRUE), .groups = "drop") %>%
+  summarise(rec_qd_t1 = sum(recruit, na.rm = TRUE), .groups = 'drop') %>%
   left_join(
     df %>% 
       group_by(site, year) %>% 
       summarise(
         nr_ind = sum(!is.na(size_t0)),
-        fire = if_else(any(fire == "Fire", na.rm = TRUE), "Fire", "No fire"),
-        .groups = "drop") %>% 
+        fire = if_else(any(fire == 'Fire', na.rm = TRUE), 'Fire', 'No fire'),
+        .groups = 'drop') %>% 
       mutate(year = year - 1),
     by = c('site', 'year')) %>%
-  mutate(fire = factor(fire, levels = c("No fire", "Fire")))
+  mutate(fire = factor(fire, levels = c('No fire', 'Fire')))
 
 fig_re_dens <- ggplot(data = df_re_qd) + 
   geom_jitter(aes(y = rec_qd_t1, x = nr_ind, color = fire)) + 
@@ -736,7 +729,7 @@ df_rec_by_year <- df %>%
   summarise(n_recruits = n())
 
 df_rep_fl_ratio <- df_fl_by_year %>%
-  left_join(df_rec_by_year, by = "year") %>%
+  left_join(df_rec_by_year, by = 'year') %>%
   mutate(recruits_per_flower = n_recruits / total_flowers)
 
 repr_flower_mean   <- mean(df_rep_fl_ratio$recruits_per_flower, na.rm = TRUE)
@@ -978,12 +971,12 @@ lam_fire   <- lambda_ipm(pars, fire = 1)
 # Expected growth under fire regime (mean exposure per plant)
 p_fire <- mean(df %>% 
                  filter(!is.na(survives)) %>%
-                 mutate(fire = ifelse(fire == "Fire", 1, 0)) %>% 
+                 mutate(fire = ifelse(fire == 'Fire', 1, 0)) %>% 
                  .$fire, na.rm = TRUE)
 # Expected growth under fire regime (mean exposure per year)
 p_fire2 <- df %>% 
   group_by(year) %>%
-  mutate(fire = ifelse(fire == "Fire", 1, 0)) %>% 
+  mutate(fire = ifelse(fire == 'Fire', 1, 0)) %>% 
   summarise(fire = max(fire, na.rm = TRUE)) %>%
   pull(fire) %>% 
   mean()

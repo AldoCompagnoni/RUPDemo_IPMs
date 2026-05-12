@@ -75,11 +75,11 @@ mod_su_ranef   <- coef(mod_su_bestfit)
 # Prediction 
 df_su_pred <- data.frame(
   logsize_t0   = rep(seq(min(df_su$logsize_t0), max(df_su$logsize_t0), length.out = 100), 2),
-  logsize_t0_2 = rep(seq(min(df_su$logsize_t0_2), max(df_su$logsize_t0_2), length.out = 100), 2),
   fire = rep(c('No fire', 'Fire'), each = 100)) %>%
   mutate(
     fire = factor(fire, levels = c('No fire', 'Fire')),
-    survives = predict(mod_su_bestfit, newdata = ., type = 'response'))
+    logsize_t0_2 = logsize_t0^2) %>% 
+  mutate(survives = predict(mod_su_bestfit, newdata = ., type = 'response'))
 
 
 # Binned data

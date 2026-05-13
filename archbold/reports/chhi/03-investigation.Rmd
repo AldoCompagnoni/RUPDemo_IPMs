@@ -83,7 +83,9 @@ df3_flower_sum <- df %>%
 
 
 
-The raw dataset shows that flowering is heavily incomplete. Missing flowering values dominate the dataset (NA = 9102 in No fire, 477 in Fire). Fire subset is extremely small compared to non-fire conditions. Observed flowering under fire is only 28 individuals
+The raw dataset shows that flowering is heavily incomplete. Missing flowering values dominate the dataset (NA = 9102 in No fire, 477 in Fire). Fire subset is extremely small compared to non-fire conditions. Observed flowering under fire is only 28 individuals. 
+
+Attention! Over 9000 observations show an NA for flowering. This will be looked at in the following, i.e. **Chapter XXXX** 
 
 ```{r}
 df %>%
@@ -103,8 +105,7 @@ df %>%
   )
 ```
 
-Fire sample structure is extremely small.
-Fire condition: only 17 individuals total, only 5 years of observations.
+Fire sample structure is small.
 
 ```{r}
 df %>%
@@ -113,13 +114,13 @@ df %>%
     n = n(),
     n_individuals = n_distinct(plant_id),
     n_years = n_distinct(year),
-    min_year = min(year),
-    max_year = max(year)
-  )
+    min_year = min(year, na.rm = TRUE),
+    max_year = max(year, na.rm = TRUE))
 ```
 
+### NA in flowering
 
-
+Looking at the flowering structure, we find that only 3% of observations show flowering. More strikingly -and the focus of this investigation- is that just under 90% of observations have NA recorded for flowering. We find this highly suspicious. Furthermore, when examining the size distribution and density across the different flowering statuses, these NA values occur across the full range of plant sizes, ruling out the possibility that they are simply associated with new recruits. 
 
 ```{r}
 p_flowering_frequency <- df3_flower %>%
@@ -166,6 +167,78 @@ p_flowering_size_distribution <- ggplot(
 
 (p_flowering_frequency | p_flowering_size_distribution)
 ```
+
+The flowering structure reveals that only a very small proportion of observations are recorded as flowering (1), while the overwhelming majority are coded as NA. Specifically, flowering records (1) span the period from 1999–2024 and account for 1,038 observations, whereas explicit non-flowering records (0) are only present from 2021–2024 and comprise just 331 observations. In contrast, NA values dominate the dataset with 9,673 observations spanning nearly the entire monitoring period (1985–2025), suggesting that flowering status was not systematically recorded for much of the study.
+```{r}
+df3_flower %>%
+  mutate(flower_status = case_when(
+    is.na(flower) ~ "NA",
+    as.character(flower) == "0" ~ "0",
+    as.character(flower) == "1" ~ "1"
+  )) %>%
+  group_by(flower_status) %>%
+  summarise(
+    min_year = min(year, na.rm = TRUE),
+    max_year = max(year, na.rm = TRUE),
+    n = n(),
+    .groups = "drop")
+```
+
+
+Examining the temporal distribution of missing flowering values further supports this interpretation. Of the 9,673 NA observations, 7,981 occur between 1985 and 2020, while 1,691 occur between 2021 and 2025. This pattern contrasts with the introduction of explicit 0 records after 2020 especially since there were only 331 observations of no flower occurrence within the newer time frame, yet still raises the possibility that some historical NA values may in fact correspond to non-flowering individuals (0) rather than truly missing information. However, this pattern leaves a drastic measure such as converting all NAs to 0 rather suspicious.
+```{r}
+df3_flower %>%
+  filter(is.na(flower)) %>%
+  mutate(period = case_when(
+    year >= 1985 & year <= 2020 ~ "1985–2020",
+    year >= 2021 & year <= 2025 ~ "2021–2025")) %>%
+  group_by(period) %>%
+  summarise(
+    n_NA = n(),
+    min_year = min(year),
+    max_year = max(year),
+    .groups = "drop")
+```
+Comparing the size distributions of observations coded as 0 and NA between 2021 and 2024 reveals substantial overlap, although plants recorded as non-flowering (0) tend to be somewhat larger on average. Observations with flower = 0 had a mean log-size of 1.75, compared to 1.07 for NA observations, while both groups covered a very similar overall size range. This suggests that NA values are not restricted to a distinct subset of very small or newly recruited individuals and supports the possibility that at least some NA observations in this timer period and especially the more historic data may correspond to non-flowering plants rather than entirely missing flowering information.
+```{r}
+# subset to recent years and compare flower = 0 vs NA
+df_flower_compare <- df3_flower %>%
+  filter(year >= 2021 & year <= 2024) %>%
+  filter(is.na(flower) | as.character(flower) == "0") %>%
+  mutate(flower_status = case_when(
+    is.na(flower) ~ "NA",
+    as.character(flower) == "0" ~ "0"))
+
+# summary statistics
+df_flower_compare %>%
+  group_by(flower_status) %>%
+  summarise(
+    n = n(),
+    mean_logsize = mean(logsize_t0, na.rm = TRUE),
+    median_logsize = median(logsize_t0, na.rm = TRUE),
+    sd_logsize = sd(logsize_t0, na.rm = TRUE),
+    min_logsize = min(logsize_t0, na.rm = TRUE),
+    max_logsize = max(logsize_t0, na.rm = TRUE),
+    .groups = "drop"  )
+```
+
+
+```{r}
+# density plot
+ggplot(df_flower_compare,
+       aes(x = logsize_t0, fill = flower_status)) +
+  geom_density(alpha = 0.5) +
+  scale_fill_viridis_d(end = 0.85) +
+  theme_bw() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "top") +
+  labs(
+    title = "Size distribution of flower = 0 and flower = NA (2021–2024)",
+    x = expression(log(size[t0])),
+    y = "Density")
+```
+
 
 ## Density dependency
 

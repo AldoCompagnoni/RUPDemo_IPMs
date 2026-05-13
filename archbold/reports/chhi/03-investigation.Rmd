@@ -298,23 +298,26 @@ mod_su_ranef   <- coef(mod_su_bestfit)
 
 
 df_su_pred <- data.frame(
-  logsize_t0   = rep(seq(min(df_su$logsize_t0  ), max(df_su$logsize_t0  ), length.out = 100), 2),
-  logsize_t0_2 = rep(seq(min(df_su$logsize_t0_2), max(df_su$logsize_t0_2), length.out = 100), 2),
+  logsize_t0   = rep(seq(min(df_su$logsize_t0  ), max(df_su$logsize_t0  ), 
+                         length.out = 100), 2),
   fire = rep(c('No fire', 'Fire'), each = 100)) %>%
-  mutate(fire     = factor(fire, levels = c('No fire', 'Fire')),
-         survives = predict(mod_su_bestfit, newdata = ., type = 'response'))
+  mutate(fire         = factor(fire, levels = c('No fire', 'Fire')), 
+         logsize_t0_2 = logsize_t0^2 ) %>% 
+  mutate(survives     = predict(mod_su_bestfit, newdata = ., type = 'response')) 
 df_su_pre1 <- data.frame(
-  logsize_t0   = rep(seq(min(df_su$logsize_t0  ), max(df_su$logsize_t0  ), length.out = 100), 2),
+  logsize_t0   = rep(seq(min(df_su$logsize_t0  ),
+                         max(df_su$logsize_t0  ), length.out = 100), 2),
   fire = rep(c('No fire', 'Fire'), each = 100)) %>%
   mutate(fire     = factor(fire, levels = c('No fire', 'Fire')),
          survives = predict(mod_su_1, newdata = ., type = 'response'))
 df_su_pre3 <- data.frame(
-  logsize_t0   = rep(seq(min(df_su$logsize_t0  ), max(df_su$logsize_t0  ), length.out = 100), 2),
-  logsize_t0_2 = rep(seq(min(df_su$logsize_t0_2), max(df_su$logsize_t0_2), length.out = 100), 2),
-  logsize_t0_3 = rep(seq(min(df_su$logsize_t0_3), max(df_su$logsize_t0_3), length.out = 100), 2),
-  fire = rep(c('No fire', 'Fire'), each = 100)) %>%
+  logsize_t0   = rep(seq(min(df_su$logsize_t0  ), 
+                         max(df_su$logsize_t0  ), length.out = 100), 2),
+  fire         = rep(c('No fire', 'Fire'), each = 100)) %>%
   mutate(fire     = factor(fire, levels = c('No fire', 'Fire')),
-         survives = predict(mod_su_3, newdata = ., type = 'response'))
+         logsize_t0_2 = logsize_t0^2,
+         logsize_t0_3 = logsize_t0^3) %>% 
+  mutate(survives = predict(mod_su_3, newdata = ., type = 'response'))
 
 
 df_su_binned <- bind_rows(

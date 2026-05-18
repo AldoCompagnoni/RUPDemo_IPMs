@@ -103,12 +103,18 @@ Disclaimer: As of March 2025, we have not been in contact with the corresponding
 During our exploration of the dataset, we found that the survival variable was coded as a factor. In addition to the obvious values indicating survival (1) and non-survival (0), dataset includes values that we interpret as follows: birth (3), birth after fire exposure (5), and missing observations (6). We excluded the missing observations (6) from the dataset entirely. For the **survival** variable, we re-coded the birth entries (3 and 5), assigning a survival value of 1 if the individual survived and 0 if the individual did not survive.
 
 
+We took the alive column and transformed it into the survives witht the lead() function.
+
+
 The species is known to exhibit dormancy, and this is reflected in the dataset. The longest dormancy period recorded was 3 years. We included **dormancy** as a new variable in the dataset. However, it is important to note that for a 3-year period close to the beginning or end of the records, we cannot be certain of an individuals true birth or death. In these cases, the dormancy, survival, and birth variables were marked as NA.
 
 Additionally, we included the **size of individuals in the subsequent** year as a variable. In cases where dormancy was recorded, the size variable was marked as NA. Upon the conclusion of dormancy, the individual's size was recorded for the following year.
 
 For individuals whose true birth could be determined (i.e., those born at least 4 years after the start of the records), we classified them as **recruits** and included an **age** variable, which increased through periods of dormancy.
 
+**Disturbance** takes fire and any other measured disturbance to the plot into account with we got as an extra data set alongside its meta data.
+
+**Flower** is the maximum flower count provided by the authors.
 
 ```{r data mean updated}
 df <- df_og_extended %>%

@@ -35,7 +35,7 @@ df_fl_binned <- df_fl %>%
            mutate(fire = unique(.x$fire)))
 
 # Plot overlapped flowering probability
-ggplot(df_fl_binned, aes(x = logsize_t0, y = flower, color = fire)) +
+fig_3f_og <- ggplot(df_fl_binned, aes(x = logsize_t0, y = flower, color = fire)) +
   geom_jitter(
     data = df_fl,
     aes(x = logsize_t0, y = flower, color = fire),
@@ -56,6 +56,7 @@ ggplot(df_fl_binned, aes(x = logsize_t0, y = flower, color = fire)) +
     subtitle = v_ggp_suffix,
     x = expression('log(size)'[t0]),
     y = 'Flowering Probability')
+fig_3f_og
 ```
 
 
@@ -85,7 +86,7 @@ df3_flower_sum <- df %>%
 
 The raw dataset shows that flowering is heavily incomplete. Missing flowering values dominate the dataset (NA = 9102 in No fire, 477 in Fire). Fire subset is extremely small compared to non-fire conditions. Observed flowering under fire is only 28 individuals. 
 
-Attention! Over 9000 observations show an NA for flowering. This will be looked at in the following, i.e. **Chapter XXXX** 
+Attention! Over 9000 observations show an NA for flowering. This will be looked at in the following, i.e. \@ref(flowerNA) 
 
 ```{r}
 df %>%
@@ -118,7 +119,7 @@ df %>%
     max_year = max(year, na.rm = TRUE))
 ```
 
-### NA in flowering
+### NA in flowering {#flowerNA}
 
 Looking at the flowering structure, we find that only 3% of observations show flowering. More strikingly -and the focus of this investigation- is that just under 90% of observations have NA recorded for flowering. We find this highly suspicious. Furthermore, when examining the size distribution and density across the different flowering statuses, these NA values occur across the full range of plant sizes, ruling out the possibility that they are simply associated with new recruits. 
 
@@ -238,6 +239,9 @@ ggplot(df_flower_compare,
     x = expression(log(size[t0])),
     y = "Density")
 ```
+
+
+
 
 
 ## Density dependency

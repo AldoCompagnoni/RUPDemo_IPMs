@@ -104,16 +104,16 @@ df_og <- read_delim("archbold/data/crav/crotalaria_avonensis_data_v260515.csv",
 
 df_meta <- data.frame(variable = colnames(df_og)) %>% 
   mutate(definition = c(
-    'Unique identifier for each plant'	
-    'site # with the Carter Creek population'	
-    "macro plot #. Typically 5 quads per macroplot, and 3 mp's per site"	
-    'Circular quadrat number, 0.5m diameter'	
-    'Year data were collected'	
-    'Survival code	0 = dead or dormant, 1 = alive, 2 = missing, 3 = new adult, 5 = new seedling, 6 = dead/run over, 8= dormant'
-    'Whether plant was alive or not	0=dead, 1=alive'
-    'Stage class	0=dead, 1=seedling, 2=vegetative and not flowering, 3=flowering'
-    'Maximum number of branches observed at one of 3 time points (Feb, Apr, Jun)	'
-    'Maximum number of flowers observed at one of 3 time points (Feb, Apr, Jun)'	
+    'Unique identifier for each plant',
+    'site # with the Carter Creek population',
+    "macro plot #. Typically 5 quads per macroplot, and 3 mp's per site",	
+    'Circular quadrat number, 0.5m diameter',
+    'Year data were collected',
+    'Survival code	0 = dead or dormant, 1 = alive, 2 = missing, 3 = new adult, 5 = new seedling, 6 = dead/run over, 8= dormant',
+    'Whether plant was alive or not	0=dead, 1=alive',
+    'Stage class	0=dead, 1=seedling, 2=vegetative and not flowering, 3=flowering',
+    'Maximum number of branches observed at one of 3 time points (Feb, Apr, Jun)',
+    'Maximum number of flowers observed at one of 3 time points (Feb, Apr, Jun)',
     'Maximum number of fruits (developing or ripe) observed at one of 3 time points (Feb, Apr, Jun)'))
 
 
@@ -177,7 +177,6 @@ df_disturbance <- df_og_quad %>%
 df <- df_og %>% 
   janitor::clean_names() %>%  
   rename(plant_id = id,
-         survives = alive,
          size_t0  = maxbr) %>% 
   mutate(
     plant_id = as.factor(plant_id),
@@ -187,7 +186,12 @@ df <- df_og %>%
     mp       = as.factor(mp)) %>%
   arrange(site, quad, quad_id, plant_id, year) %>%
   
-  # Size_t1 based on survival; propagate size_t0 if survives, otherwise set to NA
+  # Survival
+  group_by(plant_id) %>% 
+  mutate(survives = lead(alive)) %>% 
+  ungroup %>% 
+  
+  # Growth based on survival; propagate size_t0 if survives, otherwise set to NA
   group_by(plant_id) %>%
   mutate(
     size_t1 = case_when(
@@ -241,138 +245,138 @@ df <- df_og %>%
   
   
   select(site, mp, quad, quad_id, plant_id, year, 
-         s, survives, size_t0, size_t1, maxfl, maxfr, recruit, dormancy, disturbance)
+         s, survives, size_t0, size_t1, 
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+         maxfl, maxfr, recruit, dormancy, disturbance)
 
 
-# 
-# 
-# # Survival data ----------------------------------------------------------------
-# df_su <- df %>%
-#   filter(size_t0 != 0) %>%
-#   mutate(fire_label = ifelse(fire == 1, "Fire", "No fire")) %>%
-#   select(plant_id, year, size_t0, survives, size_t1,
-#          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
-#          fire, fire_label)
-# 
-# # Create binned summary using group_split()
-# df_su_binned <- df_su %>%
-#   group_split(fire_label) %>%
-#   purrr::map_df(~ plot_binned_prop(.x, 10, logsize_t0, survives) %>%
-#                   mutate(fire_label = unique(.x$fire_label)))
-# 
-# fig_su_overall <- ggplot(df_su_binned, aes(x = logsize_t0, y = survives, color = fire_label)) +
-#   geom_jitter(data = df_su, aes(x = logsize_t0, y = survives, color = fire_label),
-#               position = position_jitter(width = 0.1, height = 0.3), alpha = 0.1) +
-#   geom_point(size = 2) +
-#   geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
-#   scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
-#   scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
-#   theme_bw() +
-#   theme(
-#     axis.text = element_text(size = 8),
-#     title = element_text(size = 10),
-#     plot.subtitle = element_text(size = 8),
-#     legend.title = element_blank(),
-#     legend.position = "top"
-#   ) +
-#   labs(
-#     title = "Survival",
-#     subtitle = v_ggp_suffix,
-#     x = expression('log(size)'[t0]),
-#     y = "Survival Probability"
-#   )
-# 
-# fig_su_overall
-# 
-# 
-# # Survival model ---------------------------------------------------------------
-# # Logistic regression
-# mod_su_0 <- glm(survives ~ fire,
-#                 data = df_su, family = 'binomial') 
-# # Logistic regression
-# mod_su_1 <- glm(survives ~ logsize_t0 + fire,
-#                 data = df_su, family = 'binomial') 
-# # Quadratic logistic model
-# mod_su_2 <- glm(survives ~ logsize_t0 + logsize_t0_2 + fire,
-#                 data = df_su, family = 'binomial')  
-# # Cubic logistic model
-# mod_su_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + fire,
-#                 data = df_su, family = 'binomial')  
-# 
-# 
-# # Compare models using AIC
-# mods_su      <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
-# mods_su_dAIC <- AICtab(mods_su, weights = T, sort = F)$dAIC
-# 
-# # Get the sorted indices of dAIC values
-# mods_su_sorted <- order(mods_su_dAIC)
-# 
-# # Establish the index of model complexity
-# if (length(v_mod_set_su) == 0) {
-#   mod_su_index_bestfit <- mods_su_sorted[1]
-#   v_mod_su_index       <- mod_su_index_bestfit - 1 
-# } else {
-#   mod_su_index_bestfit <- v_mod_set_su +1
-#   v_mod_su_index       <- v_mod_set_su
-# }
-# 
-# mod_su_bestfit <- mods_su[[mod_su_index_bestfit]]
-# mod_su_ranef   <- coef(mod_su_bestfit)
-# 
-# # Create prediction data frames for fire = 0 and fire = 1
-# df_su_pred <- data.frame(
-#   logsize_t0 = rep(seq(min(df_su$logsize_t0), max(df_su$logsize_t0), length.out = 100), 2),
-#   fire = rep(c(0, 1), each = 100)) %>%
-#   mutate(fire_label = ifelse(fire == 1, "Fire", "No fire"),
-#          survives = predict(mod_su_bestfit, newdata = ., type = "response"))
-# 
-# # Binned observed data for both fire levels
-# df_su_binned <- bind_rows(
-#   plot_binned_prop(filter(df_su, fire == 0), 10, logsize_t0, survives) %>%
-#     mutate(fire_label = "No fire"),
-#   plot_binned_prop(filter(df_su, fire == 1), 10, logsize_t0, survives) %>%
-#     mutate(fire_label = "Fire")
-# )
-# 
-# # Plot 1: Raw data + prediction lines
-# fig_su_line_combined <- ggplot() +
-#   geom_jitter(data = df_su, aes(x = logsize_t0, y = survives, color = fire_label),
-#               alpha = 0.25, width = 0.08, height = 0.3) +
-#   geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives, color = fire_label),
-#             linewidth = 0.9) +  
-#   scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
-#   theme_bw() +
-#   labs(title = NULL, x = 'Size at time t0 (log())', y = 'Survival to time t1') +
-#   theme(legend.position = "none")
-# 
-# # Plot 2: Binned proportions + prediction lines
-# fig_su_bin_combined <- ggplot() +
-#   geom_point(data = df_su_binned, aes(x = logsize_t0, y = survives, color = fire_label)) +
-#   geom_errorbar(data = df_su_binned, aes(x = logsize_t0, ymin = lwr, ymax = upr, color = fire_label),
-#                 width = 0.2) +
-#   geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives, color = fire_label),
-#             linewidth = 0.9) +
-#   scale_color_manual(values = c("No fire" = "black", "Fire" = "red")) +
-#   theme_bw() +
-#   ylim(0, 1) +
-#   labs(title = NULL, x = 'Size at time t0 (log())', y = 'Survival to time t1') +
-#   theme(legend.title = element_blank(), legend.position = "top")
-# 
-# # Combine the two plots
-# fig_su_all <- fig_su_line_combined + fig_su_bin_combined +
-#   plot_annotation(
-#     title = "Survival",
-#     subtitle = v_ggp_suffix,
-#     theme = theme(
-#       plot.title = element_text(size = 14, face = "bold"),
-#       plot.subtitle = element_text(size = 10, face = "italic"))
-#   )
-# 
-# fig_su_all
-# ggsave(file.path(dir_result, 'survival_by_size.png'), 
-#        plot = fig_su_all, width = 10, height = 5, dpi = 300)
-# 
-# 
+
+
+# Survival data ----------------------------------------------------------------
+df_su <- df %>%
+  filter(size_t0 != 0) %>%
+  mutate(dist_label = ifelse(disturbance == 1, "Disturbance", "No disturbance")) %>%
+   select(plant_id, year, size_t0, survives, size_t1,
+         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+         disturbance, dist_label)
+
+# Create binned summary using group_split()
+df_su_binned <- df_su %>%
+  group_split(dist_label) %>%
+  purrr::map_df(~ plot_binned_prop(.x, 10, logsize_t0, survives) %>%
+                  mutate(dist_label = unique(.x$dist_label)))
+
+fig_su_overall <- ggplot(df_su_binned, aes(x = logsize_t0, y = survives, color = dist_label)) +
+  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives, color = dist_label),
+              position = position_jitter(width = 0.1, height = 0.3), alpha = 0.1) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
+  scale_color_manual(values = c("No disturbance" = "black", "Disturbance" = "red")) +
+  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 8),
+    title = element_text(size = 10),
+    plot.subtitle = element_text(size = 8),
+    legend.title = element_blank(),
+    legend.position = "top"
+  ) +
+  labs(
+    title = "Survival",
+    subtitle = v_ggp_suffix,
+    x = expression('log(size)'[t0]),
+    y = "Survival Probability"
+  )
+
+fig_su_overall
+
+
+# Survival model ---------------------------------------------------------------
+# Logistic regression
+mod_su_0 <- glm(survives ~ disturbance,
+                data = df_su, family = 'binomial')
+# Logistic regression
+mod_su_1 <- glm(survives ~ logsize_t0 + disturbance,
+                data = df_su, family = 'binomial')
+# Quadratic logistic model
+mod_su_2 <- glm(survives ~ logsize_t0 + logsize_t0_2 + disturbance,
+                data = df_su, family = 'binomial')
+# Cubic logistic model
+mod_su_3 <- glm(survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance,
+                data = df_su, family = 'binomial')
+
+
+# Compare models using AIC
+mods_su      <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
+mods_su_dAIC <- AICtab(mods_su, weights = T, sort = F)$dAIC
+
+# Get the sorted indices of dAIC values
+mods_su_sorted <- order(mods_su_dAIC)
+
+# Establish the index of model complexity
+if (length(v_mod_set_su) == 0) {
+  mod_su_index_bestfit <- mods_su_sorted[1]
+  v_mod_su_index       <- mod_su_index_bestfit - 1
+} else {
+  mod_su_index_bestfit <- v_mod_set_su +1
+  v_mod_su_index       <- v_mod_set_su
+}
+
+mod_su_bestfit <- mods_su[[mod_su_index_bestfit]]
+mod_su_ranef   <- coef(mod_su_bestfit)
+
+# Create prediction data frames for disturbance = 0 and disturbance = 1
+df_su_pred <- data.frame(
+  logsize_t0 = rep(seq(min(df_su$logsize_t0), max(df_su$logsize_t0), length.out = 100), 2),
+  disturbance = rep(c(0, 1), each = 100)) %>%
+  mutate(fire_label = ifelse(disturbance == 1, "Disturbance", "No disturbance"),
+         survives = predict(mod_su_bestfit, newdata = ., type = "response"))
+
+# Binned observed data for both disturbance levels
+df_su_binned <- bind_rows(
+  plot_binned_prop(filter(df_su, disturbance == 0), 10, logsize_t0, survives) %>%
+    mutate(fire_label = "No disturbance"),
+  plot_binned_prop(filter(df_su, disturbance == 1), 10, logsize_t0, survives) %>%
+    mutate(fire_label = "Disturbance"))
+
+# Plot 1: Raw data + prediction lines
+fig_su_line_combined <- ggplot() +
+  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives, color = dist_label),
+              alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives, color = dist_label),
+            linewidth = 0.9) +
+  scale_color_manual(values = c("No disturbance" = "black", "Disturbance" = "red")) +
+  theme_bw() +
+  labs(title = NULL, x = 'Size at time t0 (log())', y = 'Survival to time t1') +
+  theme(legend.position = "none")
+
+# Plot 2: Binned proportions + prediction lines
+fig_su_bin_combined <- ggplot() +
+  geom_point(data = df_su_binned, aes(x = logsize_t0, y = survives, color = fire_label)) +
+  geom_errorbar(data = df_su_binned, aes(x = logsize_t0, ymin = lwr, ymax = upr, color = fire_label),
+                width = 0.2) +
+  geom_line(data = df_su_pred, aes(x = logsize_t0, y = survives, color = fire_label),
+            linewidth = 0.9) +
+  scale_color_manual(values = c("No disturbance" = "black", "Disturbance" = "red")) +
+  theme_bw() +
+  ylim(0, 1) +
+  labs(title = NULL, x = 'Size at time t0 (log())', y = 'Survival to time t1') +
+  theme(legend.title = element_blank(), legend.position = "top")
+
+# Combine the two plots
+fig_su_all <- fig_su_line_combined + fig_su_bin_combined +
+  plot_annotation(
+    title = "Survival",
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 10, face = "italic")))
+
+fig_su_all
+ggsave(file.path(dir_result, 'survival_by_size.png'),
+       plot = fig_su_all, width = 10, height = 5, dpi = 300)
+
+
 # # Growth data ------------------------------------------------------------------
 # df_gr <- df %>%
 #   filter(size_t0 != 0) %>%

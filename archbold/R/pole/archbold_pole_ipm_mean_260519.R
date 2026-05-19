@@ -4,11 +4,11 @@
 # Co    : Aspen Workman, Aldo Compagnoni*
 # Email : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2025.07.29
+# Date  : 2026.05.19
 
 # Study organism: Polygala lewtonii
-# Link: https://portal.edirepository.org/nis/mapbrowse?packageid=edi.318.1
-# Meta data link: https://portal.edirepository.org/nis/metadataviewer?packageid=edi.318.1
+# Link: 
+# Meta data link: 
 # Citing publication: https://doi.org/10.1071/BT11271
 # Time periode: 2001-2017
 
@@ -80,13 +80,29 @@ source('helper_functions/predictor_fun.R')
 
 
 # Data -------------------------------------------------------------------------
-df_og   <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_original.csv')))
-df_meta <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_meta.csv')))
-df      <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_workdata.csv')))
+df_og   <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_original_260519.csv')))
+df_site <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_sitehist_260519.csv')))
+
+df_meta <- data.frame(
+  variable    = c('unique_ID', 'quad', 'patch', 'year', 'month', 'date', 'qsurv', 'stg', 'ht', 'mcd', 'st', 'flst'),
+  description = c(
+    'Unique identifier for each individual plant; Numeric',
+    'Name of circular quadrat with radius of 0.25m; Numeric',
+    'Name of an aggregate of several quads; Numeric',
+    'Year data were collected; Numeric',
+    'Month data were collected for March, June, September, and December. April was also used in the first sampling; Numeric',
+    'Combination of year and month; MMYY',
+    'Quarterly survival code. 0 or 1 refer to survival from the previous quarter. If a plant was dropped from monitoring, survival is NA and these plants should NOT be considered dead. 0 = dead; 1 = alive; 2 = missing; 3 = new adult; 5 = seedling',
+    'Stage class from March census. If plant was a seedling during the previous year it is considered a seedling here. 1 = putative seedling; 2 = vegetative; 3 = reproductive adult',
+    'Height from March census in cm; Numeric',
+    'Maximum crown diameter from March census in cm; Numeric',
+    'Total number of stems; Numeric',
+    'Number of flowering stems; Numeric'),
+  stringsAsFactors = FALSE)
+
 
 
 # Double ID --------------------------------------------------------------------
-
 df %>%
   mutate(
     id_part1 = str_extract(id, "^([^_]+_[^_]+_[^_]+)"),
@@ -112,7 +128,7 @@ df %>%
     median_indivs    = median(n_individuals),
     nr_quad_above3   = sum( n_individuals <= 3),
     prop_quad_above3 = mean(n_individuals <= 3))
-  
+
 
 # Survival ---------------------------------------------------------------------
 df_su <- df %>% 
@@ -172,7 +188,7 @@ if (length(v_mod_set_su) == 0) {
 } else {
   mod_su_index_bestfit <- v_mod_set_su +1
   v_mod_su_index       <- v_mod_set_su
-  }
+}
 mod_su_bestfit       <- mods_su[[mod_su_index_bestfit]]
 mod_su_ranef         <- coef(mod_su_bestfit)
 

@@ -15,7 +15,7 @@ We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 # Packages
-packages <- c('tidyverse', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 'lme4')
+packages <- c('MASS', 'tidyverse', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 'lme4')
 lapply(packages, library, character.only = TRUE)
 
 
@@ -42,10 +42,10 @@ v_ggp_suffix    <- paste(
 
 
 # Models
-v_mod_set_gr <- c()
 v_mod_set_su <- c()
+v_mod_set_gr <- c()
 v_mod_set_fl <- c()
-
+v_mod_set_fr <- c()
 
 # Directory 
 dir_wd     <- file.path('C:', 'code', 'RUPDemo_IPMs')

@@ -60,7 +60,7 @@ Each year recorded in the dataset includes multiple months of observations per i
 
 **The treatment of fire exposure is still undecided as of** ***March 19, 2025*****.**
 
-```{r data mean original}
+```{r data mean original, message=FALSE, warning=FALSE}
 df_og_extended <- df_og %>%
   # Survival:
   #  is the plant not appearing but it is 3 years before latest record, then NA
@@ -102,19 +102,12 @@ Disclaimer: As of March 2025, we have not been in contact with the corresponding
 
 During our exploration of the dataset, we found that the survival variable was coded as a factor. In addition to the obvious values indicating survival (1) and non-survival (0), dataset includes values that we interpret as follows: birth (3), birth after fire exposure (5), and missing observations (6). We excluded the missing observations (6) from the dataset entirely. For the **survival** variable, we re-coded the birth entries (3 and 5), assigning a survival value of 1 if the individual survived and 0 if the individual did not survive.
 
-
-We took the alive column and transformed it into the survives witht the lead() function.
-
-
 The species is known to exhibit dormancy, and this is reflected in the dataset. The longest dormancy period recorded was 3 years. We included **dormancy** as a new variable in the dataset. However, it is important to note that for a 3-year period close to the beginning or end of the records, we cannot be certain of an individuals true birth or death. In these cases, the dormancy, survival, and birth variables were marked as NA.
 
 Additionally, we included the **size of individuals in the subsequent** year as a variable. In cases where dormancy was recorded, the size variable was marked as NA. Upon the conclusion of dormancy, the individual's size was recorded for the following year.
 
 For individuals whose true birth could be determined (i.e., those born at least 4 years after the start of the records), we classified them as **recruits** and included an **age** variable, which increased through periods of dormancy.
 
-**Disturbance** takes fire and any other measured disturbance to the plot into account with we got as an extra data set alongside its meta data.
-
-**Flower** is the maximum flower count provided by the authors.
 
 ```{r data mean updated}
 df <- df_og_extended %>%
@@ -219,34 +212,3 @@ skimr::skim(df)
 ```
 </details>
 
-
-## New data! 
-
-In the following we will explore the new, unreleased, extended data provided by the authors. 
-First we notice that the data format is different. We now have year to year data, instead of some complex monthly sencor. 
-
-The dataset includes a unique id for each plant and records from `site`, `mp` (macroplot), `quad` (circular quadrat), and `year` to identify where and when each observation was collected. It also includes survival and status variables such as `s` (survival code: 0 = dead or dormant, 1 = alive, 2 = missing, 3 = new adult, 5 = new seedling, 6 = dead/run over, 8= dormant), `alive` (alive or dead), and `stage` (life stage: 0=dead, 1=seedling, 2=vegetative and not flowering, 3=flowering), along with reproductive measures `maxbr`, `maxfl`, and `maxfr`, which capture the maximum number of branches, flowers, and fruits observed across the three sampling dates in a year.
-
-Yet again, this plant species looks at maximum branches in a year as the size measure and therefore is not a real continous measure. Which would make it more suitable for a MPM. Nevertheless, we will apply a IPM to this dataset.
-
-```{r}
-df_og <- read_delim("C:/code/RUPDemo_IPMs/archbold/data/crav/crotalaria_avonensis_data_v260515.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE)
-```
-
-
-We found 3 plant individuals that seem to never have been recorded alive. Their IDs are the following `517`, `902`, `922`
-
-```{r}
-df_og %>% 
-  filter(id %in% c(517, 902, 922))
-```
-
-## Disturbance
-A disturbance history table was created from the quadrat dataset by extracting all burn-related variables and converting them into a long-format structure using `pivot_longer()`. Each burn variable was mapped to its corresponding disturbance year (2005, 2015, 2016, 2017, 2018, 2021, 2022, and 2023), and quadrats with recorded disturbance values greater than zero were assigned a disturbance indicator of 1. The resulting table contains one row per disturbance event and quadrat combination, including the columns `site`, `mp`, `quad`, `year`, and `disturbance.`
-
-### Off-meta fire
-There is another fire record that is not mentioned in the meta sheet, i.e. `burn221`, most likely this is a fire in 2021. 
-
-
-## Work data frams
-The original demographic dataset was cleaned and standardized using `janitor::clean_names()`, after which several variables were renamed for clarity, including plant identity (`plant_id`), survival status (`survives`), and initial plant size (`size_t0`). Unique quadrat identifiers (`quad_id`) were created by combining site, macroplot, and quadrat information, and all grouping variables were converted to factors to facilitate downstream analyses. Records were then ordered chronologically by site, quadrat, plant, and year. For surviving individuals, subsequent-year size (`size_t1`) was generated by assigning the following year’s recorded size using `lead()`, while non-surviving individuals were assigned missing values. Recruitment status was derived from life stage and first observation year, with seedlings (`stage == 1)` and newly appearing individuals after the initial census period classified as recruits. Dormancy was defined for individuals recorded as alive but lacking size measurements, whereas individuals with measured size were considered non-dormant. A consecutive dormancy counter (`dormancy_count`) was additionally generated using lagged dormancy states to quantify repeated years of aboveground absence. Survival records from the final four years of the dataset were adjusted to missing values when plants were recorded as dead, thereby accounting for the possibility of unresolved dormancy rather than confirmed mortality. Plant size variables were log-transformed (`logsize_t0`, `logsize_t1`) and expanded into quadratic and cubic terms to support non-linear modeling of size-dependent demographic responses. Finally, the demographic dataset was joined with the quadrat-level disturbance history table using shared spatial and temporal identifiers (`site`, `mp`, `quad`, and `year`). Missing disturbance values were interpreted as undisturbed conditions and recoded to zero. The resulting dataset retained variables describing plant identity, survival, size, reproduction, recruitment, dormancy, and disturbance history for subsequent demographic analyses.

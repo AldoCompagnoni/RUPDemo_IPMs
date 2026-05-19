@@ -1,275 +1,26 @@
-# IPM mean with disturbance - Archbold -  - Crotalaria avonensis
+# Models {#models_n}
 
-# Author: Niklas Neisse*
-# Co    : Aspen Workman, Aldo Compagnoni*
-# Email : neisse.n@protonmail.com
-# Main  : aldo.compagnoni@idiv.de
-# Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2026.05.15 (y-m-d)
+For this IPM we will model the following processes:
 
+1. Survival (binmial)
+2. Growth
+3. Flowering (binomial)
+4. Fruiting (negative binomial)
+5. Recruits (negative binomial)
 
-# Website    : 
-# Publication: https://bioone.org/journals/southeastern-naturalist/volume-15/issue-3/058.015.0318/Ecology-and-Conservation-of-the-Endangered-Legume-Crotalaria-avonensis-in/10.1656/058.015.0318.short
+## Survival
 
-# rm(list = ls())
-
-
-# Setting the stage ------------------------------------------------------------
-# Remove all objects in the global environment
-# rm(list = ls()) 
-# Set seed for reproducibility
-set.seed(100)
-options(stringsAsFactors = F)
-
-
-# Packages ---------------------------------------------------------------------
-# load packages
-source('helper_functions/load_packages.R')
-load_packages(
-  # negative binomial modeling
-  MASS,
-  # load tidyverse after MASS to not mask the select function
-  tidyverse,
-  # bbmle is for AICctab
-  bbmle,
-  # patchwork plot alingment
-  patchwork,
-  # binom.cofint for the survival plot
-  binom,
-  skimr,
-  lubridate) # , skimr, ipmr, binom, janitor, lme4
-
-
-# Specification ----------------------------------------------------------------
-# Define head-directory 
-v_head <- c('archbold')
-# Define species
-v_species <- c('Crotalaria avonensis')
-# Customized delimiter for `read_delim` function, comma is predefined
-v_custom_delimiter <- c()
-
-# Create a unique species abbreviation for file naming
-v_sp_abb  <- tolower(
-  gsub(' ', '', paste(
-    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
-
-# Define script prefix
-v_script_prefix <- str_c(v_head)
-
-# Plot subtitle
-v_ggp_suffix    <- paste(
-  tools::toTitleCase(v_head), '-', v_species)
-
-# Models
-v_mod_set_gr <- c()
-# fig_gr
-v_mod_set_su <- c()
-# fig_su
-v_mod_set_fl <- c()
-# fig_fl
-v_mod_set_fr <- c()
-
-
-# Directory --------------------------------------------------------------------
-dir_pub    <- file.path(paste0(v_head))
-dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
-dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
-dir_result <- file.path(dir_pub, 'results', v_sp_abb)
-
-if (!dir.exists(paste0(dir_pub, '/R'))) {
-  dir.create(paste0(dir_pub, '/R'))}
-if (!dir.exists(paste0(dir_pub, '/data'))) {
-  dir.create(paste0(dir_pub, '/data'))}
-if (!dir.exists(paste0(dir_pub, '/results'))) {
-  dir.create(paste0(dir_pub, '/results'))}
-
-if (!dir.exists(dir_R     )) {dir.create(dir_R     )}
-if (!dir.exists(dir_data  )) {dir.create(dir_data  )}
-if (!dir.exists(dir_result)) {dir.create(dir_result)}
-
-
-# Functions --------------------------------------------------------------------
-# function to plot your survival data 'binned' (instead of 'jittered')
-source('helper_functions/plot_binned_prop.R')
-source('helper_functions/line_color_pred_fun.R')
-source('helper_functions/predictor_fun.R')
-
-
-# Data -------------------------------------------------------------------------
-df_og <- read_delim(
-  file.path(dir_data, 'crotalaria_avonensis_data_v260515.csv'),
-  delim = ';', escape_double = FALSE, trim_ws = TRUE)
-
-df_meta <- data.frame(variable = colnames(df_og)) %>% 
-  mutate(definition = c(
-    'Unique identifier for each plant',
-    'site # with the Carter Creek population',
-    "macro plot #. Typically 5 quads per macroplot, and 3 mp's per site",	
-    'Circular quadrat number, 0.5m diameter',
-    'Year data were collected',
-    'Survival code	0 = dead or dormant, 1 = alive, 2 = missing, 3 = new adult, 5 = new seedling, 6 = dead/run over, 8= dormant',
-    'Whether plant was alive or not	0=dead, 1=alive',
-    'Stage class	0=dead, 1=seedling, 2=vegetative and not flowering, 3=flowering',
-    'Maximum number of branches observed at one of 3 time points (Feb, Apr, Jun)',
-    'Maximum number of flowers observed at one of 3 time points (Feb, Apr, Jun)',
-    'Maximum number of fruits (developing or ripe) observed at one of 3 time points (Feb, Apr, Jun)'))
-
-df_og_quad <- read_delim(
-  file.path(dir_data, 'crotalaria_avonensis_data_quad_v260515.csv'),
-  delim = ';', escape_double = FALSE, trim_ws = TRUE)
-
-df_disturbance <- df_og_quad %>%
-    # keep only ID columns + burn columns
-  select(site, mp, quad,
-         burn221, burn1222, burn0123, burn05, burn2014_2015, burn2016,
-         burn0217, burnoct2017, burnjun2018) %>%
-  pivot_longer(
-    cols = starts_with('burn'), names_to = 'burn_event', values_to = 'value') %>%
-  mutate(
-    disturbance = case_when(
-      is.na(value) ~ 0,
-      value == FALSE ~ 0,
-      value == TRUE ~ 1,
-      suppressWarnings(as.numeric(value)) > 0 ~ 1,
-      TRUE ~ 0)) %>%
-  filter(disturbance == 1) %>%
-  # assign actual years
-  mutate(
-    year = case_when(
-      burn_event == 'burn221' ~ 2021,
-      burn_event == 'burn1222' ~ 2022,
-      burn_event == 'burn0123' ~ 2023,
-      burn_event == 'burn05' ~ 2005,
-      burn_event == 'burn2014_2015' ~ 2015,
-      burn_event == 'burn2016' ~ 2016,
-      burn_event == 'burn0217' ~ 2017,
-      burn_event == 'burnoct2017' ~ 2017,
-      burn_event == 'burnjun2018' ~ 2018),
-    disturbance = 1) %>%
-  mutate(site = as.factor(site),
-         mp   = as.factor(mp),
-         quad = as.factor(quad)) %>%
-  # final columns
-  select(site, mp, quad, year, disturbance) %>%
-  distinct() %>%
-  arrange(site, mp, quad, year)
-  
-
-# Mean data frame --------------------------------------------------------------
-df <- df_og %>% 
-  janitor::clean_names() %>%  
-  rename(plant_id = id,
-         size_t0  = maxbr,
-         flower   = maxfl,
-         fruit    = maxfr) %>% 
-  mutate(
-    plant_id = as.factor(plant_id),
-    quad_id  = as.factor(paste(site, mp, quad, sep = '_')),
-    site     = as.factor(site),
-    quad     = as.factor(quad),
-    mp       = as.factor(mp)) %>%
-  arrange(site, quad, quad_id, plant_id, year) %>%
-  
-  # Survival
-  group_by(plant_id) %>% 
-  mutate(survives = lead(alive)) %>% 
-  ungroup %>% 
-  
-  # Growth based on survival; propagate size_t0 if survives, otherwise set to NA
-  group_by(plant_id) %>%
-  mutate(
-    size_t1 = case_when(
-      survives == 1 ~ lead(size_t0), 
-      TRUE          ~ NA_real_)) %>%
-  ungroup() %>% 
-  
-  # Recruits
-  mutate(
-    latest_alive_date      = max(year[(s > 0 & s != 2 & s < 6)], na.rm = TRUE),
-    earliest_recorded_date = min(year[(s > 0 & s != 2 | 6)]    , na.rm = TRUE)) %>%
-  mutate(
-    recruit = case_when(
-      stage == 1 ~ 1,
-      year  == earliest_recorded_date & year(earliest_recorded_date) > 1999 + 4 ~ 1,
-      TRUE ~ NA_real_)) %>% 
-  
-  # Dormancy
-  mutate(
-    dormancy = case_when(
-      survives == 1 & is.na(size_t0)              ~ 1,
-      size_t0  >  0 & !is.na(survives)            ~ 0,
-      survives == 0 & year <= max(df_og$year) - 4 ~ 0, 
-      TRUE                                        ~ NA_real_ ),
-    # Generate a new column 'dormancy_count' that counts consecutive 1s
-    dormancy_count = case_when(
-      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 & 
-        lag(dormancy, 3) == 1 & lag(dormancy, 4) == 1 & lag(dormancy, 5) == 1 ~ 6,
-      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 
-      & lag(dormancy, 3) == 1 & lag(dormancy, 4) == 1                         ~ 5,
-      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1 
-      & lag(dormancy, 3) == 1                                                 ~ 4,
-      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 1           ~ 3,
-      dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 0           ~ 2,
-      dormancy == 1                                                           ~ 1,
-      TRUE ~ dormancy)) %>%
-  # adjust the survival for potential dormancy
-  mutate(survives = if_else(survives == 0 & year > max(df_og$year) - 4, NA, survives)) %>%
-  
-    # Log-transformed sizes
-  mutate(
-    logsize_t0   = log(size_t0),     
-    logsize_t1   = log(size_t1),    
-    logsize_t0_2 = logsize_t0^2,     
-    logsize_t0_3 = logsize_t0^3) %>% 
-  
-  # Disturbance form the quad data
-  full_join(df_disturbance, by = c('site', 'mp', 'quad', 'year')) %>%
-  mutate(disturbance = ifelse(is.na(disturbance), 0, disturbance)) %>% 
-  
-  select(site, mp, quad, quad_id, plant_id, year, 
-         s, survives, size_t0, size_t1, 
-         logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
-         flower, fruit, recruit, dormancy, disturbance)
-
-
-# Survival data ----------------------------------------------------------------
+```{r su_data}
 df_su <- df %>%
   filter(size_t0 != 0) %>%
   mutate(dist_label = ifelse(disturbance == 1, 'Disturbance', 'No disturbance')) %>%
    select(plant_id, year, size_t0, survives, size_t1,
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
          disturbance, dist_label)
-
-# Create binned summary using group_split()
-df_su_binned <- df_su %>%
-  group_split(dist_label) %>%
-  purrr::map_df(~ plot_binned_prop(.x, 10, logsize_t0, survives) %>%
-                  mutate(dist_label = unique(.x$dist_label)))
-
-fig_su_overall <- ggplot(df_su_binned, aes(x = logsize_t0, y = survives, color = dist_label)) +
-  geom_jitter(data = df_su, aes(x = logsize_t0, y = survives, color = dist_label),
-              position = position_jitter(width = 0.1, height = 0.3), alpha = 0.1) +
-  geom_point(size = 2) +
-  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
-  scale_color_manual(values = c('No disturbance' = 'black', 'Disturbance' = 'red')) +
-  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
-  theme_bw() +
-  theme(
-    axis.text = element_text(size = 8),
-    title = element_text(size = 10),
-    plot.subtitle = element_text(size = 8),
-    legend.title = element_blank(),
-    legend.position = 'top') +
-  labs(
-    title = 'Survival',
-    subtitle = v_ggp_suffix,
-    x = expression('log(size)'[t0]),
-    y = 'Survival Probability')
-
-fig_su_overall
+```
 
 
-# Survival model ---------------------------------------------------------------
+```{r su_model}
 # Logistic regression
 mod_su_0 <- glm(survives ~ disturbance,
                 data = df_su, family = 'binomial')
@@ -302,7 +53,9 @@ if (length(v_mod_set_su) == 0) {
 
 mod_su_bestfit <- mods_su[[mod_su_index_bestfit]]
 mod_su_ranef   <- coef(mod_su_bestfit)
+```
 
+```{r su_predictions}
 # Create prediction data frames for disturbance = 0 and disturbance = 1
 df_su_pred <- data.frame(
   logsize_t0 = rep(seq(min(df_su$logsize_t0), max(df_su$logsize_t0), length.out = 100), 2),
@@ -316,7 +69,9 @@ df_su_binned <- bind_rows(
     mutate(dist_label = 'No disturbance'),
   plot_binned_prop(filter(df_su, disturbance == 1), 10, logsize_t0, survives) %>%
     mutate(dist_label = 'Disturbance'))
+```
 
+```{r su_plot, warning=FALSE}
 # Plot 1: Raw data + prediction lines
 fig_su_line_combined <- ggplot() +
   geom_jitter(data = df_su, aes(x = logsize_t0, y = survives, color = dist_label),
@@ -351,11 +106,10 @@ fig_su_all <- fig_su_line_combined + fig_su_bin_combined +
       plot.subtitle = element_text(size = 10, face = 'italic')))
 
 fig_su_all
-# ggsave(file.path(dir_result, 'survival_by_size.png'),
-#        plot = fig_su_all, width = 10, height = 5, dpi = 300)
+```
 
-
-# Growth data ------------------------------------------------------------------
+## Growth
+```{r gr_data}
 df_gr <- df %>%
   filter(size_t0 != 0,
          is.finite(logsize_t1)) %>%
@@ -363,27 +117,9 @@ df_gr <- df %>%
   select(plant_id, year, size_t0, size_t1,
          logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
          disturbance, dist_label)
+```
 
-fig_gr_overall <- ggplot(df_gr, aes(x = logsize_t0, y = logsize_t1, color = dist_label)) +
-  geom_point(alpha = 0.5, size = 0.7) +
-  scale_color_manual(values = c('No disturbance' = 'black', 'disturbance' = 'red')) +
-  theme_bw() +
-  theme(
-    axis.text       = element_text(size = 8),
-    title           = element_text(size = 10),
-    plot.subtitle   = element_text(size = 8),
-    legend.title    = element_blank(),
-    legend.position = 'top') +
-  labs(
-    title    = 'Growth',
-    subtitle = v_ggp_suffix,
-    x        = expression('log(size)'[t0]),
-    y        = expression('log(size)'[t1]))
-
-fig_gr_overall
-
-
-# Growth model -----------------------------------------------------------------
+```{r gr_model}
 # Intercept model
 mod_gr_0 <- lm(logsize_t1 ~ disturbance,
                data = df_gr, na.action = na.omit)
@@ -414,7 +150,9 @@ if (length(v_mod_set_gr) == 0) {
 
 mod_gr_bestfit         <- mods_gr[[mod_gr_index_bestfit]]
 mod_gr_ranef           <- coef(mod_gr_bestfit)
+```
 
+```{r gr_preditions}
 # Create prediction data for disturbance = 0 and disturbance = 1
 df_gr_pred <- data.frame(
   logsize_t0 = rep(seq(min(df_gr$logsize_t0, na.rm = TRUE),
@@ -427,7 +165,9 @@ df_gr_pred <- df_gr_pred %>%
          dist_label   = ifelse(disturbance == 1, 'disturbance', 'No disturbance'))
 
 df_gr_pred$logsize_t1 <- predict(mod_gr_bestfit, newdata = df_gr_pred)
+```
 
+```{r gr_plot}
 # Plot 1: Observed points + prediction lines
 fig_gr_line_combined <- ggplot(df_gr, aes(x = logsize_t0, y = logsize_t1, color = dist_label)) +
   geom_point(alpha = 0.4, size = 0.8) +
@@ -467,11 +207,12 @@ fig_gr_all_combined <- fig_gr_line_combined + fig_gr_pred_combined +
       plot.subtitle = element_text(size = 10, face = 'italic')))
 
 fig_gr_all_combined
-# ggsave(file.path(dir_result, 'growth_by_size.png'),
-#        plot = fig_gr_all_combined, width = 10, height = 5, dpi = 300)
+```
 
 
-# Growth variance --------------------------------------------------------------
+### Growth variance
+
+```{r gr_variance}
 # Fitted values from growth model
 mod_gr_x   <- fitted(mod_gr_bestfit)
 # Squared residuals
@@ -480,9 +221,11 @@ mod_gr_y   <- resid(mod_gr_bestfit)^2
 mod_gr_var <- nls(
   mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
   control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE))
+```
 
 
-# Flowering data ----------------------------------------------------------------
+## Flowering
+```{r fl_data}
 df_fl <- df %>%
   filter(!is.na(flower), is.finite(logsize_t0), 
          !is.na(disturbance) & !is.na(size_t0) & !is.na(survives)) %>%
@@ -491,41 +234,9 @@ df_fl <- df %>%
   mutate(
     flower = if_else(flower > 0, 1, flower),
     dist_label = if_else(disturbance == 1, 'disturbance', 'No disturbance'))
+```
 
-# Create binned flowering probability by disturbance group
-df_fl_binned <- df_fl %>%
-  filter(!is.na(disturbance) & !is.na(size_t0)) %>%
-  group_split(dist_label) %>%
-  map_df(~ plot_binned_prop(.x, 10, logsize_t0, flower) %>%
-           mutate(dist_label = unique(.x$dist_label)))
-
-# Plot overlapped flowering probability
-fig_fl_overall <- ggplot(df_fl_binned, aes(x = logsize_t0, y = flower, color = dist_label)) +
-  geom_jitter(
-    data = df_fl,
-    aes(x = logsize_t0, y = flower, color = dist_label),
-    position = position_jitter(width = 0.1, height = 0.3),
-    alpha = 0.1) +
-  geom_point(size = 2) +
-  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
-  scale_color_manual(values = c('No disturbance' = 'black', 'disturbance' = 'red')) +
-  theme_bw() +
-  theme(
-    axis.text = element_text(size = 8),
-    title = element_text(size = 10),
-    plot.subtitle = element_text(size = 8),
-    legend.title = element_blank(),
-    legend.position = 'top') +
-  labs(
-    title = 'Flowering probability by disturbance status',
-    subtitle = v_ggp_suffix,
-    x = expression('log(size)'[t0]),
-    y = 'Flowering Probability')
-
-fig_fl_overall
-
-
-# Flower model -----------------------------------------------------------------
+```{r fl_model}
 # Logistic regression
 mod_fl_0 <- glm(flower ~ disturbance,
                 data = df_fl, family = 'binomial')
@@ -557,7 +268,9 @@ if (length(v_mod_set_fl) == 0) {
 
 mod_fl_bestfit <- mods_fl[[mod_fl_index_bestfit]]
 mod_fl_ranef   <- coef(mod_fl_bestfit)
+```
 
+```{r fl_predictions}
 # Create prediction data frames for disturbance = 0 and disturbance = 1
 df_fl_pred_0 <- data.frame(
   logsize_t0 = seq(
@@ -585,7 +298,9 @@ df_fl_binned <- bind_rows(
     mutate(dist_label = 'No disturbance'),
   plot_binned_prop(filter(df_fl, disturbance == 1), 10, logsize_t0, flower) %>%
     mutate(dist_label = 'disturbance'))
+```
 
+```{r fl_plot}
 # Plot 1: Raw jitter + prediction lines
 fig_fl_line_combined <- ggplot() +
   geom_jitter(data = df_fl, aes(x = logsize_t0, y = flower, color = dist_label),
@@ -620,21 +335,25 @@ fig_fl_all <- fig_fl_line_combined + fig_fl_bin_combined +
       plot.subtitle = element_text(size = 10, face = 'italic')))
 
 fig_fl_all
-# ggsave(file.path(dir_result, 'flowering_by_size.png'), 
-#        plot = fig_fl_all, width = 10, height = 5, dpi = 300)
+```
 
 
-# Fruit data -------------------------------------------------------------------
+## Fruiting
+
+```{r fr_data}
 df_fr <- df %>%
   filter(is.finite(fruit), is.finite(logsize_t0))
+```
 
-# Variance > Mean (especially > 1.5× or 2×) -> Overdispersed -> negative binomial
-# Variance = Mean                                            -> Poisson
+### Fruiting disperion
+Variance > Mean (especially > 1.5× or 2×) -> Overdispersed -> negative binomial
+Variance = Mean                                            -> Poisson
+```{r fr_dispertion}
 mean(df_fr$fruit)
 var(df_fr$fruit)
+```
 
-
-# Fruit model ------------------------------------------------------------------
+```{r fr_model}
 fr_mod_f0 <- glm.nb(fruit ~ disturbance, data = df_fr)
 fr_mod_1  <- glm.nb(fruit ~ logsize_t0, data = df_fr)
 fr_mod_f1 <- glm.nb(fruit ~ logsize_t0 + disturbance, data = df_fr)
@@ -658,7 +377,9 @@ if (length(v_mod_set_fr) == 0) {
 
 fr_mod_best  <- fr_mods[[fr_mod_i_best]]
 fr_mod_ranef <- coef(fr_mod_best)
+```
 
+```{r fr_predictions}
 # Prediction data for disturbance = 0
 df_pred_0 <- data.frame(
   logsize_t0  = seq(
@@ -675,7 +396,9 @@ df_pred_1 <- data.frame(
 df_pred_1$logsize_t0_2 <- df_pred_1$logsize_t0^2
 df_pred_1$pred         <- predict(fr_mod_best, newdata = df_pred_1, type = 'response')
 
-# Plot
+```
+
+```{r fr_plot}
 fig_fr <- ggplot(df_fr, aes(x = logsize_t0, y = fruit)) +
   geom_point(alpha = 0.3, size = 1) +
   geom_line(data = df_pred_0, aes(x = logsize_t0, y = pred),
@@ -691,12 +414,11 @@ fig_fr <- ggplot(df_fr, aes(x = logsize_t0, y = fruit)) +
   annotate('text', x = Inf, y = Inf, label = 'Solid = no disturbance; Dashed = disturbance',
            hjust = 1.1, vjust = 1.5, size = 3, color = 'gray40')
 fig_fr
-
-# ggsave(file.path(dir_result, 'fruits_by_size.png'), 
-#        plot = fig_fr, width = 10, height = 5, dpi = 300)
+```
 
 
-# Fruit to recruit -------------------------------------------------------------
+## Fruit to recruit transition
+```{r f2r_data}
 repr_pc_by_year <- {
   fruit_by_year <- df %>%
     filter(!is.na(fruit)) %>%
@@ -713,19 +435,24 @@ repr_pc_by_year <- {
     left_join(fruit_by_year, by = 'year') %>%
     mutate(repr_pc_mean = n_recruits / total_fruit)
 }
+```
+
+```{r f2r_coefficient}
+repr_pc_mean   <- mean(  repr_pc_by_year$repr_pc_mean, na.rm = T)
+repr_pc_median <- median(repr_pc_by_year$repr_pc_mean, na.rm = T)
 
 repr_pc_by_year %>%
   summarise(mean(repr_pc_mean),
             sd  (repr_pc_mean),
             median(repr_pc_mean))
-
-hist(repr_pc_by_year$repr_pc_mean)
-
-repr_pc_mean   <- mean(  repr_pc_by_year$repr_pc_mean, na.rm = T)
-repr_pc_median <- median(repr_pc_by_year$repr_pc_mean, na.rm = T)
+```
 
 
-# Recruitment data -------------------------------------------------------------
+## Recruits
+
+*** NEEDS WORK AND SUPERVISION ***
+
+```{r re_data}
 df_re <- df %>%
   group_by(year, site, quad_id) %>%
   summarise(disturbance = if_else(max(disturbance, na.rm = TRUE) == 1, 1, 0),
@@ -747,7 +474,9 @@ df_re <- df %>%
 
     left_join(df_cover, df_re, by = c('year', 'site', 'quad_id'))
   }
+```
 
+```{r re_plot}
 ggplot(
   df_re, aes(x = tot_p_area, y = nr_quad, colour = as.factor(disturbance))) +
   geom_point(alpha = 0.5, pch = 16, size = 1) +
@@ -758,36 +487,10 @@ ggplot(
        y        = expression('Number of recruits '     [t1]),
        colour   = expression('Disturbance')) +
   theme(plot.subtitle = element_text(size = 8))
+```
 
-# Density dependency
-df_re_qd <- df %>%
-  group_by(site, quad_id, year) %>%
-  dplyr::select(recruit) %>%
-  summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
-  left_join(df %>%
-              group_by(site, quad_id, year) %>%
-              summarise(nr_ind = sum(!is.na(size_t0)),
-                        disturbance = as.factor(
-                          if_else(max(disturbance, na.rm = TRUE) == 1, 1, 0))) %>%
-              mutate(year = year - 1),
-            by = c('site', 'quad_id', 'year'))
-
-fig_re_dens <- ggplot(data = df_re_qd) +
-  geom_jitter(aes(y = rec_qd_t1, x = nr_ind, color = disturbance)) +
-  geom_smooth(aes(y = rec_qd_t1, x = nr_ind, color = disturbance), method = 'lm') +
-  theme_bw() +
-  labs(title    = 'Recruitment - desity dependence: Quad level',
-       subtitle = v_ggp_suffix,
-       x        = expression('Total parent plant area '[t0]),
-       y        = expression('Number of recruits '     [t1])) +
-  theme(plot.subtitle = element_text(size = 8))
-fig_re_dens
-
-# ggsave(file.path(dir_result, 'mean_rec_density_dependency.png'), 
-#        plot = fig_re_dens, width = 10, height = 5, dpi = 300)
-
-
-# Recruitment model ------------------------------------------------------------
+**
+```{r re_model n predictions}
 df_re_mod <- df_re %>% filter(!is.na(nr_quad))
 # Fit a negative binomial model for recruitment
 mod_rec <- MASS::glm.nb(nr_quad ~ disturbance, data = df_re_mod)
@@ -795,9 +498,11 @@ mod_rec <- MASS::glm.nb(nr_quad ~ disturbance, data = df_re_mod)
 # Generate predictions for recruitment
 df_re_mod <- df_re_mod %>%
   mutate(mod_pred = predict(mod_rec, type = 'response'))
+```
 
+### Per-capita reproduction
 
-# Per-capita reproduction ------------------------------------------------------
+```{r re_pc}
 df_repr_pc <- df %>%
   filter(!is.na(size_t0)) %>%
   summarize(n_adults = n()) %>%
@@ -809,51 +514,38 @@ df_repr_pc <- df %>%
     repr_pc_mean = mod_pred / n_adults,
     repr_pc_obs = nr_quad / n_adults) %>%
   drop_na()
-
-# overall level
-df %>%
-  filter(!is.na(size_t0)) %>%
-  summarize(n_adults = n()) %>%
-  bind_cols(df %>%
-              filter(!is.na(recruit)) %>%
-              summarize(n_rec = n())) %>%
-  mutate(rp_pc_m = n_rec / n_adults)
+```
 
 
-# site level
-df %>%
-  filter(!is.na(size_t0)) %>%
-  group_by(site) %>%
-  summarize(n_adults = n()) %>%
+### Recruitment: Density dependency
+```{r re_dd_data}
+df_re_qd <- df %>%
+  group_by(site, quad_id, year) %>%
+  dplyr::select(recruit) %>%
+  summarise(rec_qd_t1 = sum(recruit, na.rm = T)) %>%
   left_join(df %>%
-              filter(!is.na(recruit)) %>%
-              group_by(site) %>%
-              summarize(n_rec = n()),
-            by = 'site') %>%
-  mutate(n_rec = ifelse(is.na(n_rec), 0, n_rec)) %>%
-  mutate(repr_pc_mean = n_rec / n_adults) %>%
-  summarise(n_adults = sum(n_adults),
-            n_rec    = sum(n_rec),
-            rp_pc_m  = mean(repr_pc_mean))
+              group_by(site, quad_id, year) %>%
+              summarise(nr_ind = sum(!is.na(size_t0)),
+                        disturbance = as.factor(
+                          if_else(max(disturbance, na.rm = TRUE) == 1, 1, 0))) %>%
+              mutate(year = year - 1),
+            by = c('site', 'quad_id', 'year'))
+```
+```{r}
+fig_re_dens <- ggplot(data = df_re_qd) +
+  geom_jitter(aes(y = rec_qd_t1, x = nr_ind, color = disturbance)) +
+  geom_smooth(aes(y = rec_qd_t1, x = nr_ind, color = disturbance), method = 'lm') +
+  theme_bw() +
+  labs(title    = 'Recruitment - desity dependence: Quad level',
+       subtitle = v_ggp_suffix,
+       x        = expression('Total parent plant area '[t0]),
+       y        = expression('Number of recruits '     [t1])) +
+  theme(plot.subtitle = element_text(size = 8))
+fig_re_dens
+```
 
-# quad level
-df %>%
-  filter(!is.na(size_t0)) %>%
-  group_by(quad_id) %>%
-  summarize(n_adults = n()) %>%
-  left_join(df %>%
-              filter(!is.na(recruit)) %>%
-              group_by(quad_id) %>%
-              summarize(n_rec = n()),
-            by = 'quad_id') %>%
-  mutate(n_rec = ifelse(is.na(n_rec), 0, n_rec)) %>%
-  mutate(repr_pc_mean = n_rec / n_adults) %>%
-  summarise(n_adults = sum(n_adults),
-            n_rec    = sum(n_rec),
-            rp_pc_m  = mean(repr_pc_mean))
-
-
-# Extracting parameter estimates -----------------------------------------------
+## Extracting parameter estimates
+```{r parameter}
 # Survival
 coef_su_fe  <- data.frame(coefficient = names(coef(mod_su_bestfit)),
                           value       =       coef(mod_su_bestfit))
@@ -942,9 +634,13 @@ pars <- Filter(function(x) length(x) > 0, list(
   mod_su_index = v_mod_su_index,
   mod_gr_index = v_mod_gr_index,
   mod_gr_index = v_mod_fl_index))
+```
 
 
-# Building the IPM -------------------------------------------------------------
+## IPM building
+
+### Functions
+```{r}
 # Function describing the invert logit
 inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 
@@ -1019,7 +715,11 @@ fyx <- function(y, x, pars) {
     pars$fecu_b0 *
     re_y_dist(y, pars)
 }
+```
 
+
+### Kernel
+```{r}
 # Kernel
 kernel <- function(pars) {
 
@@ -1075,11 +775,17 @@ kernel <- function(pars) {
 lambda_ipm <- function(i) {
   return(Re(eigen(kernel(i)$k_yx)$value[1]))
 }
+```
 
-# mean population growth rate
+### Lambda
+#### Mean population growth rate
+```{r mpgr}
 lam_mean <- lambda_ipm(pars)
 lam_mean
+```
 
+### Expected growth under disturbance regime (mean exposure per year)
+```{r mpgr_disturbance}
 # Build no-disturbance version of parameters
 pars_no_disturbance <- pars
 pars_no_disturbance$surv_b0 <- pars$surv_b0 + pars$surv_bf * 0
@@ -1111,8 +817,10 @@ p_disturbance2 <- df %>%
 lam_avg <- (1 - p_disturbance2) * lam_nodisturbance + p_disturbance2 * lam_disturbance
 lam_avg 
 
+```
 
-# Observed population growth ---------------------------------------------------
+#### Observed population growth
+```{r opg}
 df_counts_year <- df %>%
   group_by(year) %>%
   filter(!is.na(size_t0)) %>%
@@ -1122,3 +830,5 @@ df_counts_year <- df %>%
 lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
 lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
 lam_obs_mean
+```
+

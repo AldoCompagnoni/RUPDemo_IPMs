@@ -2,11 +2,11 @@
 
 For this IPM we will model the following processes:
 
-1. Growth
-2. Survival (binmial)
-3. Recruits (negative binomial)
-1. Fruiting (negative binomial)
-2. Flowering (binomial)
+1. Survival (binmial)
+2. Growth
+3. Flowering (binomial)
+4. Fruiting (negative binomial)
+5. Recruits (negative binomial)
 
 ## Data preparation
 ### Survival 

@@ -4,7 +4,7 @@
 # Co    : Aspen Workman, Aldo Compagnoni*
 # Email : aldo.compagnoni@idiv.de
 # Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2026.05.19
+# Date  : 2026.05.20
 
 # Study organism: Polygala lewtonii
 # Link: 
@@ -101,8 +101,9 @@ df_meta <- data.frame(
     'Number of flowering stems; Numeric'),
   stringsAsFactors = FALSE)
 
-df <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_workdata_260519.csv')))
-
+df <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_workdata_260519.csv'))) %>% 
+  # Define Disturbance
+  mutate(disturbance = as.factor(if_else(burn_mean > 0, 1, 0)))
 
 
 # Variability in the number of individuals per quadrats ------------------------
@@ -128,41 +129,21 @@ df_su <- df %>%
   dplyr::select(id, year, size_t0, survives, size_t1, 
                 logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
                 volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
-                stage, recruits)
-
-fig_su_raw <- ggplot(
-  data = plot_binned_prop(df_su, 10, logvol_t0, survives)) +
-  geom_jitter(data = df_su, aes(x = logvol_t0, y = survives), 
-              position = position_jitter(width = 0.1, height = 0.3)
-              , alpha = .1) +
-  geom_point(aes(x = logvol_t0, y = survives),
-             alpha = 1, pch = 16, color = 'red') +
-  geom_errorbar(aes(x = logvol_t0, ymin = lwr, ymax = upr),
-                linewidth = 0.5, width = 0.5) +
-  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
-  theme_bw() +
-  theme(axis.text = element_text(size = 8),
-        title = element_text(size = 10),
-        plot.subtitle = element_text(size = 8)) +
-  labs(title = 'Survival',
-       subtitle = v_ggp_suffix,
-       x = expression('log(volume)'[t0]),
-       y = expression('Survival to time t1'))
-fig_su_raw
+                disturbance, stage, recruits)
 
 
 # Survival model ---------------------------------------------------------------
-mod_su_0  <- glm(survives ~ 1, data = df_su, family = 'binomial') 
-mod_su_1  <- glm(survives ~ logvol_t0, data = df_su, family = 'binomial') 
-mod_su_2  <- glm(survives ~ logvol_t0 + logvol_t0_2, data = df_su, family = 'binomial')  
-mod_su_3  <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_su, family = 'binomial')  
-mod_su_01 <- glm(survives ~ recruits, data = df_su, family = 'binomial')
-mod_su_11 <- glm(survives ~ logvol_t0 + recruits, data = df_su, family = 'binomial')
-mod_su_21 <- glm(survives ~ logvol_t0 + logvol_t0_2 + recruits, data = df_su, family = 'binomial')  
-mod_su_31 <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + recruits, data = df_su, family = 'binomial')
-mod_su_12 <- glm(survives ~ logvol_t0 * recruits, data = df_su, family = 'binomial')
-mod_su_22 <- glm(survives ~ logvol_t0 * recruits + logvol_t0_2:recruits, data = df_su, family = 'binomial')  
-mod_su_32 <- glm(survives ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits, data = df_su, family = 'binomial')
+mod_su_0  <- glm(survives ~ disturbance, data = df_su, family = 'binomial') 
+mod_su_1  <- glm(survives ~ logvol_t0 + disturbance, data = df_su, family = 'binomial') 
+mod_su_2  <- glm(survives ~ logvol_t0 + logvol_t0_2 + disturbance, data = df_su, family = 'binomial')  
+mod_su_3  <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + disturbance, data = df_su, family = 'binomial')  
+mod_su_01 <- glm(survives ~ recruits + disturbance, data = df_su, family = 'binomial')
+mod_su_11 <- glm(survives ~ logvol_t0 + recruits + disturbance, data = df_su, family = 'binomial')
+mod_su_21 <- glm(survives ~ logvol_t0 + logvol_t0_2 + recruits + disturbance, data = df_su, family = 'binomial')  
+mod_su_31 <- glm(survives ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + recruits + disturbance, data = df_su, family = 'binomial')
+mod_su_12 <- glm(survives ~ logvol_t0 * recruits + disturbance, data = df_su, family = 'binomial')
+mod_su_22 <- glm(survives ~ logvol_t0 * recruits + logvol_t0_2:recruits + disturbance, data = df_su, family = 'binomial')  
+mod_su_32 <- glm(survives ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits + disturbance, data = df_su, family = 'binomial')
 
 mods_su      <- list(
   mod_su_0,  mod_su_1,  mod_su_2,  mod_su_3,
@@ -182,19 +163,20 @@ mod_su_bestfit       <- mods_su[[mod_su_index_bestfit]]
 mod_su_ranef         <- coef(mod_su_bestfit)
 
 df_su_newdata <- df_su %>%
-  group_by(recruits) %>%
+  group_by(recruits, disturbance) %>%
   summarise(x = list(seq(min(logvol_t0), max(logvol_t0), 
                          length.out = 100)), .groups = "drop") %>%
   unnest(x) %>%
   mutate(
-    logvol_t0 = x,
+    logvol_t0   = x,
     logvol_t0_2 = logvol_t0^2,
     logvol_t0_3 = logvol_t0^3,
-    recruits = factor(recruits)) %>% 
+    recruits    = factor(recruits),
+    disturbance = factor(disturbance)) %>% 
   mutate(predicted = predict(mod_su_bestfit, newdata = ., type = "response"))
 
 fig_su_line <- ggplot(
-  df_su, aes(x = logvol_t0, y = survives, color = factor(recruits))) +
+  df_su, aes(x = logvol_t0, y = survives, color = factor(recruits), linetype = disturbance)) +
   geom_jitter(height = 0.05, width = 0, alpha = 0.3) +
   geom_line(data = df_su_newdata, aes(y = predicted), size = 1) +
   labs(
@@ -208,31 +190,32 @@ fig_su_line <- ggplot(
   theme(legend.position = 'none')
 
 df_su_bindata <- df_su %>%
-  group_by(recruits) %>%
+  group_by(recruits, disturbance) %>%
   group_modify(~ plot_binned_prop(.x, 10, logvol_t0, survives)) %>%
   ungroup() %>%
-  mutate(recruits = factor(recruits))
+  mutate(recruits    = factor(recruits),
+         disturbance = factor(disturbance))
 
 df_su_pred <- df_su %>%
-  group_by(recruits) %>%
+  group_by(recruits, disturbance) %>%
   reframe(logvol_t0 = seq(min(logvol_t0), max(logvol_t0), length.out = 100)) %>%
   mutate(
     logvol_t0_2 = logvol_t0^2,
     logvol_t0_3 = logvol_t0^3,
-    recruits = factor(recruits)) %>%
+    recruits    = factor(recruits),
+    disturbance = factor(disturbance)) %>%
   mutate(survives = predict(mod_su_bestfit, newdata = ., type = 'response'))
 
 fig_su_bin <- ggplot() +
   geom_point(
-    data = df_su_bindata, aes(x = logvol_t0, y = survives, color = recruits)) +
-  geom_errorbar(aes(x = logvol_t0, ymin = lwr, ymax = upr, color = recruits),
+    data = df_su_bindata, aes(x = logvol_t0, y = survives, color = recruits, linetype = disturbance)) +
+  geom_errorbar(aes(x = logvol_t0, ymin = lwr, ymax = upr, color = recruits, linetype = disturbance),
                 data = df_su_bindata, width = 0.1) +
-  geom_line(aes(x = logvol_t0, y = survives, color = recruits),
+  geom_line(aes(x = logvol_t0, y = survives, color = recruits, linetype = disturbance),
             data = df_su_pred, size = 1.2) +
-  scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
+  #scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
   labs(x = 'Volumen t0 (log)', y = '', color  = 'Recruit') +
-  theme_bw() +
-  ylim(0, 1)
+  theme_bw()
 
 fig_su <- fig_su_line + fig_su_bin + plot_layout()
 fig_su
@@ -253,7 +236,7 @@ df_gr <- df %>%
     id, year, size_t0, size_t1,
     logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
     volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
-    stage, recruits)
+    disturbance, stage, recruits)
 
 fig_gr_raw <- ggplot(
   data  = df_gr, aes(logvol_t0, logvol_t1)) +
@@ -271,18 +254,18 @@ fig_gr_raw
 
 
 # Growth model -----------------------------------------------------------------
-mod_gr_0   <- lm(logvol_t1 ~ 1, data = df_gr)
-mod_gr_1   <- lm(logvol_t1 ~ logvol_t0, data = df_gr)
-mod_gr_2   <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2, data = df_gr)  
-mod_gr_3   <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_gr)
-mod_gr_01  <- lm(logvol_t1 ~ recruits, data = df_gr)
-mod_gr_11  <- lm(logvol_t1 ~ logvol_t0 + recruits, data = df_gr)
-mod_gr_21  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + recruits, data = df_gr)  
-mod_gr_31  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + recruits, data = df_gr)
-mod_gr_12  <- lm(logvol_t1 ~ logvol_t0 * recruits, data = df_gr)
-mod_gr_221 <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2, data = df_gr)  
-mod_gr_22  <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits, data = df_gr)  
-mod_gr_32  <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits, data = df_gr)
+mod_gr_0   <- lm(logvol_t1 ~ disturbance, data = df_gr)
+mod_gr_1   <- lm(logvol_t1 ~ logvol_t0 + disturbance, data = df_gr)
+mod_gr_2   <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + disturbance, data = df_gr)  
+mod_gr_3   <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + disturbance, data = df_gr)
+mod_gr_01  <- lm(logvol_t1 ~ recruits + disturbance, data = df_gr)
+mod_gr_11  <- lm(logvol_t1 ~ logvol_t0 + recruits + disturbance, data = df_gr)
+mod_gr_21  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + recruits + disturbance, data = df_gr)  
+mod_gr_31  <- lm(logvol_t1 ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + recruits + disturbance, data = df_gr)
+mod_gr_12  <- lm(logvol_t1 ~ logvol_t0 * recruits + disturbance, data = df_gr)
+mod_gr_221 <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2 + disturbance, data = df_gr)  
+mod_gr_22  <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits + disturbance, data = df_gr)  
+mod_gr_32  <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits + disturbance, data = df_gr)
 
 mods_gr      <- list(
   mod_gr_0,  mod_gr_1,  mod_gr_2,   mod_gr_3,
@@ -302,13 +285,15 @@ mod_gr_bestfit       <- mod_gr_221
 mod_gr_ranef         <- coef(mod_gr_bestfit)
 
 df_gr_newdata <- df_gr %>%
-  group_by(recruits) %>%
+  group_by(recruits, disturbance) %>%
   summarise(range = list(seq(min(logvol_t0), max(logvol_t0), length.out = 100)), .groups = 'drop') %>%
   unnest(range) %>%
   mutate(
-    logvol_t0 = range,
+    logvol_t0   = range,
     logvol_t0_2 = logvol_t0^2,
-    recruits = factor(recruits)) %>%
+    logvol_t0_3 = logvol_t0^3,
+    recruits    = factor(recruits),
+    disturbance = factor(disturbance)) %>%
   dplyr::select(-range)
 
 df_gr_newdata <- cbind(df_gr_newdata, as.data.frame(predict(
@@ -317,17 +302,17 @@ df_gr_newdata <- cbind(df_gr_newdata, as.data.frame(predict(
   interval = 'confidence')))
 
 
-fig_gr <- ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1, color = recruits)) +
-  geom_point(alpha = 0.4) +
+fig_gr <- ggplot(df_gr, aes(x = logvol_t0, y = logvol_t1, color = recruits, linetype = disturbance)) +
+  geom_point(alpha = 0.1) +
   geom_line(data = df_gr_newdata, aes(y = fit), size = 1) +
   geom_ribbon(
     data = df_gr_newdata,
     aes(y = fit, ymin = lwr, ymax = upr, fill = recruits),
-    alpha = 0.2,
+    alpha = 0.1,
     color = NA) +
   geom_abline(intercept = 0, slope = 1) +
   scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
-  scale_fill_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
+  scale_fill_manual( values = c('0' = '#BBB857', '1' = '#3666DC')) +
   labs(
     title = 'Growth prediction',
     subtitle = v_ggp_suffix,
@@ -359,44 +344,57 @@ df_fl <- df %>%
   dplyr::select(id, year, size_t0, flower, fl_nr, size_t1, 
                 logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
                 volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,
-                stage)
+                disturbance, stage)
 
-fig_fl_raw <- ggplot(
-  data = plot_binned_prop(df_fl, 10, logvol_t0, flower)) +
-  geom_jitter(data = df_fl, aes(x = logvol_t0, y = flower), alpha = 0.1, 
-              position = position_jitter(width = 0.1, height = 0.3)) +
-  geom_point(aes(x = logvol_t0, y = flower),
-             alpha = 1, pch = 16, color = 'red') +
-  geom_errorbar(aes(x = logvol_t0, ymin = lwr, ymax = upr),
-                linewidth = 0.5, width = 0.5) +
-  scale_y_continuous(breaks = c(0.1, 0.5, 0.9), limits = c(0, 1.01)) +
+# Create binned flowering probability by disturbance group
+df_fl_binned <- df_fl %>%
+  group_split(disturbance) %>%
+  map_df(~ plot_binned_prop(.x, 10, logvol_t0, flower) %>%
+           mutate(disturbance = unique(.x$disturbance)))
+
+# Plot overlapped flowering probability
+fig_fl_overall <- ggplot(df_fl_binned, aes(x = logvol_t0, y = flower, color = disturbance)) +
+  geom_jitter(
+    data = df_fl,
+    aes(x = logvol_t0, y = flower, color = disturbance),
+    position = position_jitter(width = 0.1, height = 0.3),
+    alpha = 0.1) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2, linewidth = 0.5) +
+  scale_color_manual(values = c('0' = 'black', '1' = 'red')) +
   theme_bw() +
-  theme(axis.text     = element_text(size = 8),
-        title         = element_text(size = 10),
-        plot.subtitle = element_text(size = 8)) +
-  labs(title    = 'Flowering',
-       subtitle = v_ggp_suffix,
-       x        = expression('Volume (log)'[t0]),
-       y        = expression('Flowering probability t0'))
-fig_fl_raw
+  theme(
+    axis.text = element_text(size = 8),
+    title = element_text(size = 10),
+    plot.subtitle = element_text(size = 8),
+    legend.title = element_blank(),
+    legend.position = 'top') +
+  labs(
+    title = 'Flowering probability by disturbance status',
+    subtitle = v_ggp_suffix,
+    x = expression('log(size)'[t0]),
+    y = 'Flowering Probability')
+
+fig_fl_overall
+
 
 
 # Flower model -----------------------------------------------------------------
 # Logistic regression
-mod_fl_0 <- glm(flower ~ 1,
+mod_fl_0 <- glm(flower ~ disturbance,
                 data = df_fl, family = 'binomial') 
 # Logistic regression
-mod_fl_1 <- glm(flower ~ logvol_t0,
+mod_fl_1 <- glm(flower ~ logvol_t0 + disturbance,
                 data = df_fl, family = 'binomial') 
 # Quadratic logistic model
-mod_fl_2 <- glm(flower ~ logvol_t0 + logvol_t0_2,
+mod_fl_2 <- glm(flower ~ logvol_t0 + logvol_t0_2 + disturbance,
                 data = df_fl, family = 'binomial')  
 # Cubic logistic model
-mod_fl_3 <- glm(flower ~ logvol_t0 + logvol_t0_2 + logvol_t0_3,
+mod_fl_3 <- glm(flower ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + disturbance,
                 data = df_fl, family = 'binomial')  
 
 # Compare models using AICc
-mods_fl      <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
+mods_fl       <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
 mods_fl_dAICc <- AICctab(mods_fl, weights = T, sort = F)$dAICc
 
 # Get the sorted indices of dAICc values
@@ -414,40 +412,64 @@ if (length(v_mod_set_fl) == 0) {
 mod_fl_bestfit <- mods_fl[[mod_fl_index_bestfit]]
 mod_fl_ranef   <- coef(mod_fl_bestfit)
 
-# Generate predictions for survival across a range of sizes
-mod_fl_x <- seq(
-  min(df_fl$logvol_t0, na.rm = T),
-  max(df_fl$logvol_t0, na.rm = T), length.out = 100)
+# Prediction
+df_fl_pred <- data.frame(
+  logvol_t0 = rep(seq(min(df_fl$logvol_t0, na.rm = TRUE),
+                       max(df_fl$logvol_t0, na.rm = TRUE), length.out = 100), 2),
+  disturbance = rep(c(0, 1), each = 100)) %>%
+  mutate(
+    disturbance = factor(disturbance, levels = c(0, 1)),
+    logvol_t0_2 = logvol_t0^2,
+    logvol_t0_3 = logvol_t0^3)
 
-df_fl_pred <- predictor_fun(mod_fl_x, mod_fl_ranef) %>% 
-  # Inverse logit for predictions
-  boot::inv.logit() %>% 
-  data.frame(logvol_t0 = mod_fl_x, flower = .)
+df_fl_pred$flower <- predict(mod_fl_bestfit, newdata = df_fl_pred, type = 'response')
 
-fig_fl_line <- ggplot() +
-  geom_jitter(data = df_fl, aes(x = logvol_t0, y = flower),
+
+# Binned observed data for both disturbance levels
+df_fl_binned <- bind_rows(
+  plot_binned_prop(filter(df_fl, disturbance == '0'), 10, logvol_t0, flower) %>%
+    mutate(disturbance = '0'),
+  plot_binned_prop(filter(df_fl, disturbance == '1'), 10, logvol_t0, flower) %>%
+    mutate(disturbance = '1'))
+
+
+# Flower plots -----------------------------------------------------------------
+# Plot 1: Raw jitter + prediction lines
+fig_fl_line_combined <- ggplot() +
+  geom_jitter(data = df_fl, aes(x = logvol_t0, y = flower, color = disturbance),
               alpha = 0.25, width = 0.08, height = 0.3) +
-  geom_line(data = df_fl_pred, aes(x = logvol_t0, y = flower),
-            color = line_color_pred_fun(mod_fl_ranef), lwd = 2) +  
-  theme_bw() + 
-  labs(title    = 'Flowering prediction',
-       subtitle = v_ggp_suffix) +
-  theme(plot.subtitle = element_text(size = 8))
-
-fig_fl_bin <- ggplot() +
-  geom_point(data = plot_binned_prop(df_fl, 10, logvol_t0, flower), 
-             aes(x = logvol_t0, y = flower)) +
-  geom_errorbar(
-    data = plot_binned_prop(df_fl, 10, logvol_t0, flower), 
-    aes(x = logvol_t0, ymin = lwr, ymax = upr)) +
-  geom_line(data = df_fl_pred, aes(x = logvol_t0, y = flower),
-            color = 'red', lwd   = 2) + 
+  geom_line(data = df_fl_pred, aes(x = logvol_t0, y = flower, color = disturbance),
+            linewidth = 0.9) +
+  scale_color_manual(values = c('0' = 'black', '1' = 'red')) +
   theme_bw() +
-  ylim(0, 1)
+  labs(title = NULL, x = 'Size at time t0 (log())', y = 'Flowering Probability') +
+  theme(legend.position = 'none')
 
-# Combine survival plots
-fig_fl <- fig_fl_line + fig_fl_bin + plot_layout()
-fig_fl
+
+# Plot 2: Binned + prediction
+fig_fl_bin_combined <- ggplot() +
+  geom_point(data = df_fl_binned, aes(x = logvol_t0, y = flower, color = disturbance)) +
+  geom_errorbar(data = df_fl_binned, aes(x = logvol_t0, ymin = lwr, ymax = upr, color = disturbance),
+                width = 0.2) +
+  geom_line(data = df_fl_pred, aes(x = logvol_t0, y = flower, color = disturbance),
+            linewidth = 0.9) +
+  scale_color_manual(values = c('0' = 'black', '1' = 'red')) +
+  theme_bw() +
+  ylim(0, 1) +
+  labs(title = NULL, x = 'Size at time t0 (log())', y = 'Flowering Probability') +
+  theme(legend.title = element_blank(), legend.position = 'top')
+
+
+# Combine
+fig_fl_all <- fig_fl_line_combined + fig_fl_bin_combined +
+  plot_annotation(
+    title = 'Flowering',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 14, face = 'bold'),
+      plot.subtitle = element_text(size = 10, face = 'italic')))
+
+fig_fl_all
 
 
 # Number of flowers conditional on flowering -----------------------------------
@@ -456,15 +478,15 @@ df_fl_cond <- df_fl %>%
   filter(fl_nr %% 1 == 0)
 
 # Models
-mod_fl_n_0 <- glm.nb(fl_nr ~ 1, data = df_fl_cond)
+mod_fl_n_0 <- glm.nb(fl_nr ~ disturbance, data = df_fl_cond)
 
-mod_fl_n_1 <- glm.nb(fl_nr ~ logvol_t0 ,
+mod_fl_n_1 <- glm.nb(fl_nr ~ logvol_t0 + disturbance,
                      data = df_fl_cond)
 
-mod_fl_n_2 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2,
+mod_fl_n_2 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + disturbance,
                      data = df_fl_cond)
 
-mod_fl_n_3 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + logvol_t0_3,
+mod_fl_n_3 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + disturbance,
                      data = df_fl_cond)
 
 # Model selection
@@ -481,12 +503,14 @@ v_mod_fl_n_index <- mods_fl_n_sorted[1] - 1
 # Create prediction grid
 df_fl_n_pred <- expand.grid(
   logvol_t0 = seq(min(df_fl_cond$logvol_t0),
-                   max(df_fl_cond$logvol_t0),
-                   length.out = 100))
+                  max(df_fl_cond$logvol_t0),
+                  length.out = 100),
+  disturbance = c(0, 1))
 
 # Ensure correct factor structure
 df_fl_n_pred <- df_fl_n_pred %>%
   mutate(
+    disturbance = factor(disturbance, levels = levels(df_fl_cond$disturbance)),
     logvol_t0_2 = logvol_t0^2,
     logvol_t0_3 = logvol_t0^3)
 
@@ -500,7 +524,7 @@ df_fl_n_pred$fl_nr <- predict(mod_fl_n_bestfit,
 
 df_fl_n_binned <- df_fl_cond %>%
   mutate(bin = cut(logvol_t0, breaks = 10)) %>%
-  group_by(bin) %>%
+  group_by(disturbance, bin) %>%
   summarise(
     logvol_t0 = mean(logvol_t0, na.rm = TRUE),
     fl_nr = mean(fl_nr, na.rm = TRUE),
@@ -515,11 +539,12 @@ df_fl_n_binned <- df_fl_cond %>%
 # Plot 1: Raw jitter + prediction lines
 fig_fl_n_line_combined <- ggplot() +
   geom_jitter(data = df_fl_cond,
-              aes(x = logvol_t0, y = fl_nr),
+              aes(x = logvol_t0, y = fl_nr, color = disturbance),
               alpha = 0.25, width = 0.08, height = 0.3) +
   geom_line(data = df_fl_n_pred,
-            aes(x = logvol_t0, y = fl_nr),
+            aes(x = logvol_t0, y = fl_nr, color = disturbance),
             linewidth = 0.9) +
+  scale_color_manual(values = c('0' = 'black', '1' = 'red')) +
   theme_bw() +
   labs(title = NULL,
        x = 'Size at time t0 (log())',
@@ -530,13 +555,14 @@ fig_fl_n_line_combined <- ggplot() +
 # Plot 2: Binned + prediction
 fig_fl_n_bin_combined <- ggplot() +
   geom_point(data = df_fl_n_binned,
-             aes(x = logvol_t0, y = fl_nr)) +
+             aes(x = logvol_t0, y = fl_nr, color = disturbance)) +
   geom_errorbar(data = df_fl_n_binned,
                 aes(x = logvol_t0, ymin = lwr, ymax = upr),
                 width = 0.2) +
   geom_line(data = df_fl_n_pred,
-            aes(x = logvol_t0, y = fl_nr),
+            aes(x = logvol_t0, y = fl_nr, color = disturbance),
             linewidth = 0.9) +
+  scale_color_manual(values = c('0' = 'black', '1' = 'red')) +
   theme_bw() +
   labs(title = NULL,
        x = 'Size at time t0 (log())',
@@ -558,79 +584,106 @@ fig_fl_n_all <- fig_fl_n_line_combined + fig_fl_n_bin_combined +
 fig_fl_n_all
 
 
-# # Fecundity --------------------------------------------------------------------
-# # Conditional on flowering
-# df_fec <- df %>%
-#   filter(flower == 1, !is.na(logvol_t0))
-# 
-# df_fec %>% filter(recruits == 1 & fl_nr > 0)
-# 'there are no recruits that produce a flowering stock in t0'
-# 
-# # Since there are no 0s in the dataset we go for a truncated nb model
-# df_fec$fl_nr %>% summary()
-# 'I couldnt find a functioning truncated nb function'
-# 
-# mod_fe_0 <- glm.nb(fl_nr ~ 1, data = df_fec)
-# mod_fe_1 <- glm.nb(fl_nr ~ logvol_t0, data = df_fec)
-# mod_fe_2 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2, data = df_fec)
-# mod_fe_3 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_fec)
-# 
-# mods_fe      <- list(mod_fe_0, mod_fe_1, mod_fe_2, mod_fe_3)
-# mods_fe_dAICc <- AICctab(mods_fe, weights = T, sort = F)$dAICc
-# mods_fe_i_sort <- order(mods_fe_dAICc)
-# 
-# if (length(v_mod_set_fe) == 0) {
-#   mod_fe_i_best <- mods_fe_i_sort[1]
-#   v_mod_fe_i    <- mod_fe_i_best - 1
-# } else {
-#   mod_fe_i_best <- v_mod_set_fe +1
-#   v_mod_fe_i    <- v_mod_set_fe
-# }
-# 
-# mod_fe_best  <- mods_fe[[mod_fe_i_best]]
-# mod_fe_ranef <- coef(mod_fe_best)
-# 
-# df_fec_preddata <- tibble(
-#   logvol_t0 = seq(min(df_fec$logvol_t0, na.rm = TRUE),
-#                   max(df_fec$logvol_t0, na.rm = TRUE),
-#                   length.out = 100)) %>%
-#   mutate(logvol_t0_2 = logvol_t0^2,
-#          logvol_t0_3 = logvol_t0^3)
-# 
-# mod_fe_pred <- predict(mod_fe_best, newdata = df_fec_preddata, type = 'link', se.fit = TRUE)
-# 
-# df_fec_preddata <- df_fec_preddata %>%
-#   mutate(
-#     fit_link = mod_fe_pred$fit,
-#     se_link = mod_fe_pred$se.fit,
-#     fit_link_lower = fit_link - 1.96 * se_link,
-#     fit_link_upper = fit_link + 1.96 * se_link,
-#     predicted_stems = exp(fit_link),
-#     predicted_stems_lower = exp(fit_link_lower),
-#     predicted_stems_upper = exp(fit_link_upper))
-# 
-# fig_fe <- ggplot(df_fec, aes(x = logvol_t0, y = fl_nr)) +
-#   geom_jitter(width = 0.1, height = 0.2, alpha = 0.4) +
-#   geom_line(data = df_fec_preddata, aes(x = logvol_t0, y = predicted_stems), color = 'darkgreen', size = 1.2) +
-#   geom_ribbon(
-#     data = df_fec_preddata,
-#     aes(x = logvol_t0, ymin = predicted_stems_lower, ymax = predicted_stems_upper),
-#     fill = 'darkgreen', alpha = 0.2,
-#     inherit.aes = FALSE) +
-#   labs(
-#     title    = 'Fecundity',
-#     subtitle = v_ggp_suffix,
-#     x        = 'Volume t0 (log)',
-#     y        = 'Number of Flowering Stems') +
-#   theme_bw()
-# fig_fe
+# Fecundity --------------------------------------------------------------------
+# Conditional on flowering
+df_fec <- df %>%
+  filter(flower == 1, !is.na(logvol_t0))
+
+df_fec %>% filter(recruits == 1 & fl_nr > 0)
+'there are 35 recruits that produce a flowering stock in t0'
+
+# Since there are no 0s in the dataset we go for a truncated nb model
+df_fec$fl_nr %>% summary()
+'I couldnt find a functioning truncated nb function'
+
+mod_fe_0 <- glm.nb(fl_nr ~ disturbance, data = df_fec)
+mod_fe_1 <- glm.nb(fl_nr ~ logvol_t0 + disturbance, data = df_fec)
+mod_fe_2 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + disturbance, data = df_fec)
+mod_fe_3 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + disturbance, data = df_fec)
+
+mods_fe      <- list(mod_fe_0, mod_fe_1, mod_fe_2, mod_fe_3)
+mods_fe_dAICc <- AICctab(mods_fe, weights = T, sort = F)$dAICc
+mods_fe_i_sort <- order(mods_fe_dAICc)
+
+if (length(v_mod_set_fe) == 0) {
+  mod_fe_i_best <- mods_fe_i_sort[1]
+  v_mod_fe_i    <- mod_fe_i_best - 1 
+} else {
+  mod_fe_i_best <- v_mod_set_fe +1
+  v_mod_fe_i    <- v_mod_set_fe
+}
+
+mod_fe_best  <- mods_fe[[mod_fe_i_best]]
+mod_fe_ranef <- coef(mod_fe_best)
+
+df_fec_preddata <- df_fec %>%
+  group_by(disturbance) %>%
+  summarise(range = list(seq(min(logvol_t0), max(logvol_t0), length.out = 100)), .groups = 'drop') %>%
+  unnest(range) %>%
+  mutate(
+    logvol_t0   = range,
+    logvol_t0_2 = logvol_t0^2,
+    logvol_t0_3 = logvol_t0^3,
+    disturbance = factor(disturbance))
+
+mod_fe_pred <- predict(mod_fe_best, newdata = df_fec_preddata, type = 'link', se.fit = TRUE)
+
+
+df_fec_preddata <- df_fec_preddata %>%
+  mutate(
+    fit_link = mod_fe_pred$fit,
+    se_link = mod_fe_pred$se.fit,
+    fit_link_lower = fit_link - 1.96 * se_link,
+    fit_link_upper = fit_link + 1.96 * se_link,
+    predicted_stems = exp(fit_link),
+    predicted_stems_lower = exp(fit_link_lower),
+    predicted_stems_upper = exp(fit_link_upper))
+
+fig_fe <- ggplot(df_fec,
+                 aes(x = logvol_t0,
+                     y = fl_nr,
+                     color = disturbance)) +
+  
+  geom_jitter(width = 0.1,
+              height = 0.2,
+              alpha = 0.4) +
+  
+  geom_line(data = df_fec_preddata,
+            aes(x = logvol_t0,
+                y = predicted_stems,
+                color = disturbance),
+            linewidth = 1.2) +
+  
+  geom_ribbon(data = df_fec_preddata,
+              aes(x = logvol_t0,
+                  ymin = predicted_stems_lower,
+                  ymax = predicted_stems_upper,
+                  fill = disturbance,
+                  group = disturbance),
+              alpha = 0.2,
+              inherit.aes = FALSE) +
+  
+  scale_color_manual(values = c('black', 'red')) +
+  scale_fill_manual(values = c('black', 'red')) +
+  
+  labs(
+    title    = 'Fecundity',
+    subtitle = v_ggp_suffix,
+    x        = 'Volume t0 (log)',
+    y        = 'Number of Flowering Stems'
+  ) +
+  
+  theme_bw()
+
+fig_fe
 
 
 # Flowering stock to Recruit transition ----------------------------------------
 df_fs2r <- df %>%
   filter(!is.na(fl_nr)) %>%
   group_by(site, year) %>%
-  summarise(total_stocks = sum(fl_nr, na.rm = TRUE), .groups = 'drop') %>%
+  summarise(total_stocks = sum(fl_nr, na.rm = TRUE),
+            disturbance  = as.factor(max(as.numeric(disturbance))), .groups = 'drop') %>%
   mutate(year_recruits = year + 1) %>%
   left_join(
     df %>%
@@ -646,28 +699,48 @@ df_fs2r %>%
   group_by(year) %>% 
   summarise(total_stocks = sum(total_stocks))
 
-mod_fs2r <- glm.nb(recruit_count ~ total_stocks, data = df_fs2r)
+mod_fs2r <- glm.nb(recruit_count ~ total_stocks + disturbance, data = df_fs2r)
 
-df_fs2r_newdata <- data.frame(
-  total_stocks = seq(min(df_fs2r$total_stocks, na.rm = TRUE),
-                     max(df_fs2r$total_stocks, na.rm = TRUE), length.out = 100))
+df_fs2r_newdata <- df_fs2r %>%
+  group_by(disturbance) %>%
+  summarise(range = list(seq(min(total_stocks), max(total_stocks), length.out = 100)), .groups = 'drop') %>%
+  unnest(range) %>%
+  mutate(disturbance = factor(disturbance),
+         total_stocks   = range)
 
 mod_fs2r_preds <- predict(mod_fs2r, newdata = df_fs2r_newdata, type = 'link', se.fit = TRUE)
 df_fs2r_newdata$fit <- exp(mod_fs2r_preds$fit)  # inverse link (log)
 df_fs2r_newdata$lower <- exp(mod_fs2r_preds$fit - 1.96 * mod_fs2r_preds$se.fit)
 df_fs2r_newdata$upper <- exp(mod_fs2r_preds$fit + 1.96 * mod_fs2r_preds$se.fit)
 
-ggplot(df_fs2r, aes(x = total_stocks, y = recruit_count)) +
-  geom_jitter(height = 0.2, width = 0.5, alpha = 0.4, color = 'gray40') +
-  geom_ribbon(data = df_fs2r_newdata, aes(x = total_stocks, ymin = lower, ymax = upper), inherit.aes = FALSE,
-              alpha = 0.2, fill = 'red') +
-  geom_line(data = df_fs2r_newdata, aes(x = total_stocks, y = fit), inherit.aes = FALSE,
-            color = 'darkred', size = 1.2) +
+ggplot(df_fs2r,
+       aes(x = total_stocks,
+           y = recruit_count,
+           color = disturbance)) +
+  geom_jitter(height = 0.2,
+              width = 0.5,
+              alpha = 0.4) +
+  geom_ribbon(data = df_fs2r_newdata,
+              aes(x = total_stocks,
+                  ymin = lower,
+                  ymax = upper,
+                  fill = disturbance,
+                  group = disturbance),
+              inherit.aes = FALSE,
+              alpha = 0.2) +
+  geom_line(data = df_fs2r_newdata,
+            aes(x = total_stocks,
+                y = fit,
+                color = disturbance,
+                group = disturbance),
+            inherit.aes = FALSE,
+            linewidth = 1.2) +
+  scale_color_manual(values = c('black', 'red')) +
+  scale_fill_manual(values = c('black', 'red')) +
   labs(
     title = 'Recruits t1 by Flowering Stems t0 - Negative Binomial',
     x = 'Total Flowering Stems t0 (per site/plot/year)',
-    y = 'Number of Recruits t1'
-  ) +
+    y = 'Number of Recruits t1') +
   theme_bw()
 
 
@@ -679,16 +752,16 @@ df_fs2r_0t <- df_fs2r %>%
   filter(recruit_count > 0)
 
 # mod_fs2r_0t <- brm(
-#   bf(recruit_count | trunc(lb = 1) ~ total_stocks),
+#   bf(recruit_count | trunc(lb = 1) ~ total_stocks + disturbance),
 #   data = df_fs2r_0t,
-#   family = negbinomial(link = 'log'),
+#   family = negbinomial(link = "log"),
 #   chains = 4,
 #   cores = 4,
 #   iter = 2000,
 #   control = list(adapt_delta = 0.95))
-# saveRDS(mod_fs2r_0t, file = file.path(dir_data, 'bayes_recruit_model_260519.rds'))
+# saveRDS(mod_fs2r_0t, file = file.path(dir_data, 'bayes_recruit_model_disturbance_260519.rds'))
 
-mod_fs2r_0t <- readRDS(file.path(dir_data, 'bayes_recruit_model_260519.rds'))
+mod_fs2r_0t <- readRDS(file.path(dir_data, 'bayes_recruit_model_disturbance_260519.rds'))
 summary(mod_fs2r_0t)
 plot(mod_fs2r_0t)
 pp_check(mod_fs2r_0t)
@@ -998,42 +1071,42 @@ extr_value <- function(x, field){
 }
 
 pars <- Filter(function(x) length(x) > 0, list(
- prefix      = v_script_prefix,
- species     = v_species,
- surv_b0     = extr_value(coef_su, 'b0'),
- surv_b1     = extr_value(coef_su, 'logvol_t0'),
- surv_b2     = extr_value(coef_su, 'logvol_t0_2'),
- surv_b3     = extr_value(coef_su, 'logvol_t0_3'),
- surv_br     = extr_value(coef_su, 'recruits1'),
- grow_b0     = extr_value(coef_gr, 'b0'),
- grow_b1     = extr_value(coef_gr, 'logvol_t0'),
- grow_b2     = extr_value(coef_gr, 'logvol_t0_2'),
- grow_b3     = extr_value(coef_gr, 'logvol_t0_3'),
- grow_br     = extr_value(coef_gr, 'recruits1'),
- grow_b1_br  = extr_value(coef_gr, 'logvol_t0:recruits1'),
- grow_b2_br0 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
- grow_b2_br1 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
- a           = extr_value(coef_gr, 'a'),
- b           = extr_value(coef_gr, 'b'),
- fl_b0       = extr_value(coef_fl, 'b0'),
- fl_b1       = extr_value(coef_fl, 'logvol_t0'),
- fl_b2       = extr_value(coef_fl, 'logvol_t0_2'),
- fl_b3       = extr_value(coef_fl, 'logvol_t0_3'),
- fr_b0       = extr_value(coef_fl, 'b0'),
- fln_b0 = extr_value(coef_fln, 'b0'),
- fln_b1 = extr_value(coef_fln, 'logvol_t0'),
- fln_b2 = extr_value(coef_fln, 'logvol_t0_2'),
- fln_b3 = extr_value(coef_fln, 'logvol_t0_3'),
- fecu_b0     = extr_value(coef_misc, 'fecu_b0'),
- recr_sz     = extr_value(coef_misc, 'rec_siz'),
- recr_sd     = extr_value(coef_misc, 'rec_sd'),
- L           = extr_value(coef_misc, 'min_siz'),
- U           = extr_value(coef_misc, 'max_siz'),
- mat_siz     = 200,
- mod_su_index   = v_mod_su_index,
- mod_gr_index   = v_mod_gr_index,
- mod_fl_index   = v_mod_fl_index,
- mod_fl_n_index = v_mod_fl_n_index))
+  prefix      = v_script_prefix,
+  species     = v_species,
+  surv_b0     = extr_value(coef_su, 'b0'),
+  surv_b1     = extr_value(coef_su, 'logvol_t0'),
+  surv_b2     = extr_value(coef_su, 'logvol_t0_2'),
+  surv_b3     = extr_value(coef_su, 'logvol_t0_3'),
+  surv_br     = extr_value(coef_su, 'recruits1'),
+  grow_b0     = extr_value(coef_gr, 'b0'),
+  grow_b1     = extr_value(coef_gr, 'logvol_t0'),
+  grow_b2     = extr_value(coef_gr, 'logvol_t0_2'),
+  grow_b3     = extr_value(coef_gr, 'logvol_t0_3'),
+  grow_br     = extr_value(coef_gr, 'recruits1'),
+  grow_b1_br  = extr_value(coef_gr, 'logvol_t0:recruits1'),
+  grow_b2_br0 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
+  grow_b2_br1 = extr_value(coef_gr, 'recruits0:logvol_t0_2'),
+  a           = extr_value(coef_gr, 'a'),
+  b           = extr_value(coef_gr, 'b'),
+  fl_b0       = extr_value(coef_fl, 'b0'),
+  fl_b1       = extr_value(coef_fl, 'logvol_t0'),
+  fl_b2       = extr_value(coef_fl, 'logvol_t0_2'),
+  fl_b3       = extr_value(coef_fl, 'logvol_t0_3'),
+  fr_b0       = extr_value(coef_fl, 'b0'),
+  fln_b0 = extr_value(coef_fln, 'b0'),
+  fln_b1 = extr_value(coef_fln, 'logvol_t0'),
+  fln_b2 = extr_value(coef_fln, 'logvol_t0_2'),
+  fln_b3 = extr_value(coef_fln, 'logvol_t0_3'),
+  fecu_b0     = extr_value(coef_misc, 'fecu_b0'),
+  recr_sz     = extr_value(coef_misc, 'rec_siz'),
+  recr_sd     = extr_value(coef_misc, 'rec_sd'),
+  L           = extr_value(coef_misc, 'min_siz'),
+  U           = extr_value(coef_misc, 'max_siz'),
+  mat_siz     = 200,
+  mod_su_index   = v_mod_su_index,
+  mod_gr_index   = v_mod_gr_index,
+  mod_fl_index   = v_mod_fl_index,
+  mod_fl_n_index = v_mod_fl_n_index))
 
 
 # Function describing standard deviation of growth model -----------------------
@@ -1060,16 +1133,16 @@ grow_sd <- function(x, pars) {
 # Growth from size x to size y
 gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
   mean_value <- pars$grow_b0
-    for (i in 1:num_pars) {
+  for (i in 1:num_pars) {
     param_name <- paste0("grow_b", i)
     if (!is.null(pars[[param_name]])) {
       mean_value <- mean_value + pars[[param_name]] * x^i
     }
   }
-    if (!is.null(pars$grow_b1_br)) {
+  if (!is.null(pars$grow_b1_br)) {
     mean_value <- mean_value
   }
-    sd_value <- grow_sd(x, pars)
+  sd_value <- grow_sd(x, pars)
   dnorm(y, mean = mean_value, sd = sd_value)
 }
 

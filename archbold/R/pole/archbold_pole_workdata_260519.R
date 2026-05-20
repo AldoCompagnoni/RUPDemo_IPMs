@@ -83,6 +83,7 @@ df_og <- read_csv(file.path(dir_data, 'ab_pole_df_original_260519.csv')) %>%
   janitor::clean_names() %>% 
   rename(id = unique_id)
 df_site <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_sitehist_260519.csv')))
+df_oglong <- read.csv(file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_oglong_260519.csv')))
 
 df_meta <- data.frame(
   var = names(df_og),
@@ -188,6 +189,33 @@ df_og %>%
 'we need to adapt our survival to t1'
 
 
+# Disturbance
+df_fire <- df_oglong %>%
+  
+  mutate(across(starts_with('postburn_pct'), ~replace_na(., 0))) %>%
+  
+  pivot_longer(
+    cols = starts_with('postburn_pct'),
+    names_to = 'year',
+    values_to = 'burn') %>%
+  
+  mutate(
+    year = str_extract(year, '\\d{2}$')) %>%
+  
+  select(quad, year, burn) %>% 
+  
+  group_by(quad, year) %>% 
+  
+  summarize(
+    burn_mean = mean(burn),
+    burn_sd   = sd(burn),
+    burn_max  = max(burn),
+    .groups = 'drop') %>% 
+  
+  mutate(
+    year = as.numeric(paste0('20', year)))
+
+
 # Generating data --------------------------------------------------------------
 df_gen <- df_og %>%
   arrange(id, year, month) %>% #view()
@@ -232,7 +260,10 @@ df_gen <- df_og %>%
          stems_t1  = lead(st),
          volume_t0 = ((mcd / 2) ^ 2) * pi * ht,
          volume_t1 = lead(volume_t0)) %>%
-  ungroup() #%>% view()
+  ungroup() %>% 
+  # Fire 
+  left_join(df_fire, by = c('quad', 'year')) %>%
+  mutate(across(starts_with('burn'), ~replace_na(., 0)))  #%>% view()
 
 
 # Working data -----------------------------------------------------------------
@@ -256,6 +287,7 @@ df <- df_gen %>%
   dplyr::select(site, id, year, 
                 stage, survives, size_t0, flower, fl_nr, recruits, recruit, 
                 size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
+                burn_mean, burn_sd, burn_max,
                 mcd, st,
                 volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3)
 

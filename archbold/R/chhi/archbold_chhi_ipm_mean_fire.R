@@ -487,7 +487,6 @@ fig_fl_all <- fig_fl_line_combined + fig_fl_bin_combined +
 fig_fl_all
 
 
-
 # Number of flowers conditional on flowering -----------------------------------
 df_fl_cond <- df_fl %>%
   filter(flower == 1) %>%

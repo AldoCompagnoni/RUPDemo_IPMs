@@ -458,13 +458,13 @@ df_fl_cond <- df_fl %>%
 # Models
 mod_fl_n_0 <- glm.nb(fl_nr ~ 1, data = df_fl_cond)
 
-mod_fl_n_1 <- glm.nb(fl_nr ~ logsize_t0 ,
+mod_fl_n_1 <- glm.nb(fl_nr ~ logvol_t0 ,
                      data = df_fl_cond)
 
-mod_fl_n_2 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2,
+mod_fl_n_2 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2,
                      data = df_fl_cond)
 
-mod_fl_n_3 <- glm.nb(fl_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+mod_fl_n_3 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + logvol_t0_3,
                      data = df_fl_cond)
 
 # Model selection
@@ -480,15 +480,15 @@ v_mod_fl_n_index <- mods_fl_n_sorted[1] - 1
 # Predictions for flower number -----------------------------------------------
 # Create prediction grid
 df_fl_n_pred <- expand.grid(
-  logsize_t0 = seq(min(df_fl_cond$logsize_t0),
-                   max(df_fl_cond$logsize_t0),
+  logvol_t0 = seq(min(df_fl_cond$logvol_t0),
+                   max(df_fl_cond$logvol_t0),
                    length.out = 100))
 
 # Ensure correct factor structure
 df_fl_n_pred <- df_fl_n_pred %>%
   mutate(
-    logsize_t0_2 = logsize_t0^2,
-    logsize_t0_3 = logsize_t0^3)
+    logvol_t0_2 = logvol_t0^2,
+    logvol_t0_3 = logvol_t0^3)
 
 # Predict
 df_fl_n_pred$fl_nr <- predict(mod_fl_n_bestfit,
@@ -499,10 +499,10 @@ df_fl_n_pred$fl_nr <- predict(mod_fl_n_bestfit,
 # Binned observed data (manual binning) ----------------------------------------
 
 df_fl_n_binned <- df_fl_cond %>%
-  mutate(bin = cut(logsize_t0, breaks = 10)) %>%
+  mutate(bin = cut(logvol_t0, breaks = 10)) %>%
   group_by(bin) %>%
   summarise(
-    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+    logvol_t0 = mean(logvol_t0, na.rm = TRUE),
     fl_nr = mean(fl_nr, na.rm = TRUE),
     se = sd(fl_nr, na.rm = TRUE) / sqrt(n()),
     .groups = 'drop') %>%
@@ -515,10 +515,10 @@ df_fl_n_binned <- df_fl_cond %>%
 # Plot 1: Raw jitter + prediction lines
 fig_fl_n_line_combined <- ggplot() +
   geom_jitter(data = df_fl_cond,
-              aes(x = logsize_t0, y = fl_nr),
+              aes(x = logvol_t0, y = fl_nr),
               alpha = 0.25, width = 0.08, height = 0.3) +
   geom_line(data = df_fl_n_pred,
-            aes(x = logsize_t0, y = fl_nr),
+            aes(x = logvol_t0, y = fl_nr),
             linewidth = 0.9) +
   theme_bw() +
   labs(title = NULL,
@@ -530,12 +530,12 @@ fig_fl_n_line_combined <- ggplot() +
 # Plot 2: Binned + prediction
 fig_fl_n_bin_combined <- ggplot() +
   geom_point(data = df_fl_n_binned,
-             aes(x = logsize_t0, y = fl_nr)) +
+             aes(x = logvol_t0, y = fl_nr)) +
   geom_errorbar(data = df_fl_n_binned,
-                aes(x = logsize_t0, ymin = lwr, ymax = upr),
+                aes(x = logvol_t0, ymin = lwr, ymax = upr),
                 width = 0.2) +
   geom_line(data = df_fl_n_pred,
-            aes(x = logsize_t0, y = fl_nr),
+            aes(x = logvol_t0, y = fl_nr),
             linewidth = 0.9) +
   theme_bw() +
   labs(title = NULL,
@@ -990,8 +990,8 @@ coef_misc   <- data.frame(coefficient = c('rec_siz', 'rec_sd',
                           value       = c(mean(log(df_re_size$size_t0), na.rm = T),
                                           sd(  log(df_re_size$size_t0), na.rm = T),
                                           df_fs2r_0t_pred$Estimate %>% mean(),
-                                          df_gr$logsize_t0 %>% max,
-                                          df_gr$logsize_t0 %>% min))
+                                          df_gr$logvol_t0 %>% max,
+                                          df_gr$logvol_t0 %>% min))
 
 extr_value <- function(x, field){
   subset(x, coefficient == field)$value
@@ -1021,9 +1021,9 @@ pars <- Filter(function(x) length(x) > 0, list(
  fl_b3       = extr_value(coef_fl, 'logvol_t0_3'),
  fr_b0       = extr_value(coef_fl, 'b0'),
  fln_b0 = extr_value(coef_fln, 'b0'),
- fln_b1 = extr_value(coef_fln, 'logsize_t0'),
- fln_b2 = extr_value(coef_fln, 'logsize_t0_2'),
- fln_b3 = extr_value(coef_fln, 'logsize_t0_3'),
+ fln_b1 = extr_value(coef_fln, 'logvol_t0'),
+ fln_b2 = extr_value(coef_fln, 'logvol_t0_2'),
+ fln_b3 = extr_value(coef_fln, 'logvol_t0_3'),
  fecu_b0     = extr_value(coef_misc, 'fecu_b0'),
  recr_sz     = extr_value(coef_misc, 'rec_siz'),
  recr_sd     = extr_value(coef_misc, 'rec_sd'),

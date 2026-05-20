@@ -240,7 +240,7 @@ df <- df_gen %>%
   rename(survives = qsurv,
          size_t0  = ht,
          site     = quad,
-         flower   = flst) %>% 
+         fl_nr    = flst) %>% 
   mutate(logsize_t0   = log(size_t0),
          logsize_t1   = log(size_t1),    
          logsize_t0_2 = logsize_t0^2,     
@@ -251,9 +251,10 @@ df <- df_gen %>%
          logvol_t0_3  = logvol_t0^3,
          year         = as.numeric(year),
          stage        = as.factor( stg),
-         recruits     = if_else(recruit > 0, 1, recruit)) %>%
+         recruits     = if_else(recruit > 0, 1, recruit),
+         flower       = if_else(fl_nr > 0, 1, fl_nr)) %>%
   dplyr::select(site, id, year, 
-                stage, survives, size_t0, flower, recruits, recruit, 
+                stage, survives, size_t0, flower, fl_nr, recruits, recruit, 
                 size_t1, logsize_t1, logsize_t0, logsize_t0_2, logsize_t0_3,
                 mcd, st,
                 volume_t0, volume_t1, logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3)

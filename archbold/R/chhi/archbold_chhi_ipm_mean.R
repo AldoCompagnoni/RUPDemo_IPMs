@@ -542,6 +542,21 @@ pars <- Filter(function(x) length(x) > 0, list(
 write.csv(pars, row.names = F, paste0(
   dir_data, '/', v_script_prefix, '_', v_sp_abb, '_pars.csv'))
 
+# Function describing the invert logit
+inv_logit <- function(x) {exp(x) / (1 + exp(x))}
+
+# Survival of x-sized individual to time t1
+sx <- function(x, pars, num_pars = v_mod_su_index) {
+  survival_value <- pars$surv_b0
+  for (i in 1:num_pars) {
+    param_name <- paste0('surv_b', i)
+    if (!is.null(pars[[param_name]])) {
+      survival_value <- survival_value + pars[[param_name]] * x^(i)
+    }
+  }
+  return(inv_logit(survival_value))
+}
+
 # Function describing standard deviation of growth model
 grow_sd <- function(x, pars) {
   pars$a * (exp(pars$b* x)) %>% sqrt 
@@ -558,22 +573,6 @@ gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
   }
   sd_value <- grow_sd(x, pars)
   return(dnorm(y, mean = mean_value, sd = sd_value))
-}
-
-# Function describing the invert logit
-inv_logit <- function(x) {exp(x) / (1 + exp(x))}
-
-
-# Survival of x-sized individual to time t1
-sx <- function(x, pars, num_pars = v_mod_su_index) {
-  survival_value <- pars$surv_b0
-  for (i in 1:num_pars) {
-    param_name <- paste0('surv_b', i)
-    if (!is.null(pars[[param_name]])) {
-      survival_value <- survival_value + pars[[param_name]] * x^(i)
-    }
-  }
-  return(inv_logit(survival_value))
 }
 
 # Function describing the transition kernel

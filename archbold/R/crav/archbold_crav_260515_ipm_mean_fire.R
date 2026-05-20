@@ -941,7 +941,7 @@ pars <- Filter(function(x) length(x) > 0, list(
   mat_siz = 200,
   mod_su_index = v_mod_su_index,
   mod_gr_index = v_mod_gr_index,
-  mod_gr_index = v_mod_fl_index))
+  mod_fl_index = v_mod_fl_index))
 
 
 # Building the IPM -------------------------------------------------------------

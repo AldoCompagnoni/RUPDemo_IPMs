@@ -1,5 +1,371 @@
 # Data {#data}
 
+## From publication
+# Useful demographic estimates for *Chrysopsis highlandsensis*
+
+This section summarizes useful demographic estimates for *Chrysopsis highlandsensis* from David et al. (2025). The estimates are grouped by vital-rate category so they can be used to guide IPM structure, parameter choices, and interpretation of model results.
+
+## Survival
+
+### Seedling and recruit survival
+
+Recruitment occurred throughout the year, but most new seedlings appeared during the December--March census interval. This interval produced the largest number of recruits but also had the lowest short-term and one-year survival.
+
+| Census interval | New recruits | Percent of annual total | Survival to next quarter | One-year survival |
+| --------------- | -----------: | ----------------------: | -----------------------: | ----------------: |
+| March           |        2,794 |                   53.4% |                    49.8% |             29.2% |
+| June            |          669 |                   12.8% |                    81.2% |             61.1% |
+| September       |          527 |                   10.1% |                    82.2% |             54.5% |
+| December        |        1,240 |                   23.7% |                    83.4% |             46.5% |
+| Total / mean    |        5,230 |                    100% |                    64.4% |             40.0% |
+
+The most important implication is that recruitment timing matters. Winter recruitment is numerically dominant, but survival of these recruits is comparatively low.
+
+### Yearling survival
+
+Yearling survival increased strongly with rosette diameter. Habitat also mattered: yearling survival was higher in scrub than roadside habitat.
+
+| Stage    | Roadside survival | Scrub survival | Notes                        |
+| -------- | ----------------: | -------------: | ---------------------------- |
+| Yearling |    68.4 ± 7.6% SE | 74.8 ± 6.4% SE | Survival increased with size |
+
+The size effect was strong, and the habitat effect was significant. There was no significant habitat-by-size interaction.
+
+### Vegetative survival
+
+Vegetative survival also increased strongly with size. Scrub plants again had higher survival than roadside plants.
+
+| Stage      | Roadside survival | Scrub survival | Notes                        |
+| ---------- | ----------------: | -------------: | ---------------------------- |
+| Vegetative |    70.4 ± 6.7% SE | 81.7 ± 4.8% SE | Survival increased with size |
+
+This supports using size-dependent survival in the IPM.
+
+### Reproductive survival
+
+Reproductive plants had low survival, consistent with a largely monocarpic life cycle.
+
+| Reproductive fate                               | Estimate |
+| ----------------------------------------------- | -------: |
+| Reproductive individuals surviving to next year |    19.2% |
+| Mortality after reproduction                    |    80.8% |
+| Regressed to vegetative stage                   |     6.7% |
+| Remained reproductive next year                 |    12.5% |
+
+Among individuals that ever reached reproduction, most died in the same year they flowered. However, reproduction was not strictly fatal: some individuals survived and either regressed to vegetative status or remained reproductive in the following year.
+
+This is important for the IPM. Flowering should impose a strong survival cost, but survival after flowering should not be forced to zero.
+
+### Fire-related survival
+
+Fire reduced survival, especially when plants were fully consumed.
+
+| Burn status | Survival |
+| ----------- | -------: |
+| Unburned    |    84.5% |
+| Scorched    |    52.2% |
+| Consumed    |    22.0% |
+
+Across non-yearling plants, 38.7% of individuals that experienced fire damage survived to the next quarterly census. Seedlings younger than one year did not survive fire damage, although many seedlings within burned sites remained unburned.
+
+The modeling implication is that fire should affect survival, but fire presence alone is coarse. Burn severity is biologically more informative than a simple fire/no-fire classification.
+
+## Growth
+
+### Yearling size and growth
+
+Yearlings were small but variable in size.
+
+| Quantity                |      Estimate |
+| ----------------------- | ------------: |
+| Mean rosette diameter   | 2.6 ± 0.04 cm |
+| Median rosette diameter |        1.9 cm |
+| Range                   |  0.2--18.3 cm |
+
+Relative growth rate from yearling to vegetative stage was:
+
+| Transition             | Relative growth rate |
+| ---------------------- | -------------------: |
+| Yearling to vegetative |        0.661 ± 0.084 |
+
+There was no significant habitat effect on yearling-to-vegetative relative growth rate.
+
+### Vegetative size and growth
+
+Vegetative plants were larger and grew more slowly than yearlings.
+
+| Quantity                         |     Estimate |
+| -------------------------------- | -----------: |
+| Mean vegetative rosette diameter | 8.2 ± 0.1 cm |
+
+Vegetative-to-vegetative relative growth differed by habitat.
+
+| Transition               |  Roadside RGR |      Scrub RGR |
+| ------------------------ | ------------: | -------------: |
+| Vegetative to vegetative | 0.210 ± 0.037 | 0.154 ± 0.0346 |
+
+Roadside vegetative plants grew faster than scrub vegetative plants. Among vegetative individuals that remained vegetative, 76.3% grew or stayed the same size, whereas 23.7% shrank.
+
+This supports modeling growth as a size-dependent continuous process, with potential habitat or disturbance effects.
+
+### Size threshold for flowering
+
+Vegetative diameter strongly predicted flowering probability in the following year. Roadside plants reached a 50% probability of flowering at a slightly smaller size than scrub plants.
+
+| Habitat  | Diameter for 50% flowering probability |
+| -------- | -------------------------------------: |
+| Roadside |                                16.6 cm |
+| Scrub    |                                17.8 cm |
+
+This supports a strongly size-dependent flowering model.
+
+## Reproductive
+
+### Probability and timing of reproduction
+
+Only a minority of individuals reproduced.
+
+| Quantity                                                  |    Estimate |
+| --------------------------------------------------------- | ----------: |
+| Plants with full life cycle that reproduced at least once |         17% |
+| Median age at first reproduction                          |     3 years |
+| Interquartile range                                       |  2--4 years |
+| Range                                                     | 1--11 years |
+| First reproduction by age 4                               |         85% |
+| First reproduction at age 7 or older                      |        2.8% |
+
+There were 84 cases of one-year-old plants reaching reproduction, representing 15.7% of first reproductive events.
+
+### Monocarpy and repeated reproduction
+
+The species is mostly monocarpic, but not strictly monocarpic.
+
+| Number of reproductive years | Number of plants | Percent |
+| ---------------------------- | ---------------: | ------: |
+| Once                         |               -- |   87.0% |
+| Twice                        |              109 |   10.8% |
+| Three times                  |               19 |    1.9% |
+| Four times                   |                2 |    0.2% |
+
+This supports including flowering status in the survival model. A flowering plant should have much lower survival than a non-flowering plant, but survival after reproduction should remain possible.
+
+### Flower-head production
+
+Flower-head number varied strongly among reproductive individuals.
+
+| Quantity                                 | Estimate |
+| ---------------------------------------- | -------: |
+| Mean flower heads per reproductive plant |     63.4 |
+| Standard deviation                       |     71.7 |
+| Range                                    |   1--525 |
+
+Flower-head number did not differ significantly between scrub and roadside habitat.
+
+### Branch number and height
+
+| Trait                         |      Estimate |
+| ----------------------------- | ------------: |
+| Mean branch number            |           3.0 |
+| Branch number SD              |           2.9 |
+| Branch number range           |         1--33 |
+| Mean height of tallest branch |       53.9 cm |
+| Height SD                     |       21.8 cm |
+| Height range                  | 3.8--182.5 cm |
+
+Branch number did not differ by habitat. Tallest branch height was greater in scrub than roadside habitat.
+
+### Seed production
+
+Seed production per head was estimated as follows:
+
+| Quantity                    | Estimate |
+| --------------------------- | -------: |
+| Mean total seeds per head   |     78.5 |
+| SD total seeds per head     |     24.0 |
+| Range total seeds per head  |   3--291 |
+| Mean intact seeds per head  |     50.9 |
+| SD intact seeds per head    |     30.3 |
+| Range intact seeds per head |   0--182 |
+| Percent seeds intact        |    64.8% |
+
+Using flower-head and seed-production estimates, the authors estimated average seed production per reproductive plant as:
+
+| Quantity                            |                     Estimate |
+| ----------------------------------- | ---------------------------: |
+| Total seeds per reproductive plant  |                        4,906 |
+| Intact seeds per reproductive plant |                        3,181 |
+| Minimum estimated seed production   |            3 seeds, 0 intact |
+| Maximum estimated seed production   | 152,775 seeds, 95,813 intact |
+
+For the IPM, the most useful value is **50.9 intact seeds per head**, because the model already predicts flower-head number separately. Using 3,181 intact seeds per reproductive plant would double-count flower-head production.
+
+### Seed viability
+
+Seed viability was low, even among visually intact seeds.
+
+| Seed class   | Laboratory germination |
+| ------------ | ---------------------: |
+| Intact       |         19.8 ± 0.1% SE |
+| Intermediate |          2.7 ± 0.1% SE |
+| Empty        |                     0% |
+
+Because only 64.8% of seeds were intact, the estimated viable fraction of all seeds produced was approximately 12.8%.
+
+This is important when converting raw seed production into effective seed-bank entry or recruitment.
+
+## Disturbances
+
+### Fire and recruitment
+
+Large recruitment events were not clearly associated with fire or mechanical disturbance. Across 15 disturbance events, including 12 fires and 3 mechanical treatments, seedling recruitment was not significantly related to time since disturbance.
+
+Recruitment was higher in roadside habitat than scrub habitat.
+
+This means that *C. highlandsensis* does not show the simple post-fire recruitment boom expected for many Florida scrub reseeders. Fire may maintain open habitat, but it does not automatically generate large recruitment pulses.
+
+### Fire and survival
+
+Fire reduced survival depending on burn severity.
+
+| Burn severity | Survival |
+| ------------- | -------: |
+| Unburned      |    84.5% |
+| Scorched      |    52.2% |
+| Consumed      |    22.0% |
+
+Individual burn events varied in survival response.
+
+| Burn year / property | Unburned | Scorched | Consumed |
+| -------------------- | -------: | -------: | -------: |
+| 2004 ABS             |    83.3% |    28.9% |    12.5% |
+| 2008 LWRSF           |    96.6% |    66.7% |       -- |
+| 2015 ABS             |     100% |     100% |    42.9% |
+| 2017 HHSP            |    73.9% |     100% |    22.2% |
+| 2020 ABS             |    91.7% |    66.7% |    22.2% |
+
+The main implication is that fire effects are not uniform. Survival depends strongly on whether plants are unburned, scorched, or consumed.
+
+### Fire and future reproduction
+
+Fire also reduced the probability that surviving non-seedling plants eventually reproduced.
+
+| Burn status | Eventually reproduced |
+| ----------- | --------------------: |
+| Unburned    |                 40.8% |
+| Scorched    |                 28.6% |
+| Consumed    |                 22.6% |
+
+This suggests that fire can have delayed demographic effects beyond immediate mortality.
+
+### Mechanical disturbance
+
+Mechanical disturbance had mixed evidence. The HHSP Site 10 population increased beginning in 2019 after roller-chopping, but the broader analysis did not find a general recruitment response to disturbance timing.
+
+This suggests that mechanical treatments may sometimes improve local conditions, but their effects are not consistently predictable from the available data.
+
+### Microdisturbance, litter, and shade
+
+Seed ecology experiments showed that germination was sensitive to microhabitat conditions.
+
+In one experiment, soil disturbance decreased germination from 6.8% in undisturbed soil to 2.4% in disturbed soil. Shade increased germination, with partial shade and full shade producing much higher germination than full sun. Litter removal increased germination in the HHSP seed-addition experiment.
+
+This suggests that open but not fully exposed microsites may be most favorable for germination.
+
+## Else
+
+### Monitoring scope
+
+The demographic dataset is large and long-term.
+
+| Quantity                                           |   Estimate |
+| -------------------------------------------------- | ---------: |
+| Total plants followed                              |      6,456 |
+| Seedling recruits tracked                          |      5,230 |
+| Full life cycles tracked from germination to death |      4,759 |
+| Study period                                       | 1999--2022 |
+| Number of demographic sites                        |          9 |
+
+This is a strong dataset for estimating vital rates and building an IPM.
+
+### Lifespan
+
+| Group                             | Mean lifespan |  SD | Range / IQR                  |
+| --------------------------------- | ------------: | --: | ---------------------------- |
+| All individuals                   |     1.3 years | 1.7 | 0.25--12 years               |
+| Individuals reaching reproduction |     4.3 years | 1.7 | IQR 3--5 years; max 12 years |
+
+The species is short-lived overall, but individuals that reach reproduction typically persist for several years before flowering.
+
+### Seed-bank and germination estimates
+
+Field germination was low across experiments.
+
+| Experiment   | Overall germination | First-year germination | Maximum observed seed-bank duration |
+| ------------ | ------------------: | ---------------------: | ----------------------------------: |
+| Experiment 1 |                2.0% |                    83% |                             4 years |
+| Experiment 2 |                1.0% |                    20% |                             4 years |
+| Experiment 3 |                2.1% |                    89% |                             5 years |
+| Experiment 4 |                8.6% |                    97% |                             5 years |
+| Experiment 5 |                7.2% |                    92% |                             2 years |
+
+For modeling, the useful field germination or emergence range is approximately 0.01--0.086.
+
+The maximum observed seed-bank duration was five years, but late germination was uncommon. This supports including a seed-bank stage, but not treating the seed bank as a very large, long-lived, nearly immortal reservoir.
+
+### Seed predation
+
+Seed predation and seed removal were substantial.
+
+| Habitat / treatment | Seeds remaining after 48 h |
+| ------------------- | -------------------------: |
+| Roadside, exclusion |                        49% |
+| Roadside, open      |                        32% |
+| Scrub, exclusion    |                        68% |
+| Scrub, open         |                        40% |
+
+Across treatments, exclusion dishes retained more seeds than open dishes, and scrub dishes retained more seeds than roadside dishes. The abstract summarizes vertebrate seed predation as accounting for a 23% decline in seed numbers.
+
+This supports using an effective seed-bank entry probability rather than assuming all intact seeds enter the seed bank.
+
+### Rangewide trends
+
+Most populations declined in rangewide surveys, although APAFR increased.
+
+| Population      |                                   Trend |
+| --------------- | --------------------------------------: |
+| APAFR           |                    +7.0 ± 1.9% per year |
+| LWRSF           |                    -0.7 ± 3.7% per year |
+| HHSP            |                   -10.0 ± 2.9% per year |
+| ABS             |                    -6.9 ± 3.5% per year |
+| CR731           |                    -7.2 ± 2.2% per year |
+| Red Beach       | no reproductive plants observed in 2024 |
+| Sheriff's Tower | no reproductive plants observed in 2024 |
+
+The best estimate of total rangewide population size in 2020 was 7,444 reproductive individuals.
+
+### Habitat and soils
+
+Disturbed habitats were common across the species' range. Approximately 43% of subpopulations occurred in disturbed habitat, including roadsides, sandy roads, firelanes, planted pine, canals, and ditches. Scrubby flatwoods accounted for 25% of subpopulations, followed by sandhill, oak scrub, dry-mesic flatwoods/savannah, and flatwoods.
+
+More than 75% of plants occurred on grey sands, and about 21% occurred on white sands.
+
+### Main modeling implications
+
+The main implications for demographic modeling are:
+
+1. Survival should be size-dependent.
+2. Flowering should carry a strong survival cost.
+3. Growth should be size-dependent.
+4. Flowering probability should be strongly size-dependent.
+5. Fecundity should be modeled as flowering probability times flower-head number times intact seeds per head.
+6. If flower-head number is already modeled, use 50.9 intact seeds per head rather than 3,181 intact seeds per reproductive plant.
+7. The seed bank should be included, but not treated as a huge immortal pool.
+8. A reasonable field germination or emergence range is 0.01--0.086.
+9. Seed-bank persistence can last up to five years, but late germination is uncommon.
+10. Disturbance effects are complex: fire reduces survival, does not reliably trigger recruitment booms, but may help maintain suitable open microhabitat.
+
+
+## Dataset
 This dataset provides demographic information on *Chrysopsis highlandsensis*.
 Four datasets were provided by source. 
 1. ‘demography_cleaned’ - transition between years

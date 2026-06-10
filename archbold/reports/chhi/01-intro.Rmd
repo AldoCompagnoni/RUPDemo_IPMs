@@ -22,7 +22,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 # Packages
 packages <- c('patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 
               'gridExtra', 'lme4', 'GGally', 'viridis', 'scales', 'MASS',
-              'lubridate', 'tidyverse', 'mgcv')
+              'lubridate', 'tidyverse', 'mgcv', 'janitor')
 lapply(packages, library, character.only = TRUE)
 
 

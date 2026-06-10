@@ -49,10 +49,10 @@ v_ggp_suffix    <- paste(
   tools::toTitleCase(v_head), '-', v_species)
 
 # Models
-v_mod_set_su <- c()
-v_mod_set_gr <- c()
-v_mod_set_fl <- c()
-v_mod_set_fe <- c()
+v_mod_set_su   <- c(6)
+v_mod_set_gr   <- c(9)
+v_mod_set_fl   <- c()
+v_mod_set_fl_n <- c(2)
 
 
 # Directory --------------------------------------------------------------------
@@ -250,6 +250,7 @@ fig_gr_raw <- ggplot(
        x        = expression('log(volume) ' [t0]),
        y        = expression('log(volume)  '[t1])) +
   theme(plot.subtitle = element_text(size = 8))
+
 fig_gr_raw
 
 
@@ -267,7 +268,7 @@ mod_gr_221 <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2 + disturbance, d
 mod_gr_22  <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits + disturbance, data = df_gr)  
 mod_gr_32  <- lm(logvol_t1 ~ logvol_t0 * recruits + logvol_t0_2:recruits + logvol_t0_3:recruits + disturbance, data = df_gr)
 
-mods_gr      <- list(
+mods_gr    <- list(
   mod_gr_0,  mod_gr_1,  mod_gr_2,   mod_gr_3,
   mod_gr_01, mod_gr_11, mod_gr_21,  mod_gr_31,
   mod_gr_12, mod_gr_22, mod_gr_221, mod_gr_32)
@@ -281,6 +282,7 @@ if (length(v_mod_set_gr) == 0) {
   mod_gr_index_bestfit <- v_mod_set_gr +1
   v_mod_gr_index       <- v_mod_set_gr
 }
+
 mod_gr_bestfit       <- mod_gr_221
 mod_gr_ranef         <- coef(mod_gr_bestfit)
 
@@ -495,8 +497,22 @@ mods_fl_n <- list(mod_fl_n_0, mod_fl_n_1, mod_fl_n_2, mod_fl_n_3)
 mods_fl_n_dAICc <- AICctab(mods_fl_n, weights = TRUE, sort = FALSE)$dAICc
 mods_fl_n_sorted <- order(mods_fl_n_dAICc)
 
-mod_fl_n_bestfit <- mods_fl_n[[mods_fl_n_sorted[1]]]
-v_mod_fl_n_index <- mods_fl_n_sorted[1] - 1
+
+
+# # Get the sorted indices of dAICc values
+# mods_fl_sorted <- order(mods_fl_dAICc)
+
+# Establish the index of model complexity
+if (length(v_mod_set_fl_n) == 0) {
+  mod_fl_n_index_bestfit <- mods_fl_n_sorted[1]
+  v_mod_fl_n_index       <- mod_fl_n_index_bestfit - 1 
+} else {
+  mod_fl_n_index_bestfit <- v_mod_set_fl_n +1
+  v_mod_fl_n_index       <- v_mod_set_fl_n
+}
+
+mod_fl_n_bestfit <- mods_fl[[mod_fl_n_index_bestfit]]
+mod_fl_n_ranef   <- coef(mod_fl_n_bestfit)
 
 
 # Predictions for flower number -----------------------------------------------
@@ -578,104 +594,9 @@ fig_fl_n_all <- fig_fl_n_line_combined + fig_fl_n_bin_combined +
     subtitle = v_ggp_suffix,
     theme = theme(
       plot.title = element_text(size = 14, face = 'bold'),
-      plot.subtitle = element_text(size = 10, face = 'italic'))
-  )
+      plot.subtitle = element_text(size = 10, face = 'italic')))
 
 fig_fl_n_all
-
-
-# Fecundity --------------------------------------------------------------------
-# Conditional on flowering
-df_fec <- df %>%
-  filter(flower == 1, !is.na(logvol_t0))
-
-df_fec %>% filter(recruits == 1 & fl_nr > 0)
-'there are 35 recruits that produce a flowering stock in t0'
-
-# Since there are no 0s in the dataset we go for a truncated nb model
-df_fec$fl_nr %>% summary()
-'I couldnt find a functioning truncated nb function'
-
-mod_fe_0 <- glm.nb(fl_nr ~ disturbance, data = df_fec)
-mod_fe_1 <- glm.nb(fl_nr ~ logvol_t0 + disturbance, data = df_fec)
-mod_fe_2 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + disturbance, data = df_fec)
-mod_fe_3 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + logvol_t0_3 + disturbance, data = df_fec)
-
-mods_fe      <- list(mod_fe_0, mod_fe_1, mod_fe_2, mod_fe_3)
-mods_fe_dAICc <- AICctab(mods_fe, weights = T, sort = F)$dAICc
-mods_fe_i_sort <- order(mods_fe_dAICc)
-
-if (length(v_mod_set_fe) == 0) {
-  mod_fe_i_best <- mods_fe_i_sort[1]
-  v_mod_fe_i    <- mod_fe_i_best - 1 
-} else {
-  mod_fe_i_best <- v_mod_set_fe +1
-  v_mod_fe_i    <- v_mod_set_fe
-}
-
-mod_fe_best  <- mods_fe[[mod_fe_i_best]]
-mod_fe_ranef <- coef(mod_fe_best)
-
-df_fec_preddata <- df_fec %>%
-  group_by(disturbance) %>%
-  summarise(range = list(seq(min(logvol_t0), max(logvol_t0), length.out = 100)), .groups = 'drop') %>%
-  unnest(range) %>%
-  mutate(
-    logvol_t0   = range,
-    logvol_t0_2 = logvol_t0^2,
-    logvol_t0_3 = logvol_t0^3,
-    disturbance = factor(disturbance))
-
-mod_fe_pred <- predict(mod_fe_best, newdata = df_fec_preddata, type = 'link', se.fit = TRUE)
-
-
-df_fec_preddata <- df_fec_preddata %>%
-  mutate(
-    fit_link = mod_fe_pred$fit,
-    se_link = mod_fe_pred$se.fit,
-    fit_link_lower = fit_link - 1.96 * se_link,
-    fit_link_upper = fit_link + 1.96 * se_link,
-    predicted_stems = exp(fit_link),
-    predicted_stems_lower = exp(fit_link_lower),
-    predicted_stems_upper = exp(fit_link_upper))
-
-fig_fe <- ggplot(df_fec,
-                 aes(x = logvol_t0,
-                     y = fl_nr,
-                     color = disturbance)) +
-  
-  geom_jitter(width = 0.1,
-              height = 0.2,
-              alpha = 0.4) +
-  
-  geom_line(data = df_fec_preddata,
-            aes(x = logvol_t0,
-                y = predicted_stems,
-                color = disturbance),
-            linewidth = 1.2) +
-  
-  geom_ribbon(data = df_fec_preddata,
-              aes(x = logvol_t0,
-                  ymin = predicted_stems_lower,
-                  ymax = predicted_stems_upper,
-                  fill = disturbance,
-                  group = disturbance),
-              alpha = 0.2,
-              inherit.aes = FALSE) +
-  
-  scale_color_manual(values = c('black', 'red')) +
-  scale_fill_manual(values = c('black', 'red')) +
-  
-  labs(
-    title    = 'Fecundity',
-    subtitle = v_ggp_suffix,
-    x        = 'Volume t0 (log)',
-    y        = 'Number of Flowering Stems'
-  ) +
-  
-  theme_bw()
-
-fig_fe
 
 
 # Flowering stock to Recruit transition ----------------------------------------
@@ -690,8 +611,7 @@ df_fs2r <- df %>%
       filter(recruits == 1) %>%
       group_by(site, year) %>%
       summarise(recruit_count = n(), .groups = 'drop'),
-    by = c('site', 'year_recruits' = 'year')
-  ) %>%
+    by = c('site', 'year_recruits' = 'year')) %>%
   mutate(recruit_count = ifelse(is.na(recruit_count), 0, recruit_count)) %>%
   filter(total_stocks < 100)
 
@@ -708,33 +628,20 @@ df_fs2r_newdata <- df_fs2r %>%
   mutate(disturbance = factor(disturbance),
          total_stocks   = range)
 
-mod_fs2r_preds <- predict(mod_fs2r, newdata = df_fs2r_newdata, type = 'link', se.fit = TRUE)
-df_fs2r_newdata$fit <- exp(mod_fs2r_preds$fit)  # inverse link (log)
+mod_fs2r_preds        <- predict(mod_fs2r, newdata = df_fs2r_newdata, type = 'link', se.fit = TRUE)
+df_fs2r_newdata$fit   <- exp(mod_fs2r_preds$fit)  # inverse link (log)
 df_fs2r_newdata$lower <- exp(mod_fs2r_preds$fit - 1.96 * mod_fs2r_preds$se.fit)
 df_fs2r_newdata$upper <- exp(mod_fs2r_preds$fit + 1.96 * mod_fs2r_preds$se.fit)
 
-ggplot(df_fs2r,
-       aes(x = total_stocks,
-           y = recruit_count,
-           color = disturbance)) +
-  geom_jitter(height = 0.2,
-              width = 0.5,
-              alpha = 0.4) +
+fig_f2r <- ggplot(df_fs2r,
+       aes(x = total_stocks, y = recruit_count, color = disturbance)) +
+  geom_jitter(height = 0.2, width = 0.5, alpha = 0.4) +
   geom_ribbon(data = df_fs2r_newdata,
-              aes(x = total_stocks,
-                  ymin = lower,
-                  ymax = upper,
-                  fill = disturbance,
-                  group = disturbance),
-              inherit.aes = FALSE,
-              alpha = 0.2) +
+              aes(x = total_stocks, ymin = lower, ymax = upper, fill = disturbance, group = disturbance),
+              inherit.aes = FALSE, alpha = 0.2) +
   geom_line(data = df_fs2r_newdata,
-            aes(x = total_stocks,
-                y = fit,
-                color = disturbance,
-                group = disturbance),
-            inherit.aes = FALSE,
-            linewidth = 1.2) +
+            aes(x = total_stocks, y = fit, color = disturbance, group = disturbance),
+            inherit.aes = FALSE, linewidth = 1.2) +
   scale_color_manual(values = c('black', 'red')) +
   scale_fill_manual(values = c('black', 'red')) +
   labs(
@@ -742,6 +649,8 @@ ggplot(df_fs2r,
     x = 'Total Flowering Stems t0 (per site/plot/year)',
     y = 'Number of Recruits t1') +
   theme_bw()
+
+fig_f2r
 
 
 # Flowering stock to Recruit transition - Zero truncated, Bayesian -------------
@@ -769,16 +678,18 @@ pp_check(mod_fs2r_0t)
 df_fs2r_0t_pred <- df_fs2r_0t %>%
   bind_cols(fitted(mod_fs2r_0t, newdata = df_fs2r_0t, re_formula = NA, summary = TRUE))
 
-ggplot(df_fs2r_0t_pred, aes(x = total_stocks, y = recruit_count)) +
+fig_fl2r_bay <- ggplot(df_fs2r_0t_pred, aes(x = total_stocks, y = recruit_count)) +
   geom_point(alpha = 0.4, color = 'black') + 
   geom_line(aes(y = Estimate), color = 'blue', size = 1) +  
   geom_ribbon(aes(ymin = Q2.5, ymax = Q97.5), alpha = 0.2, fill = 'blue') +
   labs(
     x = 'Total Stocks (year t)',
     y = 'Recruits (year t+1, truncated at >0)',
-    title = 'Posterior mean and 95% credible interval'
-  ) +
+    title = 'Posterior mean and 95% credible interval') +
   theme_minimal()
+
+fig_fl2r_bay
+
 
 # Models using Beverton-Hold, Ricker, and GAM ----------------------------------
 

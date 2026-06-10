@@ -675,6 +675,36 @@ df_re_mod <- df_re_mod %>%
   mutate(mod_pred = predict(mod_rec, type = 'response')) 
 
 
+# Seed bank parameters ---------------------------------------------------------
+# observed mean recruitment per year
+mean_rec <- df %>%
+  group_by(year) %>%
+  summarise(rec = sum(recruit, na.rm = TRUE)) %>%
+  summarise(mean_rec = mean(rec)) %>%
+  pull(mean_rec)
+
+# arbitrary large seed bank
+seedbank_size <- 1000000
+
+# emergence rate
+emerg_rate <- mean_rec / seedbank_size
+
+# average annual seed production
+seed_input <- 200
+
+# seed survival needed to keep bank stable
+seed_surv <- seedbank_size /
+  (seedbank_size - mean_rec + seed_input)
+
+seed_pars <- list(
+  seedbank_size = seedbank_size,
+  emerg_rate    = emerg_rate,
+  seed_surv     = seed_surv,
+  seed_input    = seed_input)
+
+seed_pars
+
+
 # Per-capita reproduction ------------------------------------------------------
 df_repr_pc <- df %>%
   filter(!is.na(size_t0)) %>% 
@@ -809,11 +839,15 @@ pars <- Filter(function(x) length(x) > 0, list(
   fl_b2   = extr_value(coef_fl, 'logsize_t0_2'),
   fl_b3   = extr_value(coef_fl, 'logsize_t0_3'),
   fl_bf   = extr_value(coef_fl, grep('^fire', coef_fl$coefficient, value = TRUE)),
+  seedbank_size = seed_pars$seedbank_size,
+  emerg_rate    = seed_pars$emerg_rate,
+  seed_surv     = seed_pars$seed_surv,
+  seed_input    = seed_pars$seed_input,
   fln_b0 = extr_value(coef_fln, 'b0'),
   fln_b1 = extr_value(coef_fln, 'logsize_t0'),
   fln_b2 = extr_value(coef_fln, 'logsize_t0_2'),
   fln_b3 = extr_value(coef_fln, 'logsize_t0_3'),
-  fln_bf   = extr_value(coef_fl, grep('^fire', coef_fl$coefficient, value = TRUE)),
+  fln_bf  = extr_value(coef_fln, grep('^fire', coef_fln$coefficient, value = TRUE)),
   fecu_b0 = extr_value(coef_misc, 'fecu_b0'),
   recr_sz = extr_value(coef_misc, 'rec_siz'),
   recr_sd = extr_value(coef_misc, 'rec_sd'),
@@ -888,19 +922,37 @@ fl_n_x <- function(x, pars, fire = 0, num_pars = v_mod_fl_n_index) {
   exp(val)
 }
 
+# seedling emergence distribution
+ey <- function(y, pars) {
+  pars$emerg_rate *
+    re_y_dist(y, pars)
+}
+
 # Recruitment size distribution at time t1
 re_y_dist <- function(y, pars) {
   dnorm(y, mean = pars$recr_sz, sd = pars$recr_sd)
 }
 
-# F-kernel
-fyx <- function(y, x, pars, fire = 0) {
-  fl_x(x, pars, fire) *
-    fl_n_x(x, pars, fire) *
-    pars$fecu_b0 *
-    re_y_dist(y, pars)
-}
+# # F-kernel
+# fyx <- function(y, x, pars, fire = 0) {
+#   fl_x(x, pars, fire) *
+#     fl_n_x(x, pars, fire) *
+#     pars$fecu_b0 *
+#     re_y_dist(y, pars)
+# }
 
+# seed_prod_x <- function(x, pars, fire = 0) {
+# 
+#   fl_x(x, pars, fire) *
+#     fl_n_x(x, pars, fire) *
+#     pars$seed_input
+# }
+
+seed_prod_x <- function(x, pars, fire = 0) {
+  
+  fl_x(x, pars, fire) *
+    fl_n_x(x, pars, fire)
+}
 
 # Kernel -----------------------------------------------------------------------
 kernel <- function(pars, fire = 0) {
@@ -941,17 +993,29 @@ kernel <- function(pars, fire = 0) {
     Tmat[,i]  <- Gmat[,i] * Smat[i]
   }
   
-  # Fertility matrix
-  Fmat <- outer(y, y, Vectorize(function(x, y) fyx(x, y, pars))) * h
+  # Seed to seed
+  S11 <- matrix(pars$seed_surv, 1, 1)
+  # Seed production
+  S12 <- matrix(
+    seed_prod_x(y, pars, fire) * h,
+    nrow = 1)
+  # Emergence from seed bank
+  S21 <- matrix(
+    ey(y, pars) * h,
+    ncol = 1)
+  # Size to size
+  S22 <- Tmat
   
-  # Full Kernel is simply a summation of fertility and transition matrices
-  k_yx <- Fmat + Tmat
+  # Hybrid kernel
+  K <- rbind(
+    cbind(S11, S12),
+    cbind(S21, S22))
   
-  return(list(k_yx    = k_yx,
-              Fmat    = Fmat,
-              Tmat    = Tmat,
-              Gmat    = Gmat,
-              meshpts = y))
+  return(list(
+    k_yx    = K,
+    Tmat    = Tmat,
+    Gmat    = Gmat,
+    meshpts = y))
 }
 
 lambda_ipm <- function(pars, fire = 0) {
@@ -992,4 +1056,28 @@ df_counts_year <- df %>%
 lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
 lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
 mean(log(lam_obs_y), na.rm = TRUE) |> exp()
+
+
+# Investigating the seed bank sensitivity
+sens_seed_input <- function(seed_input){
+  
+  seed_surv <- seedbank_size /
+    (seedbank_size - mean_rec + seed_input)
+  
+  pars_tmp <- pars
+  pars_tmp$seed_surv <- seed_surv
+  
+  data.frame(
+    seed_input = seed_input,
+    seed_surv  = seed_surv,
+    lambda     = lambda_ipm(pars_tmp)
+  )
+}
+do.call(
+  rbind,
+  lapply(
+    c(0, 10, 50, 100, 122, 200, 500, 1000, 5000),
+    sens_seed_input
+  )
+)
 

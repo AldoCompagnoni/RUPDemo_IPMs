@@ -49,10 +49,10 @@ v_ggp_suffix    <- paste(
   tools::toTitleCase(v_head), '-', v_species)
 
 # Models
-v_mod_set_su <- c()
-v_mod_set_gr <- c()
-v_mod_set_fl <- c()
-v_mod_set_fe <- c()
+v_mod_set_su   <- c()
+v_mod_set_gr   <- c()
+v_mod_set_fl   <- c()
+v_mod_set_fl_n <- c()
 
 
 # Directory --------------------------------------------------------------------
@@ -556,74 +556,6 @@ fig_fl_n_all <- fig_fl_n_line_combined + fig_fl_n_bin_combined +
   )
 
 fig_fl_n_all
-
-
-# # Fecundity --------------------------------------------------------------------
-# # Conditional on flowering
-# df_fec <- df %>%
-#   filter(flower == 1, !is.na(logvol_t0))
-# 
-# df_fec %>% filter(recruits == 1 & fl_nr > 0)
-# 'there are no recruits that produce a flowering stock in t0'
-# 
-# # Since there are no 0s in the dataset we go for a truncated nb model
-# df_fec$fl_nr %>% summary()
-# 'I couldnt find a functioning truncated nb function'
-# 
-# mod_fe_0 <- glm.nb(fl_nr ~ 1, data = df_fec)
-# mod_fe_1 <- glm.nb(fl_nr ~ logvol_t0, data = df_fec)
-# mod_fe_2 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2, data = df_fec)
-# mod_fe_3 <- glm.nb(fl_nr ~ logvol_t0 + logvol_t0_2 + logvol_t0_3, data = df_fec)
-# 
-# mods_fe      <- list(mod_fe_0, mod_fe_1, mod_fe_2, mod_fe_3)
-# mods_fe_dAICc <- AICctab(mods_fe, weights = T, sort = F)$dAICc
-# mods_fe_i_sort <- order(mods_fe_dAICc)
-# 
-# if (length(v_mod_set_fe) == 0) {
-#   mod_fe_i_best <- mods_fe_i_sort[1]
-#   v_mod_fe_i    <- mod_fe_i_best - 1
-# } else {
-#   mod_fe_i_best <- v_mod_set_fe +1
-#   v_mod_fe_i    <- v_mod_set_fe
-# }
-# 
-# mod_fe_best  <- mods_fe[[mod_fe_i_best]]
-# mod_fe_ranef <- coef(mod_fe_best)
-# 
-# df_fec_preddata <- tibble(
-#   logvol_t0 = seq(min(df_fec$logvol_t0, na.rm = TRUE),
-#                   max(df_fec$logvol_t0, na.rm = TRUE),
-#                   length.out = 100)) %>%
-#   mutate(logvol_t0_2 = logvol_t0^2,
-#          logvol_t0_3 = logvol_t0^3)
-# 
-# mod_fe_pred <- predict(mod_fe_best, newdata = df_fec_preddata, type = 'link', se.fit = TRUE)
-# 
-# df_fec_preddata <- df_fec_preddata %>%
-#   mutate(
-#     fit_link = mod_fe_pred$fit,
-#     se_link = mod_fe_pred$se.fit,
-#     fit_link_lower = fit_link - 1.96 * se_link,
-#     fit_link_upper = fit_link + 1.96 * se_link,
-#     predicted_stems = exp(fit_link),
-#     predicted_stems_lower = exp(fit_link_lower),
-#     predicted_stems_upper = exp(fit_link_upper))
-# 
-# fig_fe <- ggplot(df_fec, aes(x = logvol_t0, y = fl_nr)) +
-#   geom_jitter(width = 0.1, height = 0.2, alpha = 0.4) +
-#   geom_line(data = df_fec_preddata, aes(x = logvol_t0, y = predicted_stems), color = 'darkgreen', size = 1.2) +
-#   geom_ribbon(
-#     data = df_fec_preddata,
-#     aes(x = logvol_t0, ymin = predicted_stems_lower, ymax = predicted_stems_upper),
-#     fill = 'darkgreen', alpha = 0.2,
-#     inherit.aes = FALSE) +
-#   labs(
-#     title    = 'Fecundity',
-#     subtitle = v_ggp_suffix,
-#     x        = 'Volume t0 (log)',
-#     y        = 'Number of Flowering Stems') +
-#   theme_bw()
-# fig_fe
 
 
 # Flowering stock to Recruit transition ----------------------------------------
@@ -1184,6 +1116,7 @@ lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
 lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
 lam_obs_mean
 
+# exp(mean(log(lambda)))
 
 
 # # Save data --------------------------------------------------------------------

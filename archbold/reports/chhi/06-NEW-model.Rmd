@@ -1,0 +1,1886 @@
+# NEW Model {#N_model}
+
+## Overview
+
+This document fits a compact integral projection model (IPM) for *Chrysopsis highlandsensis* using the Archbold demographic data. The model is intentionally reduced to the essential components needed for the analysis:
+
+1. A survival model with a post-flowering survival cost.
+2. A growth model for log rosette diameter.
+3. A flowering-probability model.
+4. A flower-head-number model conditional on flowering.
+5. A single effective seed-bank state.
+6. A matched-site validation comparing observed population growth with modeled one-year projected lambda.
+
+The seed bank is treated as an **effective recruit-producing seed bank**, not as a direct estimate of the literal number of seeds in the soil. This distinction matters because the demographic data contain aboveground plants and recruits, but no direct seed-core or soil-seed-density measurements.
+
+The default seed-bank constants are based on the paper and then explored with sensitivity analysis:
+
+- Field germination / emergence probability: default `0.01`, because the paper reports field germination experiments of about 1.0--8.6%.
+- Dormant seed survival: default `0.60`, because seed persistence up to five years was observed, but late germination was infrequent. This value is therefore an assumption, not a directly estimated parameter.
+- Intact seeds per flowering head: `50.9`, from the paper. Do not use `3181` here because the model predicts flower-head number separately; `3181` is already approximately mean heads per reproductive plant multiplied by intact seeds per head.
+
+The final plot at the end mirrors the earlier observed-versus-modeled lambda figure, but uses the matched-site comparison to avoid site-entry and site-exit artifacts.
+
+## Setup
+
+```{r setupadd, message=FALSE, warning=FALSE}
+set.seed(100)
+options(stringsAsFactors = FALSE)
+
+# Load MASS before tidyverse so dplyr functions keep priority.
+# library(MASS)
+# library(tidyverse)
+# library(janitor)
+# library(lme4)
+# library(patchwork)
+
+v_head <- "archbold"
+v_species <- "Chrysopsis highlandsensis"
+
+v_sp_abb <- tolower(
+  gsub(
+    " ",
+    "",
+    paste(substr(unlist(strsplit(v_species, " ")), 1, 2), collapse = "")
+  )
+)
+
+dir_data <- file.path(v_head, "data", v_sp_abb)
+
+# Years used for model fitting and validation.
+# compare_years requires year + 1 to exist for observed population growth.
+fit_years <- 1999:2023
+compare_years <- 1999:2023
+
+# Number of mesh cells for the continuous size distribution.
+# 200 is fine enough for smooth IPM integration but still fast.
+mat_siz <- 200
+```
+
+## Biological constants
+
+These are the only manually set biological constants in the model. They are deliberately gathered here so the assumptions are explicit. 
+
+1. **Annual emergence  = 0.01**: Field germination from the seed bank. The paper reports field germination experiments from about 1.0% to 8.6%. The default uses the conservative lower bound.
+2. **Dormant seed survival = 0.6**: Persistence from one year to the next. This is NOT 1 - germ_p. The paper reports maximum observed persistence up to five years, but late germination was infrequent. This value is therefore an assumption for the effective seed bank.
+3. **Intact seeds per flowering head = 50.9**: Paper estimate: mean intact seeds per head = 50.9. Do NOT use 3181 here, because 3181 is already approximately: mean heads per reproductive plant * intact seeds per head. Here, head number is predicted separately by mod_heads.
+
+```{r biological-constants}
+# Annual emergence / field germination from the seed bank.
+germ_p_default <- 0.01
+
+# Dormant seed survival / persistence from one year to the next.
+seed_surv_default <- 0.60
+
+# Intact seeds per flowering head.
+intact_seeds_per_head <- 50.9
+
+# Required for a valid seed-bank transition.
+stopifnot(seed_surv_default + germ_p_default <= 1)
+```
+
+## Read and clean data
+
+The raw data contain repeated observations per plant and year. For the annual IPM we collapse these to one record per plant-year, using the maximum observed size and head count in that year and the minimum survival state. If head count is entirely missing for a plant-year, it is treated as zero heads, meaning non-flowering. This is a key choice because otherwise many non-flowering plants would be dropped from the flowering and survival analyses.
+
+```{r read-data, message=FALSE, warning=FALSE}
+df_og <- df_og %>%
+  clean_names()
+
+df_fire <- df_fire %>%
+  clean_names() %>%
+  rename(
+    year = burn_yr,
+    fire = treatment
+  ) %>%
+  dplyr::select(site, year, fire) %>%
+  mutate(
+    fire = case_when(
+      fire == "burn" ~ "Fire",
+      TRUE ~ "No fire"
+    )
+  )
+```
+
+```{r clean-data}
+df_all <- df_og %>%
+  rename(
+    plant_id = identifier,
+    year = year0,
+    survival = survival_1
+  ) %>%
+  mutate(
+    plant_id = factor(plant_id),
+
+    # Recruits are individuals with astg == 1.
+    recruit = as.integer(!is.na(astg) & astg == 1)
+  ) %>%
+  group_by(site, plant_id, year) %>%
+  summarise(
+    survives = if (all(is.na(survival))) NA_real_ else min(survival, na.rm = TRUE),
+    size_t0  = if (all(is.na(dia)))      NA_real_ else max(dia, na.rm = TRUE),
+    size_t1  = if (all(is.na(dia_1)))    NA_real_ else max(dia_1, na.rm = TRUE),
+
+    # Crucial choice:
+    # If all hd values are NA, treat this as 0 heads / non-flowering.
+    # This keeps non-flowering plants in the data instead of dropping them.
+    flower_raw = if (all(is.na(hd))) 0 else max(hd, na.rm = TRUE),
+
+    recruit = max(recruit, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    fl_nr = replace_na(flower_raw, 0),
+    flower = as.integer(fl_nr > 0),
+
+    logsize_t0 = log(size_t0),
+    logsize_t1 = log(size_t1)
+  ) %>%
+  left_join(df_fire, by = c("site", "year")) %>%
+  mutate(
+    fire = replace_na(fire, "No fire"),
+    fire = factor(fire, levels = c("No fire", "Fire"))
+  )
+
+df <- df_all %>%
+  filter(year %in% fit_years)
+```
+
+## Fire exposure by year
+
+A year is not treated as a whole-population fire just because one site burned. For population-level projection, fire is represented by the proportion of observed plants in burned sites.
+
+```{r fire-proportion}
+fire_prop_by_year <- df %>%
+  filter(is.finite(logsize_t0)) %>%
+  group_by(year) %>%
+  summarise(
+    fire_prop = mean(fire == "Fire", na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    fire_prop = replace_na(fire_prop, 0)
+  )
+```
+
+## Vital-rate models
+
+### Survival
+
+Survival is a binomial response. The model includes size, fire, and whether the plant flowered. The flowering term is crucial because this species shows a strong post-flowering survival cost.
+
+`bobyqa` is only the numerical optimizer used by `glmer()`; it is not a biological assumption. The random intercept `(1 | year)` allows year-to-year variation in survival.
+
+```{r survival-model, message=FALSE, warning=FALSE}
+df_su <- df %>%
+  filter(
+    !is.na(survives),
+    is.finite(logsize_t0),
+    !is.na(fire)
+  ) %>%
+  mutate(year = factor(year))
+
+mod_su <- glmer(
+  survives ~ logsize_t0 + flower + fire + (1 | year),
+  data = df_su,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+summary(mod_su)
+```
+
+### Growth
+
+Growth is modeled as log size at time `t + 1` conditional on the plant being observed at `t + 1`. The random year-specific intercept and slope allow annual variation in growth.
+
+```{r growth-model, message=FALSE, warning=FALSE}
+df_gr <- df %>%
+  filter(
+    size_t0 > 0,
+    size_t1 > 0,
+    is.finite(logsize_t0),
+    is.finite(logsize_t1),
+    !is.na(fire)
+  ) %>%
+  mutate(year = factor(year))
+
+mod_gr <- lmer(
+  logsize_t1 ~ logsize_t0 + fire + (logsize_t0 | year),
+  data = df_gr
+)
+
+summary(mod_gr)
+```
+
+### Growth variance
+
+The IPM needs a full growth distribution, not just mean growth. We model residual variance as a function of fitted growth. If the nonlinear fit fails, the script falls back to constant residual variance.
+
+```{r growth-variance, message=FALSE, warning=FALSE}
+gr_var_dat <- tibble(
+  mu = fitted(mod_gr),
+  r2 = resid(mod_gr)^2
+)
+
+gr_var_fit <- try(
+  nls(
+    r2 ~ a * exp(b * mu),
+    data = gr_var_dat,
+    start = list(a = mean(gr_var_dat$r2, na.rm = TRUE), b = 0)
+  ),
+  silent = TRUE
+)
+
+if (inherits(gr_var_fit, "try-error")) {
+  gr_a <- mean(gr_var_dat$r2, na.rm = TRUE)
+  gr_b <- 0
+} else {
+  gr_a <- as.numeric(coef(gr_var_fit)["a"])
+  gr_b <- as.numeric(coef(gr_var_fit)["b"])
+}
+
+c(gr_a = gr_a, gr_b = gr_b)
+```
+
+### Flowering probability
+
+Flowering is binary. We use a fixed-effect binomial GLM rather than a year-random GLMM because the year-random flowering fits were unstable. Year-specific variation still enters the IPM through survival and growth.
+
+```{r flowering-model, message=FALSE, warning=FALSE}
+df_fl <- df %>%
+  filter(
+    is.finite(logsize_t0),
+    !is.na(fire)
+  ) %>%
+  mutate(year = factor(year))
+
+mod_fl <- glm(
+  flower ~ logsize_t0 + fire,
+  data = df_fl,
+  family = binomial
+)
+
+summary(mod_fl)
+```
+
+### Flower heads conditional on flowering
+
+Flower-head number is a count conditional on flowering. A negative-binomial GLM is appropriate for overdispersed count data. One non-integer value is treated as a data-entry issue and rounded.
+
+```{r flower-head-model, message=FALSE, warning=FALSE}
+df_heads <- df_fl %>%
+  filter(flower == 1, !is.na(fl_nr), fl_nr > 0) %>%
+  mutate(
+    fl_nr = round(fl_nr),
+    year = factor(year),
+    fire = factor(fire, levels = levels(df_fl$fire))
+  )
+
+mod_heads <- MASS::glm.nb(
+  fl_nr ~ logsize_t0 + fire,
+  data = df_heads
+)
+
+summary(mod_heads)
+```
+
+### Recruit size distribution
+
+Recruits enter the aboveground population with a log-size distribution estimated from observed recruits.
+
+```{r recruit-size-distribution}
+df_recr <- df %>%
+  filter(recruit == 1, size_t0 > 0, is.finite(logsize_t0))
+
+recr_sz <- mean(df_recr$logsize_t0, na.rm = TRUE)
+recr_sd <- sd(df_recr$logsize_t0, na.rm = TRUE)
+
+c(recr_sz = recr_sz, recr_sd = recr_sd)
+```
+
+## Seed-bank calibration
+
+We do not know actual soil seed density. Instead, we estimate the effective standing seed bank required to produce observed annual recruitment under an assumed emergence probability:
+
+\[
+B = \frac{\bar{R}}{g}
+\]
+
+where \(B\) is the effective seed bank, \(\bar{R}\) is mean annual recruitment, and \(g\) is annual emergence / germination probability. This is why changing `germ_p` changes the inferred seed-bank size but not necessarily projected aboveground growth.
+
+
+### Seed-bank formulation
+
+The IPM includes a single discrete seed-bank state in addition to the continuous aboveground size distribution. This seed-bank state is necessary because *Chrysopsis highlandsensis* recruits from seeds, and field experiments showed that some seeds can remain viable or at least capable of delayed germination for multiple years. However, soil seed density was not directly measured in the demographic plots. Therefore, the seed-bank state in this model should not be interpreted as the literal number of seeds in the soil. Instead, it is an **effective recruit-producing seed bank**.
+
+In other words, the seed-bank stage is scaled so that, under the assumed annual emergence probability, it produces approximately the observed mean annual recruitment. This makes the seed-bank stage useful for projecting aboveground population dynamics, while avoiding the false impression that we have directly estimated the real number of dormant seeds in the soil.
+
+The seed-bank transition is written as:
+
+\[
+B_{t+1} = s_B B_t + E_t
+\]
+
+where (B_t) is the effective seed bank at time (t), (s_B) is the probability that a seed remains dormant in the effective seed bank from one year to the next, and (E_t) is the number of new effective seed-bank entrants produced by flowering plants in year (t).
+
+The recruitment transition from the seed bank into the aboveground population is:
+
+\[
+R_{t+1}(y) = g B_t f_R(y)
+\]
+
+where (g) is the annual emergence probability and (f_R(y)) is the recruit size distribution.
+
+#### Biological motivation
+
+The seed ecology data suggest that a persistent seed bank may exist, but that it is probably limited. Field germination experiments reported total germination between approximately 1.0% and 8.6%, and the maximum observed seed-bank duration was five years. At the same time, most germination occurred early, seed viability was low, and seed predation was substantial. Therefore, I did not treat the seed bank as a large, nearly permanent reservoir of seeds. Instead, I used a conservative default emergence probability and treated dormant seed survival as an uncertain assumption.
+
+The default values are:
+
+```{r seedbank-default-values, echo=TRUE}
+germ_p_default <- 0.01
+seed_surv_default <- 0.60
+intact_seeds_per_head <- 50.9
+```
+
+The value `germ_p_default = 0.01` corresponds to the lower end of the field germination range. This is conservative: it assumes that only a small fraction of the effective seed bank emerges each year.
+
+The value `seed_surv_default = 0.60` is not directly measured. It represents the probability that a seed remains in the effective dormant seed-bank state from one year to the next. Because this parameter is uncertain, it should be tested in sensitivity analysis.
+
+The value `intact_seeds_per_head = 50.9` comes from the seed-production estimate. This value is used because the IPM already predicts flower-head number separately. Therefore, fecundity is calculated as:
+
+\[
+\Pr(\text{flowering}) \times E(\text{heads} \mid \text{flowering}) \times \text{intact seeds per head}
+\]
+
+Using the larger estimate of intact seeds per reproductive plant would double-count flower-head production, because head number is already predicted by the model.
+
+### Calibrating the effective seed bank
+
+Because actual soil seed density was not measured, I initialize the effective seed bank using observed annual recruitment:
+
+```{r seedbank-calibration, echo=TRUE}
+annual_seed_obs <- df %>%
+  group_by(year) %>%
+  summarise(
+    recruits = sum(recruit == 1, na.rm = TRUE),
+    raw_intact_seeds = sum(fl_nr, na.rm = TRUE) * intact_seeds_per_head,
+    .groups = "drop"
+  )
+
+mean_rec <- mean(annual_seed_obs$recruits, na.rm = TRUE)
+mean_raw_intact_seed_input <- mean(annual_seed_obs$raw_intact_seeds, na.rm = TRUE)
+
+seedbank_size <- mean_rec / germ_p_default
+```
+
+This means:
+
+\[
+B = \frac{\bar{R}}{g}
+\]
+
+where (\bar{R}) is the observed mean number of recruits per year and (g) is the assumed annual emergence probability.
+
+For example, if the mean number of recruits is approximately 141 per year and the annual emergence probability is 0.01, then:
+
+\[
+B = \frac{141}{0.01} = 14100
+\]
+
+So the default effective seed bank is approximately 14,100 effective seeds.
+
+This number should not be read as “there are 14,100 seeds in the soil.” It means: given the assumed emergence probability, a latent seed-bank stage of this size is needed to produce the observed mean recruitment.
+
+#### Effective seed-bank input
+
+To keep the effective seed bank approximately stable on average, the model calculates the annual effective seed input needed to replace seeds that leave the seed bank:
+
+```{r effective-seed-input, echo=TRUE}
+effective_seed_input_mean <- seedbank_size * (1 - seed_surv_default)
+```
+
+This follows from the equilibrium condition:
+
+\[
+B = s_B B + E
+\]
+
+which can be rearranged to:
+
+\[
+E = B(1 - s_B)
+\]
+
+This input replaces seeds that either germinate or are lost from the effective seed-bank pool.
+
+The observed raw seed production is much larger than the number of seeds that successfully become effective seed-bank entrants. Many produced seeds are empty, nonviable, predated, dispersed away from the plot, or fail because of unsuitable microsite conditions. Therefore, the model estimates a seed-bank entry probability:
+
+```{r seedbank-entry-probability, echo=TRUE}
+seedbank_entry_prob <- effective_seed_input_mean / mean_raw_intact_seed_input
+seedbank_entry_prob <- min(max(seedbank_entry_prob, 0), 1)
+```
+
+This value converts raw intact seed production into **effective seed-bank entrants**. It is not meant to represent one single biological process. It combines several losses between seed production and later recruitment, including seed predation, failure to enter the soil seed bank, nonviability, unsuitable microsites, and dispersal outside the monitored area.
+
+#### Year-specific effective seed bank
+
+The model then reconstructs a year-specific effective seed bank using observed annual seed production:
+
+```{r seedbank-by-year, eval=FALSE, echo=TRUE}
+seedbank_by_year <- tibble(
+  year = fit_years,
+  seedbank = NA_real_
+)
+
+B <- seedbank_size
+
+for (i in seq_along(fit_years)) {
+  
+  yr <- fit_years[i]
+  seedbank_by_year$seedbank[i] <- B
+  
+  raw_input_yr <- annual_seed_obs %>%
+    filter(year == yr) %>%
+    pull(raw_intact_seeds)
+  
+  if (length(raw_input_yr) == 0 || is.na(raw_input_yr)) {
+    raw_input_yr <- mean_raw_intact_seed_input
+  }
+  
+  effective_input_yr <- raw_input_yr * seedbank_entry_prob
+  
+  B <- seed_surv_default * B + effective_input_yr
+}
+```
+
+This gives:
+
+\[
+B_{t+1} = s_B B_t + I_t p_{\text{entry}}
+\]
+
+where (I_t) is raw intact seed production in year (t), and (p_{\text{entry}}) is the estimated probability that raw intact seeds become effective seed-bank entrants.
+
+This is better than using a constant seed bank every year because fecundity varies among years. Years with many flowering heads contribute more to the future effective seed bank; years with low reproduction contribute less.
+
+#### Seed-bank blocks in the IPM kernel
+
+The kernel contains four blocks:
+
+\[
+K =
+\begin{bmatrix}
+S_{11} & S_{12} \
+S_{21} & S_{22}
+\end{bmatrix}
+\]
+
+where:
+
+* (S_{11}) maps seed bank to seed bank.
+* (S_{12}) maps aboveground plants to new seed-bank entrants.
+* (S_{21}) maps seed bank to aboveground recruits.
+* (S_{22}) maps aboveground plants to surviving and growing aboveground plants.
+
+The seed-bank block is:
+
+```{r seedbank-kernel-blocks, eval=FALSE, echo=TRUE}
+S11 <- matrix(seed_surv_i, 1, 1)
+
+S12 <- matrix(
+  fl *
+    pred_heads(y, fire_num) *
+    intact_seeds_per_head *
+    seedbank_entry_prob_i *
+    h,
+  nrow = 1
+)
+
+S21 <- matrix(
+  germ_p_i * recruit_size_density(y),
+  ncol = 1
+)
+```
+
+Here, (S_{11}) is simple dormant seed survival. (S_{12}) is fecundity into the effective seed bank. (S_{21}) is emergence from the seed bank into the aboveground recruit size distribution.
+
+The `h` term appears in (S_{12}) because the aboveground IPM state is represented as a density over size. The recruitment block (S_{21}) does not multiply by `h` because it is itself a density over recruit size; recruit counts are recovered later by summing over the mesh and multiplying by `h`.
+
+### Difference from the older fixed-seed-bank idea
+
+The older idea was:
+
+```{r old-seedbank-idea, eval=FALSE, echo=TRUE}
+mean_rec <- df %>%
+  group_by(year) %>%
+  summarise(rec = sum(recruit, na.rm = TRUE), .groups = "drop") %>%
+  summarise(mean_rec = mean(rec)) %>%
+  pull(mean_rec)
+
+seedbank_size <- 1e6
+seed_input <- 200
+
+emerg_rate <- mean_rec / seedbank_size
+seed_surv <- seedbank_size / (seedbank_size - mean_rec + seed_input)
+```
+
+and then:
+
+```{r old-kernel-blocks, eval=FALSE, echo=TRUE}
+seed_prod_x <- function(x, pars, fire = 0) {
+  fl_x(x, pars, fire) *
+    fl_n_x(x, pars, fire)
+}
+
+S11 <- matrix(pars$seed_surv, 1, 1)
+
+S12 <- matrix(
+  seed_prod_x(y, pars, fire) * h,
+  nrow = 1
+)
+
+S21 <- matrix(
+  pars$emerg_rate * re_y_dist(y, pars),
+  ncol = 1
+)
+
+S22 <- Tmat
+```
+
+This older formulation can be useful as a rough bookkeeping device, but it has several problems if we want the seed-bank stage to have a defensible biological interpretation.
+
+#### 1. The seed-bank size is arbitrary
+
+The old model sets:
+
+```{r old-fixed-seedbank-size, eval=FALSE, echo=TRUE}
+seedbank_size <- 1e6
+```
+
+This means the size of the seed bank is chosen by assumption rather than calibrated from observed recruitment and field germination. The emergence rate is then forced to be:
+
+\[
+g = \frac{\bar{R}}{1,000,000}
+\]
+
+If mean annual recruitment is about 141, this gives:
+
+\[
+g = \frac{141}{1,000,000} = 0.000141
+\]
+
+That is an annual emergence probability of only 0.0141%. This is far below the field germination range used in the current model. Therefore, the old seed bank becomes extremely large and almost inert.
+
+In contrast, the current model starts from a biologically motivated emergence probability:
+
+\[
+g = 0.01
+\]
+
+and then calculates the effective seed-bank size needed to produce the observed recruitment:
+
+\[
+B = \frac{\bar{R}}{g}
+\]
+
+So the current model asks: “Given a plausible emergence probability, how large must the effective seed bank be to explain the observed recruitment?”
+
+The old model asks: “Given an arbitrary seed bank of 1,000,000, what emergence rate is needed to produce the observed recruitment?”
+
+These are very different interpretations.
+
+#### 2. The old seed survival is not biological dormant survival
+
+The old model calculates:
+
+```{r old-seed-survival, eval=FALSE, echo=TRUE}
+seed_surv <- seedbank_size / (seedbank_size - mean_rec + seed_input)
+```
+
+This is not a direct biological estimate of seed survival. It is a balancing value derived from the arbitrary seed-bank size, mean recruitment, and a fixed seed input value.
+
+If `seedbank_size = 1e6`, `mean_rec = 141`, and `seed_input = 200`, then:
+
+\[
+s_B =
+\frac{1,000,000}{1,000,000 - 141 + 200}
+\approx 0.99994
+\]
+
+That implies an almost perfectly persistent seed bank. For this species, that is not a very defensible default, because field experiments suggest low germination, substantial seed loss, and uncertain seed-bank persistence.
+
+In the current model, seed survival is treated as a biological assumption:
+
+```{r current-seed-survival, eval=FALSE, echo=TRUE}
+seed_surv_default <- 0.60
+```
+
+and then tested using sensitivity analysis:
+
+```{r seed-survival-sensitivity, eval=FALSE, echo=TRUE}
+seed_surv = c(0.2, 0.4, 0.6, 0.8)
+```
+
+This is more transparent. We are not pretending to know dormant seed survival exactly. Instead, we state the assumption and test whether the model conclusions depend on it.
+
+#### 3. The old fecundity term does not connect flower heads to intact seeds
+
+In the old model:
+
+```{r old-seed-production, eval=FALSE, echo=TRUE}
+seed_prod_x <- function(x, pars, fire = 0) {
+  fl_x(x, pars, fire) *
+    fl_n_x(x, pars, fire)
+}
+```
+
+This gives:
+
+\[
+\Pr(\text{flowering}) \times E(\text{flower heads})
+\]
+
+But it does not convert flower heads into intact seeds. That means the units of (S_{12}) are unclear. It sends “flower heads” into the seed bank, not effective seeds.
+
+The current model explicitly converts flower heads into intact seeds and then into effective seed-bank entrants:
+
+\[
+S_{12}(x) =
+\Pr(\text{flowering} \mid x)
+\times E(\text{heads} \mid x)
+\times 50.9
+\times p_{\text{entry}}
+\]
+
+In code:
+
+```{r current-seed-production, eval=FALSE, echo=TRUE}
+S12 <- matrix(
+  fl *
+    pred_heads(y, fire_num) *
+    intact_seeds_per_head *
+    seedbank_entry_prob_i *
+    h,
+  nrow = 1
+)
+```
+
+This is clearer because each part has a defined biological meaning:
+
+* `fl`: probability of flowering,
+* `pred_heads`: expected number of heads conditional on flowering,
+* `intact_seeds_per_head`: intact seeds produced per head,
+* `seedbank_entry_prob_i`: probability that intact seeds become effective seed-bank entrants.
+
+#### 4. The old `seed_input` is disconnected from the actual fecundity model
+
+The old calculation uses:
+
+```{r old-seed-input, eval=FALSE, echo=TRUE}
+seed_input <- 200
+```
+
+to calculate `seed_surv`, but the kernel does not actually use `seed_input` as the annual fecundity input. The kernel uses `seed_prod_x(y, pars, fire)` instead.
+
+This creates a mismatch: one number is used to calibrate seed survival, but a different function is used to generate seeds in the IPM.
+
+The current model avoids this mismatch. The same seed-production calculation is used both to estimate the effective entry probability and to build the kernel:
+
+```{r current-seed-input, eval=FALSE, echo=TRUE}
+raw_intact_seeds = sum(fl_nr, na.rm = TRUE) * intact_seeds_per_head
+
+seedbank_entry_prob_i <-
+  effective_seed_input_mean_i / mean_raw_intact_seed_input
+
+S12 <- matrix(
+  fl *
+    pred_heads(y, fire_num) *
+    intact_seeds_per_head *
+    seedbank_entry_prob_i *
+    h,
+  nrow = 1
+)
+```
+
+So the calibration and the kernel use the same biological pathway.
+
+#### 5. The old method makes the seed bank almost immortal
+
+Because the old method uses a huge seed-bank size, the calculated emergence rate is tiny and the calculated seed survival is almost one. This means the model contains a very large, very slow seed-bank reservoir.
+
+That may stabilize the IPM numerically, but it is probably not appropriate for this species. The seed ecology results suggest that the seed bank is uncertain and probably limited, not an enormous long-term reservoir.
+
+The current model still includes seed persistence, but it keeps that persistence moderate and explicit:
+
+```{r current-persistence, eval=FALSE, echo=TRUE}
+germ_p_default <- 0.01
+seed_surv_default <- 0.60
+stopifnot(seed_surv_default + germ_p_default <= 1)
+```
+
+The constraint:
+
+\[
+g + s_B \leq 1
+\]
+
+ensures that the seed-bank transition is biologically coherent. A seed can emerge, remain dormant, or be lost. The probabilities should not sum to more than one.
+
+#### 6. The current model is easier to explain in a manuscript
+
+The current formulation can be explained directly:
+
+> Because soil seed density was not measured, we modeled a single effective seed-bank stage. We initialized the effective seed bank as mean annual recruitment divided by an assumed annual emergence probability. Annual emergence was set to 0.01 by default, corresponding to the lower end of the reported field germination range. Dormant seed survival was uncertain and was therefore varied in sensitivity analyses. Fecundity into the effective seed bank was calculated as the product of flowering probability, predicted flower-head number, intact seeds per head, and an estimated probability that intact seeds entered the effective seed bank.
+
+The old formulation is harder to justify because it requires explaining why the seed bank was fixed at 1,000,000, why seed input was fixed at 200, and why seed survival was calculated from those values rather than treated as a biological assumption.
+
+### Summary of the difference
+
+The older approach fixes the seed-bank size first and lets the emergence rate become whatever value is needed to match recruitment. This makes the seed-bank scale arbitrary and produces an almost permanent seed bank.
+
+The current approach fixes a biologically plausible emergence probability first, then calculates the effective seed-bank size needed to match observed recruitment. It then links annual seed input to observed and predicted flower-head production, intact seeds per head, and an effective entry probability.
+
+Therefore, the current seed-bank stage is still phenomenological, but it is better grounded biologically. It is not a literal soil seed count. It is an effective hidden stage that allows the IPM to connect seed production, delayed recruitment, and aboveground population growth in a transparent way.
+
+
+
+```{r seed-bank-calibration}
+annual_seed_obs <- df %>%
+  group_by(year) %>%
+  summarise(
+    recruits = sum(recruit == 1, na.rm = TRUE),
+
+    # Raw intact seed production per year:
+    # observed flower heads * paper estimate of intact seeds per head.
+    raw_intact_seeds = sum(fl_nr, na.rm = TRUE) * intact_seeds_per_head,
+
+    .groups = "drop"
+  )
+
+mean_rec <- mean(annual_seed_obs$recruits, na.rm = TRUE)
+mean_raw_intact_seed_input <- mean(annual_seed_obs$raw_intact_seeds, na.rm = TRUE)
+
+calibrate_seedbank <- function(germ_p_i, seed_surv_i) {
+
+  stopifnot(seed_surv_i + germ_p_i <= 1)
+
+  # Effective seed-bank size implied by observed recruitment.
+  seedbank_size_i <- mean_rec / germ_p_i
+
+  # Equilibrium effective input:
+  #   B[t + 1] = seed_surv * B[t] + effective_input
+  #   effective_input = B * (1 - seed_surv)
+  effective_seed_input_mean_i <- seedbank_size_i * (1 - seed_surv_i)
+
+  # Convert raw intact seed production into effective seed-bank entrants.
+  # This absorbs losses from predation, nonviability, microsite failure,
+  # dispersal outside plots, etc.
+  seedbank_entry_prob_i <- effective_seed_input_mean_i /
+    mean_raw_intact_seed_input
+
+  seedbank_entry_prob_i <- min(max(seedbank_entry_prob_i, 0), 1)
+
+  # Reconstruct year-specific effective seed bank:
+  #   B[t + 1] = seed_surv * B[t] + raw_intact_seeds[t] * entry_prob
+  seedbank_by_year_i <- tibble(
+    year = fit_years,
+    seedbank = NA_real_
+  )
+
+  B <- seedbank_size_i
+
+  for (i in seq_along(fit_years)) {
+
+    yr <- fit_years[i]
+    seedbank_by_year_i$seedbank[i] <- B
+
+    raw_input_yr <- annual_seed_obs %>%
+      filter(year == yr) %>%
+      pull(raw_intact_seeds)
+
+    if (length(raw_input_yr) == 0 || is.na(raw_input_yr)) {
+      raw_input_yr <- mean_raw_intact_seed_input
+    }
+
+    effective_input_yr <- raw_input_yr * seedbank_entry_prob_i
+
+    B <- seed_surv_i * B + effective_input_yr
+  }
+
+  list(
+    germ_p = germ_p_i,
+    seed_surv = seed_surv_i,
+    seedbank_size = seedbank_size_i,
+    seedbank_entry_prob = seedbank_entry_prob_i,
+    seedbank_by_year = seedbank_by_year_i
+  )
+}
+
+seed_par_default <- calibrate_seedbank(
+  germ_p_i = germ_p_default,
+  seed_surv_i = seed_surv_default
+)
+
+seedbank_default_summary <- tibble(
+  mean_recruits_per_year = mean_rec,
+  germ_p = seed_par_default$germ_p,
+  seed_surv = seed_par_default$seed_surv,
+  seedbank_size = seed_par_default$seedbank_size,
+  intact_seeds_per_head = intact_seeds_per_head,
+  seedbank_entry_prob = seed_par_default$seedbank_entry_prob
+)
+
+seedbank_default_summary
+```
+
+## IPM functions
+
+The IPM state vector has one discrete seed-bank state followed by continuous aboveground size classes:
+
+\[
+\begin{bmatrix}
+\text{seed bank} \\
+\text{aboveground size distribution}
+\end{bmatrix}
+\]
+
+The kernel contains four blocks:
+
+- `S11`: seed bank to seed bank.
+- `S12`: aboveground plants to seed bank.
+- `S21`: seed bank to recruit size distribution.
+- `S22`: aboveground survival and growth.
+
+```{r ipm-helper-functions}
+fire_fac <- function(fire_num) {
+  factor(
+    if_else(fire_num == 1, "Fire", "No fire"),
+    levels = levels(df$fire)
+  )
+}
+
+make_newdata <- function(x, fire_num, year = NULL, flower = NULL) {
+
+  out <- tibble(
+    logsize_t0 = x,
+    fire = fire_fac(fire_num)
+  )
+
+  if (!is.null(year)) {
+    out$year <- factor(year, levels = levels(df_su$year))
+  }
+
+  if (!is.null(flower)) {
+    out$flower <- flower
+  }
+
+  out
+}
+
+pred_su <- function(x, flower_state, fire_num, year = NULL,
+                    year_specific = TRUE) {
+
+  nd <- make_newdata(
+    x = x,
+    fire_num = fire_num,
+    year = year,
+    flower = flower_state
+  )
+
+  predict(
+    mod_su,
+    newdata = nd,
+    type = "response",
+    re.form = if (year_specific) NULL else NA,
+    allow.new.levels = TRUE
+  )
+}
+
+pred_growth_mu <- function(x, fire_num, year = NULL,
+                           year_specific = TRUE) {
+
+  nd <- make_newdata(
+    x = x,
+    fire_num = fire_num,
+    year = year
+  )
+
+  predict(
+    mod_gr,
+    newdata = nd,
+    re.form = if (year_specific) NULL else NA,
+    allow.new.levels = TRUE
+  )
+}
+
+pred_growth_sd <- function(mu) {
+  sqrt(gr_a * exp(gr_b * mu))
+}
+
+pred_flower <- function(x, fire_num) {
+
+  nd <- tibble(
+    logsize_t0 = x,
+    fire = fire_fac(fire_num)
+  )
+
+  predict(
+    mod_fl,
+    newdata = nd,
+    type = "response"
+  )
+}
+
+pred_heads <- function(x, fire_num) {
+
+  nd <- tibble(
+    logsize_t0 = x,
+    fire = fire_fac(fire_num)
+  )
+
+  predict(
+    mod_heads,
+    newdata = nd,
+    type = "response"
+  )
+}
+
+recruit_size_density <- function(y) {
+  dnorm(y, mean = recr_sz, sd = recr_sd)
+}
+
+lambda_from_K <- function(K) {
+  Re(eigen(K)$values[1])
+}
+```
+
+## Kernel
+
+```{r ipm-mesh}
+L <- min(
+  df_gr$logsize_t0,
+  df_gr$logsize_t1,
+  df_recr$logsize_t0,
+  na.rm = TRUE
+) - 0.1
+
+U <- max(
+  df_gr$logsize_t0,
+  df_gr$logsize_t1,
+  df_recr$logsize_t0,
+  na.rm = TRUE
+) + 0.1
+
+h <- (U - L) / mat_siz
+
+breaks <- seq(L, U, length.out = mat_siz + 1)
+meshpts <- 0.5 * (breaks[-1] + breaks[-length(breaks)])
+
+c(L = L, U = U, h = h)
+```
+
+```{r ipm-kernel, echo=TRUE}
+kernel_one_fire <- function(fire_num,
+                            year = NULL,
+                            year_specific = TRUE,
+                            germ_p_i = germ_p_default,
+                            seed_surv_i = seed_surv_default,
+                            seedbank_entry_prob_i = seed_par_default$seedbank_entry_prob) {
+
+  y <- meshpts
+  n <- length(y)
+
+  # Flowering probability by size.
+  fl <- pred_flower(y, fire_num)
+
+  # Survival if not flowering.
+  s_nf <- pred_su(
+    x = y,
+    flower_state = 0,
+    fire_num = fire_num,
+    year = year,
+    year_specific = year_specific
+  )
+
+  # Survival if flowering.
+  # This captures the post-flowering survival cost.
+  s_f <- pred_su(
+    x = y,
+    flower_state = 1,
+    fire_num = fire_num,
+    year = year,
+    year_specific = year_specific
+  )
+
+  # Total survival-growth probability.
+  s_total <- (1 - fl) * s_nf + fl * s_f
+
+  # Growth distribution.
+  mu_g <- pred_growth_mu(
+    x = y,
+    fire_num = fire_num,
+    year = year,
+    year_specific = year_specific
+  )
+
+  sd_g <- pred_growth_sd(mu_g)
+
+  Gmat <- matrix(0, n, n)
+
+  for (j in seq_len(n)) {
+
+    Gmat[, j] <- dnorm(y, mean = mu_g[j], sd = sd_g[j]) * h
+
+    # Eviction correction.
+    Gmat[1, j] <- Gmat[1, j] + pnorm(L, mean = mu_g[j], sd = sd_g[j])
+    Gmat[n, j] <- Gmat[n, j] + 1 - pnorm(U, mean = mu_g[j], sd = sd_g[j])
+  }
+
+  Tmat <- sweep(Gmat, 2, s_total, "*")
+
+  # Seed bank remains seed bank.
+  S11 <- matrix(seed_surv_i, 1, 1)
+
+  # Aboveground plants produce effective seed-bank entrants.
+  S12 <- matrix(
+    fl *
+      pred_heads(y, fire_num) *
+      intact_seeds_per_head *
+      seedbank_entry_prob_i *
+      h,
+    nrow = 1
+  )
+
+  # Seed bank produces recruits.
+  # No *h here because this is a density over recruit size.
+  S21 <- matrix(
+    germ_p_i * recruit_size_density(y),
+    ncol = 1
+  )
+
+  K <- rbind(
+    cbind(S11, S12),
+    cbind(S21, Tmat)
+  )
+
+  list(
+    k_yx = K,
+    Tmat = Tmat,
+    meshpts = y,
+    h = h
+  )
+}
+
+kernel_mixed_fire <- function(year,
+                              fire_prop,
+                              year_specific = TRUE,
+                              germ_p_i = germ_p_default,
+                              seed_surv_i = seed_surv_default,
+                              seedbank_entry_prob_i = seed_par_default$seedbank_entry_prob) {
+
+  K0 <- kernel_one_fire(
+    fire_num = 0,
+    year = year,
+    year_specific = year_specific,
+    germ_p_i = germ_p_i,
+    seed_surv_i = seed_surv_i,
+    seedbank_entry_prob_i = seedbank_entry_prob_i
+  )$k_yx
+
+  K1 <- kernel_one_fire(
+    fire_num = 1,
+    year = year,
+    year_specific = year_specific,
+    germ_p_i = germ_p_i,
+    seed_surv_i = seed_surv_i,
+    seedbank_entry_prob_i = seedbank_entry_prob_i
+  )$k_yx
+
+  (1 - fire_prop) * K0 + fire_prop * K1
+}
+```
+
+## Matched-site validation
+
+The model is validated against observed aboveground population growth using matched sites only. This avoids artificial jumps caused by adding or losing sites between years.
+
+Projected lambda is the most relevant validation quantity here because it starts from the observed aboveground size distribution and reconstructed effective seed bank. Asymptotic lambda is reported too, but it is not the primary validation target.
+
+```{r matched-site-validation}
+counts_site <- df_all %>%
+  filter(
+    year %in% c(compare_years, compare_years + 1),
+    is.finite(logsize_t0)
+  ) %>%
+  group_by(site, year) %>%
+  summarise(n = n(), .groups = "drop")
+
+matched_site_years <- counts_site %>%
+  rename(year_t = year, n_t0 = n) %>%
+  mutate(year_t1 = year_t + 1) %>%
+  inner_join(
+    counts_site %>%
+      rename(year_t1 = year, n_t1 = n),
+    by = c("site", "year_t1")
+  ) %>%
+  filter(year_t %in% compare_years)
+
+df_obs_pgr_matched <- matched_site_years %>%
+  group_by(year = year_t) %>%
+  summarise(
+    n_obs_t0 = sum(n_t0),
+    n_obs_t1 = sum(n_t1),
+    obs_pgr = n_obs_t1 / n_obs_t0,
+    n_sites = n_distinct(site),
+    sites = paste(sort(unique(site)), collapse = ", "),
+    .groups = "drop"
+  )
+
+fire_prop_matched <- df %>%
+  semi_join(
+    matched_site_years %>%
+      transmute(year = year_t, site),
+    by = c("year", "site")
+  ) %>%
+  filter(is.finite(logsize_t0)) %>%
+  group_by(year) %>%
+  summarise(
+    fire_prop = mean(fire == "Fire", na.rm = TRUE),
+    .groups = "drop"
+  )
+
+obs_survivors <- df_all %>%
+  semi_join(
+    matched_site_years %>%
+      transmute(year = year_t, site),
+    by = c("year", "site")
+  ) %>%
+  filter(is.finite(logsize_t0), !is.na(survives)) %>%
+  group_by(year) %>%
+  summarise(
+    obs_survivors = sum(survives == 1, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+obs_recruits_next <- df_all %>%
+  mutate(year_t = year - 1) %>%
+  semi_join(
+    matched_site_years %>%
+      dplyr::select(year_t, site),
+    by = c("year_t", "site")
+  ) %>%
+  filter(recruit == 1, is.finite(logsize_t0)) %>%
+  group_by(year = year_t) %>%
+  summarise(
+    obs_recruits_next = n(),
+    .groups = "drop"
+  )
+
+make_initial_n_matched <- function(year0, seed_par) {
+
+  sites_y <- matched_site_years %>%
+    filter(year_t == year0) %>%
+    pull(site) %>%
+    unique()
+
+  adult_df <- df_all %>%
+    filter(
+      year == year0,
+      site %in% sites_y,
+      is.finite(logsize_t0)
+    )
+
+  adult_counts <- hist(
+    pmin(pmax(adult_df$logsize_t0, L), U),
+    breaks = breaks,
+    plot = FALSE,
+    include.lowest = TRUE
+  )$counts
+
+  adult_density <- adult_counts / h
+
+  B0_total <- seed_par$seedbank_by_year %>%
+    filter(year == year0) %>%
+    pull(seedbank)
+
+  if (length(B0_total) == 0 || is.na(B0_total)) {
+    B0_total <- seed_par$seedbank_size
+  }
+
+  total_adults_year <- df_all %>%
+    filter(year == year0, is.finite(logsize_t0)) %>%
+    nrow()
+
+  frac_matched <- ifelse(
+    total_adults_year > 0,
+    nrow(adult_df) / total_adults_year,
+    0
+  )
+
+  # Approximate matched-site seed bank by matched-site aboveground fraction.
+  B0_matched <- B0_total * frac_matched
+
+  c(seedbank = B0_matched, adult_density)
+}
+
+project_one_year_matched <- function(yr, seed_par) {
+
+  fire_prop_y <- fire_prop_matched %>%
+    filter(year == yr) %>%
+    pull(fire_prop)
+
+  if (length(fire_prop_y) == 0 || is.na(fire_prop_y)) {
+    fire_prop_y <- 0
+  }
+
+  K <- kernel_mixed_fire(
+    year = yr,
+    fire_prop = fire_prop_y,
+    year_specific = TRUE,
+    germ_p_i = seed_par$germ_p,
+    seed_surv_i = seed_par$seed_surv,
+    seedbank_entry_prob_i = seed_par$seedbank_entry_prob
+  )
+
+  n0 <- make_initial_n_matched(yr, seed_par)
+  n1 <- K %*% n0
+
+  adult_from_seedbank <- sum(K[-1, 1] * n0[1]) * h
+  adult_from_plants <- sum((K[-1, -1, drop = FALSE] %*% n0[-1])) * h
+
+  adult_n0 <- sum(n0[-1]) * h
+  adult_n1 <- sum(n1[-1]) * h
+
+  tibble(
+    year = yr,
+    asym_lambda = lambda_from_K(K),
+    proj_lambda = adult_n1 / adult_n0,
+    proj_from_seedbank = adult_from_seedbank,
+    proj_from_plants = adult_from_plants,
+    fire_prop = fire_prop_y,
+    seedbank_start = n0[1],
+    adult_start = adult_n0
+  )
+}
+
+run_matched_projection <- function(germ_p_i, seed_surv_i) {
+
+  seed_par_i <- calibrate_seedbank(
+    germ_p_i = germ_p_i,
+    seed_surv_i = seed_surv_i
+  )
+
+  df_lams_i <- purrr::map_dfr(
+    df_obs_pgr_matched$year,
+    ~ project_one_year_matched(.x, seed_par_i)
+  )
+
+  df_obs_pgr_matched %>%
+    left_join(df_lams_i, by = "year") %>%
+    left_join(obs_survivors, by = "year") %>%
+    left_join(obs_recruits_next, by = "year") %>%
+    mutate(
+      obs_recruits_next = replace_na(obs_recruits_next, 0),
+      obs_n1_decomp = obs_survivors + obs_recruits_next,
+      obs_pgr_decomp = obs_n1_decomp / n_obs_t0,
+
+      germ_p = germ_p_i,
+      seed_surv = seed_surv_i,
+      seedbank_size = seed_par_i$seedbank_size,
+      seedbank_entry_prob = seed_par_i$seedbank_entry_prob
+    ) %>%
+    arrange(year)
+}
+
+df_compare_final <- run_matched_projection(
+  germ_p_i = germ_p_default,
+  seed_surv_i = seed_surv_default
+)
+
+df_compare_final %>%
+  summarise(
+    geom_mean_obs = exp(mean(log(obs_pgr), na.rm = TRUE)),
+    geom_mean_obs_decomp = exp(mean(log(obs_pgr_decomp), na.rm = TRUE)),
+    geom_mean_asym = exp(mean(log(asym_lambda), na.rm = TRUE)),
+    geom_mean_proj = exp(mean(log(proj_lambda), na.rm = TRUE)),
+    mean_abs_log_error = mean(abs(log(obs_pgr) - log(proj_lambda)), na.rm = TRUE),
+    cor_obs_proj = cor(obs_pgr, proj_lambda, use = "complete.obs")
+  )
+```
+
+## Recruitment-pulse diagnostic
+
+The largest remaining mismatches are years where observed recruitment pulses deviate strongly from the constant emergence assumption. This diagnostic compares observed recruits in year `t + 1` against recruits predicted from the effective seed bank.
+
+```{r emergence-diagnostic}
+df_emerg_diag <- df_compare_final %>%
+  mutate(
+    obs_emerg_rate = obs_recruits_next / seedbank_start,
+    pred_emerg_rate = proj_from_seedbank / seedbank_start
+  ) %>%
+  dplyr::select(
+    year,
+    obs_recruits_next,
+    proj_from_seedbank,
+    seedbank_start,
+    obs_emerg_rate,
+    pred_emerg_rate,
+    obs_pgr,
+    proj_lambda
+  )
+
+df_emerg_diag
+```
+
+## Seed-bank sensitivity analysis
+
+Because the seed bank is not directly observed, the sensitivity analysis varies emergence probability and dormant seed survival. The important result is whether projected lambda remains close to observed matched-site PGR across plausible assumptions.
+
+```{r seedbank-sensitivity}
+sens_grid <- expand_grid(
+  germ_p = c(0.01, 0.02, 0.05, 0.086),
+  seed_surv = c(0.2, 0.4, 0.6, 0.8)
+) %>%
+  filter(germ_p + seed_surv <= 1)
+
+sens_results <- pmap_dfr(
+  sens_grid,
+  function(germ_p, seed_surv) {
+
+    germ_p_i <- germ_p
+    seed_surv_i <- seed_surv
+
+    df_i <- run_matched_projection(
+      germ_p_i = germ_p_i,
+      seed_surv_i = seed_surv_i
+    )
+
+    tibble(
+      germ_p = germ_p_i,
+      seed_surv = seed_surv_i,
+      seedbank_size = unique(df_i$seedbank_size),
+      seedbank_entry_prob = unique(df_i$seedbank_entry_prob),
+
+      geom_mean_obs = exp(mean(log(df_i$obs_pgr), na.rm = TRUE)),
+      geom_mean_asym = exp(mean(log(df_i$asym_lambda), na.rm = TRUE)),
+      geom_mean_proj = exp(mean(log(df_i$proj_lambda), na.rm = TRUE)),
+
+      mean_abs_log_error = mean(
+        abs(log(df_i$obs_pgr) - log(df_i$proj_lambda)),
+        na.rm = TRUE
+      ),
+
+      cor_obs_proj = cor(
+        df_i$obs_pgr,
+        df_i$proj_lambda,
+        use = "complete.obs"
+      ),
+
+      mean_proj_seedbank = mean(df_i$proj_from_seedbank, na.rm = TRUE),
+      mean_seedbank_start = mean(df_i$seedbank_start, na.rm = TRUE)
+    )
+  }
+)
+
+sens_results %>%
+  arrange(mean_abs_log_error)
+```
+
+## Plots
+
+The following plots are kept at the end so the model workflow is not interrupted. Red points or dashed red lines indicate fire. Black points or solid black lines indicate no fire.
+
+```{r plot-settings}
+fire_cols <- c("No fire" = "black", "Fire" = "red")
+fire_shapes <- c("No fire" = 16, "Fire" = 17)
+fire_lines <- c("No fire" = "solid", "Fire" = "dashed")
+```
+
+### Survival model effects
+
+```{r survival-plots, fig.width=18, fig.height=22, warning=FALSE, message=FALSE}
+surv_bin_yrs <- split(df_su, df_su$year, drop = TRUE)
+v_surv <- names(surv_bin_yrs)
+
+surv_yr_plots <- function(i) {
+
+  yr_i <- v_surv[i]
+
+  surv_temp <- as.data.frame(surv_bin_yrs[[i]]) %>%
+    mutate(
+      flower_status = if_else(flower == 1, "Flowering", "Non-flowering"),
+      fire = factor(fire, levels = levels(df_su$fire)),
+      year = factor(year, levels = levels(df_su$year))
+    )
+
+  x_temp <- seq(
+    min(surv_temp$logsize_t0, na.rm = TRUE),
+    max(surv_temp$logsize_t0, na.rm = TRUE),
+    length.out = 100
+  )
+
+  pred_dat <- expand_grid(
+    logsize_t0 = x_temp,
+    flower = c(0, 1),
+    fire = factor(c("No fire", "Fire"), levels = levels(df_su$fire))
+  ) %>%
+    mutate(
+      flower_status = if_else(flower == 1, "Flowering", "Non-flowering")
+    )
+
+  pred_dat <- as.data.frame(pred_dat)
+  pred_dat$year <- factor(yr_i, levels = levels(df_su$year))
+
+  pred_dat$surv <- predict(
+    mod_su,
+    newdata = pred_dat,
+    type = "response",
+    re.form = NULL,
+    allow.new.levels = TRUE
+  )
+
+  ggplot() +
+    geom_jitter(
+      data = surv_temp,
+      aes(
+        x = logsize_t0,
+        y = survives,
+        color = fire,
+        shape = fire
+      ),
+      width = 0,
+      height = 0.055,
+      size = 0.9,
+      alpha = 0.35
+    ) +
+    geom_line(
+      data = pred_dat,
+      aes(
+        x = logsize_t0,
+        y = surv,
+        color = fire,
+        linetype = fire
+      ),
+      linewidth = 1
+    ) +
+    facet_wrap(~ flower_status, nrow = 1) +
+    scale_color_manual(values = fire_cols) +
+    scale_shape_manual(values = fire_shapes) +
+    scale_linetype_manual(values = fire_lines) +
+    coord_cartesian(ylim = c(-0.05, 1.05)) +
+    labs(
+      title = yr_i,
+      x = NULL,
+      y = NULL,
+      color = "Fire treatment",
+      shape = "Fire treatment",
+      linetype = "Fire treatment"
+    ) +
+    theme_bw() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+      strip.text = element_text(size = 8),
+      axis.text = element_text(size = 7),
+      axis.title = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.margin = margin(3, 3, 3, 3)
+    )
+}
+
+surv_yrs <- lapply(seq_along(surv_bin_yrs), surv_yr_plots)
+
+g_surv_years <- wrap_plots(surv_yrs, ncol = 5, guides = "collect") +
+  plot_annotation(
+    title = "Year-specific survival model with flowering cost",
+    subtitle = "Each year has two panels: non-flowering and flowering. Points are raw 0/1 survival observations; lines are fitted GLMM predictions.",
+    caption = "X-axis: log(size) at t. Y-axis: survival probability at t + 1."
+  ) &
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(size = 15, face = "bold"),
+    plot.subtitle = element_text(size = 10),
+    plot.caption = element_text(size = 10)
+  )
+
+g_surv_years
+```
+
+### Growth model effects
+
+```{r growth-plots, fig.width=18, fig.height=18, warning=FALSE, message=FALSE}
+grow_yr_plots <- function(i) {
+
+  yr_i <- sort(unique(df_gr$year))[i]
+
+  grow_temp <- df_gr %>%
+    filter(year == yr_i) %>%
+    mutate(
+      fire = factor(fire, levels = levels(df_gr$fire)),
+      year = factor(year, levels = levels(df_gr$year))
+    )
+
+  x_temp <- seq(
+    min(grow_temp$logsize_t0, na.rm = TRUE),
+    max(grow_temp$logsize_t0, na.rm = TRUE),
+    length.out = 100
+  )
+
+  pred_dat <- expand_grid(
+    logsize_t0 = x_temp,
+    fire = factor(c("No fire", "Fire"), levels = levels(df_gr$fire))
+  )
+
+  pred_dat <- as.data.frame(pred_dat)
+  pred_dat$year <- factor(yr_i, levels = levels(df_gr$year))
+
+  pred_dat$pred_logsize_t1 <- predict(
+    mod_gr,
+    newdata = pred_dat,
+    re.form = NULL,
+    allow.new.levels = TRUE
+  )
+
+  ggplot() +
+    geom_point(
+      data = grow_temp,
+      aes(
+        x = logsize_t0,
+        y = logsize_t1,
+        color = fire,
+        shape = fire
+      ),
+      size = 0.9,
+      alpha = 0.35
+    ) +
+    geom_line(
+      data = pred_dat,
+      aes(
+        x = logsize_t0,
+        y = pred_logsize_t1,
+        color = fire,
+        linetype = fire
+      ),
+      linewidth = 1
+    ) +
+    geom_abline(
+      intercept = 0,
+      slope = 1,
+      color = "blue",
+      linetype = "dashed",
+      linewidth = 0.5,
+      alpha = 0.7
+    ) +
+    scale_color_manual(values = fire_cols) +
+    scale_shape_manual(values = fire_shapes) +
+    scale_linetype_manual(values = fire_lines) +
+    labs(
+      title = as.character(yr_i),
+      x = NULL,
+      y = NULL,
+      color = "Fire treatment",
+      shape = "Fire treatment",
+      linetype = "Fire treatment"
+    ) +
+    theme_bw() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+      axis.text = element_text(size = 7),
+      axis.title = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.margin = margin(3, 3, 3, 3)
+    )
+}
+
+grow_yrs <- lapply(seq_along(sort(unique(df_gr$year))), grow_yr_plots)
+
+g_grow_years <- wrap_plots(grow_yrs, ncol = 5, guides = "collect") +
+  plot_annotation(
+    title = "Year-specific growth model",
+    subtitle = "Points are raw observed transitions. Lines are fitted mixed-model predictions. Blue dashed line is no growth.",
+    caption = "X-axis: log(size) at t. Y-axis: log(size) at t + 1."
+  ) &
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(size = 15, face = "bold"),
+    plot.subtitle = element_text(size = 10),
+    plot.caption = element_text(size = 10)
+  )
+
+g_grow_years
+```
+
+### Flowering probability effects
+
+```{r flowering-plots, fig.width=18, fig.height=18, warning=FALSE, message=FALSE}
+fl_bin_yrs <- split(df_fl, df_fl$year, drop = TRUE)
+v_fl <- names(fl_bin_yrs)
+
+flower_yr_plots <- function(i) {
+
+  yr_i <- v_fl[i]
+
+  fl_temp <- as.data.frame(fl_bin_yrs[[i]]) %>%
+    mutate(
+      fire = factor(fire, levels = levels(df_fl$fire)),
+      year = factor(year, levels = levels(df_fl$year))
+    )
+
+  x_temp <- seq(
+    min(fl_temp$logsize_t0, na.rm = TRUE),
+    max(fl_temp$logsize_t0, na.rm = TRUE),
+    length.out = 100
+  )
+
+  pred_dat <- expand_grid(
+    logsize_t0 = x_temp,
+    fire = factor(c("No fire", "Fire"), levels = levels(df_fl$fire))
+  )
+
+  pred_dat <- as.data.frame(pred_dat)
+
+  pred_dat$pred_flower <- predict(
+    mod_fl,
+    newdata = pred_dat,
+    type = "response"
+  )
+
+  ggplot() +
+    geom_jitter(
+      data = fl_temp,
+      aes(
+        x = logsize_t0,
+        y = flower,
+        color = fire,
+        shape = fire
+      ),
+      width = 0,
+      height = 0.055,
+      size = 0.9,
+      alpha = 0.35
+    ) +
+    geom_line(
+      data = pred_dat,
+      aes(
+        x = logsize_t0,
+        y = pred_flower,
+        color = fire,
+        linetype = fire
+      ),
+      linewidth = 1
+    ) +
+    scale_color_manual(values = fire_cols) +
+    scale_shape_manual(values = fire_shapes) +
+    scale_linetype_manual(values = fire_lines) +
+    coord_cartesian(ylim = c(-0.05, 1.05)) +
+    labs(
+      title = as.character(yr_i),
+      x = NULL,
+      y = NULL,
+      color = "Fire treatment",
+      shape = "Fire treatment",
+      linetype = "Fire treatment"
+    ) +
+    theme_bw() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+      axis.text = element_text(size = 7),
+      axis.title = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.margin = margin(3, 3, 3, 3)
+    )
+}
+
+flower_yrs <- lapply(seq_along(fl_bin_yrs), flower_yr_plots)
+
+g_flower_years <- wrap_plots(flower_yrs, ncol = 5, guides = "collect") +
+  plot_annotation(
+    title = "Year-specific flowering probability model",
+    subtitle = "Points are raw 0/1 flowering observations. Lines are fitted binomial-model predictions.",
+    caption = "X-axis: log(size) at t. Y-axis: flowering probability."
+  ) &
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(size = 15, face = "bold"),
+    plot.subtitle = element_text(size = 10),
+    plot.caption = element_text(size = 10)
+  )
+
+g_flower_years
+```
+
+### Flower-head number effects
+
+```{r flower-head-plots, fig.width=18, fig.height=16, warning=FALSE, message=FALSE}
+heads_bin_yrs <- split(df_heads, df_heads$year, drop = TRUE)
+v_heads <- names(heads_bin_yrs)
+
+heads_yr_plots <- function(i) {
+
+  yr_i <- v_heads[i]
+
+  heads_temp <- as.data.frame(heads_bin_yrs[[i]]) %>%
+    mutate(
+      fire = factor(fire, levels = levels(df_heads$fire)),
+      year = factor(year, levels = levels(df_heads$year))
+    )
+
+  x_temp <- seq(
+    min(heads_temp$logsize_t0, na.rm = TRUE),
+    max(heads_temp$logsize_t0, na.rm = TRUE),
+    length.out = 100
+  )
+
+  pred_dat <- expand_grid(
+    logsize_t0 = x_temp,
+    fire = factor(c("No fire", "Fire"), levels = levels(df_heads$fire))
+  )
+
+  pred_dat <- as.data.frame(pred_dat)
+
+  pred_dat$pred_heads <- predict(
+    mod_heads,
+    newdata = pred_dat,
+    type = "response"
+  )
+
+  ggplot() +
+    geom_point(
+      data = heads_temp,
+      aes(
+        x = logsize_t0,
+        y = fl_nr,
+        color = fire,
+        shape = fire
+      ),
+      size = 1,
+      alpha = 0.45
+    ) +
+    geom_line(
+      data = pred_dat,
+      aes(
+        x = logsize_t0,
+        y = pred_heads,
+        color = fire,
+        linetype = fire
+      ),
+      linewidth = 1
+    ) +
+    scale_color_manual(values = fire_cols) +
+    scale_shape_manual(values = fire_shapes) +
+    scale_linetype_manual(values = fire_lines) +
+    labs(
+      title = as.character(yr_i),
+      x = NULL,
+      y = NULL,
+      color = "Fire treatment",
+      shape = "Fire treatment",
+      linetype = "Fire treatment"
+    ) +
+    theme_bw() +
+    theme(
+      legend.position = "bottom",
+      plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
+      axis.text = element_text(size = 7),
+      axis.title = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.margin = margin(3, 3, 3, 3)
+    )
+}
+
+heads_yrs <- lapply(seq_along(heads_bin_yrs), heads_yr_plots)
+
+g_heads_years <- wrap_plots(heads_yrs, ncol = 5, guides = "collect") +
+  plot_annotation(
+    title = "Year-specific flower-head number model",
+    subtitle = "Conditional on flowering plants only. Points are raw head counts. Lines are fitted negative-binomial predictions.",
+    caption = "X-axis: log(size) at t. Y-axis: flower-head number."
+  ) &
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(size = 15, face = "bold"),
+    plot.subtitle = element_text(size = 10),
+    plot.caption = element_text(size = 10)
+  )
+
+g_heads_years
+```
+
+### Seed-bank sensitivity plot
+
+```{r sensitivity-plot, fig.width=8, fig.height=5, warning=FALSE, message=FALSE}
+g_sens <- ggplot(
+  sens_results,
+  aes(
+    x = seed_surv,
+    y = geom_mean_proj,
+    color = factor(germ_p),
+    group = factor(germ_p)
+  )
+) +
+  geom_hline(
+    aes(yintercept = unique(geom_mean_obs)[1]),
+    lty = 2
+  ) +
+  geom_point(size = 3) +
+  geom_line() +
+  labs(
+    x = "Dormant seed survival",
+    y = "Geometric mean projected lambda",
+    color = "Emergence probability",
+    title = "Seed-bank sensitivity analysis"
+  ) +
+  theme_classic()
+
+g_sens
+```
+
+### Final validation plot
+
+This final plot resembles the earlier observed-versus-modeled lambda figure, but it uses the matched-site validation table. The projected lambda starts from the observed aboveground size distribution and reconstructed effective seed bank.
+
+```{r final-validation-plot, fig.width=10, fig.height=5, warning=FALSE, message=FALSE}
+df_plot_final <- df_compare_final %>%
+  mutate(
+    fire = if_else(fire_prop > 0, "Fire", "No fire"),
+    fire = factor(fire, levels = c("No fire", "Fire"))
+  ) %>%
+  dplyr::select(year, obs_pgr, asym_lambda, proj_lambda, fire) %>%
+  pivot_longer(
+    cols = c(asym_lambda, proj_lambda),
+    names_to = "lambda_type",
+    values_to = "lambda"
+  ) %>%
+  mutate(
+    lambda_type = recode(
+      lambda_type,
+      asym_lambda = "Asymptotic lambda",
+      proj_lambda = "Projected lambda from observed size distribution"
+    )
+  )
+
+g_mod_vs_obs <- ggplot(
+  df_plot_final,
+  aes(x = lambda, y = obs_pgr, color = fire)
+) +
+  geom_point(size = 3) +
+  geom_abline(intercept = 0, slope = 1, lty = 2) +
+  facet_wrap(~ lambda_type, scales = "free_x") +
+  scale_color_manual(values = fire_cols) +
+  labs(
+    title = "Observed population growth vs modeled lambda",
+    subtitle = "Matched-site comparison; projected lambda uses observed size distribution and reconstructed effective seed bank",
+    x = expression("Modeled " * lambda),
+    y = "Observed matched-site population growth rate",
+    color = "Fire"
+  ) +
+  theme_classic()
+
+g_mod_vs_obs
+```
+
+

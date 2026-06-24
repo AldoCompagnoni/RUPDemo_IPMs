@@ -213,7 +213,7 @@ fig_su_bin <- ggplot() +
                 data = df_su_bindata, width = 0.1) +
   geom_line(aes(x = logvol_t0, y = survives, color = recruits, linetype = disturbance),
             data = df_su_pred, size = 1.2) +
-  #scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
+  scale_color_manual(values = c('0' = '#BBB857', '1' = '#3666DC')) +
   labs(x = 'Volumen t0 (log)', y = '', color  = 'Recruit') +
   theme_bw()
 
@@ -283,7 +283,7 @@ if (length(v_mod_set_gr) == 0) {
   v_mod_gr_index       <- v_mod_set_gr
 }
 
-mod_gr_bestfit       <- mod_gr_221
+mod_gr_bestfit <- mods_gr[[mod_gr_index_bestfit]]
 mod_gr_ranef         <- coef(mod_gr_bestfit)
 
 df_gr_newdata <- df_gr %>%
@@ -511,7 +511,7 @@ if (length(v_mod_set_fl_n) == 0) {
   v_mod_fl_n_index       <- v_mod_set_fl_n
 }
 
-mod_fl_n_bestfit <- mods_fl[[mod_fl_n_index_bestfit]]
+mod_fl_n_bestfit <- mods_fl_n[[mod_fl_n_index_bestfit]]
 mod_fl_n_ranef   <- coef(mod_fl_n_bestfit)
 
 
@@ -1188,3 +1188,10 @@ lam_obs_mean
 # write.csv(df_re, row.names = F,
 #           file.path(dir_data,  paste0('ab_', v_sp_abb, '_df_recruit.csv')))
 # 
+
+
+
+# > lam_mean
+# [1] 3.462119
+# > lam_obs_mean
+# [1] 1.394632

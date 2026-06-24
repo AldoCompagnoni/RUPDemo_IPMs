@@ -1133,5 +1133,5 @@ df_counts_year <- df %>%
 # Then compute observed lambda
 lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
 lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
-
+mean(log(lam_obs_y), na.rm = TRUE) |> exp()
 

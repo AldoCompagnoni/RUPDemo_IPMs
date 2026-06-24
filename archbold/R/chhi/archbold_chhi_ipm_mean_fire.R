@@ -1073,11 +1073,10 @@ sens_seed_input <- function(seed_input){
     lambda     = lambda_ipm(pars_tmp)
   )
 }
+
 do.call(
   rbind,
   lapply(
     c(0, 10, 50, 100, 122, 200, 500, 1000, 5000),
-    sens_seed_input
-  )
-)
+    sens_seed_input))
 

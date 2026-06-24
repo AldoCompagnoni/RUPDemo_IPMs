@@ -186,7 +186,7 @@ df <- df_og %>%
   # Recruits
   mutate(
     latest_alive_date      = max(year[(s > 0 & s != 2 & s < 6)], na.rm = TRUE),
-    earliest_recorded_date = min(year[(s > 0 & s != 2 | 6)]    , na.rm = TRUE)) %>%
+    earliest_recorded_date = min(year[s > 0 & s != 2 & s != 6], na.rm = TRUE)) %>%
   mutate(
     recruit = case_when(
       stage == 1 ~ 1,
@@ -194,6 +194,7 @@ df <- df_og %>%
       TRUE ~ NA_real_)) %>% 
   
   # Dormancy
+  group_by(plant_id) %>% 
   mutate(
     dormancy = case_when(
       survives == 1 & is.na(size_t0)              ~ 1,
@@ -212,6 +213,7 @@ df <- df_og %>%
       dormancy == 1 & lag(dormancy, 1) == 1 & lag(dormancy, 2) == 0           ~ 2,
       dormancy == 1                                                           ~ 1,
       TRUE ~ dormancy)) %>%
+  ungroup() %>% 
   # adjust the survival for potential dormancy
   mutate(survives = if_else(survives == 0 & year > max(df_og$year) - 4, NA, survives)) %>%
   
@@ -223,7 +225,7 @@ df <- df_og %>%
     logsize_t0_3 = logsize_t0^3) %>% 
   
   # Disturbance form the quad data
-  full_join(df_disturbance, by = c('site', 'mp', 'quad', 'year')) %>%
+  left_join(df_disturbance, by = c('site', 'mp', 'quad', 'year')) %>%
   mutate(disturbance = ifelse(is.na(disturbance), 0, disturbance)) %>% 
   
   select(site, mp, quad, quad_id, plant_id, year, 
@@ -307,6 +309,8 @@ mod_su_ranef   <- coef(mod_su_bestfit)
 df_su_pred <- data.frame(
   logsize_t0 = rep(seq(min(df_su$logsize_t0), max(df_su$logsize_t0), length.out = 100), 2),
   disturbance = rep(c(0, 1), each = 100)) %>%
+  mutate(logsize_t0_2 = logsize_t0^2,
+         logsize_t0_3 = logsize_t0^3) %>% 
   mutate(dist_label = ifelse(disturbance == 1, 'Disturbance', 'No disturbance'),
          survives = predict(mod_su_bestfit, newdata = ., type = 'response'))
 
@@ -729,13 +733,13 @@ repr_pc_median <- median(repr_pc_by_year$repr_pc_mean, na.rm = T)
 df_re <- df %>%
   group_by(year, site, quad_id) %>%
   summarise(disturbance = if_else(max(disturbance, na.rm = TRUE) == 1, 1, 0),
-            tot_p_area = sum(size_t0, na.rm = TRUE),
+            tot_p_branches = sum(size_t0, na.rm = TRUE),
             .groups = 'drop') %>%
   {
     df_quad <- .
     df_group <- df_quad %>%
       group_by(year) %>%
-      summarise(g_cov = mean(tot_p_area), .groups = 'drop')
+      summarise(g_cov = mean(tot_p_branches), .groups = 'drop')
 
     df_cover <- left_join(df_quad, df_group, by = 'year') %>%
       mutate(year = as.integer(year + 1)) %>%
@@ -749,17 +753,18 @@ df_re <- df %>%
   }
 
 ggplot(
-  df_re, aes(x = tot_p_area, y = nr_quad, colour = as.factor(disturbance))) +
-  geom_point(alpha = 0.5, pch = 16, size = 1) +
+  df_re, aes(x = tot_p_branches, y = nr_quad, colour = as.factor(disturbance))) +
+  geom_jitter(alpha = 0.6, pch = 16, size = 1.2, height = 0.2, width = 0) +
+  scale_colour_manual(values = c("darkgrey", "red")) +
   theme_bw() +
   labs(title    = 'Recruitment',
        subtitle = v_ggp_suffix,
-       x        = expression('Total parent plant area '[t0]),
+       x        = expression('Total parent branch number '[t0]),
        y        = expression('Number of recruits '     [t1]),
        colour   = expression('Disturbance')) +
   theme(plot.subtitle = element_text(size = 8))
 
-# Density dependency
+# Density dependency# values = Density dependency
 df_re_qd <- df %>%
   group_by(site, quad_id, year) %>%
   dplyr::select(recruit) %>%
@@ -900,7 +905,7 @@ coef_misc   <- data.frame(
   coefficient = c('rec_siz', 'rec_sd', 'fecu_b0', 'max_siz', 'min_siz'),
   value       = c(mean(log(df_re_size$size_t0), na.rm = T),
                   sd(  log(df_re_size$size_t0), na.rm = T),
-                  repr_pc_median,
+                  repr_pc_mean,
                   df_gr$logsize_t0 %>% max,
                   df_gr$logsize_t0 %>% min))
 
@@ -928,7 +933,7 @@ pars <- Filter(function(x) length(x) > 0, list(
   fl_b2   = extr_value(coef_fl, 'logsize_t0_2'),
   fl_b3   = extr_value(coef_fl, 'logsize_t0_3'),
   fl_bf   = extr_value(coef_fl, 'disturbance'),
-  fr_b0   = extr_value(coef_fl, 'b0'),
+  fr_b0   = extr_value(coef_fr, 'b0'),
   fr_b1   = extr_value(coef_fr, 'logsize_t0'),
   fr_b2   = extr_value(coef_fr, 'logsize_t0_2'),
   fr_b3   = extr_value(coef_fr, 'logsize_t0_3'),
@@ -941,7 +946,8 @@ pars <- Filter(function(x) length(x) > 0, list(
   mat_siz = 200,
   mod_su_index = v_mod_su_index,
   mod_gr_index = v_mod_gr_index,
-  mod_fl_index = v_mod_fl_index))
+  mod_fl_index = v_mod_fl_index,
+  mod_fr_index = v_mod_fr_i))
 
 
 # Building the IPM -------------------------------------------------------------
@@ -951,7 +957,7 @@ inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 # Survival of x-sized individual to time t1
 sx <- function(x, pars, num_pars = v_mod_su_index) {
   survival_value <- pars$surv_b0
-  for (i in 1:num_pars) {
+  for (i in seq_len(num_pars)) {
     param_name <- paste0('surv_b', i)
     if (!is.null(pars[[param_name]])) {
       survival_value <- survival_value + pars[[param_name]] * x^(i)
@@ -986,7 +992,7 @@ pxy <- function(x, y, pars) {
 # Flowering of x-sized individual at time t0
 fl_x <- function(x, pars, num_pars = v_mod_fl_index) {
   val <- pars$fl_b0
-  for (i in 1:num_pars) {
+  for (i in seq_len(num_pars)) {
     param <- paste0('fl_b', i)
     if (!is.null(pars[[param]])) {
       val <- val + pars[[param]] * x^i
@@ -996,15 +1002,15 @@ fl_x <- function(x, pars, num_pars = v_mod_fl_index) {
 }
 
 # Fruiting of x-sized individuals at time t0
-fr_x <- function(x, pars, num_pars = v_mod_fr_i) {
+fr_x <- function(x, pars, num_pars = pars$mod_fr_index) {
   val <- pars$fr_b0
-  for (i in 1:num_pars) {
+  for (i in seq_len(num_pars)) {
     param <- paste0('fr_b', i)
     if (!is.null(pars[[param]])) {
       val <- val + pars[[param]] * x^i
     }
   }
-  exp(val)  # Negative binomial uses log link
+  exp(val)
 }
 
 # Recruitment size distribution at time t1
@@ -1109,16 +1115,155 @@ p_disturbance2 <- df %>%
   pull(disturbance) %>%
   mean()
 lam_avg <- (1 - p_disturbance2) * lam_nodisturbance + p_disturbance2 * lam_disturbance
-lam_avg 
+lam_avg
 
 
-# Observed population growth ---------------------------------------------------
+# Projected lambda for mean IPM -----------------------------------------------
+# Make observed initial size distribution
+# For the mean IPM this is only the adult size-density vector.
+make_initial_n_mean <- function(pars, df_init = df) {
+  
+  n <- pars$mat_siz
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+  
+  df0 <- df_init %>%
+    filter(!is.na(logsize_t0),
+           is.finite(logsize_t0))
+  
+  adult_counts <- hist(
+    pmin(pmax(df0$logsize_t0, L), U),
+    breaks = seq(L, U, length.out = n + 1),
+    plot = FALSE,
+    include.lowest = TRUE
+  )$counts
+  
+  adult_density <- adult_counts / h
+  
+  adult_density
+}
+
+
+# Project one mean IPM kernel from the observed size distribution
+project_mean_ipm <- function(pars_proj, lambda_type, df_init = df) {
+  
+  n_obs <- make_initial_n_mean(pars_proj, df_init = df_init)
+  K     <- kernel(pars_proj)$k_yx
+  
+  h <- (pars_proj$U - pars_proj$L) / pars_proj$mat_siz
+  
+  n_proj <- K %*% n_obs
+  
+  tibble(
+    lambda_type = lambda_type,
+    asym_lambda = Re(eigen(K)$values[1]),
+    proj_lambda = as.numeric((sum(n_proj) * h) / (sum(n_obs) * h)),
+    n_obs = sum(n_obs) * h,
+    n_proj = sum(n_proj) * h
+  )
+}
+
+
+# Projected lambdas for no-disturbance and disturbance kernels -----------------
+
+df_lams_mean <- bind_rows(
+  project_mean_ipm(pars_no_disturbance, "No disturbance kernel"),
+  project_mean_ipm(pars_disturbance,    "Disturbance kernel")
+)
+
+df_lams_mean
+
+# Projected lambda for expected disturbance regime -----------------------------
+
+project_mean_kernel <- function(K, pars, lambda_type, df_init = df) {
+  
+  n_obs <- make_initial_n_mean(pars, df_init = df_init)
+  h     <- (pars$U - pars$L) / pars$mat_siz
+  
+  n_proj <- K %*% n_obs
+  
+  tibble(
+    lambda_type = lambda_type,
+    asym_lambda = Re(eigen(K)$values[1]),
+    proj_lambda = as.numeric((sum(n_proj) * h) / (sum(n_obs) * h)),
+    n_obs = sum(n_obs) * h,
+    n_proj = sum(n_proj) * h
+  )
+}
+
+K_no_disturbance <- kernel(pars_no_disturbance)$k_yx
+K_disturbance    <- kernel(pars_disturbance)$k_yx
+
+K_mean_disturbance <- 
+  (1 - p_disturbance2) * K_no_disturbance +
+  p_disturbance2       * K_disturbance
+
+df_lams_mean_regime <- bind_rows(
+  df_lams_mean,
+  project_mean_kernel(
+    K = K_mean_disturbance,
+    pars = pars,
+    lambda_type = "Expected disturbance-regime kernel"
+  )
+)
+
+df_lams_mean_regime
+
+
+# Observed mean PGR vs asymptotic lambda vs projected lambda -------------------
+
 df_counts_year <- df %>%
+  filter(!is.na(logsize_t0),
+         is.finite(logsize_t0)) %>%
   group_by(year) %>%
-  filter(!is.na(size_t0)) %>%
-  summarise(n = n())
+  summarise(n = n(), .groups = "drop") %>%
+  arrange(year)
 
-# Then compute observed lambda
 lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
-lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
-lam_obs_mean
+
+lam_obs_arithmetic <- mean(lam_obs_y, na.rm = TRUE)
+lam_obs_geometric  <- mean(log(lam_obs_y), na.rm = TRUE) |> exp()
+
+df_compare_mean <- df_lams_mean_regime %>%
+  mutate(
+    obs_lambda_arithmetic = lam_obs_arithmetic,
+    obs_lambda_geometric  = lam_obs_geometric
+  )
+
+df_compare_mean
+
+
+# Plot comparison --------------------------------------------------------------
+
+df_plot_mean <- df_compare_mean %>%
+  select(lambda_type, asym_lambda, proj_lambda,
+         obs_lambda_arithmetic, obs_lambda_geometric) %>%
+  pivot_longer(
+    cols = c(asym_lambda, proj_lambda),
+    names_to = "modeled_lambda_type",
+    values_to = "modeled_lambda"
+  ) %>%
+  mutate(
+    modeled_lambda_type = recode(
+      modeled_lambda_type,
+      asym_lambda = "Asymptotic lambda",
+      proj_lambda = "Projected lambda from observed size distribution"
+    )
+  )
+
+g_mean_mod_vs_obs <- ggplot(
+  df_plot_mean,
+  aes(x = modeled_lambda, y = obs_lambda_geometric)
+) +
+  geom_point(size = 3) +
+  geom_abline(intercept = 0, slope = 1, lty = 2) +
+  facet_grid(lambda_type ~ modeled_lambda_type, scales = "free_x") +
+  labs(
+    title = "Observed mean population growth vs mean-IPM lambda",
+    x = expression("Modeled " * lambda),
+    y = "Observed geometric mean population growth rate"
+  ) +
+  theme_classic()
+
+g_mean_mod_vs_obs

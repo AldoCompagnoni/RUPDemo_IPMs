@@ -1010,7 +1010,7 @@ g_mod_vs_obs <- ggplot(pop_counts) +
 g_mod_vs_obs
 
 pop_counts %>% summarize(mean(obs_pgr))
-z
+
 pop_counts %>%
   summarise(
     geometric_mean_pgr = exp(mean(log(obs_pgr), na.rm = TRUE)))

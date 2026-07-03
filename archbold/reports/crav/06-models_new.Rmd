@@ -342,7 +342,11 @@ fig_fl_all
 
 ```{r fr_data}
 df_fr <- df %>%
-  filter(is.finite(fruit), is.finite(logsize_t0))
+  filter(
+    flower > 0,
+    is.finite(fruit),
+    is.finite(logsize_t0),
+    !is.na(disturbance))
 ```
 
 ### Fruiting disperion
@@ -620,7 +624,7 @@ pars <- Filter(function(x) length(x) > 0, list(
   fl_b2   = extr_value(coef_fl, 'logsize_t0_2'),
   fl_b3   = extr_value(coef_fl, 'logsize_t0_3'),
   fl_bf   = extr_value(coef_fl, 'disturbance'),
-  fr_b0   = extr_value(coef_fl, 'b0'),
+  fr_b0   = extr_value(coef_fr, 'b0'),
   fr_b1   = extr_value(coef_fr, 'logsize_t0'),
   fr_b2   = extr_value(coef_fr, 'logsize_t0_2'),
   fr_b3   = extr_value(coef_fr, 'logsize_t0_3'),
@@ -633,7 +637,8 @@ pars <- Filter(function(x) length(x) > 0, list(
   mat_siz = 200,
   mod_su_index = v_mod_su_index,
   mod_gr_index = v_mod_gr_index,
-  mod_gr_index = v_mod_fl_index))
+  mod_fl_index = v_mod_fl_index,
+  mod_fr_index = v_mod_fr_i))
 ```
 
 
@@ -647,7 +652,7 @@ inv_logit <- function(x) {exp(x) / (1 + exp(x))}
 # Survival of x-sized individual to time t1
 sx <- function(x, pars, num_pars = v_mod_su_index) {
   survival_value <- pars$surv_b0
-  for (i in 1:num_pars) {
+  for (i in seq_len(num_pars)) {
     param_name <- paste0('surv_b', i)
     if (!is.null(pars[[param_name]])) {
       survival_value <- survival_value + pars[[param_name]] * x^(i)
@@ -682,7 +687,7 @@ pxy <- function(x, y, pars) {
 # Flowering of x-sized individual at time t0
 fl_x <- function(x, pars, num_pars = v_mod_fl_index) {
   val <- pars$fl_b0
-  for (i in 1:num_pars) {
+  for (i in seq_len(num_pars)) {
     param <- paste0('fl_b', i)
     if (!is.null(pars[[param]])) {
       val <- val + pars[[param]] * x^i
@@ -692,20 +697,38 @@ fl_x <- function(x, pars, num_pars = v_mod_fl_index) {
 }
 
 # Fruiting of x-sized individuals at time t0
-fr_x <- function(x, pars, num_pars = v_mod_fr_i) {
+fr_x <- function(x, pars, num_pars = pars$mod_fr_index) {
   val <- pars$fr_b0
-  for (i in 1:num_pars) {
+  for (i in seq_len(num_pars)) {
     param <- paste0('fr_b', i)
     if (!is.null(pars[[param]])) {
       val <- val + pars[[param]] * x^i
     }
   }
-  exp(val)  # Negative binomial uses log link
+  exp(val)
 }
 
 # Recruitment size distribution at time t1
 re_y_dist <- function(y, pars) {
-  dnorm(y, mean = pars$recr_sz, sd = pars$recr_sd)
+  
+  dens <- dnorm(
+    y,
+    mean = pars$recr_sz,
+    sd = pars$recr_sd
+  )
+  
+  norm_const <- pnorm(
+    pars$U,
+    mean = pars$recr_sz,
+    sd = pars$recr_sd
+  ) -
+    pnorm(
+      pars$L,
+      mean = pars$recr_sz,
+      sd = pars$recr_sd
+    )
+  
+  dens / norm_const
 }
 
 # F-kernel
@@ -773,7 +796,7 @@ kernel <- function(pars) {
 }
 
 lambda_ipm <- function(i) {
-  return(Re(eigen(kernel(i)$k_yx)$value[1]))
+  return(Re(eigen(kernel(i)$k_yx)$values[1]))
 }
 ```
 
@@ -784,14 +807,14 @@ lam_mean <- lambda_ipm(pars)
 lam_mean
 ```
 
-### Expected growth under disturbance regime (mean exposure per year)
+### Average-annual initial vector and projected lambda
 ```{r mpgr_disturbance}
 # Build no-disturbance version of parameters
 pars_no_disturbance <- pars
 pars_no_disturbance$surv_b0 <- pars$surv_b0 + pars$surv_bf * 0
 pars_no_disturbance$grow_b0 <- pars$grow_b0 + pars$grow_bf * 0
-pars_no_disturbance$fl_b0   <- pars$fl_b0   + pars$fl_bf   * 0
-pars_no_disturbance$fr_b0   <- pars$fr_b0   + pars$fr_bf   * 0
+pars_no_disturbance$fl_b0   <- pars$fl_b0   + pars$fl_bf * 0
+pars_no_disturbance$fr_b0   <- pars$fr_b0   + pars$fr_bf * 0
 
 # Build disturbance version of parameters
 pars_disturbance <- pars
@@ -800,35 +823,179 @@ pars_disturbance$grow_b0 <- pars$grow_b0 + pars$grow_bf * 1
 pars_disturbance$fl_b0   <- pars$fl_b0   + pars$fl_bf * 1
 pars_disturbance$fr_b0   <- pars$fr_b0   + pars$fr_bf * 1
 
-# Compute deterministic lambdas
 lam_nodisturbance <- lambda_ipm(pars_no_disturbance)
 lam_disturbance   <- lambda_ipm(pars_disturbance)
 
-# Expected growth under disturbance regime (mean exposure per plant)
-p_disturbance <- mean(df %>%
-                 filter(!is.na(survives)) %>%
-                 .$disturbance, na.rm = TRUE)
-# Expected growth under disturbance regime (mean exposure per year)
-p_disturbance2 <- df %>%
-  group_by(year) %>%
-  summarise(disturbance = max(disturbance, na.rm = TRUE)) %>%
-  pull(disturbance) %>%
-  mean()
-lam_avg <- (1 - p_disturbance2) * lam_nodisturbance + p_disturbance2 * lam_disturbance
-lam_avg 
+p_disturbance_mean <- df %>%
+  filter(
+    !is.na(logsize_t0),
+    is.finite(logsize_t0),
+    !is.na(disturbance)
+  ) %>%
+  summarise(
+    p_disturbance_mean = mean(disturbance, na.rm = TRUE)
+  ) %>%
+  pull(p_disturbance_mean)
 
+lam_avg <- (1 - p_disturbance_mean) * lam_nodisturbance +
+  p_disturbance_mean * lam_disturbance
+
+lam_avg
 ```
 
-#### Observed population growth
+
+```{r mpgr_disturbance2}
+make_initial_n_mean <- function(pars, df_init = df) {
+  
+  n <- pars$mat_siz
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+  
+  breaks <- seq(L, U, length.out = n + 1)
+  
+  years_i <- df_init %>%
+    distinct(year) %>%
+    arrange(year) %>%
+    pull(year)
+  
+  counts_by_year <- purrr::map(
+    years_i,
+    function(year_i) {
+      
+      x <- df_init %>%
+        filter(
+          year == year_i,
+          !is.na(logsize_t0),
+          is.finite(logsize_t0)
+        ) %>%
+        pull(logsize_t0)
+      
+      if (length(x) == 0) {
+        return(rep(0, n))
+      }
+      
+      hist(
+        pmin(pmax(x, L), U),
+        breaks = breaks,
+        plot = FALSE,
+        include.lowest = TRUE
+      )$counts
+    }
+  )
+  
+  adult_counts_mean <- Reduce(`+`, counts_by_year) / length(counts_by_year)
+  
+  adult_density <- adult_counts_mean / h
+  
+  adult_density
+}
+
+
+project_mean_ipm <- function(pars_proj, lambda_type, df_init = df) {
+  
+  n_obs <- make_initial_n_mean(pars_proj, df_init = df_init)
+  K     <- kernel(pars_proj)$k_yx
+  
+  h <- (pars_proj$U - pars_proj$L) / pars_proj$mat_siz
+  
+  n_proj <- K %*% n_obs
+  
+  tibble(
+    lambda_type = lambda_type,
+    asym_lambda = Re(eigen(K)$values[1]),
+    proj_lambda = as.numeric((sum(n_proj) * h) / (sum(n_obs) * h)),
+    n_obs = sum(n_obs) * h,
+    n_proj = sum(n_proj) * h
+  )
+}
+
+
+df_lams_mean <- bind_rows(
+  project_mean_ipm(pars_no_disturbance, "No disturbance kernel"),
+  project_mean_ipm(pars_disturbance,    "Disturbance kernel")
+)
+
+K_no_disturbance <- kernel(pars_no_disturbance)$k_yx
+K_disturbance    <- kernel(pars_disturbance)$k_yx
+
+K_mean_disturbance <- 
+  (1 - p_disturbance_mean) * K_no_disturbance +
+  p_disturbance_mean       * K_disturbance
+
+project_mean_kernel <- function(K, pars, lambda_type, df_init = df) {
+  
+  n_obs <- make_initial_n_mean(pars, df_init = df_init)
+  h     <- (pars$U - pars$L) / pars$mat_siz
+  
+  n_proj <- K %*% n_obs
+  
+  tibble(
+    lambda_type = lambda_type,
+    asym_lambda = Re(eigen(K)$values[1]),
+    proj_lambda = as.numeric((sum(n_proj) * h) / (sum(n_obs) * h)),
+    n_obs = sum(n_obs) * h,
+    n_proj = sum(n_proj) * h
+  )
+}
+
+df_lams_mean_regime <- bind_rows(
+  df_lams_mean,
+  project_mean_kernel(
+    K = K_mean_disturbance,
+    pars = pars,
+    lambda_type = "Expected disturbance-regime kernel"
+  )
+)
+
+df_lams_mean_regime
+```
+
+### Observed population growth comparison
 ```{r opg}
 df_counts_year <- df %>%
+  filter(
+    !is.na(logsize_t0),
+    is.finite(logsize_t0)
+  ) %>%
   group_by(year) %>%
-  filter(!is.na(size_t0)) %>%
-  summarise(n = n())
+  summarise(
+    n_adults = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(year) %>%
+  mutate(
+    n_adults_t1 = lead(n_adults),
+    year_t1 = lead(year),
+    year_gap = year_t1 - year,
+    lambda_obs_year = n_adults_t1 / n_adults
+  ) %>%
+  filter(
+    year_gap == 1,
+    n_adults > 0,
+    n_adults_t1 > 0
+  )
 
-# Then compute observed lambda
-lam_obs_y <- df_counts_year$n[-1] / df_counts_year$n[-nrow(df_counts_year)]
-lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
-lam_obs_mean
+df_lambda_obs_mean <- df_counts_year %>%
+  summarise(
+    n_year_transitions = n(),
+    obs_lambda_arithmetic = mean(lambda_obs_year, na.rm = TRUE),
+    obs_lambda_geometric = exp(mean(log(lambda_obs_year), na.rm = TRUE)),
+    obs_lambda_median = median(lambda_obs_year, na.rm = TRUE),
+    obs_lambda_min = min(lambda_obs_year, na.rm = TRUE),
+    obs_lambda_max = max(lambda_obs_year, na.rm = TRUE),
+    mean_n_adults = mean(n_adults, na.rm = TRUE)
+  )
+
+df_compare_mean <- df_lams_mean_regime %>%
+  mutate(
+    obs_lambda_arithmetic = df_lambda_obs_mean$obs_lambda_arithmetic,
+    obs_lambda_geometric = df_lambda_obs_mean$obs_lambda_geometric,
+    error_asym_vs_obs_geo = asym_lambda - obs_lambda_geometric,
+    error_proj_vs_obs_geo = proj_lambda - obs_lambda_geometric
+  )
+
+df_lambda_obs_mean
+df_compare_mean
 ```
 

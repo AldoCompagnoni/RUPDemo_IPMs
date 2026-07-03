@@ -125,7 +125,7 @@ df <- df_og %>%
   mutate(
     recruit = case_when(
       stage == 1 ~ 1,
-      year  == earliest_recorded_date & year(earliest_recorded_date) > 1999 + 4 ~ 1,
+      year  == earliest_recorded_date & earliest_recorded_date > 1999 + 4 ~ 1,
       TRUE ~ NA_real_)) %>% 
   
   # Dormancy

@@ -1,0 +1,664 @@
+# by Site {#by_site}
+
+This section extends the mean IPM from the previous file. The vital-rate models, mean IPM functions already exist from **Models NEW**.
+
+The difference from the mean IPM is that recruitment is no longer represented by one global recruits-per-fruit scalar. Instead, we fit a site-level fruit-to-recruit transition and use it to build one IPM per site. Disturbance is included as a site-specific disturbance frequency that modifies survival, growth, flowering, and fruiting through the disturbance coefficients already estimated in the mean model.
+
+The biological path in the fertility kernel is:
+
+```r
+Pr(flowering | size, disturbance) *
+  E(fruits | flowering, size, disturbance) *
+  E(recruits | site-level fruit production)
+```
+
+## Required objects
+
+This section assumes that the previous R Markdown file has already run.
+
+```{r by_site_required_objects}
+required_objects <- c(
+  "df",
+  "pars",
+  "fl_x",
+  "fr_x",
+  "re_y_dist",
+  "kernel",
+  "lambda_ipm",
+  "v_ggp_suffix"
+)
+
+missing_objects <- required_objects[!purrr::map_lgl(required_objects, exists)]
+
+if (length(missing_objects) > 0) {
+  stop(
+    "The following objects are missing. Run the mean-IPM script first: ",
+    paste(missing_objects, collapse = ", ")
+  )
+}
+
+if (!exists("v_mod_set_fr2re_site")) {
+  v_mod_set_fr2re_site <- c()
+}
+```
+
+## Site-level fruit-to-recruit transition
+
+The mean IPM used one mean recruits-per-fruit value. Here, we first summarize total fruits per site-year and total recruits in the following year. Recruitment is counted with `recruit == 1` because `recruit` is coded as `NA` or `1`.
+
+```{r by_site_fruit_to_recruit_data}
+df_fr2re_site <- df %>%
+  mutate(
+    site = as.factor(site),
+    year = as.numeric(year)
+  ) %>%
+  group_by(site, year) %>%
+  summarise(
+    fruits_site_t0 = sum(fruit, na.rm = TRUE),
+    recruits_site_t0 = sum(recruit == 1, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(site, year) %>%
+  group_by(site) %>%
+  mutate(
+    recruits_site_t1 = lead(recruits_site_t0),
+    year_t1 = lead(year),
+    year_gap = year_t1 - year
+  ) %>%
+  ungroup() %>%
+  filter(year_gap == 1) %>%
+  mutate(
+    logfruits_site_t0 = log1p(fruits_site_t0),
+    logrecruits_site_t1 = log1p(recruits_site_t1)
+  )
+
+df_fr2re_site %>%
+  summarise(
+    n_site_year_transitions = n(),
+    n_positive_recruit_transitions = sum(recruits_site_t1 > 0),
+    n_zero_recruit_transitions = sum(recruits_site_t1 == 0),
+    total_fruits_t0 = sum(fruits_site_t0),
+    total_recruits_t1 = sum(recruits_site_t1),
+    max_fruits_site_t0 = max(fruits_site_t0),
+    max_recruits_site_t1 = max(recruits_site_t1),
+    proportion_zero_recruit = mean(recruits_site_t1 == 0)
+  )
+```
+
+## Candidate fruit-to-recruit models
+
+We fit the same basic relationship in all candidate models:
+
+```r
+log1p(recruits at site in year t + 1) ~ log1p(fruits at site in year t)
+```
+
+The candidate set differs only in whether the intercept and/or slope are allowed to vary by site.
+
+```{r by_site_fruit_to_recruit_models}
+fr2re_site_mod_1 <- glmmTMB::glmmTMB(
+  logrecruits_site_t1 ~ logfruits_site_t0,
+  family = gaussian,
+  REML = FALSE,
+  data = df_fr2re_site
+)
+
+fr2re_site_mod_2 <- glmmTMB::glmmTMB(
+  logrecruits_site_t1 ~ logfruits_site_t0 + (1 | site),
+  family = gaussian,
+  REML = FALSE,
+  data = df_fr2re_site
+)
+
+fr2re_site_mod_3 <- glmmTMB::glmmTMB(
+  logrecruits_site_t1 ~ logfruits_site_t0 + (logfruits_site_t0 | site),
+  family = gaussian,
+  REML = FALSE,
+  data = df_fr2re_site
+)
+
+fr2re_site_mod_4 <- glmmTMB::glmmTMB(
+  logrecruits_site_t1 ~ logfruits_site_t0 + (0 + logfruits_site_t0 | site),
+  family = gaussian,
+  REML = FALSE,
+  data = df_fr2re_site
+)
+
+fr2re_site_mods <- list(
+  fr2re_site_mod_1,
+  fr2re_site_mod_2,
+  fr2re_site_mod_3,
+  fr2re_site_mod_4
+)
+
+fr2re_site_mods_dAICc <- bbmle::AICctab(
+  fr2re_site_mods,
+  weights = TRUE,
+  sort = FALSE
+)$dAICc
+
+fr2re_site_mods_i_sort <- order(fr2re_site_mods_dAICc)
+
+if (length(v_mod_set_fr2re_site) == 0) {
+  fr2re_site_mod_i_best <- fr2re_site_mods_i_sort[1]
+  v_mod_fr2re_site_index <- fr2re_site_mod_i_best
+} else {
+  fr2re_site_mod_i_best <- v_mod_set_fr2re_site
+  v_mod_fr2re_site_index <- v_mod_set_fr2re_site
+}
+
+fr2re_site_mod_best <- fr2re_site_mods[[fr2re_site_mod_i_best]]
+
+fr2re_site_mods_dAICc
+fr2re_site_mod_best
+summary(fr2re_site_mod_best)
+```
+
+```{r by_site_fruit_to_recruit_convergence}
+lapply(fr2re_site_mods, function(m) {
+  list(
+    convergence = m$fit$convergence,
+    message = m$fit$message
+  )
+})
+```
+
+## Extract site-specific fruit-to-recruit coefficients
+
+The extraction below works for all four candidate models. If the selected model does not include a random intercept or random slope, that missing random effect is set to zero.
+
+```{r by_site_fruit_to_recruit_coefficients}
+fr2re_site_fixef <- glmmTMB::fixef(fr2re_site_mod_best)$cond
+
+fr2re_site_ranef <- tryCatch(
+  {
+    glmmTMB::ranef(fr2re_site_mod_best)$cond$site %>%
+      as.data.frame() %>%
+      tibble::rownames_to_column("site")
+  },
+  error = function(e) {
+    tibble(site = levels(df_fr2re_site$site))
+  }
+)
+
+if (!"(Intercept)" %in% names(fr2re_site_ranef)) {
+  fr2re_site_ranef[["(Intercept)"]] <- 0
+}
+
+if (!"logfruits_site_t0" %in% names(fr2re_site_ranef)) {
+  fr2re_site_ranef[["logfruits_site_t0"]] <- 0
+}
+
+df_fr2re_site_coef <- tibble(site = levels(df_fr2re_site$site)) %>%
+  left_join(fr2re_site_ranef, by = "site") %>%
+  mutate(
+    `(Intercept)` = replace_na(`(Intercept)`, 0),
+    logfruits_site_t0 = replace_na(logfruits_site_t0, 0),
+    fr2re_b0_site = unname(fr2re_site_fixef["(Intercept)"]) + `(Intercept)`,
+    fr2re_b1_site = unname(fr2re_site_fixef["logfruits_site_t0"]) + logfruits_site_t0
+  ) %>%
+  select(site, fr2re_b0_site, fr2re_b1_site)
+
+df_fr2re_site_coef
+```
+
+```{r by_site_fruit_to_recruit_prediction_function}
+predict_site_recruits <- function(logfruits_site_t0, fr2re_b0, fr2re_b1) {
+  pred_log_recruits <- fr2re_b0 + fr2re_b1 * logfruits_site_t0
+  pred_recruits <- expm1(pred_log_recruits)
+  pmax(pred_recruits, 0)
+}
+```
+
+```{r by_site_fruit_to_recruit_plot, warning=FALSE}
+df_fr2re_site_plot <- df_fr2re_site %>%
+  left_join(df_fr2re_site_coef, by = "site") %>%
+  mutate(
+    pred_recruits_site_t1 = predict_site_recruits(
+      logfruits_site_t0 = logfruits_site_t0,
+      fr2re_b0 = fr2re_b0_site,
+      fr2re_b1 = fr2re_b1_site
+    )
+  )
+
+fig_fr2re_site <- ggplot(
+  df_fr2re_site_plot,
+  aes(x = fruits_site_t0, y = recruits_site_t1)
+) +
+  geom_jitter(
+    width = 0,
+    height = 0.08,
+    alpha = 0.45,
+    size = 1
+  ) +
+  geom_line(
+    aes(y = pred_recruits_site_t1),
+    linewidth = 0.9
+  ) +
+  facet_wrap(~ site, scales = "free_y") +
+  scale_x_continuous(
+    trans = scales::pseudo_log_trans(sigma = 1),
+    name = "Total fruits at site in year t"
+  ) +
+  labs(
+    y = "Total recruits at site in year t + 1",
+    title = "Site-level fruit-to-recruit transition",
+    subtitle = "log1p(recruits) ~ log1p(fruits), with selected site-level random effect"
+  ) +
+  theme_bw() +
+  theme(
+    strip.text = element_text(size = 9),
+    panel.grid.minor = element_blank()
+  )
+
+fig_fr2re_site
+```
+
+## By-site IPM functions
+
+The mean IPM already defined survival, growth, flowering, fruiting, recruitment size, and the IPM kernel. Here we only redefine the fertility part so that recruitment is controlled by the site-specific fruit-to-recruit transition instead of the mean recruits-per-fruit scalar.
+
+This means all chunks below use the by-site fertility kernel. If you need the original mean-IPM fertility kernel again, re-run the mean-IPM file.
+
+```{r by_site_ipm_functions}
+fruit_x <- function(x, pars) {
+  fl_x(x, pars) * fr_x(x, pars)
+}
+
+make_initial_n_site <- function(pars, site_i, df_init = df) {
+  n <- pars$mat_siz
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+  breaks <- seq(L, U, length.out = n + 1)
+
+  years_i <- df_init %>%
+    filter(site == site_i) %>%
+    distinct(year) %>%
+    arrange(year) %>%
+    pull(year)
+
+  if (length(years_i) == 0) {
+    return(rep(0, n))
+  }
+
+  counts_by_year <- purrr::map(
+    years_i,
+    function(year_i) {
+      x <- df_init %>%
+        filter(
+          site == site_i,
+          year == year_i,
+          !is.na(logsize_t0),
+          is.finite(logsize_t0)
+        ) %>%
+        pull(logsize_t0)
+
+      if (length(x) == 0) {
+        return(rep(0, n))
+      }
+
+      hist(
+        pmin(pmax(x, L), U),
+        breaks = breaks,
+        plot = FALSE,
+        include.lowest = TRUE
+      )$counts
+    }
+  )
+
+  adult_counts_mean <- Reduce(`+`, counts_by_year) / length(counts_by_year)
+  adult_density <- adult_counts_mean / h
+  adult_density
+}
+
+expected_site_fruits <- function(pars, site_i, df_init = df) {
+  n <- pars$mat_siz
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+  b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
+
+  n_site <- make_initial_n_site(
+    pars = pars,
+    site_i = site_i,
+    df_init = df_init
+  )
+
+  sum(fruit_x(y, pars) * n_site * h, na.rm = TRUE)
+}
+
+predict_site_recruits_from_fruits <- function(site_fruits, pars) {
+  if (is.na(site_fruits) || site_fruits <= 0) {
+    return(0)
+  }
+
+  pred_log_recruits <- pars$fr2re_b0 + pars$fr2re_b1 * log1p(site_fruits)
+  pred_recruits <- expm1(pred_log_recruits)
+  pmax(pred_recruits, 0)
+}
+
+site_recruits_per_fruit <- function(pars) {
+  site_fruits <- pars$site_fruits_ref
+
+  if (is.null(site_fruits) || is.na(site_fruits) || site_fruits <= 0) {
+    return(0)
+  }
+
+  site_recruits <- predict_site_recruits_from_fruits(
+    site_fruits = site_fruits,
+    pars = pars
+  )
+
+  site_recruits / site_fruits
+}
+
+fyx <- function(y, x, pars) {
+  fruit_x(x, pars) *
+    site_recruits_per_fruit(pars) *
+    re_y_dist(y, pars)
+}
+```
+
+## Site-specific disturbance frequency
+
+For the site-level IPM, disturbance is summarized as the proportion of years in which each site experienced disturbance. This gives one disturbance-regime kernel per site.
+
+```{r by_site_disturbance_frequency}
+p_disturbance_site <- df %>%
+  group_by(site, year) %>%
+  summarise(
+    disturbance = max(disturbance, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(site) %>%
+  summarise(
+    p_disturbance = mean(disturbance, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(site = factor(site, levels = levels(df$site)))
+
+p_disturbance_site
+```
+
+```{r by_site_apply_disturbance}
+apply_site_disturbance <- function(p, p_disturbance) {
+  p2 <- p
+
+  if (!is.null(p$surv_bf)) {
+    p2$surv_b0 <- p$surv_b0 + p$surv_bf * p_disturbance
+  }
+
+  if (!is.null(p$grow_bf)) {
+    p2$grow_b0 <- p$grow_b0 + p$grow_bf * p_disturbance
+  }
+
+  if (!is.null(p$fl_bf)) {
+    p2$fl_b0 <- p$fl_b0 + p$fl_bf * p_disturbance
+  }
+
+  if (!is.null(p$fr_bf)) {
+    p2$fr_b0 <- p$fr_b0 + p$fr_bf * p_disturbance
+  }
+
+  p2
+}
+```
+
+## Build one parameter object per site
+
+Each site receives:
+
+1. Its site-specific fruit-to-recruit coefficients.
+2. Its observed disturbance frequency.
+3. Its average annual observed size distribution.
+4. A site-specific recruits-per-fruit scalar derived from expected site-level fruit production.
+
+```{r by_site_parameter_objects}
+pars_by_site <- df_fr2re_site_coef %>%
+  mutate(site = factor(site, levels = levels(df$site))) %>%
+  left_join(p_disturbance_site, by = "site") %>%
+  mutate(
+    p_disturbance = replace_na(p_disturbance, 0),
+
+    site_fruits_ref = purrr::map2_dbl(
+      site,
+      p_disturbance,
+      function(site_i, p_dist_i) {
+        p <- apply_site_disturbance(
+          p = pars,
+          p_disturbance = p_dist_i
+        )
+
+        expected_site_fruits(
+          pars = p,
+          site_i = site_i,
+          df_init = df
+        )
+      }
+    ),
+
+    site_recruits_ref = purrr::pmap_dbl(
+      list(fr2re_b0_site, fr2re_b1_site, site_fruits_ref, p_disturbance),
+      function(fr2re_b0_site, fr2re_b1_site, site_fruits_ref, p_disturbance) {
+        p <- apply_site_disturbance(
+          p = pars,
+          p_disturbance = p_disturbance
+        )
+
+        p$fr2re_b0 <- fr2re_b0_site
+        p$fr2re_b1 <- fr2re_b1_site
+        p$site_fruits_ref <- site_fruits_ref
+
+        predict_site_recruits_from_fruits(
+          site_fruits = site_fruits_ref,
+          pars = p
+        )
+      }
+    ),
+
+    recruits_per_fruit_ref = if_else(
+      site_fruits_ref > 0,
+      site_recruits_ref / site_fruits_ref,
+      0
+    ),
+
+    pars_site = purrr::pmap(
+      list(site, fr2re_b0_site, fr2re_b1_site, site_fruits_ref, p_disturbance),
+      function(site, fr2re_b0_site, fr2re_b1_site, site_fruits_ref, p_disturbance) {
+        p <- apply_site_disturbance(
+          p = pars,
+          p_disturbance = p_disturbance
+        )
+
+        p$site <- site
+        p$p_disturbance <- p_disturbance
+        p$fr2re_b0 <- fr2re_b0_site
+        p$fr2re_b1 <- fr2re_b1_site
+        p$site_fruits_ref <- site_fruits_ref
+
+        p
+      }
+    )
+  )
+
+pars_by_site %>%
+  select(
+    site,
+    p_disturbance,
+    fr2re_b0_site,
+    fr2re_b1_site,
+    site_fruits_ref,
+    site_recruits_ref,
+    recruits_per_fruit_ref
+  ) %>%
+  print(n = 100)
+```
+
+## Project site-specific IPMs
+
+For each site, we calculate asymptotic lambda from that site's kernel and projected lambda from that site's average annual observed size distribution.
+
+```{r by_site_project_ipm}
+project_site_ipm <- function(p, df_init = df) {
+  n_obs <- make_initial_n_site(
+    pars = p,
+    site_i = p$site,
+    df_init = df_init
+  )
+
+  K <- kernel(p)$k_yx
+  h <- (p$U - p$L) / p$mat_siz
+  n_proj <- K %*% n_obs
+
+  tibble(
+    lambda_asymptotic = Re(eigen(K)$values[1]),
+    lambda_projected = as.numeric((sum(n_proj) * h) / (sum(n_obs) * h)),
+    n_initial = sum(n_obs) * h,
+    n_projected = sum(n_proj) * h,
+    p_disturbance = p$p_disturbance,
+    site_fruits_ref = p$site_fruits_ref,
+    recruits_per_fruit_ref = site_recruits_per_fruit(p)
+  )
+}
+
+df_lambda_model <- pars_by_site %>%
+  transmute(
+    site,
+    lambda_data = purrr::map(pars_site, project_site_ipm)
+  ) %>%
+  tidyr::unnest(lambda_data)
+
+df_lambda_model %>%
+  print(n = 100)
+```
+
+## Observed population growth by site
+
+Observed growth is calculated from the same adult definition used in the IPM: plants with finite `logsize_t0`.
+
+```{r by_site_observed_growth}
+df_obs_counts_site_year <- df %>%
+  filter(
+    !is.na(logsize_t0),
+    is.finite(logsize_t0)
+  ) %>%
+  group_by(site, year) %>%
+  summarise(
+    n_adults = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(site, year) %>%
+  group_by(site) %>%
+  mutate(
+    n_adults_t1 = lead(n_adults),
+    year_t1 = lead(year),
+    year_gap = year_t1 - year,
+    lambda_obs_year = n_adults_t1 / n_adults
+  ) %>%
+  ungroup() %>%
+  filter(
+    year_gap == 1,
+    n_adults > 0,
+    n_adults_t1 > 0
+  )
+
+df_lambda_obs <- df_obs_counts_site_year %>%
+  group_by(site) %>%
+  summarise(
+    lambda_obs_arithmetic = mean(lambda_obs_year, na.rm = TRUE),
+    lambda_obs_geometric = exp(mean(log(lambda_obs_year), na.rm = TRUE)),
+    n_year_transitions = n(),
+    mean_n_adults = mean(n_adults, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+df_lambda_obs %>%
+  print(n = 100)
+```
+
+## Compare modeled and observed site growth
+
+The main comparison is projected lambda against observed geometric lambda. Projected lambda uses each site's average observed size distribution, while asymptotic lambda is the dominant eigenvalue of the site-specific kernel.
+
+```{r by_site_compare_lambda}
+df_lambda_compare <- df_lambda_model %>%
+  left_join(df_lambda_obs, by = "site") %>%
+  mutate(
+    error_asymptotic_vs_obs = lambda_asymptotic - lambda_obs_geometric,
+    error_projected_vs_obs = lambda_projected - lambda_obs_geometric
+  )
+
+df_lambda_compare %>%
+  select(
+    site,
+    p_disturbance,
+    lambda_asymptotic,
+    lambda_projected,
+    lambda_obs_geometric,
+    error_projected_vs_obs,
+    n_year_transitions,
+    mean_n_adults,
+    site_fruits_ref,
+    recruits_per_fruit_ref
+  ) %>%
+  arrange(site) %>%
+  print(n = 100, width = Inf)
+```
+
+```{r by_site_fit_statistics}
+df_lambda_fit <- df_lambda_compare %>%
+  summarise(
+    cor_asymptotic = cor(lambda_asymptotic, lambda_obs_geometric, use = "complete.obs"),
+    cor_projected = cor(lambda_projected, lambda_obs_geometric, use = "complete.obs"),
+    rmse_asymptotic = sqrt(mean((lambda_asymptotic - lambda_obs_geometric)^2, na.rm = TRUE)),
+    rmse_projected = sqrt(mean((lambda_projected - lambda_obs_geometric)^2, na.rm = TRUE)),
+    mae_asymptotic = mean(abs(lambda_asymptotic - lambda_obs_geometric), na.rm = TRUE),
+    mae_projected = mean(abs(lambda_projected - lambda_obs_geometric), na.rm = TRUE),
+    bias_asymptotic = mean(lambda_asymptotic - lambda_obs_geometric, na.rm = TRUE),
+    bias_projected = mean(lambda_projected - lambda_obs_geometric, na.rm = TRUE)
+  )
+
+df_lambda_fit
+```
+
+```{r by_site_lambda_plot, fig.width=8, fig.height=5}
+df_lambda_compare_plot <- df_lambda_compare %>%
+  select(
+    site,
+    lambda_obs_geometric,
+    lambda_asymptotic,
+    lambda_projected
+  ) %>%
+  pivot_longer(
+    cols = c(lambda_asymptotic, lambda_projected),
+    names_to = "modeled_lambda_type",
+    values_to = "modeled_lambda"
+  ) %>%
+  mutate(
+    modeled_lambda_type = recode(
+      modeled_lambda_type,
+      lambda_asymptotic = "Asymptotic lambda",
+      lambda_projected = "Projected lambda"
+    )
+  )
+
+fig_lambda_compare <- ggplot(
+  df_lambda_compare_plot,
+  aes(x = modeled_lambda, y = lambda_obs_geometric)
+) +
+  geom_point(size = 2.5) +
+  geom_text(aes(label = site), nudge_y = 0.015, size = 3) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  facet_wrap(~ modeled_lambda_type) +
+  theme_bw() +
+  labs(
+    title = "Observed versus modeled population growth",
+    subtitle = "By-site IPM with site-specific disturbance and fruit-to-recruit transition",
+    x = expression("Modeled " * lambda),
+    y = expression("Observed geometric " * lambda)
+  )
+
+fig_lambda_compare
+```

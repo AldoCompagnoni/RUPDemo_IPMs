@@ -242,6 +242,52 @@ df <- df_og %>%
          flower, fruit, recruit, dormancy, disturbance)
   
 
+# Recruit validity: previous-year plot sampling -------------------------------
+df_plot_year_sampled <- df %>%
+  mutate(
+    year = as.integer(as.character(year)),
+    quad_id = factor(quad_id)) %>%
+  group_by(site, mp, quad, quad_id, year) %>%
+  summarise(
+    n_records_plot_year = n(),
+    n_plants_plot_year = n_distinct(plant_id),
+    .groups = "drop")
+
+df_recruit_plot_check <- df %>%
+  filter(recruit == 1) %>%
+  mutate(
+    year = as.integer(as.character(year)),
+    year_prev = year - 1,
+    quad_id = factor(quad_id)) %>%
+  left_join(
+    df_plot_year_sampled %>%
+      mutate(sampled_prev_year = TRUE) %>%
+      select(
+        quad_id,
+        year_prev = year,
+        sampled_prev_year,
+        n_records_prev_year = n_records_plot_year,
+        n_plants_prev_year = n_plants_plot_year),
+    by = c("quad_id", "year_prev")) %>%
+  mutate(
+    sampled_prev_year = replace_na(sampled_prev_year, FALSE),
+    recruit_valid_plot_previous_year = sampled_prev_year)
+
+df_recruit_valid_ids <- df_recruit_plot_check %>%
+  filter(recruit_valid_plot_previous_year) %>%
+  select(site, mp, quad, quad_id, plant_id, year) %>%
+  mutate(recruit_plot_valid = 1)
+
+df <- df %>%
+  mutate(year = as.integer(as.character(year))) %>%
+  left_join(
+    df_recruit_valid_ids,
+    by = c("site", "mp", "quad", "quad_id", "plant_id", "year")) %>%
+  mutate(
+    recruit_plot_valid = case_when(
+      recruit == 1 & recruit_plot_valid == 1 ~ 1,
+      TRUE ~ NA_real_))
+
 
 # Survival data ----------------------------------------------------------------
 df_su <- df %>%
@@ -608,24 +654,18 @@ mods_fr_dAIC
 df_fr2re_site_year <- df %>%
   mutate(
     site = factor(site),
-    year = as.integer(as.character(year))
-  ) %>%
+    year = as.integer(as.character(year))) %>%
   group_by(site, year) %>%
   summarise(
     fruits_site_t0 = sum(fruit, na.rm = TRUE),
-    
-    # recruit is coded NA / 1, so count true recruit records explicitly
-    recruits_site_t0 = sum(recruit == 1, na.rm = TRUE),
-    
-    .groups = "drop"
-  ) %>%
+    recruits_site_t0 = sum(recruit_plot_valid == 1, na.rm = TRUE),
+    .groups = "drop") %>%
   arrange(site, year) %>%
   group_by(site) %>%
   mutate(
     recruits_site_t1 = lead(recruits_site_t0),
     year_t1 = lead(year),
-    year_gap = year_t1 - year
-  ) %>%
+    year_gap = year_t1 - year) %>%
   ungroup() %>%
   filter(year_gap == 1) %>%
   mutate(
@@ -633,8 +673,7 @@ df_fr2re_site_year <- df %>%
     year_t1 = factor(year_t1),
     site = factor(site),
     logfruits_site_t0 = log1p(fruits_site_t0),
-    logrecruits_site_t1 = log1p(recruits_site_t1)
-  )
+    logrecruits_site_t1 = log1p(recruits_site_t1))
 
 df_fr2re_site_year %>%
   summarise(
@@ -652,115 +691,57 @@ df_fr2re_site_year %>%
 
 
 # Fruit-to-recruit candidate models -------------------------------------------
+# All models are forced through zero on the log1p scale:
+# log1p(recruits) = b1 * log1p(fruits)
+#
+# No fixed intercept.
+# No random intercept.
+# Only the slope can vary by site and/or year.
 
 ctrl_re <- lmerControl(
   optimizer = "bobyqa",
-  optCtrl = list(maxfun = 2e5)
-)
+  optCtrl = list(maxfun = 2e5))
 
-# 0. Fixed-effect model
-fr2re_mod_00 <- lm(
-  logrecruits_site_t1 ~ logfruits_site_t0,
-  data = df_fr2re_site_year
-)
+# 1. Fixed slope only
+fr2re_mod_01 <- lm(
+  logrecruits_site_t1 ~ 0 + logfruits_site_t0,
+  data = df_fr2re_site_year)
 
-# 1. Site random intercept
-fr2re_mod_10 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (1 | site),
-  data = df_fr2re_site_year,
-  REML = FALSE,
-  control = ctrl_re
-)
-
-# 2. Year random intercept
-fr2re_mod_11 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (1 | year_t1),
-  data = df_fr2re_site_year,
-  REML = FALSE,
-  control = ctrl_re
-)
-
-# 3. Site + year random intercepts
-fr2re_mod_12 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (1 | site) + (1 | year_t1),
-  data = df_fr2re_site_year,
-  REML = FALSE,
-  control = ctrl_re
-)
-
-# 4. Site random slope
-fr2re_mod_20 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (logfruits_site_t0 | site),
-  data = df_fr2re_site_year,
-  REML = FALSE,
-  control = ctrl_re
-)
-
-# 5. Year random slope
-fr2re_mod_21 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (logfruits_site_t0 | year_t1),
-  data = df_fr2re_site_year,
-  REML = FALSE,
-  control = ctrl_re
-)
-
-# 6. Site + year random slopes
-fr2re_mod_22 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 +
-    (logfruits_site_t0 | site) +
-    (logfruits_site_t0 | year_t1),
-  data = df_fr2re_site_year,
-  REML = FALSE,
-  control = ctrl_re
-)
-
-# 7. Site random slope only
-fr2re_mod_30 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 +
+# 2. Site-specific random slope
+fr2re_mod_02 <- lmer(
+  logrecruits_site_t1 ~ 0 + logfruits_site_t0 +
     (0 + logfruits_site_t0 | site),
   data = df_fr2re_site_year,
   REML = FALSE,
-  control = ctrl_re
-)
+  control = ctrl_re)
 
-# 8. Year random slope only
-fr2re_mod_31 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 +
+# 3. Year-specific random slope
+fr2re_mod_03 <- lmer(
+  logrecruits_site_t1 ~ 0 + logfruits_site_t0 +
     (0 + logfruits_site_t0 | year_t1),
   data = df_fr2re_site_year,
   REML = FALSE,
-  control = ctrl_re
-)
+  control = ctrl_re)
 
-# 9. Site + year random slopes only
-fr2re_mod_32 <- lmer(
-  logrecruits_site_t1 ~ logfruits_site_t0 +
+# 4. Site- and year-specific random slopes
+fr2re_mod_04 <- lmer(
+  logrecruits_site_t1 ~ 0 + logfruits_site_t0 +
     (0 + logfruits_site_t0 | site) +
     (0 + logfruits_site_t0 | year_t1),
   data = df_fr2re_site_year,
   REML = FALSE,
-  control = ctrl_re
-)
-
+  control = ctrl_re)
 
 fr2re_mods <- list(
-  fr2re_mod_00,
-  fr2re_mod_10,
-  fr2re_mod_11,
-  fr2re_mod_12,
-  fr2re_mod_20,
-  fr2re_mod_21,
-  fr2re_mod_22,
-  fr2re_mod_30,
-  fr2re_mod_31,
-  fr2re_mod_32
-)
+  fr2re_mod_01,
+  fr2re_mod_02,
+  fr2re_mod_03,
+  fr2re_mod_04)
 
 fr2re_mods_dAIC <- bbmle::AICctab(
   fr2re_mods,
   weights = TRUE,
-  sort = FALSE
-)$dAIC
+  sort = FALSE)$dAIC
 
 fr2re_mods_i_sort <- order(fr2re_mods_dAIC)
 
@@ -775,9 +756,6 @@ if (length(v_mod_set_fr2re_site) == 0) {
 fr2re_mod_best <- fr2re_mods[[fr2re_mod_i_best]]
 
 fr2re_mod_best
-summary(fr2re_mod_best)
-fr2re_mods_dAIC
-
 
 # Fruit-to-recruit convergence diagnostics -------------------------------------
 
@@ -878,8 +856,7 @@ df_fr2re_site_year_coef <- tidyr::expand_grid(
     year_u0 = replace_na(year_u0, 0),
     year_u1 = replace_na(year_u1, 0),
     
-    fr2re_b0_site_year =
-      unname(fr2re_fixef["(Intercept)"]) + site_u0 + year_u0,
+    fr2re_b0_site_year = 0,
     
     fr2re_b1_site_year =
       unname(fr2re_fixef["logfruits_site_t0"]) + site_u1 + year_u1
@@ -1224,10 +1201,9 @@ fr_fe <- extract_fixed_pars(
 
 df_re_size <- df %>%
   filter(
-    recruit == 1,
+    recruit_plot_valid == 1,
     size_t0 > 0,
-    is.finite(logsize_t0)
-  )
+    is.finite(logsize_t0))
 
 recr_sz_mean <- mean(df_re_size$logsize_t0, na.rm = TRUE)
 recr_sz_sd <- sd(df_re_size$logsize_t0, na.rm = TRUE)
@@ -1262,13 +1238,11 @@ constants <- tibble::tribble(
 
 fr2re_fe <- tibble::tribble(
   ~coefficient, ~value,
-  "fr2re_b0", unname(fr2re_fixef["(Intercept)"]),
-  "fr2re_b1", unname(fr2re_fixef["logfruits_site_t0"])
-) %>%
+  "fr2re_b0", 0,
+  "fr2re_b1", unname(fr2re_fixef["logfruits_site_t0"])) %>%
   mutate(
     coefficient = as.character(coefficient),
-    value = as.numeric(value)
-  )
+    value = as.numeric(value))
 
 
 # Mean parameter object --------------------------------------------------------
@@ -1385,11 +1359,11 @@ pars_year
 
 
 # Site-year fruit-to-recruit parameter table -----------------------------------
-# This uses the selected fruit-to-recruit model.
-# In your current run, model 10 was selected:
-#   logrecruits ~ logfruits + (0 + logfruits | site) +
-#                              (0 + logfruits | year_t1)
-# but this table also works if a simpler model is selected.
+# The selected fruit-to-recruit model is forced through zero:
+#   log1p(recruits) ~ 0 + log1p(fruits)
+#
+# Depending on AIC, the slope can be fixed, site-specific,
+# year-specific, or site- and year-specific.
 
 pars_site_year_recruit <- df_fr2re_site_year_coef %>%
   mutate(
@@ -2070,6 +2044,102 @@ df_lambda_site_year_compare_summary <- df_lambda_site_year_compare %>%
 df_lambda_site_year_compare_summary
 
 
+# Investigatoins
+# Investigate observed population growth of exacly 1 ---------------------------
+df_obs_turnover_site_year <- df %>%
+  filter(
+    !is.na(logsize_t0),
+    is.finite(logsize_t0)) %>%
+  mutate(year = as.character(year)) %>%
+  group_by(site, year) %>%
+  summarise(
+    plants = list(unique(plant_id)),
+    n_obs = n_distinct(plant_id),
+    .groups = "drop") %>%
+  arrange(site, year) %>%
+  group_by(site) %>%
+  mutate(
+    year_t1 = lead(year),
+    plants_t1 = lead(plants),
+    n_obs_t1 = lead(n_obs),
+    year_gap = as.integer(year_t1) - as.integer(year)) %>%
+  ungroup() %>%
+  filter(year_gap == 1) %>%
+  rowwise() %>%
+  mutate(
+    n_same = length(intersect(plants, plants_t1)),
+    n_lost = length(setdiff(plants, plants_t1)),
+    n_gained = length(setdiff(plants_t1, plants)),
+    lambda_obs = n_obs_t1 / n_obs) %>%
+  ungroup()
+
+df_obs_turnover_site_year %>%
+  filter(lambda_obs == 1) %>%
+  select(
+    site, year, year_t1,
+    n_obs, n_obs_t1,
+    n_same, n_lost, n_gained) %>%
+  arrange(site, year) %>%
+  print(n = Inf, width = Inf)
+
+
+df_obs_turnover_site_year %>%
+  filter(lambda_obs == 1) %>%
+  mutate(
+    reason = case_when(
+      n_lost == 0 & n_gained == 0 ~ "same individuals",
+      n_lost == n_gained          ~ "losses balanced by gains",
+      TRUE                        ~ "check")) %>%
+  count(reason)
+
+
+# Investigate the number of samples at a site per year -------------------------
+df_sample_site_year <- df %>%
+  filter(
+    !is.na(logsize_t0),
+    is.finite(logsize_t0)) %>%
+  mutate(
+    site = factor(site),
+    year = as.integer(as.character(year))) %>%
+  group_by(site, year) %>%
+  summarise(
+    n_plants = n_distinct(plant_id),
+    n_records = n(),
+    .groups = "drop") %>%
+  arrange(site, year)
+
+df_sample_site_year %>%
+  print(n = Inf, width = Inf)
+
+df_sample_site_year %>%
+  group_by(site) %>%
+  summarise(
+    n_years = n(),
+    min_n = min(n_plants, na.rm = TRUE),
+    mean_n = mean(n_plants, na.rm = TRUE),
+    median_n = median(n_plants, na.rm = TRUE),
+    max_n = max(n_plants, na.rm = TRUE),
+    .groups = "drop") %>%
+  arrange(as.numeric(as.character(site)))
+
+fig_sample_site_year <- ggplot(
+  df_sample_site_year,
+  aes(x = year, y = site, fill = n_plants)) +
+  geom_tile() +
+  scale_fill_gradient(
+    low = "white", high = "darkgreen") +
+  theme_bw() +
+  labs(
+    title = "Sample size by site and year",
+    subtitle = "Number of distinct sized plants",
+    x = "Year",
+    y = "Site",
+    fill = "N plants")
+
+fig_sample_site_year
+
+
+
 # Plot observed versus modeled site-year lambda --------------------------------
 
 df_lambda_site_year_compare_plot <- df_lambda_site_year_compare %>%
@@ -2113,34 +2183,72 @@ fig_lambda_site_year_compare <- ggplot(
 fig_lambda_site_year_compare
 
 
+df_lambda_site_year_compare_plot_log <- df_lambda_site_year_compare %>%
+  select(
+    site,
+    year,
+    year_t1,
+    lambda_obs,
+    lambda_asymptotic,
+    lambda_projected) %>%
+  filter(!is.na(lambda_obs), lambda_obs > 0) %>%
+  pivot_longer(
+    cols = c(lambda_asymptotic, lambda_projected),
+    names_to = "modeled_lambda_type",
+    values_to = "modeled_lambda") %>%
+  filter(!is.na(modeled_lambda), modeled_lambda > 0) %>%
+  mutate(
+    log_lambda_obs = log(lambda_obs),
+    log_modeled_lambda = log(modeled_lambda),
+    modeled_lambda_type = recode(
+      modeled_lambda_type,
+      lambda_asymptotic = "Asymptotic lambda",
+      lambda_projected = "Projected lambda"))
+
+fig_lambda_site_year_compare_log <- ggplot(
+  df_lambda_site_year_compare_plot_log,
+  aes(x = log_modeled_lambda, y = log_lambda_obs)
+) +
+  geom_point(alpha = 0.65, size = 1.8) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  facet_wrap(~ modeled_lambda_type) +
+  theme_bw() +
+  labs(
+    title = "Observed versus modeled site-year population growth",
+    subtitle = paste(v_ggp_suffix, "- log-transformed lambda"),
+    x = expression("log modeled " * lambda),
+    y = expression("log observed " * lambda))
+
+fig_lambda_site_year_compare_log
+
 
 # Site-level summary -----------------------------------------------------------
 
-df_lambda_site_summary <- df_lambda_site_year_complete %>%
+df_lambda_site_summary <- df_lambda_site_year_compare %>%
+  filter(
+    !is.na(lambda_obs),
+    !is.na(lambda_asymptotic),
+    !is.na(lambda_projected),
+    lambda_obs > 0,
+    lambda_asymptotic > 0,
+    lambda_projected > 0) %>%
   group_by(site) %>%
   summarise(
     n_year_transitions = n(),
-    
     lambda_obs_geometric = exp(mean(log(lambda_obs), na.rm = TRUE)),
     lambda_obs_arithmetic = mean(lambda_obs, na.rm = TRUE),
-    
-    lambda_asymptotic_geometric = exp(mean(log(lambda_asymptotic), na.rm = TRUE)),
+    lambda_asymptotic_geometric = exp(mean(log(lambda_asymptotic),
+                                           na.rm = TRUE)),
     lambda_asymptotic_arithmetic = mean(lambda_asymptotic, na.rm = TRUE),
-    
-    lambda_projected_geometric = exp(mean(log(lambda_projected), na.rm = TRUE)),
+    lambda_projected_geometric = exp(mean(log(lambda_projected),
+                                          na.rm = TRUE)),
     lambda_projected_arithmetic = mean(lambda_projected, na.rm = TRUE),
-    
     error_projected_geo_vs_obs_geo =
       lambda_projected_geometric - lambda_obs_geometric,
-    
     rmse_projected_vs_obs =
       sqrt(mean((lambda_projected - lambda_obs)^2, na.rm = TRUE)),
-    
     mean_n_initial = mean(n_initial, na.rm = TRUE),
-    mean_p_disturbance = mean(p_disturbance, na.rm = TRUE),
-    
-    .groups = "drop"
-  ) %>%
+    mean_p_disturbance = mean(p_disturbance, na.rm = TRUE), .groups = "drop") %>%
   arrange(as.numeric(as.character(site)))
 
 df_lambda_site_summary %>%

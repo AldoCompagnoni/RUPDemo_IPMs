@@ -806,55 +806,37 @@ df_fr2re_site %>%
 
 
 # Fruit-to-recruit models ------------------------------------------------------
+# These models are forced through 0 on the log1p scale:
+# log1p(recruits) = b1 * log1p(fruits).
+#
+# This means:
+# fruits = 0 -> log1p(fruits) = 0
+# predicted log1p(recruits) = 0
+# predicted recruits = expm1(0) = 0
 
-# 1. Fixed-effect linear model
-# logre ~ logfr
+# 1. Fixed-effect slope-only model
 fr2re_site_mod_1 <- glmmTMB(
-  logrecruits_site_t1 ~ logfruits_site_t0,
+  logrecruits_site_t1 ~ 0 + logfruits_site_t0,
   family = gaussian,
   REML = FALSE,
-  data = df_fr2re_site
-)
+  data = df_fr2re_site)
 
-# 2. Random intercept by site
-# logre ~ logfr + (1 | site)
+# 2. Site-specific random slope only
 fr2re_site_mod_2 <- glmmTMB(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (1 | site),
+  logrecruits_site_t1 ~ 0 + logfruits_site_t0 +
+    (0 + logfruits_site_t0 | site),
   family = gaussian,
   REML = FALSE,
-  data = df_fr2re_site
-)
-
-# 3. Random intercept and random slope by site
-# logre ~ logfr + (logfr | site)
-fr2re_site_mod_3 <- glmmTMB(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (logfruits_site_t0 | site),
-  family = gaussian,
-  REML = FALSE,
-  data = df_fr2re_site
-)
-
-# 4. Random slope only by site
-# logre ~ logfr + (0 + logfr | site)
-fr2re_site_mod_4 <- glmmTMB(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (0 + logfruits_site_t0 | site),
-  family = gaussian,
-  REML = FALSE,
-  data = df_fr2re_site
-)
+  data = df_fr2re_site)
 
 fr2re_site_mods <- list(
   fr2re_site_mod_1,
-  fr2re_site_mod_2,
-  fr2re_site_mod_3,
-  fr2re_site_mod_4
-)
+  fr2re_site_mod_2)
 
 fr2re_site_mods_dAICc <- AICctab(
   fr2re_site_mods,
   weights = TRUE,
-  sort = FALSE
-)$dAICc
+  sort = FALSE)$dAICc
 
 fr2re_site_mods_i_sort <- order(fr2re_site_mods_dAICc)
 
@@ -867,9 +849,6 @@ if (length(v_mod_set_fr2re_site) == 0) {
 }
 
 fr2re_site_mod_best <- fr2re_site_mods[[fr2re_site_mod_i_best]]
-
-fr2re_site_mod_best
-summary(fr2re_site_mod_best)
 
 
 # Model convergence check ------------------------------------------------------
@@ -894,15 +873,10 @@ fr2re_site_ranef <- tryCatch(
   },
   error = function(e) {
     tibble(site = levels(df_fr2re_site$site))
-  }
-)
+  })
 
-# Add missing random-effect columns as zero.
-# This keeps the code working no matter which candidate model wins.
-if (!"(Intercept)" %in% names(fr2re_site_ranef)) {
-  fr2re_site_ranef[["(Intercept)"]] <- 0
-}
-
+# Add missing random slope column as zero.
+# There should be no intercept column because the model is forced through 0.
 if (!"logfruits_site_t0" %in% names(fr2re_site_ranef)) {
   fr2re_site_ranef[["logfruits_site_t0"]] <- 0
 }
@@ -910,15 +884,14 @@ if (!"logfruits_site_t0" %in% names(fr2re_site_ranef)) {
 df_fr2re_site_coef <- tibble(site = levels(df_fr2re_site$site)) %>%
   left_join(fr2re_site_ranef, by = "site") %>%
   mutate(
-    `(Intercept)` = replace_na(`(Intercept)`, 0),
     logfruits_site_t0 = replace_na(logfruits_site_t0, 0),
     
-    fr2re_b0_site =
-      unname(fr2re_site_fixef["(Intercept)"]) + `(Intercept)`,
+    # Keep this only for compatibility with the rest of the IPM.
+    # It is forced to zero.
+    fr2re_b0_site = 0,
     
     fr2re_b1_site =
-      unname(fr2re_site_fixef["logfruits_site_t0"]) + logfruits_site_t0
-  ) %>%
+      unname(fr2re_site_fixef["logfruits_site_t0"]) + logfruits_site_t0) %>%
   select(site, fr2re_b0_site, fr2re_b1_site)
 
 df_fr2re_site_coef
@@ -928,7 +901,7 @@ df_fr2re_site_coef
 
 predict_site_recruits <- function(logfruits_site_t0, fr2re_b0, fr2re_b1) {
   
-  pred_log_recruits <- fr2re_b0 + fr2re_b1 * logfruits_site_t0
+  pred_log_recruits <- fr2re_b1 * logfruits_site_t0
   
   # Model was fit to log1p(recruits), so backtransform with expm1()
   pred_recruits <- expm1(pred_log_recruits)
@@ -943,36 +916,28 @@ predict_site_recruits <- function(logfruits_site_t0, fr2re_b0, fr2re_b1) {
 df_fr2re_site_plot <- df_fr2re_site %>%
   left_join(df_fr2re_site_coef, by = "site") %>%
   mutate(
-    pred_recruits_site_t1 = predict_site_recruits(
-      logfruits_site_t0 = logfruits_site_t0,
-      fr2re_b0 = fr2re_b0_site,
-      fr2re_b1 = fr2re_b1_site
-    )
-  )
+    pred_logrecruits_site_t1 = fr2re_b1_site * logfruits_site_t0
+  ) %>%
+  arrange(site, logfruits_site_t0)
 
 fig_fr2re_site <- ggplot(
   df_fr2re_site_plot,
-  aes(x = fruits_site_t0, y = recruits_site_t1)
+  aes(x = logfruits_site_t0, y = logrecruits_site_t1)
 ) +
-  geom_jitter(
-    width = 0,
-    height = 0.08,
+  geom_point(
     alpha = 0.45,
     size = 1
   ) +
   geom_line(
-    aes(y = pred_recruits_site_t1),
+    aes(y = pred_logrecruits_site_t1),
     linewidth = 0.9
   ) +
   facet_wrap(~ site, scales = "free_y") +
-  scale_x_continuous(
-    trans = pseudo_log_trans(sigma = 1),
-    name = "Total fruits at site in year t"
-  ) +
   labs(
-    y = "Total recruits at site in year t + 1",
+    x = "log1p(total fruits at site in year t)",
+    y = "log1p(total recruits at site in year t + 1)",
     title = "Site-level fruit-to-recruit transition",
-    subtitle = "log1p(recruits) ~ log1p(fruits), with selected site-level random effect"
+    subtitle = "log1p(recruits) ~ 0 + log1p(fruits), forced through zero"
   ) +
   theme_bw() +
   theme(
@@ -1071,7 +1036,7 @@ pars <- Filter(function(x) length(x) > 0, list(
   fr_b2   = extr_value(coef_fr, 'logsize_t0_2'),
   fr_b3   = extr_value(coef_fr, 'logsize_t0_3'),
   fr_bf   = extr_value(coef_fr, 'disturbance'),
-  fr2re_b0 = unname(fr2re_site_fixef["(Intercept)"]),
+  fr2re_b0 = 0,
   fr2re_b1 = unname(fr2re_site_fixef["logfruits_site_t0"]),
   recr_sz = extr_value(coef_misc, 'rec_siz'),
   recr_sd = extr_value(coef_misc, 'rec_sd'),
@@ -1234,7 +1199,7 @@ predict_site_recruits_from_fruits <- function(site_fruits, pars) {
     return(0)
   }
   
-  pred_log_recruits <- pars$fr2re_b0 + pars$fr2re_b1 * log1p(site_fruits)
+  pred_log_recruits <- pars$fr2re_b1 * log1p(site_fruits)
   
   # Model was fit to log1p(recruits), so backtransform with expm1()
   pred_recruits <- expm1(pred_log_recruits)

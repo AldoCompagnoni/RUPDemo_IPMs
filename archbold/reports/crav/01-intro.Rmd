@@ -9,13 +9,13 @@ For our model, we utilized 20 years of demographic data on the endangered legume
 
 ## Setup
 
-We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom`, `bbmle`, `gridExtra`, `lme4`
+We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom`, `bbmle`, `gridExtra`, `lme4`, `glmmTMB`
 
 ```{r setup, message=FALSE, warning=FALSE, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 # Packages
-packages <- c('MASS', 'tidyverse', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 'lme4')
+packages <- c('MASS', 'tidyverse', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 'lme4', "glmmTMB")
 lapply(packages, library, character.only = TRUE)
 
 

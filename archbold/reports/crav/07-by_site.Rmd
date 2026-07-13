@@ -12,6 +12,8 @@ Pr(flowering | size, disturbance) *
   E(recruits | site-level fruit production)
 ```
 
+2026.7.9: Forcing the log1p(fruit_t0) to log1p(recruit_t1) model to go through 0 as a fixed intercept.
+
 ## Required objects
 
 This section assumes that the previous R Markdown file has already run.
@@ -25,16 +27,14 @@ required_objects <- c(
   "re_y_dist",
   "kernel",
   "lambda_ipm",
-  "v_ggp_suffix"
-)
+  "v_ggp_suffix")
 
 missing_objects <- required_objects[!purrr::map_lgl(required_objects, exists)]
 
 if (length(missing_objects) > 0) {
   stop(
     "The following objects are missing. Run the mean-IPM script first: ",
-    paste(missing_objects, collapse = ", ")
-  )
+    paste(missing_objects, collapse = ", "))
 }
 
 if (!exists("v_mod_set_fr2re_site")) {
@@ -93,49 +93,40 @@ We fit the same basic relationship in all candidate models:
 log1p(recruits at site in year t + 1) ~ log1p(fruits at site in year t)
 ```
 
-The candidate set differs only in whether the intercept and/or slope are allowed to vary by site.
+The candidate set has a forced intercept at 0 and differs only in whether the slope are allowed to vary by site.
 
 ```{r by_site_fruit_to_recruit_models}
-fr2re_site_mod_1 <- glmmTMB::glmmTMB(
-  logrecruits_site_t1 ~ logfruits_site_t0,
-  family = gaussian,
-  REML = FALSE,
-  data = df_fr2re_site
-)
+# These models are forced through 0 on the log1p scale:
+# log1p(recruits) = b1 * log1p(fruits).
+#
+# This means:
+# fruits = 0 -> log1p(fruits) = 0
+# predicted log1p(recruits) = 0
+# predicted recruits = expm1(0) = 0
 
-fr2re_site_mod_2 <- glmmTMB::glmmTMB(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (1 | site),
+# 1. Fixed-effect slope-only model
+fr2re_site_mod_1 <- glmmTMB(
+  logrecruits_site_t1 ~ 0 + logfruits_site_t0,
   family = gaussian,
   REML = FALSE,
-  data = df_fr2re_site
-)
+  data = df_fr2re_site)
 
-fr2re_site_mod_3 <- glmmTMB::glmmTMB(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (logfruits_site_t0 | site),
+# 2. Site-specific random slope only
+fr2re_site_mod_2 <- glmmTMB(
+  logrecruits_site_t1 ~ 0 + logfruits_site_t0 +
+    (0 + logfruits_site_t0 | site),
   family = gaussian,
   REML = FALSE,
-  data = df_fr2re_site
-)
-
-fr2re_site_mod_4 <- glmmTMB::glmmTMB(
-  logrecruits_site_t1 ~ logfruits_site_t0 + (0 + logfruits_site_t0 | site),
-  family = gaussian,
-  REML = FALSE,
-  data = df_fr2re_site
-)
+  data = df_fr2re_site)
 
 fr2re_site_mods <- list(
   fr2re_site_mod_1,
-  fr2re_site_mod_2,
-  fr2re_site_mod_3,
-  fr2re_site_mod_4
-)
+  fr2re_site_mod_2)
 
-fr2re_site_mods_dAICc <- bbmle::AICctab(
+fr2re_site_mods_dAICc <- AICctab(
   fr2re_site_mods,
   weights = TRUE,
-  sort = FALSE
-)$dAICc
+  sort = FALSE)$dAICc
 
 fr2re_site_mods_i_sort <- order(fr2re_site_mods_dAICc)
 
@@ -148,9 +139,6 @@ if (length(v_mod_set_fr2re_site) == 0) {
 }
 
 fr2re_site_mod_best <- fr2re_site_mods[[fr2re_site_mod_i_best]]
-
-fr2re_site_mods_dAICc
-fr2re_site_mod_best
 summary(fr2re_site_mod_best)
 ```
 
@@ -165,26 +153,23 @@ lapply(fr2re_site_mods, function(m) {
 
 ## Extract site-specific fruit-to-recruit coefficients
 
-The extraction below works for all four candidate models. If the selected model does not include a random intercept or random slope, that missing random effect is set to zero.
+The extraction below works for both candidate models. If the selected model does not include a random intercept or random slope, that missing random effect is set to zero.
 
 ```{r by_site_fruit_to_recruit_coefficients}
-fr2re_site_fixef <- glmmTMB::fixef(fr2re_site_mod_best)$cond
+fr2re_site_fixef <- fixef(fr2re_site_mod_best)$cond
 
 fr2re_site_ranef <- tryCatch(
   {
-    glmmTMB::ranef(fr2re_site_mod_best)$cond$site %>%
+    ranef(fr2re_site_mod_best)$cond$site %>%
       as.data.frame() %>%
       tibble::rownames_to_column("site")
   },
   error = function(e) {
     tibble(site = levels(df_fr2re_site$site))
-  }
-)
+  })
 
-if (!"(Intercept)" %in% names(fr2re_site_ranef)) {
-  fr2re_site_ranef[["(Intercept)"]] <- 0
-}
-
+# Add missing random slope column as zero.
+# There should be no intercept column because the model is forced through 0.
 if (!"logfruits_site_t0" %in% names(fr2re_site_ranef)) {
   fr2re_site_ranef[["logfruits_site_t0"]] <- 0
 }
@@ -192,20 +177,26 @@ if (!"logfruits_site_t0" %in% names(fr2re_site_ranef)) {
 df_fr2re_site_coef <- tibble(site = levels(df_fr2re_site$site)) %>%
   left_join(fr2re_site_ranef, by = "site") %>%
   mutate(
-    `(Intercept)` = replace_na(`(Intercept)`, 0),
     logfruits_site_t0 = replace_na(logfruits_site_t0, 0),
-    fr2re_b0_site = unname(fr2re_site_fixef["(Intercept)"]) + `(Intercept)`,
-    fr2re_b1_site = unname(fr2re_site_fixef["logfruits_site_t0"]) + logfruits_site_t0
-  ) %>%
+    
+    # Keep this only for compatibility with the rest of the IPM.
+    # It is forced to zero.
+    fr2re_b0_site = 0,
+    
+    fr2re_b1_site =
+      unname(fr2re_site_fixef["logfruits_site_t0"]) + logfruits_site_t0) %>%
   select(site, fr2re_b0_site, fr2re_b1_site)
-
-df_fr2re_site_coef
 ```
 
 ```{r by_site_fruit_to_recruit_prediction_function}
 predict_site_recruits <- function(logfruits_site_t0, fr2re_b0, fr2re_b1) {
-  pred_log_recruits <- fr2re_b0 + fr2re_b1 * logfruits_site_t0
+  
+  pred_log_recruits <- fr2re_b1 * logfruits_site_t0
+  
+  # Model was fit to log1p(recruits), so backtransform with expm1()
   pred_recruits <- expm1(pred_log_recruits)
+  
+  # Avoid impossible negative predictions
   pmax(pred_recruits, 0)
 }
 ```
@@ -214,36 +205,28 @@ predict_site_recruits <- function(logfruits_site_t0, fr2re_b0, fr2re_b1) {
 df_fr2re_site_plot <- df_fr2re_site %>%
   left_join(df_fr2re_site_coef, by = "site") %>%
   mutate(
-    pred_recruits_site_t1 = predict_site_recruits(
-      logfruits_site_t0 = logfruits_site_t0,
-      fr2re_b0 = fr2re_b0_site,
-      fr2re_b1 = fr2re_b1_site
-    )
-  )
+    pred_logrecruits_site_t1 = fr2re_b1_site * logfruits_site_t0
+  ) %>%
+  arrange(site, logfruits_site_t0)
 
 fig_fr2re_site <- ggplot(
   df_fr2re_site_plot,
-  aes(x = fruits_site_t0, y = recruits_site_t1)
+  aes(x = logfruits_site_t0, y = logrecruits_site_t1)
 ) +
-  geom_jitter(
-    width = 0,
-    height = 0.08,
+  geom_point(
     alpha = 0.45,
     size = 1
   ) +
   geom_line(
-    aes(y = pred_recruits_site_t1),
+    aes(y = pred_logrecruits_site_t1),
     linewidth = 0.9
   ) +
   facet_wrap(~ site, scales = "free_y") +
-  scale_x_continuous(
-    trans = scales::pseudo_log_trans(sigma = 1),
-    name = "Total fruits at site in year t"
-  ) +
   labs(
-    y = "Total recruits at site in year t + 1",
+    x = "log1p(total fruits at site in year t)",
+    y = "log1p(total recruits at site in year t + 1)",
     title = "Site-level fruit-to-recruit transition",
-    subtitle = "log1p(recruits) ~ log1p(fruits), with selected site-level random effect"
+    subtitle = "log1p(recruits) ~ 0 + log1p(fruits), forced through zero"
   ) +
   theme_bw() +
   theme(
@@ -253,6 +236,58 @@ fig_fr2re_site <- ggplot(
 
 fig_fr2re_site
 ```
+
+
+## Pars
+```{r by_site_zero_intercept_pars}
+
+pars_mean <- pars
+
+if (!exists("v_mod_fr_index")) {
+  v_mod_fr_index <- pars_mean$mod_fr_index
+}
+
+
+pars <- Filter(function(x) length(x) > 0, list(
+  prefix  = v_script_prefix,
+  species = v_species,
+  surv_b0 = extr_value(coef_su, 'b0'),
+  surv_b1 = extr_value(coef_su, 'logsize_t0'),
+  surv_b2 = extr_value(coef_su, 'logsize_t0_2'),
+  surv_b3 = extr_value(coef_su, 'logsize_t0_3'),
+  surv_bf = extr_value(coef_su, 'disturbance'),
+  grow_b0 = extr_value(coef_gr, 'b0'),
+  grow_b1 = extr_value(coef_gr, 'logsize_t0'),
+  grow_b2 = extr_value(coef_gr, 'logsize_t0_2'),
+  grow_b3 = extr_value(coef_gr, 'logsize_t0_3'),
+  grow_bf = extr_value(coef_gr, 'disturbance'),
+  a       = extr_value(coef_gr, 'a'),
+  b       = extr_value(coef_gr, 'b'),
+  fl_b0   = extr_value(coef_fl, 'b0'),
+  fl_b1   = extr_value(coef_fl, 'logsize_t0'),
+  fl_b2   = extr_value(coef_fl, 'logsize_t0_2'),
+  fl_b3   = extr_value(coef_fl, 'logsize_t0_3'),
+  fl_bf   = extr_value(coef_fl, 'disturbance'),
+  fr_b0   = extr_value(coef_fr, 'b0'),
+  fr_b1   = extr_value(coef_fr, 'logsize_t0'),
+  fr_b2   = extr_value(coef_fr, 'logsize_t0_2'),
+  fr_b3   = extr_value(coef_fr, 'logsize_t0_3'),
+  fr_bf   = extr_value(coef_fr, 'disturbance'),
+  fr2re_b0 = 0,
+  fr2re_b1 = unname(fr2re_site_fixef["logfruits_site_t0"]),
+  recr_sz = extr_value(coef_misc, 'rec_siz'),
+  recr_sd = extr_value(coef_misc, 'rec_sd'),
+  L       = extr_value(coef_misc, 'min_siz'),
+  U       = extr_value(coef_misc, 'max_siz'),
+  mat_siz = 200,
+  mod_su_index = v_mod_su_index,
+  mod_gr_index = v_mod_gr_index,
+  mod_fl_index = v_mod_fl_index,
+  mod_fr_index = v_mod_fr_index,
+  mod_fr2re_site_index = v_mod_fr2re_site_index))
+```
+
+
 
 ## By-site IPM functions
 
@@ -266,25 +301,28 @@ fruit_x <- function(x, pars) {
 }
 
 make_initial_n_site <- function(pars, site_i, df_init = df) {
+  
   n <- pars$mat_siz
   L <- pars$L
   U <- pars$U
   h <- (U - L) / n
+  
   breaks <- seq(L, U, length.out = n + 1)
-
+  
   years_i <- df_init %>%
     filter(site == site_i) %>%
     distinct(year) %>%
     arrange(year) %>%
     pull(year)
-
+  
   if (length(years_i) == 0) {
     return(rep(0, n))
   }
-
+  
   counts_by_year <- purrr::map(
     years_i,
     function(year_i) {
+      
       x <- df_init %>%
         filter(
           site == site_i,
@@ -293,11 +331,11 @@ make_initial_n_site <- function(pars, site_i, df_init = df) {
           is.finite(logsize_t0)
         ) %>%
         pull(logsize_t0)
-
+      
       if (length(x) == 0) {
         return(rep(0, n))
       }
-
+      
       hist(
         pmin(pmax(x, L), U),
         breaks = breaks,
@@ -306,55 +344,58 @@ make_initial_n_site <- function(pars, site_i, df_init = df) {
       )$counts
     }
   )
-
+  
   adult_counts_mean <- Reduce(`+`, counts_by_year) / length(counts_by_year)
+  
   adult_density <- adult_counts_mean / h
+  
   adult_density
 }
 
 expected_site_fruits <- function(pars, site_i, df_init = df) {
+  
   n <- pars$mat_siz
   L <- pars$L
   U <- pars$U
   h <- (U - L) / n
+  
   b <- L + c(0:n) * h
   y <- 0.5 * (b[1:n] + b[2:(n + 1)])
-
+  
   n_site <- make_initial_n_site(
-    pars = pars,
-    site_i = site_i,
-    df_init = df_init
-  )
-
+    pars = pars, site_i = site_i, df_init = df_init)
+  
+  # n_site is a density, so n_site * h gives counts per size bin
   sum(fruit_x(y, pars) * n_site * h, na.rm = TRUE)
 }
 
 predict_site_recruits_from_fruits <- function(site_fruits, pars) {
+  
   if (is.na(site_fruits) || site_fruits <= 0) {
     return(0)
   }
-
-  pred_log_recruits <- pars$fr2re_b0 + pars$fr2re_b1 * log1p(site_fruits)
+  
+  pred_log_recruits <- pars$fr2re_b1 * log1p(site_fruits)
+  
+  # Model was fit to log1p(recruits), so backtransform with expm1()
   pred_recruits <- expm1(pred_log_recruits)
+  
   pmax(pred_recruits, 0)
 }
 
 site_recruits_per_fruit <- function(pars) {
   site_fruits <- pars$site_fruits_ref
-
   if (is.null(site_fruits) || is.na(site_fruits) || site_fruits <= 0) {
     return(0)
   }
-
   site_recruits <- predict_site_recruits_from_fruits(
     site_fruits = site_fruits,
-    pars = pars
-  )
-
+    pars = pars)
   site_recruits / site_fruits
 }
 
 fyx <- function(y, x, pars) {
+  
   fruit_x(x, pars) *
     site_recruits_per_fruit(pars) *
     re_y_dist(y, pars)
@@ -384,24 +425,25 @@ p_disturbance_site
 
 ```{r by_site_apply_disturbance}
 apply_site_disturbance <- function(p, p_disturbance) {
+  
   p2 <- p
-
+  
   if (!is.null(p$surv_bf)) {
     p2$surv_b0 <- p$surv_b0 + p$surv_bf * p_disturbance
   }
-
+  
   if (!is.null(p$grow_bf)) {
     p2$grow_b0 <- p$grow_b0 + p$grow_bf * p_disturbance
   }
-
+  
   if (!is.null(p$fl_bf)) {
     p2$fl_b0 <- p$fl_b0 + p$fl_bf * p_disturbance
   }
-
+  
   if (!is.null(p$fr_bf)) {
     p2$fr_b0 <- p$fr_b0 + p$fr_bf * p_disturbance
   }
-
+  
   p2
 }
 ```

@@ -1829,6 +1829,25 @@ g_mod_vs_obs <- ggplot(
 g_mod_vs_obs
 
 
+g_mod_vs_obs2 <- ggplot(
+  df_plot,
+  aes(x = lambda, y = obs_pgr, color = fire)) +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_color_manual(values = c("Fire" = "#FF5733", "No fire" = "black")) +
+  geom_point(size = 3) +
+  geom_abline(intercept = 0, slope = 1, lty = 2) +
+  facet_wrap(~ lambda_type, scales = "free_x") +
+  labs(
+    title = "Observed population growth vs modeled lambda",
+    x     = expression("Modeled " * lambda * " (log scale)"),
+    y     = "Observed population growth rate (log scale)",
+    color = "Fire") +
+  theme_classic()
+
+g_mod_vs_obs2
+
+
 # Summary statistics -----------------------------------------------------------
 
 df_compare %>%

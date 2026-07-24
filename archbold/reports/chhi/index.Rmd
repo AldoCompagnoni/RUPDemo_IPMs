@@ -1,5 +1,5 @@
 --- 
-title: "Archbold Crotalaria avonensis summary"
+title: "Archbold Chrysopsis highlandsensis summary"
 #author: "Niklas Neisse"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
@@ -11,7 +11,7 @@ documentclass: book
 # biblio-style: apalike
 # link-citations: yes
 # github-repo: rstudio/bookdown-demo
-description: "This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation. "
+description: "This is the summary to the Archold Chrysopsis highlandsensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation. "
 # rmd_files: ["index.Rmd", "01-intro.Rmd", "02-data.Rmd", "03-investigation.Rmd", "04-models.Rmd", "05-ipm", "666-bug.Rmd"]
 ---
 

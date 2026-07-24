@@ -2253,3 +2253,397 @@ df_lambda_site_summary <- df_lambda_site_year_compare %>%
 
 df_lambda_site_summary %>%
   print(n = 100, width = Inf)
+
+
+
+# Yearly IPMs with the site random effect set to zero ---------------------------
+
+# Mean-site fruit-to-recruit parameters:
+# fixed slope + year random slope + zero site random slope
+
+pars_site_year_recruit_mean <- pars_site_year_recruit %>%
+  mutate(
+    fr2re_b0 = 0,
+    fr2re_b1 = unname(fr2re_fixef["logfruits_site_t0"]) + year_u1,
+    site_u0 = 0,
+    site_u1 = 0)
+
+
+# Projection grid --------------------------------------------------------------
+
+df_projection_grid_mean <- pars_site_year_recruit_mean %>%
+  mutate(
+    site = factor(site),
+    year = as.character(year),
+    year_t1 = as.character(year_t1)) %>%
+  left_join(p_disturbance_site_year, by = c("site", "year")) %>%
+  mutate(p_disturbance = replace_na(p_disturbance, 0))
+
+
+# Run site-year IPMs with no site recruitment effect ---------------------------
+
+df_lambda_site_year_mean <- df_projection_grid_mean %>%
+  mutate(
+    lambda_data = purrr::pmap(
+      list(
+        site, year, year_t1, p_disturbance,
+        fr2re_b0, fr2re_b1),
+      function(site, year, year_t1, p_disturbance,
+               fr2re_b0, fr2re_b1) {
+        project_site_year_ipm(
+          site_i = site,
+          year_i = year,
+          year_t1_i = year_t1,
+          p_disturbance_i = p_disturbance,
+          fr2re_b0_i = fr2re_b0,
+          fr2re_b1_i = fr2re_b1,
+          df_init = df)
+      })) %>%
+  select(
+    site, year, year_t1,
+    fr2re_b0, fr2re_b1, lambda_data) %>%
+  tidyr::unnest(lambda_data)
+
+
+# Observed site-year counts, including sampled sites with zero plants ----------
+
+df_obs_site_year_mean <- df_plot_year_sampled %>%
+  transmute(
+    site = factor(site),
+    year = as.character(year)) %>%
+  distinct() %>%
+  left_join(
+    df %>%
+      filter(
+        !is.na(logsize_t0),
+        is.finite(logsize_t0)) %>%
+      mutate(
+        site = factor(site),
+        year = as.character(year)) %>%
+      group_by(site, year) %>%
+      summarise(n_obs = n_distinct(plant_id), .groups = "drop"),
+    by = c("site", "year")) %>%
+  mutate(n_obs = replace_na(n_obs, 0)) %>%
+  arrange(site, as.integer(year)) %>%
+  group_by(site) %>%
+  mutate(
+    year_t1 = lead(year),
+    n_obs_t1 = lead(n_obs),
+    year_gap = as.integer(year_t1) - as.integer(year)) %>%
+  ungroup() %>%
+  filter(
+    year_gap == 1,
+    n_obs > 0,
+    !is.na(n_obs_t1))
+
+
+# Combine and aggregate to one result per year ---------------------------------
+
+df_compare_site_mean <- df_lambda_site_year_mean %>%
+  left_join(
+    df_obs_site_year_mean %>%
+      select(site, year, year_t1, n_obs, n_obs_t1),
+    by = c("site", "year", "year_t1"))
+
+df_compare_mean <- df_compare_site_mean %>%
+  group_by(year) %>%
+  summarise(
+    asym_lambda = weighted.mean(
+      lambda_asymptotic, w = n_initial, na.rm = TRUE),
+    n_t0 = sum(n_obs, na.rm = TRUE),
+    n_t1 = sum(n_obs_t1, na.rm = TRUE),
+    obs_lambda = n_t1 / n_t0,
+    n_obs_model = sum(n_initial, na.rm = TRUE),
+    n_proj_model = sum(n_projected, na.rm = TRUE),
+    proj_lambda = n_proj_model / n_obs_model,
+    disturbance = if_else(
+      any(p_disturbance > 0, na.rm = TRUE), "Fire", "No fire"),
+    .groups = "drop") %>%
+  mutate(
+    year = as.integer(year),
+    disturbance = factor(
+      disturbance, levels = c("No fire", "Fire")))
+
+df_compare_mean
+
+
+# Observed, asymptotic and projected lambda through time -----------------------
+
+df_lambda_plot_mean <- df_compare_mean %>%
+  select(year, obs_lambda, asym_lambda, proj_lambda) %>%
+  pivot_longer(
+    cols = c(obs_lambda, asym_lambda, proj_lambda),
+    names_to = "lambda_type",
+    values_to = "lambda") %>%
+  mutate(
+    lambda_type = recode(
+      lambda_type,
+      obs_lambda = "Observed",
+      asym_lambda = "Asymptotic",
+      proj_lambda = "Projected"))
+
+fig_lambda_mean <- ggplot(
+  df_lambda_plot_mean,
+  aes(
+    x = year,
+    y = lambda,
+    linetype = lambda_type,
+    shape = lambda_type,
+    group = lambda_type)) +
+  geom_hline(yintercept = 1, linetype = "dotted") +
+  geom_line(na.rm = TRUE) +
+  geom_point(size = 2, na.rm = TRUE) +
+  theme_bw() +
+  labs(
+    title = "Yearly population growth",
+    subtitle = paste(v_ggp_suffix, "- site random effect set to zero"),
+    x = "Year",
+    y = expression(lambda),
+    linetype = NULL,
+    shape = NULL)
+
+fig_lambda_mean
+
+
+# Observed versus asymptotic and projected lambda ------------------------------
+
+df_lambda_compare_mean <- df_compare_mean %>%
+  select(year, obs_lambda, asym_lambda, proj_lambda) %>%
+  pivot_longer(
+    cols = c(asym_lambda, proj_lambda),
+    names_to = "lambda_type",
+    values_to = "modeled_lambda") %>%
+  mutate(
+    lambda_type = recode(
+      lambda_type,
+      asym_lambda = "Asymptotic lambda",
+      proj_lambda = "Projected lambda"))
+
+fig_lambda_compare_mean <- ggplot(
+  df_lambda_compare_mean,
+  aes(x = modeled_lambda, y = obs_lambda)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed") +
+  facet_wrap(~ lambda_type) +
+  coord_equal() +
+  theme_bw() +
+  labs(
+    title = "Observed versus modeled yearly population growth",
+    subtitle = paste(v_ggp_suffix, "- site random effect set to zero"),
+    x = expression("Modeled " * lambda),
+    y = expression("Observed " * lambda))
+
+fig_lambda_compare_mean
+
+
+# Size-dependent plots by year ------------------------------------------------
+make_size_year_plot <- function(
+    year_i, data, model, response, y_lab, y_lim = NULL) {
+  
+  df_i <- data %>%
+    filter(as.character(year) == year_i)
+  
+  x <- seq(
+    min(df_i$logsize_t0, na.rm = TRUE),
+    max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
+  
+  pred_i <- expand_grid(
+    logsize_t0 = x,
+    disturbance = c(0, 1)) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3,
+      year = factor(year_i, levels = levels(data$year)),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire')),
+      prediction = predict(
+        model, newdata = ., type = 'response', re.form = NULL))
+  
+  pts_i <- df_i %>%
+    mutate(
+      bin = ntile(logsize_t0, 8),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire'))) %>%
+    group_by(bin, disturbance_plot) %>%
+    summarise(
+      logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+      response_mean = mean(.data[[response]], na.rm = TRUE),
+      n = n(), .groups = 'drop') %>%
+    filter(is.finite(logsize_t0), n > 0)
+  
+  p <- ggplot() +
+    geom_point(
+      data = pts_i,
+      aes(logsize_t0, response_mean, color = disturbance_plot),
+      size = 1.1) +
+    geom_line(
+      data = pred_i,
+      aes(logsize_t0, prediction, color = disturbance_plot),
+      linewidth = 0.7) +
+    scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
+    labs(
+      title = year_i,
+      x = expression('log(size)'[t0]),
+      y = y_lab) +
+    theme_bw() +
+    theme(text = element_text(size = 5), legend.position = 'none')
+  
+  if (!is.null(y_lim)) {
+    p <- p + coord_cartesian(ylim = y_lim)
+  }
+  
+  p
+}
+
+
+make_size_year_figure <- function(
+    data, model, response, title, y_lab, y_lim = NULL) {
+  
+  plots <- lapply(
+    levels(data$year),
+    make_size_year_plot,
+    data = data,
+    model = model,
+    response = response,
+    y_lab = y_lab,
+    y_lim = y_lim)
+  
+  wrap_plots(plots) +
+    plot_layout(ncol = 4) +
+    plot_annotation(
+      title = title,
+      subtitle = v_ggp_suffix,
+      theme = theme(
+        plot.title = element_text(size = 13, face = 'bold'),
+        plot.subtitle = element_text(size = 9)))
+}
+
+
+# Figures Vital rates ----------------------------------------------------------
+# Survival ####
+fig_su_years <- make_size_year_figure(
+  data = df_su,
+  model = mod_su_best,
+  response = 'survives',
+  title = 'Survival - year specific',
+  y_lab = 'Survival probability',
+  y_lim = c(0, 1))
+
+fig_su_years
+
+
+# Growth ####
+fig_gr_years <- make_size_year_figure(
+  data = df_gr,
+  model = mod_gr_best,
+  response = 'logsize_t1',
+  title = 'Growth - year specific',
+  y_lab = expression('log(size)'[t1]))
+
+fig_gr_years
+
+
+# Flowering probability ####
+fig_fl_years <- make_size_year_figure(
+  data = df_fl,
+  model = mod_fl_best,
+  response = 'flower',
+  title = 'Flowering probability - year specific',
+  y_lab = 'Flowering probability',
+  y_lim = c(0, 1))
+
+fig_fl_years
+
+
+# Number of flowers conditional on flowering ####
+fig_fl_n_years <- make_size_year_figure(
+  data = df_fl_n,
+  model = mod_fl_n_best,
+  response = 'flower',
+  title = 'Flower number given flowering - year specific',
+  y_lab = 'Number of flowers')
+
+fig_fl_n_years
+
+
+# Fruiting probability conditional on flowering ####
+fig_fr_years <- make_size_year_figure(
+  data = df_fr,
+  model = mod_fr_best,
+  response = 'fruiting',
+  title = 'Fruiting probability given flowering - year specific',
+  y_lab = 'Fruiting probability',
+  y_lim = c(0, 1))
+
+fig_fr_years
+
+
+# Number of fruits conditional on fruiting ####
+fig_fr_n_years <- make_size_year_figure(
+  data = df_fr_n,
+  model = mod_fr_n_best,
+  response = 'fruit',
+  title = 'Fruit number given fruiting - year specific',
+  y_lab = 'Number of fruits')
+
+fig_fr_n_years
+
+
+# Fruit-to-recruit relationship ####
+make_fr2re_year_plot <- function(year_i) {
+  
+  df_i <- df_fr2re %>%
+    filter(as.character(year_t1) == year_i)
+  
+  x <- seq(
+    0, max(df_i$logfruits_t0, na.rm = TRUE),
+    length.out = 100)
+  
+  pred_i <- expand_grid(
+    logfruits_t0 = x,
+    site = levels(df_fr2re$site)) %>%
+    mutate(
+      site = factor(site, levels = levels(df_fr2re$site)),
+      year_t1 = factor(year_i, levels = levels(df_fr2re$year_t1)),
+      logrecruits_t1 = predict(
+        mod_fr2re_best, newdata = ., type = 'response',
+        re.form = NULL, allow.new.levels = TRUE),
+      fruits_t0 = expm1(logfruits_t0),
+      recruits_t1 = pmax(0, expm1(logrecruits_t1)))
+  
+  ggplot() +
+    geom_point(
+      data = df_i,
+      aes(fruits_t0, recruits_t1, color = site),
+      size = 1.3) +
+    geom_line(
+      data = pred_i,
+      aes(fruits_t0, recruits_t1, color = site, group = site),
+      linewidth = 0.7) +
+    labs(
+      title = year_i,
+      x = expression('Number of fruits'[t]),
+      y = expression('Number of recruits'[t+1])) +
+    theme_bw() +
+    theme(text = element_text(size = 5), legend.position = 'none')
+}
+
+fr2re_yrs <- lapply(
+  levels(df_fr2re$year_t1),
+  make_fr2re_year_plot)
+
+fig_fr2re_years <- wrap_plots(fr2re_yrs) +
+  plot_layout(ncol = 4) +
+  plot_annotation(
+    title = 'Fruit-to-recruit relationship - year specific',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 13, face = 'bold'),
+      plot.subtitle = element_text(size = 9)))
+
+fig_fr2re_years

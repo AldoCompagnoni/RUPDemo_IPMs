@@ -1,0 +1,1430 @@
+# Mean IPM: one-part flowering, two-part fruiting, fruit-to-recruit, and disturbance {#mean_flx1_frx2_fr2re_dist}
+
+This chapter builds a mean integral projection model for *Crotalaria
+avonensis*. All vital-rate models contain fixed effects only: no year random
+effects and no site random effects are included. Disturbance remains a fixed
+predictor of survival, growth, flowering probability, fruiting probability, and
+fruit number. The model is evaluated for no fire, fire, and the observed mean
+disturbance regime.
+
+The flowering component has one part, the probability that an individual
+flowers. Flower number is retained in the raw data only to distinguish flowering
+from nonflowering plants; a separate flower-number model is not fitted. Fruit
+production has two parts:
+
+1. fruiting probability conditional on flowering;
+2. fruit number conditional on fruiting.
+
+The expected reproductive contribution of an individual is therefore
+
+```r
+Pr(flowering) * Pr(fruiting | flowering) *
+  E(number of fruits | fruiting) * recruits per fruit
+```
+
+The fruit-to-recruit model relates total fruits in year $t$ to valid recruits in
+year $t+1$. It is fitted on the `log1p` scale, forced through zero, and contains
+no site or year effects.
+
+## Required objects
+
+This chapter assumes that the data chapter has created `df`, `df_og`, and
+`v_ggp_suffix`.
+
+```{r mean_flx1_frx2_required_objects}
+required_objects <- c('df', 'df_og', 'v_ggp_suffix')
+missing_objects <- required_objects[!purrr::map_lgl(required_objects, exists)]
+
+if (length(missing_objects) > 0) {
+  stop(
+    'The following objects are missing. Run the data chapter first: ',
+    paste(missing_objects, collapse = ', '))
+}
+
+if (!exists('v_years_re')) v_years_re <- c()
+
+# Empty vectors select the best-supported candidate by AICc. To force a
+# candidate, provide its zero-based position in the corresponding model list.
+v_mod_set_su <- c()
+v_mod_set_gr <- c()
+v_mod_set_fl <- c()
+v_mod_set_fr <- c()
+v_mod_set_fr_n <- c()
+```
+
+## Correct recruitment timing
+
+The first recorded year is calculated separately for each plant. Recruits are
+then retained for the fruit-to-recruit analysis only when their quadrat was
+represented in the preceding year. This reduces the risk of treating the first
+observation from a newly sampled quadrat as a known recruit.
+
+```{r mean_flx1_frx2_recruit_correction}
+df_recruit_corrected <- df_og %>%
+  janitor::clean_names() %>%
+  transmute(
+    plant_id = as.character(id),
+    year = as.integer(year),
+    s,
+    stage) %>%
+  group_by(plant_id) %>%
+  mutate(
+    earliest_recorded_date = suppressWarnings(
+      min(year[s > 0 & s != 2 & s != 6], na.rm = TRUE)),
+    earliest_recorded_date = if_else(
+      is.infinite(earliest_recorded_date),
+      NA_real_, earliest_recorded_date),
+    recruit = case_when(
+      stage == 1 ~ 1,
+      year == earliest_recorded_date & earliest_recorded_date > 2003 ~ 1,
+      TRUE ~ NA_real_)) %>%
+  ungroup() %>%
+  select(plant_id, year, recruit)
+
+df <- df %>%
+  mutate(
+    plant_id = as.character(plant_id),
+    year = as.integer(as.character(year))) %>%
+  select(-any_of(c('recruit', 'recruit_plot_valid'))) %>%
+  left_join(df_recruit_corrected, by = c('plant_id', 'year')) %>%
+  mutate(plant_id = factor(plant_id))
+
+df_plot_year_sampled <- df %>%
+  group_by(site, mp, quad, quad_id, year) %>%
+  summarise(
+    n_records_plot_year = n(),
+    n_plants_plot_year = n_distinct(plant_id),
+    .groups = 'drop')
+
+df_recruit_valid_ids <- df %>%
+  filter(recruit == 1) %>%
+  mutate(year_prev = year - 1) %>%
+  left_join(
+    df_plot_year_sampled %>%
+      transmute(
+        quad_id,
+        year_prev = year,
+        sampled_prev_year = TRUE),
+    by = c('quad_id', 'year_prev')) %>%
+  filter(replace_na(sampled_prev_year, FALSE)) %>%
+  select(site, mp, quad, quad_id, plant_id, year) %>%
+  mutate(recruit_plot_valid = 1)
+
+df <- df %>%
+  left_join(
+    df_recruit_valid_ids,
+    by = c('site', 'mp', 'quad', 'quad_id', 'plant_id', 'year')) %>%
+  mutate(
+    recruit_plot_valid = case_when(
+      recruit == 1 & recruit_plot_valid == 1 ~ 1,
+      TRUE ~ NA_real_))
+```
+
+## Process-specific data
+
+The same biological definitions used in the year-by-site chapter are retained.
+Flowering is binary, fruiting is conditional on flowering, and fruit number is
+conditional on fruiting.
+
+```{r mean_flx1_frx2_model_data}
+df_su <- df %>%
+  filter(
+    size_t0 > 0,
+    !is.na(survives),
+    is.finite(logsize_t0),
+    !is.na(disturbance)) %>%
+  mutate(disturbance = as.numeric(disturbance))
+
+df_gr <- df %>%
+  filter(
+    size_t0 > 0,
+    survives == 1,
+    is.finite(logsize_t0),
+    is.finite(logsize_t1),
+    !is.na(disturbance)) %>%
+  mutate(disturbance = as.numeric(disturbance))
+
+# Flowering is one binary process. Flower number is not modeled separately.
+df_fl <- df %>%
+  filter(
+    !is.na(flower),
+    is.finite(logsize_t0),
+    !is.na(disturbance)) %>%
+  mutate(
+    disturbance = as.numeric(disturbance),
+    flower = if_else(flower > 0, 1, 0))
+
+# Fruiting probability is conditional on flowering.
+df_fr <- df %>%
+  filter(
+    flower > 0,
+    is.finite(fruit),
+    is.finite(logsize_t0),
+    !is.na(disturbance)) %>%
+  mutate(
+    disturbance = as.numeric(disturbance),
+    fruiting = if_else(fruit > 0, 1, 0))
+
+# Fruit number is conditional on fruiting.
+df_fr_n <- df %>%
+  filter(
+    fruit > 0,
+    is.finite(fruit),
+    is.finite(logsize_t0),
+    !is.na(disturbance)) %>%
+  mutate(disturbance = as.numeric(disturbance))
+
+
+# Fruit-to-recruit data --------------------------------------------------------
+# Total fruits in year t predict valid recruits in year t + 1. The mean model
+# is forced through zero and has no year or site random effects.
+df_fr2re_quad <- df %>%
+  group_by(site, quad_id, year) %>%
+  summarise(
+    fruits_t0 = sum(fruit, na.rm = TRUE),
+    recruits_t0 = sum(recruit_plot_valid == 1, na.rm = TRUE),
+    .groups = 'drop') %>%
+  arrange(site, quad_id, year) %>%
+  group_by(site, quad_id) %>%
+  mutate(
+    recruits_t1 = lead(recruits_t0),
+    year_t1 = lead(year),
+    year_gap = year_t1 - year) %>%
+  ungroup() %>%
+  filter(year_gap == 1)
+
+df_fr2re <- df_fr2re_quad %>%
+  group_by(site, year, year_t1) %>%
+  summarise(
+    fruits_t0 = sum(fruits_t0, na.rm = TRUE),
+    recruits_t1 = sum(recruits_t1, na.rm = TRUE),
+    n_quads = n(),
+    .groups = 'drop') %>%
+  mutate(
+    site = factor(site),
+    logfruits_t0 = log1p(fruits_t0),
+    logrecruits_t1 = log1p(recruits_t1))
+```
+
+## Remove selected years
+
+```{r mean_flx1_frx2_remove_years}
+v_years_og <- sort(unique(df$year))
+
+df <- df %>%
+  filter(!is.na(year), !(year %in% v_years_re))
+
+df_su <- df_su %>%
+  filter(!is.na(year), !(year %in% v_years_re))
+
+df_gr <- df_gr %>%
+  filter(!is.na(year), !(year %in% v_years_re))
+
+df_fl <- df_fl %>%
+  filter(!is.na(year), !(year %in% v_years_re))
+
+df_fr <- df_fr %>%
+  filter(!is.na(year), !(year %in% v_years_re))
+
+df_fr_n <- df_fr_n %>%
+  filter(!is.na(year), !(year %in% v_years_re))
+
+df_fr2re <- df_fr2re %>%
+  filter(
+    !is.na(year),
+    !is.na(year_t1),
+    !(year %in% v_years_re),
+    !(year_t1 %in% v_years_re))
+
+v_years <- sort(unique(df$year))
+```
+
+## Mean survival model
+
+Candidate models compare intercept-only, linear, quadratic, and cubic size
+relationships, each with and without the fixed disturbance effect. AICc selects
+the best-supported candidate unless a model index is supplied above.
+
+```{r mean_flx1_frx2_survival_model}
+mod_su_00 <- glm(
+  survives ~ 1,
+  data = df_su, family = binomial)
+
+mod_su_0 <- glm(
+  survives ~ disturbance,
+  data = df_su, family = binomial)
+
+mod_su_10 <- glm(
+  survives ~ logsize_t0,
+  data = df_su, family = binomial)
+
+mod_su_1 <- glm(
+  survives ~ logsize_t0 + disturbance,
+  data = df_su, family = binomial)
+
+mod_su_20 <- glm(
+  survives ~ logsize_t0 + logsize_t0_2,
+  data = df_su, family = binomial)
+
+mod_su_2 <- glm(
+  survives ~ logsize_t0 + logsize_t0_2 + disturbance,
+  data = df_su, family = binomial)
+
+mod_su_30 <- glm(
+  survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_su, family = binomial)
+
+mod_su_3 <- glm(
+  survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance,
+  data = df_su, family = binomial)
+
+mods_su <- list(mod_su_00, mod_su_0, mod_su_10, mod_su_1, 
+                mod_su_20, mod_su_2, mod_su_30, mod_su_3)
+mods_su_dAIC <- bbmle::AICctab(mods_su, weights = TRUE, sort = FALSE)$dAIC
+mods_su_sorted <- order(mods_su_dAIC)
+
+if (length(v_mod_set_su) == 0) {
+  mod_su_index_best <- mods_su_sorted[1]
+} else {
+  mod_su_index_best <- v_mod_set_su + 1
+}
+
+v_mod_su_index <- floor((mod_su_index_best - 1) / 2)
+mod_su_best <- mods_su[[mod_su_index_best]]
+mod_su_coef <- coef(mod_su_best)
+summary(mod_su_best)
+```
+
+## Mean growth model
+
+Growth is modeled on the log-size scale with the same candidate structure used
+for survival.
+
+```{r mean_flx1_frx2_growth_model}
+mod_gr_00 <- lm(logsize_t1 ~ 1,
+               data = df_gr)
+
+mod_gr_0 <- lm(logsize_t1 ~ disturbance,
+               data = df_gr)
+
+mod_gr_10 <- lm(logsize_t1 ~ logsize_t0,
+               data = df_gr)
+
+mod_gr_1 <- lm(logsize_t1 ~ logsize_t0 + disturbance,
+               data = df_gr)
+
+mod_gr_20 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2,
+               data = df_gr)
+
+mod_gr_2 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + disturbance,
+               data = df_gr)
+
+mod_gr_30 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+               data = df_gr)
+
+mod_gr_3 <- lm(logsize_t1 ~ logsize_t0 + logsize_t0_2 + 
+                 logsize_t0_3 + disturbance,
+               data = df_gr)
+
+mods_gr <- list(mod_gr_00, mod_gr_0, mod_gr_10, mod_gr_1, 
+                mod_gr_20, mod_gr_2, mod_gr_30, mod_gr_3)
+mods_gr_dAICc <- bbmle::AICctab(mods_gr, weights = TRUE, sort = FALSE)$dAICc
+mods_gr_sorted <- order(mods_gr_dAICc)
+
+if (length(v_mod_set_gr) == 0) {
+  mod_gr_index_best <- mods_gr_sorted[1]
+} else {
+  mod_gr_index_best <- v_mod_set_gr +1
+}
+
+v_mod_gr_index <- floor((mod_gr_index_best - 1) / 2)
+mod_gr_best  <- mods_gr[[mod_gr_index_best]]
+mod_gr_coef <- coef(mod_gr_best)
+summary(mod_gr_best)
+```
+
+### Growth variance
+
+Squared growth residuals are modeled as an exponential function of the predicted
+growth mean. The IPM uses the same mean-scale predictor when calculating the
+growth standard deviation.
+
+```{r mean_flx1_frx2_growth_variance}
+# Variance is modeled against the predicted growth mean. grow_sd() below uses
+# the same mean-scale predictor.
+mod_gr_x <- fitted(mod_gr_best)
+mod_gr_y <- resid(mod_gr_best)^2
+
+mod_gr_var <- nls(
+  mod_gr_y ~ a * exp(b * mod_gr_x),
+  start = list(a = 1, b = 0),
+  control = nls.control(
+    maxiter = 1000,
+    tol = 1e-6,
+    warnOnly = TRUE))
+```
+
+## Mean flowering-probability model
+
+This is the only flower-related model entering the fertility kernel. Flower
+number is not analyzed as a separate vital rate.
+
+```{r mean_flx1_frx2_flowering_model}
+mod_fl_00 <- glm(
+  flower ~ 1,
+  data = df_fl, family = binomial)
+
+mod_fl_0 <- glm(
+  flower ~ disturbance,
+  data = df_fl, family = binomial)
+
+mod_fl_10 <- glm(
+  flower ~ logsize_t0,
+  data = df_fl, family = binomial)
+
+mod_fl_1 <- glm(
+  flower ~ logsize_t0 + disturbance,
+  data = df_fl, family = binomial)
+
+mod_fl_20 <- glm(
+  flower ~ logsize_t0 + logsize_t0_2,
+  data = df_fl, family = binomial)
+
+mod_fl_2 <- glm(
+  flower ~ logsize_t0 + logsize_t0_2 + disturbance,
+  data = df_fl, family = binomial)
+
+mod_fl_30 <- glm(
+  flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_fl, family = binomial)
+
+mod_fl_3 <- glm(
+  flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance,
+  data = df_fl, family = binomial)
+
+mods_fl <- list(
+  mod_fl_00, mod_fl_0, mod_fl_10, mod_fl_1,
+  mod_fl_20, mod_fl_2, mod_fl_30, mod_fl_3)
+
+mods_fl_dAICc <- bbmle::AICctab(
+  mods_fl, weights = TRUE, sort = FALSE)$dAICc
+mods_fl_sorted <- order(mods_fl_dAICc)
+
+if (length(v_mod_set_fl) == 0) {
+  mod_fl_index_best <- mods_fl_sorted[1]
+} else {
+  mod_fl_index_best <- v_mod_set_fl + 1
+}
+
+v_mod_fl_index <- floor((mod_fl_index_best - 1) / 2)
+mod_fl_best <- mods_fl[[mod_fl_index_best]]
+mod_fl_coef <- coef(mod_fl_best)
+
+summary(mod_fl_best)
+mods_fl_dAICc
+```
+
+## Mean fruiting-probability model
+
+Fruiting probability is estimated only among plants that flowered.
+
+```{r mean_flx1_frx2_fruiting_model}
+mod_fr_00 <- glm(
+  fruiting ~ 1,
+  data = df_fr, family = binomial)
+
+mod_fr_0 <- glm(
+  fruiting ~ disturbance,
+  data = df_fr, family = binomial)
+
+mod_fr_10 <- glm(
+  fruiting ~ logsize_t0,
+  data = df_fr, family = binomial)
+
+mod_fr_1 <- glm(
+  fruiting ~ logsize_t0 + disturbance,
+  data = df_fr, family = binomial)
+
+mod_fr_20 <- glm(
+  fruiting ~ logsize_t0 + logsize_t0_2,
+  data = df_fr, family = binomial)
+
+mod_fr_2 <- glm(
+  fruiting ~ logsize_t0 + logsize_t0_2 + disturbance,
+  data = df_fr, family = binomial)
+
+mod_fr_30 <- glm(
+  fruiting ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_fr, family = binomial)
+
+mod_fr_3 <- glm(
+  fruiting ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance,
+  data = df_fr, family = binomial)
+
+mods_fr <- list(
+  mod_fr_00, mod_fr_0, mod_fr_10, mod_fr_1,
+  mod_fr_20, mod_fr_2, mod_fr_30, mod_fr_3)
+
+mods_fr_dAICc <- bbmle::AICctab(
+  mods_fr, weights = TRUE, sort = FALSE)$dAICc
+mods_fr_sorted <- order(mods_fr_dAICc)
+
+if (length(v_mod_set_fr) == 0) {
+  mod_fr_index_best <- mods_fr_sorted[1]
+} else {
+  mod_fr_index_best <- v_mod_set_fr + 1
+}
+
+v_mod_fr_index <- floor((mod_fr_index_best - 1) / 2)
+mod_fr_best <- mods_fr[[mod_fr_index_best]]
+mod_fr_coef <- coef(mod_fr_best)
+
+summary(mod_fr_best)
+mods_fr_dAICc
+```
+
+## Mean fruit-number model
+
+Fruit number is estimated only among plants that produced at least one fruit.
+A negative-binomial model accommodates overdispersion in the count response.
+
+```{r mean_flx1_frx2_fruit_number_model}
+mod_fr_n_00 <- MASS::glm.nb(
+  fruit ~ 1,
+  data = df_fr_n)
+
+mod_fr_n_0 <- MASS::glm.nb(
+  fruit ~ disturbance,
+  data = df_fr_n)
+
+mod_fr_n_10 <- MASS::glm.nb(
+  fruit ~ logsize_t0,
+  data = df_fr_n)
+
+mod_fr_n_1 <- MASS::glm.nb(
+  fruit ~ logsize_t0 + disturbance,
+  data = df_fr_n)
+
+mod_fr_n_20 <- MASS::glm.nb(
+  fruit ~ logsize_t0 + logsize_t0_2,
+  data = df_fr_n)
+
+mod_fr_n_2 <- MASS::glm.nb(
+  fruit ~ logsize_t0 + logsize_t0_2 + disturbance,
+  data = df_fr_n)
+
+mod_fr_n_30 <- MASS::glm.nb(
+  fruit ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_fr_n)
+
+mod_fr_n_3 <- MASS::glm.nb(
+  fruit ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance,
+  data = df_fr_n)
+
+mods_fr_n <- list(
+  mod_fr_n_00, mod_fr_n_0, mod_fr_n_10, mod_fr_n_1,
+  mod_fr_n_20, mod_fr_n_2, mod_fr_n_30, mod_fr_n_3)
+
+mods_fr_n_dAICc <- bbmle::AICctab(
+  mods_fr_n, weights = TRUE, sort = FALSE)$dAICc
+mods_fr_n_sorted <- order(mods_fr_n_dAICc)
+
+if (length(v_mod_set_fr_n) == 0) {
+  mod_fr_n_index_best <- mods_fr_n_sorted[1]
+} else {
+  mod_fr_n_index_best <- v_mod_set_fr_n + 1
+}
+
+v_mod_fr_n_index <- floor((mod_fr_n_index_best - 1) / 2)
+mod_fr_n_best <- mods_fr_n[[mod_fr_n_index_best]]
+mod_fr_n_coef <- coef(mod_fr_n_best)
+
+summary(mod_fr_n_best)
+mods_fr_n_dAICc
+```
+
+## Mean fruit-to-recruit model
+
+Total fruit production at a site in year $t$ predicts the number of valid
+recruits at that site in year $t+1$. The relationship is constrained to pass
+through the origin on the `log1p` scale:
+
+\[
+\log(1 + R_{i,t+1}) =
+\beta_1\log(1 + F_{i,t}).
+\]
+
+Thus, zero fruits predict zero recruits. The slope is shared across all sites
+and years.
+
+```{r mean_flx1_frx2_fr2re_model}
+# Zero fruits predict zero recruits. No site or year random effects are fitted.
+mod_fr2re <- lm(
+  logrecruits_t1 ~ 0 + logfruits_t0,
+  data = df_fr2re)
+
+summary(mod_fr2re)
+```
+
+## Mean vital-rate plots
+
+The fitted lines show the mean fixed-effect relationships under no fire and
+fire. The figures summarize the relationships used by the mean IPM rather than
+year- or site-specific deviations.
+
+```{r mean_flx1_frx2_vital_rate_plots, fig.width=10, fig.height=12}
+make_mean_prediction <- function(data, model) {
+  x <- seq(
+    min(data$logsize_t0, na.rm = TRUE),
+    max(data$logsize_t0, na.rm = TRUE),
+    length.out = 200)
+
+  pred <- expand_grid(
+    logsize_t0 = x,
+    disturbance = c(0, 1)) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3,
+      disturbance_plot = factor(
+        disturbance,
+        levels = c(0, 1),
+        labels = c('No fire', 'Fire')))
+
+  pred$prediction <- predict(
+    model,
+    newdata = pred,
+    type = 'response')
+
+  pred
+}
+
+make_mean_plot <- function(
+    data, model, response, title, y_lab,
+    probability = FALSE) {
+  pred <- make_mean_prediction(data, model)
+
+  data_plot <- data %>%
+    mutate(
+      disturbance_plot = factor(
+        disturbance,
+        levels = c(0, 1),
+        labels = c('No fire', 'Fire')))
+
+  point_layer <- if (probability) {
+    geom_jitter(
+      data = data_plot,
+      aes(
+        x = logsize_t0,
+        y = .data[[response]],
+        color = disturbance_plot),
+      alpha = 0.15,
+      size = 0.7,
+      width = 0.05,
+      height = 0.05)
+  } else {
+    geom_point(
+      data = data_plot,
+      aes(
+        x = logsize_t0,
+        y = .data[[response]],
+        color = disturbance_plot),
+      alpha = 0.15,
+      size = 0.7)
+  }
+
+  p <- ggplot() +
+    point_layer +
+    geom_line(
+      data = pred,
+      aes(
+        x = logsize_t0,
+        y = prediction,
+        color = disturbance_plot),
+      linewidth = 0.8) +
+    scale_color_manual(
+      values = c('No fire' = 'black', 'Fire' = 'red')) +
+    theme_bw() +
+    labs(
+      title = title,
+      subtitle = v_ggp_suffix,
+      x = expression('log(size)'[t0]),
+      y = y_lab,
+      color = NULL)
+
+  if (probability) {
+    p <- p + coord_cartesian(ylim = c(0, 1))
+  }
+
+  p
+}
+
+fig_su <- make_mean_plot(
+  data = df_su,
+  model = mod_su_best,
+  response = 'survives',
+  title = 'Mean survival',
+  y_lab = 'Survival probability',
+  probability = TRUE)
+
+fig_gr <- make_mean_plot(
+  data = df_gr,
+  model = mod_gr_best,
+  response = 'logsize_t1',
+  title = 'Mean growth',
+  y_lab = expression('log(size)'[t1]))
+
+fig_fl <- make_mean_plot(
+  data = df_fl,
+  model = mod_fl_best,
+  response = 'flower',
+  title = 'Mean flowering probability',
+  y_lab = 'Flowering probability',
+  probability = TRUE)
+
+fig_fr <- make_mean_plot(
+  data = df_fr,
+  model = mod_fr_best,
+  response = 'fruiting',
+  title = 'Mean fruiting probability given flowering',
+  y_lab = 'Fruiting probability',
+  probability = TRUE)
+
+fig_fr_n <- make_mean_plot(
+  data = df_fr_n,
+  model = mod_fr_n_best,
+  response = 'fruit',
+  title = 'Mean fruit number given fruiting',
+  y_lab = 'Number of fruits')
+
+fig_vital_rates <-
+  fig_su + fig_gr + fig_fl +
+  fig_fr + fig_fr_n +
+  plot_layout(ncol = 2, guides = 'collect') &
+  theme(legend.position = 'bottom')
+
+fig_vital_rates
+```
+
+## Mean fruit-to-recruit relationship
+
+```{r mean_flx1_frx2_fr2re_plot, fig.width=7, fig.height=5}
+df_fr2re_pred <- tibble(
+  logfruits_t0 = seq(
+    0,
+    max(df_fr2re$logfruits_t0, na.rm = TRUE),
+    length.out = 200)) %>%
+  mutate(
+    logrecruits_t1 = predict(
+      mod_fr2re,
+      newdata = .),
+    fruits_t0 = expm1(logfruits_t0),
+    recruits_t1 = pmax(0, expm1(logrecruits_t1)))
+
+fig_fr2re <- ggplot(
+  df_fr2re,
+  aes(x = fruits_t0, y = recruits_t1)) +
+  geom_point(alpha = 0.4, size = 1.3) +
+  geom_line(
+    data = df_fr2re_pred,
+    aes(x = fruits_t0, y = recruits_t1),
+    linewidth = 0.8) +
+  scale_x_continuous(
+  trans = scales::pseudo_log_trans(sigma = 1)) +
+  theme_bw() +
+  labs(
+    title = 'Mean fruit-to-recruit relationship',
+    subtitle = v_ggp_suffix,
+    x = expression('Total fruits'[t]),
+    y = expression('Valid recruits'[t+1]))
+
+fig_fr2re
+```
+
+## Recruit size distribution
+
+Recruit size is represented by a normal distribution on the log-size scale. Only
+recruits whose quadrats were represented in the previous year contribute to the
+estimated mean and standard deviation.
+
+```{r mean_flx1_frx2_recruit_size}
+df_recr <- df %>%
+  filter(
+    recruit_plot_valid == 1,
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+rc_sz <- df_recr %>%
+  summarise(
+    mean = mean(logsize_t0, na.rm = TRUE),
+    sd = sd(logsize_t0, na.rm = TRUE))
+```
+
+## Mean parameter extraction
+
+Missing polynomial or disturbance terms are filled with zero, allowing the same
+IPM functions to work with any AICc-selected candidate.
+
+```{r mean_flx1_frx2_parameters}
+size_term_map <- c(
+  b0 = '(Intercept)',
+  b1 = 'logsize_t0',
+  b2 = 'logsize_t0_2',
+  b3 = 'logsize_t0_3',
+  bd = 'disturbance')
+
+extract_terms <- function(model, prefix, term_map = size_term_map) {
+  coefs <- stats::coef(model)
+
+  values <- vapply(term_map, function(term_i) {
+    if (term_i %in% names(coefs)) {
+      unname(coefs[[term_i]])
+    } else {
+      0
+    }
+  }, numeric(1))
+
+  names(values) <- paste0(prefix, names(term_map))
+  values
+}
+
+grow_var_coef <- stats::coef(mod_gr_var)
+
+mesh_limits <- range(
+  c(
+    df_gr$logsize_t0,
+    df_gr$logsize_t1,
+    df_recr$logsize_t0),
+  na.rm = TRUE,
+  finite = TRUE)
+
+pars_mean <- as.list(c(
+  extract_terms(mod_su_best, 'surv_'),
+  extract_terms(mod_gr_best, 'grow_'),
+  extract_terms(mod_fl_best, 'fl_'),
+  extract_terms(mod_fr_best, 'fr_'),
+  extract_terms(mod_fr_n_best, 'frn_'),
+  fr2re_b0 = 0,
+  fr2re_b1 = unname(
+    stats::coef(mod_fr2re)[['logfruits_t0']]),
+  recr_mean = rc_sz$mean,
+  recr_sd = rc_sz$sd,
+  grow_var_a = unname(grow_var_coef[['a']]),
+  grow_var_b = unname(grow_var_coef[['b']]),
+  fruits_ref = mean(df_fr2re$fruits_t0, na.rm = TRUE),
+  L = mesh_limits[1],
+  U = mesh_limits[2],
+  mat_siz = 200))
+
+pars_mean_table <- tibble(
+  parameter = names(pars_mean),
+  value = as.numeric(unlist(pars_mean)))
+
+pars_mean_table
+```
+
+## IPM functions
+
+Survival and flowering probabilities use inverse-logit links. Expected fruits
+per individual combine flowering probability, fruiting probability, and
+conditional fruit number. The raw number of flowers is not multiplied into this
+expression because the fruit-number model already predicts total fruits for a
+fruiting individual.
+
+### Fruit-to-recruit back-transformation
+
+The fruit-to-recruit model is returned to the original count scale using the
+direct inverse of the `log1p` transformation:
+
+\[
+\widehat{R}_{i,t+1} =
+\exp\left(\widehat{\eta}_{i,t+1}\right)-1.
+\]
+
+A residual-variance correction of $0.5\sigma^2$ is not added inside the
+exponential. With a model constrained through zero, that correction creates a
+positive predicted number of recruits as fruit production approaches zero.
+Dividing that positive baseline by very small fruit totals can produce
+unrealistically large estimates of recruits per fruit and inflated fertility
+values. The direct inverse transformation preserves
+
+\[
+F_{i,t}=0 \quad\Longrightarrow\quad \widehat{R}_{i,t+1}=0,
+\]
+
+and predicted recruitment approaches zero continuously as fruit production
+approaches zero.
+
+```{r mean_flx1_frx2_ipm_functions}
+get_par <- function(pars, par_name, default = 0) {
+  if (!is.null(pars[[par_name]])) {
+    pars[[par_name]]
+  } else {
+    default
+  }
+}
+
+vital_lp <- function(x, pars, prefix, disturbance = 0) {
+  get_par(pars, paste0(prefix, 'b0')) +
+    get_par(pars, paste0(prefix, 'b1')) * x +
+    get_par(pars, paste0(prefix, 'b2')) * x^2 +
+    get_par(pars, paste0(prefix, 'b3')) * x^3 +
+    get_par(pars, paste0(prefix, 'bd')) * disturbance
+}
+
+
+# Survival ---------------------------------------------------------------------
+sx <- function(x, pars, disturbance = 0) {
+  plogis(vital_lp(
+    x = x,
+    pars = pars,
+    prefix = 'surv_',
+    disturbance = disturbance))
+}
+
+
+# Growth -----------------------------------------------------------------------
+grow_mu <- function(x, pars, disturbance = 0) {
+  vital_lp(
+    x = x,
+    pars = pars,
+    prefix = 'grow_',
+    disturbance = disturbance)
+}
+
+grow_sd <- function(mean_value, pars) {
+  variance <- get_par(pars, 'grow_var_a') *
+    exp(get_par(pars, 'grow_var_b') * mean_value)
+
+  sqrt(pmax(variance, .Machine$double.eps))
+}
+
+gxy <- function(x, y, pars, disturbance = 0) {
+  mean_value <- grow_mu(
+    x = x,
+    pars = pars,
+    disturbance = disturbance)
+
+  sd_value <- grow_sd(
+    mean_value = mean_value,
+    pars = pars)
+
+  dnorm(y, mean = mean_value, sd = sd_value)
+}
+
+pxy <- function(x, y, pars, disturbance = 0) {
+  sx(x, pars, disturbance) *
+    gxy(x, y, pars, disturbance)
+}
+
+
+# Flowering probability --------------------------------------------------------
+fl_x <- function(x, pars, disturbance = 0) {
+  plogis(vital_lp(
+    x = x,
+    pars = pars,
+    prefix = 'fl_',
+    disturbance = disturbance))
+}
+
+
+# Fruiting probability conditional on flowering -------------------------------
+fr_x <- function(x, pars, disturbance = 0) {
+  plogis(vital_lp(
+    x = x,
+    pars = pars,
+    prefix = 'fr_',
+    disturbance = disturbance))
+}
+
+
+# Fruit number conditional on fruiting ----------------------------------------
+frn_x <- function(x, pars, disturbance = 0) {
+  exp(vital_lp(
+    x = x,
+    pars = pars,
+    prefix = 'frn_',
+    disturbance = disturbance))
+}
+
+
+# Expected fruits per individual ----------------------------------------------
+# Flower count is not multiplied into this expression. The fruit-number model
+# predicts total fruits for fruiting individuals.
+fruits_x <- function(x, pars, disturbance = 0) {
+  fl_x(x, pars, disturbance) *
+    fr_x(x, pars, disturbance) *
+    frn_x(x, pars, disturbance)
+}
+
+
+# Fruit-to-recruit conversion --------------------------------------------------
+predict_recruits_from_fruits <- function(fruits, pars) {
+  fruits_nonnegative <- pmax(fruits, 0)
+
+  eta <- get_par(pars, 'fr2re_b0') +
+    get_par(pars, 'fr2re_b1') * log1p(fruits_nonnegative)
+
+  # Directly invert the log1p prediction. A 0.5 * sigma^2 correction is not
+  # added because it creates positive recruitment as fruits approach zero,
+  # resulting in unrealistically large estimates of recruits per fruit.
+  recruits <- pmax(expm1(eta), 0)
+
+  ifelse(fruits_nonnegative <= 0, 0, recruits)
+}
+
+recruits_per_fruit <- function(pars) {
+  fruits_ref <- get_par(pars, 'fruits_ref', 0)
+
+  if (!is.finite(fruits_ref) || fruits_ref <= 0) {
+    return(0)
+  }
+
+  predict_recruits_from_fruits(fruits_ref, pars) / fruits_ref
+}
+
+rx <- function(x, pars, disturbance = 0) {
+  fruits_x(
+    x = x,
+    pars = pars,
+    disturbance = disturbance) *
+    recruits_per_fruit(pars)
+}
+
+
+# Recruit size distribution ----------------------------------------------------
+recr_y <- function(y, pars) {
+  dnorm(
+    y,
+    mean = get_par(pars, 'recr_mean'),
+    sd = get_par(pars, 'recr_sd'))
+}
+
+
+# Fertility matrix -------------------------------------------------------------
+fy <- function(y, x, pars, h, disturbance = 0) {
+  Pvec <- recr_y(y, pars)
+  recruit_mass <- sum(Pvec * h)
+
+  if (!is.finite(recruit_mass) || recruit_mass <= 0) {
+    stop('Recruit size distribution has no mass inside the mesh')
+  }
+
+  Pvec <- Pvec / recruit_mass
+
+  Rvec <- rx(
+    x = x,
+    pars = pars,
+    disturbance = disturbance)
+
+  outer(Pvec, Rvec) * h
+}
+
+
+# Kernel -----------------------------------------------------------------------
+kernel <- function(pars, disturbance = 0) {
+  n <- as.integer(pars$mat_siz)
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+
+  b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
+
+  Fmat <- fy(
+    y = y,
+    x = y,
+    pars = pars,
+    h = h,
+    disturbance = disturbance)
+
+  Smat <- sx(
+    x = y,
+    pars = pars,
+    disturbance = disturbance)
+
+  Gmat <- matrix(0, n, n)
+  Gmat[] <- t(
+    outer(
+      y,
+      y,
+      Vectorize(function(x, y) {
+        gxy(
+          x = x,
+          y = y,
+          pars = pars,
+          disturbance = disturbance)
+      }))) * h
+
+  Tmat <- matrix(0, n, n)
+
+  for (i in 1:(n / 2)) {
+    Gmat[1, i] <- Gmat[1, i] + 1 - sum(Gmat[, i])
+    Tmat[, i] <- Gmat[, i] * Smat[i]
+  }
+
+  for (i in (n / 2 + 1):n) {
+    Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])
+    Tmat[, i] <- Gmat[, i] * Smat[i]
+  }
+
+  k_yx <- Fmat + Tmat
+
+  list(
+    k_yx = k_yx,
+    Fmat = Fmat,
+    Tmat = Tmat,
+    Gmat = Gmat,
+    Smat = Smat,
+    meshpts = y,
+    h = h)
+}
+
+lambda_ipm <- function(pars, disturbance = 0) {
+  K <- kernel(
+    pars = pars,
+    disturbance = disturbance)$k_yx
+
+  Re(eigen(K, only.values = TRUE)$values[1])
+}
+```
+
+## Mean observed size distribution
+
+The initial size distribution is the arithmetic mean of the annual
+size-frequency vectors. Each year therefore contributes equally, rather than
+plant-rich years dominating the reference distribution.
+
+```{r mean_flx1_frx2_mean_size_distribution}
+# The vector is the arithmetic mean of annual size-frequency vectors.
+make_initial_n_mean <- function(pars, df_init = df) {
+  n <- as.integer(pars$mat_siz)
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+  breaks <- seq(L, U, length.out = n + 1)
+
+  years_i <- df_init %>%
+    filter(size_t0 > 0, is.finite(logsize_t0)) %>%
+    distinct(year) %>%
+    arrange(year) %>%
+    pull(year)
+
+  counts_by_year <- purrr::map(years_i, function(year_i) {
+    x <- df_init %>%
+      filter(
+        year == year_i,
+        size_t0 > 0,
+        is.finite(logsize_t0)) %>%
+      pull(logsize_t0)
+
+    hist(
+      pmin(pmax(x, L), U),
+      breaks = breaks,
+      plot = FALSE,
+      include.lowest = TRUE)$counts
+  })
+
+  mean_counts <- Reduce(`+`, counts_by_year) / length(counts_by_year)
+  mean_counts / h
+}
+```
+
+## Expected mean fruit production
+
+The mean size distribution is combined with the fitted reproductive functions
+to calculate total expected fruit production under no fire and fire. These
+population-level fruit totals provide the reference at which the nonlinear
+fruit-to-recruit relationship is converted to recruits per fruit.
+
+```{r mean_flx1_frx2_expected_fruits}
+expected_mean_fruits <- function(
+    pars, disturbance = 0, df_init = df) {
+  n_obs <- make_initial_n_mean(pars, df_init)
+  n <- as.integer(pars$mat_siz)
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+
+  b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
+
+  sum(
+    fruits_x(y, pars, disturbance) * n_obs * h,
+    na.rm = TRUE)
+}
+
+mean_fruits_no_fire <- expected_mean_fruits(
+  pars = pars_mean,
+  disturbance = 0)
+
+mean_fruits_fire <- expected_mean_fruits(
+  pars = pars_mean,
+  disturbance = 1)
+```
+
+## Mean disturbance exposure
+
+Disturbance exposure is averaged across unique quadrat-year combinations. This
+gives each sampled quadrat-year equal weight and prevents quadrats containing
+many plants from contributing disproportionately to the mean disturbance
+regime.
+
+```{r mean_flx1_frx2_disturbance_exposure}
+# Each sampled quadrat-year receives equal weight; plant-rich quadrats do not
+# receive greater weight merely because they contain more plant records.
+p_disturbance_mean <- df %>%
+  filter(
+    !is.na(year),
+    !is.na(quad_id),
+    !is.na(disturbance)) %>%
+  distinct(year, quad_id, disturbance) %>%
+  summarise(
+    p_disturbance = mean(disturbance, na.rm = TRUE)) %>%
+  pull(p_disturbance)
+
+mean_fruits_regime <-
+  (1 - p_disturbance_mean) * mean_fruits_no_fire +
+  p_disturbance_mean * mean_fruits_fire
+```
+
+## State-specific and disturbance-regime kernels
+
+Three mean scenarios are constructed:
+
+1. a no-fire kernel;
+2. a fire kernel;
+3. an expected disturbance-regime kernel.
+
+The expected-regime kernel is a weighted mixture of the no-fire and fire
+kernels, using the observed mean disturbance exposure. Both components of this
+mixture use the same expected total fruit production under the mean disturbance
+regime so that the fruit-to-recruit conversion is consistent across the two
+components.
+
+```{r mean_flx1_frx2_kernels}
+pars_no_fire <- pars_mean
+pars_no_fire$fruits_ref <- mean_fruits_no_fire
+
+pars_fire <- pars_mean
+pars_fire$fruits_ref <- mean_fruits_fire
+
+# For the mixture kernel, both component kernels use the same expected total
+# fruit production under the observed mean disturbance regime.
+pars_regime <- pars_mean
+pars_regime$fruits_ref <- mean_fruits_regime
+
+K_no_fire <- kernel(
+  pars = pars_no_fire,
+  disturbance = 0)$k_yx
+
+K_fire <- kernel(
+  pars = pars_fire,
+  disturbance = 1)$k_yx
+
+K_regime_no_fire <- kernel(
+  pars = pars_regime,
+  disturbance = 0)$k_yx
+
+K_regime_fire <- kernel(
+  pars = pars_regime,
+  disturbance = 1)$k_yx
+
+K_regime <-
+  (1 - p_disturbance_mean) * K_regime_no_fire +
+  p_disturbance_mean * K_regime_fire
+```
+
+## Asymptotic and projected population growth
+
+Asymptotic population growth is the dominant eigenvalue of each kernel. It
+represents the long-term growth rate if the corresponding mean vital rates and
+disturbance state remained constant and the population reached its stable size
+distribution.
+
+Projected population growth is obtained by applying the kernel once to the mean
+observed size distribution. It therefore retains the transient influence of the
+observed population structure.
+
+```{r mean_flx1_frx2_lambda}
+project_kernel <- function(K, pars, label, df_init = df) {
+  n_obs <- make_initial_n_mean(pars, df_init)
+  h <- (pars$U - pars$L) / pars$mat_siz
+  n_initial <- sum(n_obs) * h
+
+  n_proj <- K %*% n_obs
+  n_projected <- sum(n_proj) * h
+
+  tibble(
+    lambda_type = label,
+    asym_lambda = Re(eigen(K, only.values = TRUE)$values[1]),
+    proj_lambda = n_projected / n_initial,
+    n_initial = n_initial,
+    n_projected = n_projected)
+}
+
+df_lambda_mean <- bind_rows(
+  project_kernel(
+    K = K_no_fire,
+    pars = pars_no_fire,
+    label = 'No fire'),
+  project_kernel(
+    K = K_fire,
+    pars = pars_fire,
+    label = 'Fire'),
+  project_kernel(
+    K = K_regime,
+    pars = pars_regime,
+    label = 'Expected disturbance regime')) %>%
+  mutate(
+    p_disturbance = c(0, 1, p_disturbance_mean),
+    fruits_ref = c(
+      mean_fruits_no_fire,
+      mean_fruits_fire,
+      mean_fruits_regime),
+    recruits_ref = purrr::map2_dbl(
+      fruits_ref,
+      list(pars_no_fire, pars_fire, pars_regime),
+      predict_recruits_from_fruits),
+    recruits_per_fruit = if_else(
+      fruits_ref > 0,
+      recruits_ref / fruits_ref,
+      0))
+
+df_lambda_mean
+```
+
+## Observed annual population growth
+
+Observed annual growth is calculated from quadrats with plant records in
+consecutive years. Because true sampled zero counts cannot always be identified
+from the individual-level table, transitions involving a sampled quadrat with no
+plants may be absent. The observed series should therefore be interpreted with
+this sampling limitation in mind.
+
+```{r mean_flx1_frx2_observed_growth}
+# Counts are restricted to quadrats represented in consecutive years. Because
+# quadrats containing no plant records cannot be identified from the individual
+# table, transitions to a true zero count may remain unavailable.
+df_counts_quad_year <- df %>%
+  filter(size_t0 > 0, is.finite(logsize_t0)) %>%
+  group_by(quad_id, year) %>%
+  summarise(
+    n_t0 = n_distinct(plant_id),
+    .groups = 'drop') %>%
+  arrange(quad_id, year) %>%
+  group_by(quad_id) %>%
+  mutate(
+    year_t1 = lead(year),
+    n_t1 = lead(n_t0),
+    year_gap = year_t1 - year) %>%
+  ungroup() %>%
+  filter(year_gap == 1)
+
+df_obs_growth_year <- df_counts_quad_year %>%
+  group_by(year) %>%
+  summarise(
+    n_t0 = sum(n_t0, na.rm = TRUE),
+    n_t1 = sum(n_t1, na.rm = TRUE),
+    n_quads = n(),
+    obs_lambda = n_t1 / n_t0,
+    .groups = 'drop') %>%
+  filter(n_t0 > 0, n_t1 > 0)
+
+df_obs_growth_year
+
+
+df_obs_growth_summary <- df_obs_growth_year %>%
+  summarise(
+    n_transitions = n(),
+    lambda_arithmetic = mean(obs_lambda, na.rm = TRUE),
+    lambda_geometric = exp(mean(log(obs_lambda), na.rm = TRUE)),
+    lambda_median = median(obs_lambda, na.rm = TRUE),
+    lambda_min = min(obs_lambda, na.rm = TRUE),
+    lambda_max = max(obs_lambda, na.rm = TRUE))
+
+df_obs_growth_summary
+```
+
+## Observed and modeled population growth through time
+
+The connected points show observed annual population growth. The horizontal
+lines show the asymptotic and one-step projected growth rates from the three mean
+IPM scenarios. A value of $\lambda=1$ indicates a stationary population;
+values above one indicate growth and values below one indicate decline.
+
+The modeled lines are constant through time because this chapter contains no
+year-specific effects. They summarize the growth rates expected under average
+vital-rate relationships, whereas the observed series includes year-to-year
+environmental variation, demographic stochasticity, observation error, and
+changes in population structure. Agreement is therefore assessed by whether the
+mean-IPM estimates are of a similar magnitude to the center of the observed
+annual variation, not by expecting the model to reproduce every annual value.
+
+The projected estimates are based on the mean observed size distribution and are
+the more direct short-term comparison with observed annual growth. The
+asymptotic estimates instead describe growth after convergence to the stable size
+distribution under each fixed scenario.
+
+```{r mean_flx1_frx2_growth_plot, fig.width=10, fig.height=6}
+df_model_lines <- df_lambda_mean %>%
+  select(lambda_type, asym_lambda, proj_lambda) %>%
+  pivot_longer(
+    cols = c(asym_lambda, proj_lambda),
+    names_to = 'metric',
+    values_to = 'lambda') %>%
+  mutate(
+    metric = recode(
+      metric,
+      asym_lambda = 'Asymptotic',
+      proj_lambda = 'Projected'),
+    line_type = paste(lambda_type, metric, sep = ' - '))
+
+fig_lambda_mean <- ggplot(
+  df_obs_growth_year,
+  aes(x = year, y = obs_lambda)) +
+  geom_hline(
+    yintercept = 1,
+    linetype = 'dotted') +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_hline(
+    data = df_model_lines,
+    aes(
+      yintercept = lambda,
+      linetype = line_type),
+    linewidth = 0.6) +
+  theme_bw() +
+  labs(
+    title = 'Observed annual growth and mean-IPM lambda',
+    subtitle = v_ggp_suffix,
+    x = 'Year t0',
+    y = expression(lambda),
+    linetype = NULL)
+
+fig_lambda_mean
+```
+
+## Kernel diagnostics
+
+The kernel diagnostic table checks for nonfinite entries and reports the range of
+matrix values for each disturbance scenario.
+
+```{r mean_flx1_frx2_kernel_diagnostics}
+df_kernel_diagnostics <- tibble(
+  kernel = c('No fire', 'Fire', 'Expected regime'),
+  min_entry = c(
+    min(K_no_fire),
+    min(K_fire),
+    min(K_regime)),
+  max_entry = c(
+    max(K_no_fire),
+    max(K_fire),
+    max(K_regime)),
+  any_nonfinite = c(
+    any(!is.finite(K_no_fire)),
+    any(!is.finite(K_fire)),
+    any(!is.finite(K_regime))))
+
+df_kernel_diagnostics
+```
+

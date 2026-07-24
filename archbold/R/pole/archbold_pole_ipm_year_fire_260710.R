@@ -532,22 +532,23 @@ make_fl_year_plot <- function(year_i) {
   df_i <- df_fl %>% filter(year == year_i)
   x <- seq(min(df_i$logvol_t0, na.rm = TRUE),
            max(df_i$logvol_t0, na.rm = TRUE), length.out = 100)
+  
   pred_i <- tidyr::expand_grid(
     logvol_t0 = x,
     disturbance = levels(df_fl$disturbance)) %>%
     mutate(
       logvol_t0_2 = logvol_t0^2,
       logvol_t0_3 = logvol_t0^3,
-      disturbance = factor(disturbance, levels = levels(df_fl$disturbance)),
+      disturbance = factor(
+        disturbance, levels = levels(df_fl$disturbance)),
       year = factor(year_i, levels = levels(df_fl$year)))
   
   pred_i <- pred_i %>%
     mutate(
       flower = predict(
-        mod_fl_best,
-        newdata = pred_i,
-        type = "response",
+        mod_fl_best, newdata = pred_i, type = 'response',
         re.form = NULL))
+  
   pts_i <- df_i %>%
     mutate(bin = cut(logvol_t0, breaks = 8)) %>%
     group_by(bin, disturbance) %>%
@@ -556,6 +557,7 @@ make_fl_year_plot <- function(year_i) {
       flower = mean(flower, na.rm = TRUE),
       n = n(), .groups = 'drop') %>%
     filter(!is.na(logvol_t0), n > 0)
+  
   ggplot() +
     geom_point(
       data = pts_i,
@@ -633,17 +635,23 @@ make_fl_n_year_plot <- function(year_i) {
   df_i <- df_fl_cond %>% filter(year == year_i)
   x <- seq(min(df_i$logvol_t0, na.rm = TRUE),
            max(df_i$logvol_t0, na.rm = TRUE), length.out = 100)
+  
   pred_i <- tidyr::expand_grid(
     logvol_t0 = x,
     disturbance = levels(df_fl_cond$disturbance)) %>%
     mutate(
       logvol_t0_2 = logvol_t0^2,
       logvol_t0_3 = logvol_t0^3,
-      disturbance = factor(disturbance,
-                           levels = levels(df_fl_cond$disturbance)),
-      year = factor(year_i, levels = levels(df_fl_cond$year)),
-      fl_nr = predict(mod_fl_n_best, newdata = ., type = 'response',
-                      re.form = NULL))
+      disturbance = factor(
+        disturbance, levels = levels(df_fl_cond$disturbance)),
+      year = factor(year_i, levels = levels(df_fl_cond$year)))
+  
+  pred_i <- pred_i %>%
+    mutate(
+      fl_nr = predict(
+        mod_fl_n_best, newdata = pred_i, type = 'response',
+        re.form = NULL))
+  
   pts_i <- df_i %>%
     mutate(bin = cut(logvol_t0, breaks = 8)) %>%
     group_by(bin, disturbance) %>%
@@ -652,6 +660,7 @@ make_fl_n_year_plot <- function(year_i) {
       fl_nr = mean(fl_nr, na.rm = TRUE),
       n = n(), .groups = 'drop') %>%
     filter(!is.na(logvol_t0), n > 0)
+  
   ggplot() +
     geom_point(
       data = pts_i,
@@ -820,15 +829,22 @@ make_re_year_plot <- function(year_i) {
   df_i <- df_fs2r %>% filter(year_t1 == year_i)
   x <- seq(min(df_i$fs_t0_log, na.rm = TRUE),
            max(df_i$fs_t0_log, na.rm = TRUE), length.out = 100)
+  
   pred_fixed <- tidyr::expand_grid(
     fs_t0_log = x,
     disturbance_t0 = levels(df_fs2r$disturbance_t0)) %>%
     mutate(
-      site = factor(levels(df_fs2r$site)[1], levels = levels(df_fs2r$site)),
+      site = factor(
+        levels(df_fs2r$site)[1], levels = levels(df_fs2r$site)),
       year_t1 = factor(year_i, levels = levels(df_fs2r$year_t1)),
-      disturbance_t0 = factor(disturbance_t0,
-                              levels = levels(df_fs2r$disturbance_t0)),
-      pred_re = predict_re_safe(mod_re_best, ., re.form = NA))
+      disturbance_t0 = factor(
+        disturbance_t0, levels = levels(df_fs2r$disturbance_t0)))
+  
+  pred_fixed <- pred_fixed %>%
+    mutate(
+      pred_re = predict_re_safe(
+        mod_re_best, pred_fixed, re.form = NA))
+  
   pred_site <- tidyr::expand_grid(
     fs_t0_log = x,
     site = levels(df_fs2r$site),
@@ -836,9 +852,14 @@ make_re_year_plot <- function(year_i) {
     mutate(
       site = factor(site, levels = levels(df_fs2r$site)),
       year_t1 = factor(year_i, levels = levels(df_fs2r$year_t1)),
-      disturbance_t0 = factor(disturbance_t0,
-                              levels = levels(df_fs2r$disturbance_t0)),
-      pred_re = predict_re_safe(mod_re_best, ., re.form = NULL))
+      disturbance_t0 = factor(
+        disturbance_t0, levels = levels(df_fs2r$disturbance_t0)))
+  
+  pred_site <- pred_site %>%
+    mutate(
+      pred_re = predict_re_safe(
+        mod_re_best, pred_site, re.form = NULL))
+  
   ggplot() +
     geom_point(
       data = df_i,
@@ -846,9 +867,10 @@ make_re_year_plot <- function(year_i) {
       alpha = 0.75, size = 2) +
     geom_line(
       data = pred_site,
-      aes(fs_t0_log, pred_re, color = site, group = interaction(site,
-                                                                disturbance_t0),
-          linetype = disturbance_t0),
+      aes(
+        fs_t0_log, pred_re, color = site,
+        group = interaction(site, disturbance_t0),
+        linetype = disturbance_t0),
       linewidth = 0.55, alpha = 0.55) +
     geom_line(
       data = pred_fixed,
@@ -1554,17 +1576,19 @@ df_compare_site %>% print(n = 100)
 df_compare <- df_compare_site %>%
   group_by(year) %>%
   summarise(
+    asym_lambda = weighted.mean(
+      asym_lambda, w = n_obs_model, na.rm = TRUE),
     n_t0 = sum(n_t0, na.rm = TRUE),
     n_t1 = sum(n_t1, na.rm = TRUE),
     obs_pgr = n_t1 / n_t0,
     n_obs_model = sum(n_obs_model, na.rm = TRUE),
     n_proj_model = sum(n_proj_model, na.rm = TRUE),
     proj_lambda = n_proj_model / n_obs_model,
-    asym_lambda = weighted.mean(asym_lambda, w = n_obs_model, na.rm = TRUE),
-    disturbance = if_else(any(disturbance_num == 1, na.rm = TRUE),
-                          'Fire', 'No fire'),
+    disturbance = if_else(
+      any(disturbance_num == 1, na.rm = TRUE), 'Fire', 'No fire'),
     .groups = 'drop') %>%
-  mutate(disturbance = factor(disturbance, levels = c('No fire', 'Fire')))
+  mutate(
+    disturbance = factor(disturbance, levels = c('No fire', 'Fire')))
 
 # Observed vs modeled plot
 

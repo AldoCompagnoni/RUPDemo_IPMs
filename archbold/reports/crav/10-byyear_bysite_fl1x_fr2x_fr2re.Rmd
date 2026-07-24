@@ -1,0 +1,2004 @@
+# by Year by Site: one-part flowering, two-part fruiting, and fruit-to-recruit {#byyear_bysite_fl1x_fr2x_fr2re}
+
+This chapter builds year- and site-specific integral projection models for
+*Crotalaria avonensis*. Survival, growth, flowering probability, fruiting
+probability, and fruit number vary among years. The fruit-to-recruit slope can
+vary among both recruitment years and sites. Disturbance is a fixed effect and
+is assigned to the transition year $t_0$.
+
+The flowering component has one part: the probability that an individual
+flowers. A separate flower-number model is not fitted because flower number does
+not enter the current fertility kernel. The fruit component has two parts:
+
+1. fruiting probability conditional on flowering;
+2. fruit number conditional on fruiting.
+
+The fertility pathway is
+
+```r
+Pr(flowering) * Pr(fruiting | flowering) *
+  E(number of fruits | fruiting) * recruits per fruit
+```
+
+Site is used as a random effect only in the fruit-to-recruit relationship. The
+other vital-rate models contain year random effects but no site random effects.
+The site-year fruit-to-recruit model is forced through zero on the `log1p`
+scale, so zero fruits predict zero recruits.
+
+## Required objects
+
+This chapter assumes that the extended-data chapter has created `df`, `df_og`,
+and `v_ggp_suffix`. The quadrat-sampling table is rebuilt below after recruit
+timing is corrected.
+
+```{r byyear_bysite_fl1x_required_objects}
+required_objects <- c('df', 'df_og', 'v_ggp_suffix')
+missing_objects <- required_objects[!purrr::map_lgl(required_objects, exists)]
+
+if (length(missing_objects) > 0) {
+  stop(
+    'The following objects are missing. Run the data chapter first: ',
+    paste(missing_objects, collapse = ', '))
+}
+
+if (!exists('v_years_re')) v_years_re <- c()
+if (!exists('v_mod_set_su')) v_mod_set_su <- c()
+if (!exists('v_mod_set_gr')) v_mod_set_gr <- c()
+if (!exists('v_mod_set_fl')) v_mod_set_fl <- c()
+if (!exists('v_mod_set_fr')) v_mod_set_fr <- c()
+if (!exists('v_mod_set_fr_n')) v_mod_set_fr_n <- c()
+
+# Fruit-to-recruit model index:
+# 0 = fixed slope; 1 = year; 2 = site; 3 = year + site.
+# The full year-and-site model is used unless this object was defined earlier.
+if (!exists('v_mod_set_fr2re')) v_mod_set_fr2re <- 3
+
+ctrl_glmer <- lme4::glmerControl(
+  optimizer = 'bobyqa', optCtrl = list(maxfun = 2e5))
+
+ctrl_lmer <- lme4::lmerControl(
+  optimizer = 'bobyqa', optCtrl = list(maxfun = 2e5))
+```
+
+## Correct recruitment timing
+
+The first-observation year must be calculated within each plant. The earlier data
+chapter calculated it without grouping by plant, which can misclassify recruits.
+The following block replaces `recruit` and rebuilds the previous-year quadrat
+sampling check before fitting the fruit-to-recruit model.
+
+
+```{r byyear_bysite_fl1x_recruit_correction}
+df_recruit_corrected <- df_og %>%
+  janitor::clean_names() %>%
+  transmute(
+    plant_id = as.character(id),
+    year = as.integer(year),
+    s,
+    stage) %>%
+  group_by(plant_id) %>%
+  mutate(
+    earliest_recorded_date = suppressWarnings(
+      min(year[s > 0 & s != 2 & s != 6], na.rm = TRUE)),
+    earliest_recorded_date = if_else(
+      is.infinite(earliest_recorded_date),
+      NA_real_, earliest_recorded_date),
+    recruit = case_when(
+      stage == 1 ~ 1,
+      year == earliest_recorded_date & earliest_recorded_date > 2003 ~ 1,
+      TRUE ~ NA_real_)) %>%
+  ungroup() %>%
+  select(plant_id, year, recruit)
+
+df <- df %>%
+  mutate(
+    plant_id = as.character(plant_id),
+    year = as.integer(as.character(year))) %>%
+  select(-any_of(c('recruit', 'recruit_plot_valid'))) %>%
+  left_join(df_recruit_corrected, by = c('plant_id', 'year')) %>%
+  mutate(plant_id = factor(plant_id))
+
+# Identify quadrats sampled in each year.
+df_plot_year_sampled <- df %>%
+  group_by(site, mp, quad, quad_id, year) %>%
+  summarise(
+    n_records_plot_year = n(),
+    n_plants_plot_year = n_distinct(plant_id),
+    .groups = 'drop')
+
+# Retain recruits only when their quadrat was sampled in the previous year.
+df_recruit_valid_ids <- df %>%
+  filter(recruit == 1) %>%
+  mutate(year_prev = year - 1) %>%
+  left_join(
+    df_plot_year_sampled %>%
+      transmute(
+        quad_id,
+        year_prev = year,
+        sampled_prev_year = TRUE),
+    by = c('quad_id', 'year_prev')) %>%
+  filter(replace_na(sampled_prev_year, FALSE)) %>%
+  select(site, mp, quad, quad_id, plant_id, year) %>%
+  mutate(recruit_plot_valid = 1)
+
+df <- df %>%
+  left_join(
+    df_recruit_valid_ids,
+    by = c('site', 'mp', 'quad', 'quad_id', 'plant_id', 'year')) %>%
+  mutate(
+    recruit_plot_valid = case_when(
+      recruit == 1 & recruit_plot_valid == 1 ~ 1,
+      TRUE ~ NA_real_))
+```
+
+## Process-specific data
+
+The raw flower count is retained to identify flowering individuals, but it is
+not modelled as a separate count response.
+
+```{r byyear_bysite_fl1x_model_data}
+# Survival data ----------------------------------------------------------------
+df_su <- df %>%
+  filter(
+    size_t0 != 0,
+    !is.na(survives),
+    is.finite(logsize_t0),
+    !is.na(disturbance)) %>%
+  mutate(
+    year = factor(year),
+    disturbance = as.numeric(disturbance)) %>%
+  dplyr::select(
+    plant_id, site, year, size_t0, survives, size_t1,
+    logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+    disturbance)
+
+
+# Growth data ------------------------------------------------------------------
+df_gr <- df %>%
+  filter(
+    size_t0 != 0,
+    survives == 1,
+    is.finite(logsize_t0),
+    is.finite(logsize_t1),
+    !is.na(disturbance)) %>%
+  mutate(
+    year = factor(year),
+    disturbance = as.numeric(disturbance)) %>%
+  dplyr::select(
+    plant_id, site, year, size_t0, size_t1,
+    logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+    disturbance)
+
+
+# Flowering-probability data ---------------------------------------------------
+df_fl <- df %>%
+  filter(
+    !is.na(flower),
+    is.finite(logsize_t0),
+    !is.na(disturbance)) %>%
+  mutate(
+    year = factor(year),
+    disturbance = as.numeric(disturbance),
+    flower = if_else(flower > 0, 1, 0)) %>%
+  dplyr::select(
+    plant_id, site, year, size_t0, flower, size_t1,
+    logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
+    disturbance)
+
+
+# Fruiting-probability data ----------------------------------------------------
+# Fruiting probability is conditional on flowering because flower > 0.
+df_fr <- df %>%
+  filter(
+    flower > 0,
+    is.finite(fruit),
+    is.finite(logsize_t0),
+    !is.na(disturbance)) %>%
+  mutate(
+    year = factor(year),
+    disturbance = as.numeric(disturbance),
+    fruiting = if_else(fruit > 0, 1, 0)) %>%
+  dplyr::select(
+    plant_id, site, year, size_t0, flower, fruit, fruiting,
+    logsize_t0, logsize_t0_2, logsize_t0_3, disturbance)
+
+
+# Fruit-number data ------------------------------------------------------------
+# Fruit number is conditional on fruiting because fruit > 0.
+df_fr_n <- df %>%
+  filter(
+    fruit > 0,
+    is.finite(fruit),
+    is.finite(logsize_t0),
+    !is.na(disturbance)) %>%
+  mutate(
+    year = factor(year),
+    disturbance = as.numeric(disturbance)) %>%
+  dplyr::select(
+    plant_id, site, year, size_t0, flower, fruit,
+    logsize_t0, logsize_t0_2, logsize_t0_3, disturbance)
+
+
+# Fruit-to-recruit data --------------------------------------------------------
+# Total fruits in year t predict recruits in year t + 1. Only quadrats sampled
+# in consecutive years contribute to the site-year totals.
+df_fr2re_quad <- df %>%
+  mutate(year = as.integer(as.character(year))) %>%
+  group_by(site, quad_id, year) %>%
+  summarise(
+    fruits_t0 = sum(fruit, na.rm = TRUE),
+    recruits_t0 = sum(recruit_plot_valid == 1, na.rm = TRUE),
+    .groups = 'drop') %>%
+  arrange(site, quad_id, year) %>%
+  group_by(site, quad_id) %>%
+  mutate(
+    recruits_t1 = lead(recruits_t0),
+    year_t1 = lead(year),
+    year_gap = year_t1 - year) %>%
+  ungroup() %>%
+  filter(year_gap == 1)
+
+df_fr2re <- df_fr2re_quad %>%
+  group_by(site, year, year_t1) %>%
+  summarise(
+    fruits_t0 = sum(fruits_t0, na.rm = TRUE),
+    recruits_t1 = sum(recruits_t1, na.rm = TRUE),
+    n_quads = n(),
+    .groups = 'drop') %>%
+  mutate(
+    site = factor(site),
+    year_t1 = factor(year_t1),
+    logfruits_t0 = log1p(fruits_t0),
+    logrecruits_t1 = log1p(recruits_t1))
+
+
+# Remove excluded years --------------------------------------------------------
+v_years_og <- sort(unique(df$year))
+
+df <- df %>%
+  filter(!is.na(year), !(year %in% v_years_re))
+
+df_su <- df_su %>%
+  filter(!is.na(year), !(year %in% v_years_re)) %>%
+  droplevels()
+
+df_gr <- df_gr %>%
+  filter(!is.na(year), !(year %in% v_years_re)) %>%
+  droplevels()
+
+df_fl <- df_fl %>%
+  filter(!is.na(year), !(year %in% v_years_re)) %>%
+  droplevels()
+
+df_fr <- df_fr %>%
+  filter(!is.na(year), !(year %in% v_years_re)) %>%
+  droplevels()
+
+df_fr_n <- df_fr_n %>%
+  filter(!is.na(year), !(year %in% v_years_re)) %>%
+  droplevels()
+
+df_fr2re <- df_fr2re %>%
+  filter(
+    !is.na(year),
+    !is.na(year_t1),
+    !(year %in% v_years_re),
+    !(as.integer(as.character(year_t1)) %in% v_years_re)) %>%
+  droplevels()
+
+v_years <- sort(unique(df$year))
+```
+
+## Survival
+
+
+```{r byyear_bysite_fl1x_survival_model}
+# Survival model ---------------------------------------------------------------
+# GLMM; binomial
+mod_su_0 <- glmer(
+  survives ~ disturbance + (1 | year),
+  data = df_su, family = binomial, control = ctrl_glmer)
+
+mod_su_1 <- glmer(
+  survives ~ logsize_t0 + disturbance + (1 | year),
+  data = df_su, family = binomial, control = ctrl_glmer)
+
+mod_su_2 <- glmer(
+  survives ~ logsize_t0 + logsize_t0_2 + disturbance + (1 | year),
+  data = df_su, family = binomial, control = ctrl_glmer)
+
+mod_su_3 <- glmer(
+  survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance + (1 | year),
+  data = df_su, family = binomial, control = ctrl_glmer)
+
+mods_su <- list(mod_su_0, mod_su_1, mod_su_2, mod_su_3)
+mods_su_dAIC <- bbmle::AICctab(mods_su, weights = TRUE, sort = FALSE)$dAIC
+mods_su_sorted <- order(mods_su_dAIC)
+
+if (length(v_mod_set_su) == 0) {
+  mod_su_index_bestfit <- mods_su_sorted[1]
+  v_mod_su_index <- mod_su_index_bestfit - 1
+} else {
+  mod_su_index_bestfit <- v_mod_set_su + 1
+  v_mod_su_index <- v_mod_set_su
+}
+
+mod_su_best <- mods_su[[mod_su_index_bestfit]]
+mod_su_ranef <- coef(mod_su_best)$year
+
+summary(mod_su_best)
+```
+
+```{r byyear_bysite_fl1x_survival_plot, fig.width=10, fig.height=12}
+# Survival plots by year -------------------------------------------------------
+make_su_year_plot <- function(year_i) {
+  df_i <- df_su %>%
+    filter(as.character(year) == year_i)
+  
+  x <- seq(
+    min(df_i$logsize_t0, na.rm = TRUE),
+    max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
+  
+  pred_i <- expand_grid(
+    logsize_t0 = x,
+    disturbance = c(0, 1)) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3,
+      year = factor(year_i, levels = levels(df_su$year)),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire')))
+  
+  pred_i <- pred_i %>%
+    mutate(
+      survives = predict(
+        mod_su_best, newdata = pred_i, type = 'response',
+        re.form = NULL))
+  
+  pts_i <- df_i %>%
+    mutate(
+      bin = cut(logsize_t0, breaks = 8),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire'))) %>%
+    group_by(bin, disturbance_plot) %>%
+    summarise(
+      logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+      survives = mean(survives, na.rm = TRUE),
+      n = n(), .groups = 'drop') %>%
+    filter(is.finite(logsize_t0), n > 0)
+  
+  ggplot() +
+    geom_jitter(
+      data = df_i %>%
+        mutate(
+          disturbance_plot = factor(
+            disturbance, levels = c(0, 1),
+            labels = c('No fire', 'Fire'))),
+      aes(logsize_t0, survives, color = disturbance_plot),
+      alpha = 0.2, size = 0.7, width = 0.2, height = 0.2) +
+    geom_point(
+      data = pts_i,
+      aes(logsize_t0, survives, color = disturbance_plot),
+      shape = 15, size = 1.5) +
+    geom_line(
+      data = pred_i,
+      aes(logsize_t0, survives, color = disturbance_plot),
+      linewidth = 0.7) +
+    scale_color_manual(
+      values = c('No fire' = 'black', 'Fire' = 'red')) +
+    labs(
+      title = year_i,
+      x = expression('log(size)'[t0]),
+      y = 'Survival probability') +
+    coord_cartesian(ylim = c(0, 1)) +
+    theme_bw() +
+    theme(text = element_text(size = 5), legend.position = 'none')
+}
+
+su_yrs <- lapply(levels(df_su$year), make_su_year_plot)
+
+fig_su_years <- wrap_plots(su_yrs) +
+  plot_layout(ncol = 4) +
+  plot_annotation(
+    title = 'Survival - year specific',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 13, face = 'bold'),
+      plot.subtitle = element_text(size = 9)))
+
+fig_su_years
+```
+
+## Growth
+
+
+```{r byyear_bysite_fl1x_growth_model}
+# Growth model -----------------------------------------------------------------
+mod_gr_0 <- lmer(
+  logsize_t1 ~ disturbance + (logsize_t0 | year),
+  data = df_gr, control = ctrl_lmer)
+
+mod_gr_1 <- lmer(
+  logsize_t1 ~ logsize_t0 + disturbance + (logsize_t0 | year),
+  data = df_gr, control = ctrl_lmer)
+
+mod_gr_2 <- lmer(
+  logsize_t1 ~ logsize_t0 + logsize_t0_2 + disturbance + (logsize_t0 | year),
+  data = df_gr, control = ctrl_lmer)
+
+mod_gr_3 <- lmer(
+  logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance + (logsize_t0 | year),
+  data = df_gr, control = ctrl_lmer)
+
+mods_gr <- list(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
+mods_gr_dAIC <- bbmle::AICctab(mods_gr, weights = TRUE, sort = FALSE)$dAIC
+mods_gr_sorted <- order(mods_gr_dAIC)
+
+if (length(v_mod_set_gr) == 0) {
+  mod_gr_index_bestfit <- mods_gr_sorted[1]
+  v_mod_gr_index <- mod_gr_index_bestfit - 1
+} else {
+  mod_gr_index_bestfit <- v_mod_set_gr + 1
+  v_mod_gr_index <- v_mod_set_gr
+}
+
+mod_gr_best <- mods_gr[[mod_gr_index_bestfit]]
+mod_gr_ranef <- coef(mod_gr_best)$year
+
+summary(mod_gr_best)
+```
+
+```{r byyear_bysite_fl1x_growth_plot, fig.width=10, fig.height=12}
+# Growth plots by year ---------------------------------------------------------
+make_gr_year_plot <- function(year_i) {
+  df_i <- df_gr %>%
+    filter(as.character(year) == year_i)
+  
+  x <- seq(
+    min(df_i$logsize_t0, na.rm = TRUE),
+    max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
+  
+  pred_i <- expand_grid(
+    logsize_t0 = x,
+    disturbance = c(0, 1)) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3,
+      year = factor(year_i, levels = levels(df_gr$year)),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire')))
+  
+  pred_i <- pred_i %>%
+    mutate(
+      logsize_t1 = predict(
+        mod_gr_best, newdata = pred_i, re.form = NULL))
+  
+  pts_i <- df_i %>%
+    mutate(
+      bin = cut(logsize_t0, breaks = 8),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire'))) %>%
+    group_by(bin, disturbance_plot) %>%
+    summarise(
+      logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+      logsize_t1 = mean(logsize_t1, na.rm = TRUE),
+      n = n(), .groups = 'drop') %>%
+    filter(is.finite(logsize_t0), n > 0)
+  
+  ggplot() +
+    geom_jitter(
+      data = df_i %>%
+        mutate(
+          disturbance_plot = factor(
+            disturbance, levels = c(0, 1),
+            labels = c('No fire', 'Fire'))),
+      aes(logsize_t0, logsize_t1, color = disturbance_plot),
+      alpha = 0.2, size = 0.7, width = 0.2, height = 0.2) +
+    geom_point(
+      data = pts_i,
+      aes(logsize_t0, logsize_t1, color = disturbance_plot),
+      shape = 15, size = 1.5) +
+    geom_line(
+      data = pred_i,
+      aes(logsize_t0, logsize_t1, color = disturbance_plot),
+      linewidth = 0.7) +
+    scale_color_manual(
+      values = c('No fire' = 'black', 'Fire' = 'red')) +
+    labs(
+      title = year_i,
+      x = expression('log(size)'[t0]),
+      y = expression('log(size)'[t1])) +
+    theme_bw() +
+    theme(text = element_text(size = 5), legend.position = 'none')
+}
+
+gr_yrs <- lapply(levels(df_gr$year), make_gr_year_plot)
+
+fig_gr_years <- wrap_plots(gr_yrs) +
+  plot_layout(ncol = 4) +
+  plot_annotation(
+    title = 'Growth - year specific',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 13, face = 'bold'),
+      plot.subtitle = element_text(size = 9)))
+
+fig_gr_years
+```
+
+```{r byyear_bysite_fl1x_growth_variance}
+# Growth variance --------------------------------------------------------------
+mod_gr_x <- fitted(mod_gr_best)
+mod_gr_y <- resid(mod_gr_best)^2
+
+mod_gr_var <- nls(
+  mod_gr_y ~ a * exp(b * mod_gr_x),
+  start = list(a = 1, b = 0),
+  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE))
+```
+
+## Flowering probability
+
+
+```{r byyear_bysite_fl1x_flower_model}
+# Flower model -----------------------------------------------------------------
+mod_fl_0 <- glmer(
+  flower ~ disturbance + (1 | year),
+  data = df_fl, family = binomial, control = ctrl_glmer)
+
+mod_fl_1 <- glmer(
+  flower ~ logsize_t0 + disturbance + (1 | year),
+  data = df_fl, family = binomial, control = ctrl_glmer)
+
+mod_fl_2 <- glmer(
+  flower ~ logsize_t0 + logsize_t0_2 + disturbance + (1 | year),
+  data = df_fl, family = binomial, control = ctrl_glmer)
+
+mod_fl_3 <- glmer(
+  flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance + (1 | year),
+  data = df_fl, family = binomial, control = ctrl_glmer)
+
+mods_fl <- list(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
+mods_fl_dAIC <- bbmle::AICctab(mods_fl, weights = TRUE, sort = FALSE)$dAIC
+mods_fl_sorted <- order(mods_fl_dAIC)
+
+if (length(v_mod_set_fl) == 0) {
+  mod_fl_index_bestfit <- mods_fl_sorted[1]
+  v_mod_fl_index <- mod_fl_index_bestfit - 1
+} else {
+  mod_fl_index_bestfit <- v_mod_set_fl + 1
+  v_mod_fl_index <- v_mod_set_fl
+}
+
+mod_fl_best <- mods_fl[[mod_fl_index_bestfit]]
+mod_fl_ranef <- coef(mod_fl_best)$year
+
+summary(mod_fl_best)
+```
+
+```{r byyear_bysite_fl1x_flower_plot, fig.width=10, fig.height=12}
+# Flowering plots by year ------------------------------------------------------
+make_fl_year_plot <- function(year_i) {
+  df_i <- df_fl %>%
+    filter(as.character(year) == year_i)
+  
+  x <- seq(
+    min(df_i$logsize_t0, na.rm = TRUE),
+    max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
+  
+  pred_i <- expand_grid(
+    logsize_t0 = x,
+    disturbance = c(0, 1)) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3,
+      year = factor(year_i, levels = levels(df_fl$year)),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire')))
+  
+  pred_i <- pred_i %>%
+    mutate(
+      flower = predict(
+        mod_fl_best, newdata = pred_i, type = 'response',
+        re.form = NULL))
+  
+  pts_i <- df_i %>%
+    mutate(
+      bin = cut(logsize_t0, breaks = 8),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire'))) %>%
+    group_by(bin, disturbance_plot) %>%
+    summarise(
+      logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+      flower = mean(flower, na.rm = TRUE),
+      n = n(), .groups = 'drop') %>%
+    filter(is.finite(logsize_t0), n > 0)
+  
+  ggplot() +
+    geom_jitter(
+      data = df_i %>%
+        mutate(
+          disturbance_plot = factor(
+            disturbance, levels = c(0, 1),
+            labels = c('No fire', 'Fire'))),
+      aes(logsize_t0, flower, color = disturbance_plot),
+      alpha = 0.2, size = 0.7, width = 0.2, height = 0.2) +
+    geom_point(
+      data = pts_i,
+      aes(logsize_t0, flower, color = disturbance_plot),
+      shape = 15, size = 1.5) +
+    geom_line(
+      data = pred_i,
+      aes(logsize_t0, flower, color = disturbance_plot),
+      linewidth = 0.7) +
+    scale_color_manual(
+      values = c('No fire' = 'black', 'Fire' = 'red')) +
+    labs(
+      title = year_i,
+      x = expression('log(size)'[t0]),
+      y = 'Flowering probability') +
+    coord_cartesian(ylim = c(0, 1)) +
+    theme_bw() +
+    theme(text = element_text(size = 5), legend.position = 'none')
+}
+
+fl_yrs <- lapply(levels(df_fl$year), make_fl_year_plot)
+
+fig_fl_years <- wrap_plots(fl_yrs) +
+  plot_layout(ncol = 4) +
+  plot_annotation(
+    title = 'Flowering probability - year specific',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 13, face = 'bold'),
+      plot.subtitle = element_text(size = 9)))
+
+fig_fl_years
+```
+
+## Fruiting probability conditional on flowering
+
+
+```{r byyear_bysite_fl1x_fruiting_model}
+# Fruiting-probability model ---------------------------------------------------
+mod_fr_0 <- glmer(
+  fruiting ~ disturbance + (1 | year),
+  data = df_fr, family = binomial, control = ctrl_glmer)
+
+mod_fr_1 <- glmer(
+  fruiting ~ logsize_t0 + disturbance + (1 | year),
+  data = df_fr, family = binomial, control = ctrl_glmer)
+
+mod_fr_2 <- glmer(
+  fruiting ~ logsize_t0 + logsize_t0_2 + disturbance + (1 | year),
+  data = df_fr, family = binomial, control = ctrl_glmer)
+
+mod_fr_3 <- glmer(
+  fruiting ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance +
+    (1 | year),
+  data = df_fr, family = binomial, control = ctrl_glmer)
+
+mods_fr <- list(mod_fr_0, mod_fr_1, mod_fr_2, mod_fr_3)
+mods_fr_dAIC <- bbmle::AICctab(
+  mods_fr, weights = TRUE, sort = FALSE)$dAIC
+mods_fr_sorted <- order(mods_fr_dAIC)
+
+if (length(v_mod_set_fr) == 0) {
+  mod_fr_index_bestfit <- mods_fr_sorted[1]
+  v_mod_fr_index <- mod_fr_index_bestfit - 1
+} else {
+  mod_fr_index_bestfit <- v_mod_set_fr + 1
+  v_mod_fr_index <- v_mod_set_fr
+}
+
+mod_fr_best <- mods_fr[[mod_fr_index_bestfit]]
+mod_fr_ranef <- coef(mod_fr_best)$year
+
+summary(mod_fr_best)
+```
+
+```{r byyear_bysite_fl1x_fruiting_plot, fig.width=10, fig.height=12}
+# Fruiting-probability plots by year ------------------------------------------
+make_fr_year_plot <- function(year_i) {
+  df_i <- df_fr %>%
+    filter(as.character(year) == year_i)
+  
+  x <- seq(
+    min(df_i$logsize_t0, na.rm = TRUE),
+    max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
+  
+  pred_i <- expand_grid(
+    logsize_t0 = x,
+    disturbance = c(0, 1)) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3,
+      year = factor(year_i, levels = levels(df_fr$year)),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire')))
+  
+  pred_i <- pred_i %>%
+    mutate(
+      fruiting = predict(
+        mod_fr_best, newdata = pred_i, type = 'response',
+        re.form = NULL))
+  
+  pts_i <- df_i %>%
+    mutate(
+      bin = cut(logsize_t0, breaks = 8),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire'))) %>%
+    group_by(bin, disturbance_plot) %>%
+    summarise(
+      logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+      fruiting = mean(fruiting, na.rm = TRUE),
+      n = n(), .groups = 'drop') %>%
+    filter(is.finite(logsize_t0), n > 0)
+  
+  ggplot() +
+    geom_jitter(
+      data = df_i %>%
+        mutate(
+          disturbance_plot = factor(
+            disturbance, levels = c(0, 1),
+            labels = c('No fire', 'Fire'))),
+      aes(logsize_t0, fruiting, color = disturbance_plot),
+      alpha = 0.2, size = 0.7, width = 0.2, height = 0.2) +
+    geom_point(
+      data = pts_i,
+      aes(logsize_t0, fruiting, color = disturbance_plot),
+      shape = 15, size = 1.5) +
+    geom_line(
+      data = pred_i,
+      aes(logsize_t0, fruiting, color = disturbance_plot),
+      linewidth = 0.7) +
+    scale_color_manual(
+      values = c('No fire' = 'black', 'Fire' = 'red')) +
+    labs(
+      title = year_i,
+      x = expression('log(size)'[t0]),
+      y = 'Fruiting probability') +
+    coord_cartesian(ylim = c(0, 1)) +
+    theme_bw() +
+    theme(text = element_text(size = 5), legend.position = 'none')
+}
+
+fr_yrs <- lapply(levels(df_fr$year), make_fr_year_plot)
+
+fig_fr_years <- wrap_plots(fr_yrs) +
+  plot_layout(ncol = 4) +
+  plot_annotation(
+    title = 'Fruiting probability given flowering - year specific',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 13, face = 'bold'),
+      plot.subtitle = element_text(size = 9)))
+
+fig_fr_years
+```
+
+## Fruit number conditional on fruiting
+
+
+```{r byyear_bysite_fl1x_fruit_number_model}
+# Fruit-number model -----------------------------------------------------------
+mod_fr_n_0 <- glmer.nb(
+  fruit ~ disturbance + (1 | year),
+  data = df_fr_n, control = ctrl_glmer)
+
+mod_fr_n_1 <- glmer.nb(
+  fruit ~ logsize_t0 + disturbance + (1 | year),
+  data = df_fr_n, control = ctrl_glmer)
+
+mod_fr_n_2 <- glmer.nb(
+  fruit ~ logsize_t0 + logsize_t0_2 + disturbance + (1 | year),
+  data = df_fr_n, control = ctrl_glmer)
+
+mod_fr_n_3 <- glmer.nb(
+  fruit ~ logsize_t0 + logsize_t0_2 + logsize_t0_3 + disturbance +
+    (1 | year),
+  data = df_fr_n, control = ctrl_glmer)
+
+mods_fr_n <- list(mod_fr_n_0, mod_fr_n_1, mod_fr_n_2, mod_fr_n_3)
+mods_fr_n_dAIC <- bbmle::AICctab(
+  mods_fr_n, weights = TRUE, sort = FALSE)$dAIC
+mods_fr_n_sorted <- order(mods_fr_n_dAIC)
+
+if (length(v_mod_set_fr_n) == 0) {
+  mod_fr_n_index_bestfit <- mods_fr_n_sorted[1]
+  v_mod_fr_n_index <- mod_fr_n_index_bestfit - 1
+} else {
+  mod_fr_n_index_bestfit <- v_mod_set_fr_n + 1
+  v_mod_fr_n_index <- v_mod_set_fr_n
+}
+
+mod_fr_n_best <- mods_fr_n[[mod_fr_n_index_bestfit]]
+mod_fr_n_ranef <- coef(mod_fr_n_best)$year
+
+summary(mod_fr_n_best)
+```
+
+```{r byyear_bysite_fl1x_fruit_number_plot, fig.width=10, fig.height=12}
+# Fruit-number plots by year ---------------------------------------------------
+make_fr_n_year_plot <- function(year_i) {
+  df_i <- df_fr_n %>%
+    filter(as.character(year) == year_i)
+  
+  x <- seq(
+    min(df_i$logsize_t0, na.rm = TRUE),
+    max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
+  
+  pred_i <- expand_grid(
+    logsize_t0 = x,
+    disturbance = c(0, 1)) %>%
+    mutate(
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3,
+      year = factor(year_i, levels = levels(df_fr_n$year)),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire')))
+  
+  pred_i <- pred_i %>%
+    mutate(
+      fruit = predict(
+        mod_fr_n_best, newdata = pred_i, type = 'response',
+        re.form = NULL))
+  
+  pts_i <- df_i %>%
+    mutate(
+      bin = cut(logsize_t0, breaks = 8),
+      disturbance_plot = factor(
+        disturbance, levels = c(0, 1),
+        labels = c('No fire', 'Fire'))) %>%
+    group_by(bin, disturbance_plot) %>%
+    summarise(
+      logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+      fruit = mean(fruit, na.rm = TRUE),
+      n = n(), .groups = 'drop') %>%
+    filter(is.finite(logsize_t0), n > 0)
+  
+  ggplot() +
+    geom_jitter(
+      data = df_i %>%
+        mutate(
+          disturbance_plot = factor(
+            disturbance, levels = c(0, 1),
+            labels = c('No fire', 'Fire'))),
+      aes(logsize_t0, fruit, color = disturbance_plot),
+      alpha = 0.2, size = 0.7, width = 0.2, height = 0.2) +
+    geom_point(
+      data = pts_i,
+      aes(logsize_t0, fruit, color = disturbance_plot),
+      shape = 15, size = 1.5) +
+    geom_line(
+      data = pred_i,
+      aes(logsize_t0, fruit, color = disturbance_plot),
+      linewidth = 0.7) +
+    scale_color_manual(
+      values = c('No fire' = 'black', 'Fire' = 'red')) +
+    labs(
+      title = year_i,
+      x = expression('log(size)'[t0]),
+      y = 'Number of fruits') +
+    theme_bw() +
+    theme(text = element_text(size = 5), legend.position = 'none')
+}
+
+fr_n_yrs <- lapply(levels(df_fr_n$year), make_fr_n_year_plot)
+
+fig_fr_n_years <- wrap_plots(fr_n_yrs) +
+  plot_layout(ncol = 4) +
+  plot_annotation(
+    title = 'Fruit number given fruiting - year specific',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 13, face = 'bold'),
+      plot.subtitle = element_text(size = 9)))
+
+fig_fr_n_years
+```
+
+## Fruit-to-recruit transition
+
+The response is total recruits in site $i$ and year $t+1$, and the predictor is
+total fruits from the consecutively sampled quadrats at the same site in year
+$t$. All candidates are forced through zero on the `log1p` scale. Random effects
+are random slopes rather than random intercepts.
+
+```{r byyear_bysite_fl1x_fr2re_model}
+# Fixed slope only.
+mod_fr2re_0 <- glmmTMB(
+  logrecruits_t1 ~ 0 + logfruits_t0,
+  data = df_fr2re, family = gaussian, REML = FALSE)
+
+# Year-specific random slope.
+mod_fr2re_1 <- glmmTMB(
+  logrecruits_t1 ~ 0 + logfruits_t0 +
+    (0 + logfruits_t0 | year_t1),
+  data = df_fr2re, family = gaussian, REML = FALSE)
+
+# Site-specific random slope.
+mod_fr2re_2 <- glmmTMB(
+  logrecruits_t1 ~ 0 + logfruits_t0 +
+    (0 + logfruits_t0 | site),
+  data = df_fr2re, family = gaussian, REML = FALSE)
+
+# Year- and site-specific random slopes.
+mod_fr2re_3 <- glmmTMB(
+  logrecruits_t1 ~ 0 + logfruits_t0 +
+    (0 + logfruits_t0 | year_t1) +
+    (0 + logfruits_t0 | site),
+  data = df_fr2re, family = gaussian, REML = FALSE)
+
+mods_fr2re <- list(
+  mod_fr2re_0, mod_fr2re_1, mod_fr2re_2, mod_fr2re_3)
+
+mods_fr2re_dAIC <- bbmle::AICctab(
+  mods_fr2re, weights = TRUE, sort = FALSE)$dAIC
+mods_fr2re_sorted <- order(mods_fr2re_dAIC)
+
+if (length(v_mod_set_fr2re) == 0) {
+  mod_fr2re_index_bestfit <- mods_fr2re_sorted[1]
+  v_mod_fr2re_index <- mod_fr2re_index_bestfit - 1
+} else {
+  mod_fr2re_index_bestfit <- v_mod_set_fr2re + 1
+  v_mod_fr2re_index <- v_mod_set_fr2re
+}
+
+mod_fr2re_best <- mods_fr2re[[mod_fr2re_index_bestfit]]
+mod_fr2re_fixef <- fixef(mod_fr2re_best)$cond
+mod_fr2re_ranef <- ranef(mod_fr2re_best)$cond
+
+summary(mod_fr2re_best)
+
+fr2re_model_diagnostics <- tibble(
+  model_index = 0:3,
+  model = c('fixed', 'year', 'site', 'year + site'),
+  dAIC = as.numeric(mods_fr2re_dAIC),
+  positive_definite_hessian = purrr::map_lgl(
+    mods_fr2re, ~ isTRUE(.x$sdr$pdHess)))
+
+fr2re_model_diagnostics
+```
+
+```{r byyear_bysite_fl1x_fr2re_plot, fig.width=10, fig.height=12}
+make_fr2re_year_plot <- function(year_i) {
+  df_i <- df_fr2re %>%
+    filter(as.character(year_t1) == year_i)
+
+  x <- seq(
+    min(df_i$logfruits_t0, na.rm = TRUE),
+    max(df_i$logfruits_t0, na.rm = TRUE), length.out = 100)
+
+  pred_i <- expand_grid(
+    logfruits_t0 = x,
+    site = levels(df_fr2re$site)) %>%
+    mutate(
+      site = factor(site, levels = levels(df_fr2re$site)),
+      year_t1 = factor(year_i, levels = levels(df_fr2re$year_t1)))
+
+  pred_i$logrecruits_t1 <- predict(
+    mod_fr2re_best,
+    newdata = pred_i,
+    type = 'response',
+    re.form = NULL,
+    allow.new.levels = TRUE)
+
+  pred_i <- pred_i %>%
+    mutate(recruits_t1 = pmax(0, expm1(logrecruits_t1)))
+
+  ggplot() +
+    geom_point(
+      data = df_i,
+      aes(logfruits_t0, recruits_t1, color = site),
+      alpha = 0.55, size = 1.2) +
+    geom_line(
+      data = pred_i,
+      aes(logfruits_t0, recruits_t1, color = site, group = site),
+      linewidth = 0.7) +
+    scale_color_viridis_d() +
+    labs(
+      title = year_i,
+      x = expression('log(number of fruits + 1)'[t]),
+      y = expression('Number of recruits'[t+1])) +
+    theme_bw() +
+    theme(text = element_text(size = 5), legend.position = 'none')
+}
+
+fr2re_yrs <- lapply(
+  levels(df_fr2re$year_t1), make_fr2re_year_plot)
+
+fig_fr2re_years <- wrap_plots(fr2re_yrs) +
+  plot_layout(ncol = 4) +
+  plot_annotation(
+    title = 'Fruit-to-recruit relationship - year and site specific',
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 13, face = 'bold'),
+      plot.subtitle = element_text(size = 9)))
+
+fig_fr2re_years
+```
+
+## Recruit size distribution
+
+```{r byyear_bysite_fl1x_recruit_size}
+df_recr <- df %>%
+  filter(
+    recruit_plot_valid == 1,
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+rc_sz <- df_recr %>%
+  summarise(
+    mean = mean(logsize_t0, na.rm = TRUE),
+    sd = sd(logsize_t0, na.rm = TRUE))
+
+rc_sz
+```
+
+## Parameter extraction
+
+The parameter flow has three levels:
+
+1. `pars_mean` contains fixed effects and IPM constants;
+2. `pars_year` contains conditional year coefficients and the recruitment-year
+   deviation with the site deviation set to zero;
+3. `pars_site_year_recruit` adds the site and recruitment-year deviations to the
+   fixed fruit-to-recruit slope.
+
+```{r byyear_bysite_fl1x_parameter_helpers}
+get_model_fixef <- function(model) {
+  if (inherits(model, 'glmmTMB')) {
+    return(fixef(model)$cond)
+  }
+
+  if (inherits(model, 'merMod')) {
+    return(lme4::fixef(model))
+  }
+
+  stats::coef(model)
+}
+
+get_group_coef <- function(model, group_var) {
+  if (inherits(model, 'glmmTMB')) {
+    coef_list <- coef(model)$cond
+  } else if (inherits(model, 'merMod')) {
+    coef_list <- coef(model)
+  } else {
+    return(NULL)
+  }
+
+  if (is.null(coef_list) || !(group_var %in% names(coef_list))) {
+    return(NULL)
+  }
+
+  as.data.frame(coef_list[[group_var]])
+}
+
+get_group_ranef <- function(model, group_var) {
+  if (inherits(model, 'glmmTMB')) {
+    ranef_list <- ranef(model)$cond
+  } else if (inherits(model, 'merMod')) {
+    ranef_list <- lme4::ranef(model)
+  } else {
+    return(NULL)
+  }
+
+  if (is.null(ranef_list) || !(group_var %in% names(ranef_list))) {
+    return(NULL)
+  }
+
+  as.data.frame(ranef_list[[group_var]])
+}
+
+size_term_map <- c(
+  b0 = '(Intercept)',
+  b1 = 'logsize_t0',
+  b2 = 'logsize_t0_2',
+  b3 = 'logsize_t0_3',
+  bd = 'disturbance')
+
+extract_terms <- function(coefs, prefix, term_map = size_term_map) {
+  values <- vapply(term_map, function(term_i) {
+    if (term_i %in% names(coefs)) {
+      unname(coefs[[term_i]])
+    } else {
+      0
+    }
+  }, numeric(1))
+
+  names(values) <- paste0(prefix, names(term_map))
+  values
+}
+
+extract_fixed_rate <- function(model, prefix) {
+  extract_terms(
+    coefs = get_model_fixef(model),
+    prefix = prefix)
+}
+
+extract_year_rate <- function(
+    model, prefix, years, group_var = 'year') {
+  fixed_coef <- get_model_fixef(model)
+  group_coef <- get_group_coef(model, group_var)
+
+  purrr::map_dfr(years, function(year_i) {
+    level_i <- as.character(year_i)
+    coef_i <- fixed_coef
+
+    if (!is.null(group_coef) && level_i %in% rownames(group_coef)) {
+      coef_i <- unlist(
+        group_coef[level_i, , drop = FALSE],
+        use.names = FALSE)
+      names(coef_i) <- colnames(group_coef)
+    }
+
+    tibble::as_tibble_row(c(
+      year = year_i,
+      extract_terms(coef_i, prefix)))
+  })
+}
+
+extract_fr2re_deviation <- function(
+    model, group_var, levels_vec, output_name) {
+  out <- tibble(
+    level = as.character(levels_vec),
+    deviation = 0)
+
+  ranef_i <- get_group_ranef(model, group_var)
+
+  if (!is.null(ranef_i) && 'logfruits_t0' %in% names(ranef_i)) {
+    ranef_i <- tibble(
+      level = rownames(ranef_i),
+      deviation = ranef_i[['logfruits_t0']])
+
+    out <- out %>%
+      select(-deviation) %>%
+      left_join(ranef_i, by = 'level') %>%
+      mutate(deviation = replace_na(deviation, 0))
+  }
+
+  names(out) <- c(group_var, output_name)
+  out
+}
+```
+
+```{r byyear_bysite_fl1x_mean_parameters}
+grow_var_coef <- stats::coef(mod_gr_var)
+
+mesh_limits <- range(
+  c(
+    df_gr$logsize_t0,
+    df_gr$logsize_t1,
+    df_recr$logsize_t0),
+  na.rm = TRUE,
+  finite = TRUE)
+
+pars_mean <- as.list(c(
+  extract_fixed_rate(mod_su_best, 'surv_'),
+  extract_fixed_rate(mod_gr_best, 'grow_'),
+  extract_fixed_rate(mod_fl_best, 'fl_'),
+  extract_fixed_rate(mod_fr_best, 'fr_'),
+  extract_fixed_rate(mod_fr_n_best, 'frn_'),
+  fr2re_b0 = 0,
+  fr2re_b1 = unname(
+    get_model_fixef(mod_fr2re_best)[['logfruits_t0']]),
+  recr_mean = rc_sz$mean,
+  recr_sd = rc_sz$sd,
+  grow_var_a = unname(grow_var_coef[['a']]),
+  grow_var_b = unname(grow_var_coef[['b']]),
+  fruits_ref = mean(df_fr2re$fruits_t0, na.rm = TRUE),
+  fr2re_sigma = stats::sigma(mod_fr2re_best),
+  L = mesh_limits[1],
+  U = mesh_limits[2],
+  mat_siz = 200))
+
+pars_mean_table <- tibble(
+  parameter = names(pars_mean),
+  value = as.numeric(unlist(pars_mean)))
+
+pars_mean_table
+```
+
+```{r byyear_bysite_fl1x_year_site_parameters}
+get_year_values <- function(x) {
+  sort(unique(as.integer(as.character(x))))
+}
+
+ipm_years <- Reduce(
+  intersect,
+  list(
+    get_year_values(df_su$year),
+    get_year_values(df_gr$year),
+    get_year_values(df_fl$year),
+    get_year_values(df_fr$year),
+    get_year_values(df_fr_n$year),
+    get_year_values(df_fr2re$year_t1) - 1))
+
+if (length(ipm_years) == 0) {
+  stop('No years have complete data for all IPM processes')
+}
+
+# Conditional year coefficients for plant vital rates.
+pars_su_year <- extract_year_rate(
+  model = mod_su_best, prefix = 'surv_', years = ipm_years)
+
+pars_gr_year <- extract_year_rate(
+  model = mod_gr_best, prefix = 'grow_', years = ipm_years)
+
+pars_fl_year <- extract_year_rate(
+  model = mod_fl_best, prefix = 'fl_', years = ipm_years)
+
+pars_fr_year <- extract_year_rate(
+  model = mod_fr_best, prefix = 'fr_', years = ipm_years)
+
+pars_fr_n_year <- extract_year_rate(
+  model = mod_fr_n_best, prefix = 'frn_', years = ipm_years)
+
+# Site and recruitment-year random-slope deviations.
+pars_fr2re_site <- extract_fr2re_deviation(
+  model = mod_fr2re_best,
+  group_var = 'site',
+  levels_vec = levels(df_fr2re$site),
+  output_name = 'site_u1') %>%
+  mutate(site = factor(site, levels = levels(df_fr2re$site)))
+
+pars_fr2re_year <- extract_fr2re_deviation(
+  model = mod_fr2re_best,
+  group_var = 'year_t1',
+  levels_vec = levels(df_fr2re$year_t1),
+  output_name = 'year_u1') %>%
+  mutate(
+    year_t1 = as.integer(as.character(year_t1)),
+    year = year_t1 - 1,
+    fr2re_b1 = pars_mean$fr2re_b1 + year_u1) %>%
+  select(year, year_t1, year_u1, fr2re_b1)
+
+# One readable parameter row per transition year.
+pars_year <- list(
+  pars_su_year,
+  pars_gr_year,
+  pars_fl_year,
+  pars_fr_year,
+  pars_fr_n_year,
+  pars_fr2re_year %>% select(-year_t1)) %>%
+  purrr::reduce(left_join, by = 'year') %>%
+  arrange(year)
+
+# One fruit-to-recruit slope per site-year transition.
+pars_site_year_recruit <- expand_grid(
+  site = levels(df_fr2re$site),
+  year = ipm_years) %>%
+  mutate(
+    site = factor(site, levels = levels(df_fr2re$site)),
+    year_t1 = year + 1) %>%
+  left_join(pars_fr2re_site, by = 'site') %>%
+  left_join(
+    pars_fr2re_year %>% select(year, year_t1, year_u1),
+    by = c('year', 'year_t1')) %>%
+  mutate(
+    site_u1 = replace_na(site_u1, 0),
+    year_u1 = replace_na(year_u1, 0),
+    fr2re_b0 = 0,
+    fr2re_b1 = pars_mean$fr2re_b1 + site_u1 + year_u1) %>%
+  select(
+    site, year, year_t1,
+    fr2re_b0, fr2re_b1,
+    site_u1, year_u1)
+
+make_ipm_pars <- function(year_i = NULL, site_i = NULL) {
+  pars <- pars_mean
+
+  if (!is.null(year_i)) {
+    year_i <- as.integer(year_i)
+
+    pars_i <- pars_year %>%
+      filter(.data$year == .env$year_i)
+
+    if (nrow(pars_i) != 1) {
+      stop(
+        'Expected one parameter row for year ', year_i,
+        ', but found ', nrow(pars_i))
+    }
+
+    pars_i <- pars_i %>%
+      select(-year, -any_of('year_u1')) %>%
+      as.list()
+
+    for (par_name in names(pars_i)) {
+      pars[[par_name]] <- pars_i[[par_name]]
+    }
+  }
+
+  if (!is.null(site_i)) {
+    if (is.null(year_i)) {
+      stop('site_i requires year_i')
+    }
+
+    site_i <- as.character(site_i)
+
+    pars_re_i <- pars_site_year_recruit %>%
+      filter(
+        as.character(.data$site) == .env$site_i,
+        .data$year == .env$year_i)
+
+    if (nrow(pars_re_i) != 1) {
+      stop(
+        'Expected one recruitment row for site ', site_i,
+        ' and year ', year_i, ', but found ', nrow(pars_re_i))
+    }
+
+    pars$fr2re_b0 <- pars_re_i$fr2re_b0
+    pars$fr2re_b1 <- pars_re_i$fr2re_b1
+    pars$site_u1 <- pars_re_i$site_u1
+    pars$year_u1 <- pars_re_i$year_u1
+  }
+
+  pars
+}
+
+pars_year
+pars_site_year_recruit
+```
+
+## IPM functions
+
+### Back-transformation of the fruit-to-recruit relationship
+
+The relationship between fruit production and recruitment was fitted after
+transforming both variables using `log(1 + count)`. Predictions from this model
+therefore had to be converted back to the original scale before they could be
+used in the fertility component of the IPM.
+
+We initially included a correction for the residual variation of the model
+during this back-transformation. However, this correction produced a small
+positive number of recruits even when predicted fruit production was close to
+zero. The IPM subsequently converts total recruitment into the number of
+recruits produced per fruit. Dividing a positive recruitment estimate by an
+extremely small number of fruits resulted in unrealistically high estimates of
+recruitment per fruit and strongly inflated estimates of population growth.
+
+We therefore used the direct inverse transformation,
+
+\[
+\widehat{R} = \exp(\widehat{\eta}) - 1,
+\]
+
+where \(\widehat{\eta}\) is the predicted value on the transformed scale and
+\(\widehat{R}\) is the predicted number of recruits. Predictions below zero
+were set to zero.
+
+This approach preserves the biologically necessary relationship that no fruit
+production results in no recruitment. It also ensures that predicted
+recruitment approaches zero as fruit production approaches zero. The resulting
+values should be interpreted as the central predictions from the fitted
+fruit-to-recruit relationship rather than as residual-variance-adjusted means.
+The fitted relationship itself, including its site and year effects, was not
+changed; only the conversion of its predictions back to the original count
+scale was modified.
+
+```{r byyear_bysite_fl1x_ipm_functions}
+get_par <- function(pars, par_name, default = 0) {
+  if (!is.null(pars[[par_name]])) {
+    pars[[par_name]]
+  } else {
+    default
+  }
+}
+
+vital_lp <- function(x, pars, prefix, disturbance = 0) {
+  get_par(pars, paste0(prefix, 'b0')) +
+    get_par(pars, paste0(prefix, 'b1')) * x +
+    get_par(pars, paste0(prefix, 'b2')) * x^2 +
+    get_par(pars, paste0(prefix, 'b3')) * x^3 +
+    get_par(pars, paste0(prefix, 'bd')) * disturbance
+}
+
+# Survival.
+sx <- function(x, pars, disturbance = 0) {
+  plogis(vital_lp(
+    x = x, pars = pars,
+    prefix = 'surv_', disturbance = disturbance))
+}
+
+# Growth mean and standard deviation.
+grow_mu <- function(x, pars, disturbance = 0) {
+  vital_lp(
+    x = x, pars = pars,
+    prefix = 'grow_', disturbance = disturbance)
+}
+
+grow_sd <- function(mean_value, pars) {
+  variance <- get_par(pars, 'grow_var_a') *
+    exp(get_par(pars, 'grow_var_b') * mean_value)
+
+  sqrt(pmax(variance, .Machine$double.eps))
+}
+
+gxy <- function(x, y, pars, disturbance = 0) {
+  mean_value <- grow_mu(
+    x = x, pars = pars, disturbance = disturbance)
+
+  sd_value <- grow_sd(
+    mean_value = mean_value, pars = pars)
+
+  dnorm(y, mean = mean_value, sd = sd_value)
+}
+
+# Flowering probability.
+fl_x <- function(x, pars, disturbance = 0) {
+  plogis(vital_lp(
+    x = x, pars = pars,
+    prefix = 'fl_', disturbance = disturbance))
+}
+
+# Fruiting probability conditional on flowering.
+fr_x <- function(x, pars, disturbance = 0) {
+  plogis(vital_lp(
+    x = x, pars = pars,
+    prefix = 'fr_', disturbance = disturbance))
+}
+
+# Fruit number conditional on fruiting.
+frn_x <- function(x, pars, disturbance = 0) {
+  exp(vital_lp(
+    x = x, pars = pars,
+    prefix = 'frn_', disturbance = disturbance))
+}
+
+# Expected total fruits per individual.
+fruits_x <- function(x, pars, disturbance = 0) {
+  fl_x(x, pars, disturbance) *
+    fr_x(x, pars, disturbance) *
+    frn_x(x, pars, disturbance)
+}
+
+# Site-year fruit-to-recruit conversion.
+predict_recruits_from_fruits <- function(fruits, pars) {
+  if (length(fruits) == 1 &&
+      (!is.finite(fruits) || fruits <= 0)) {
+    return(0)
+  }
+
+  eta <- get_par(pars, 'fr2re_b0') +
+    get_par(pars, 'fr2re_b1') * log1p(pmax(fruits, 0))
+
+  recruits <- pmax(expm1(eta), 0)
+
+  ifelse(fruits <= 0, 0, recruits)
+}
+
+site_year_recruits_per_fruit <- function(pars) {
+  fruits_ref <- get_par(
+    pars, 'site_fruits_ref',
+    get_par(pars, 'fruits_ref', 0))
+
+  if (!is.finite(fruits_ref) || fruits_ref <= 0) {
+    return(0)
+  }
+
+  predict_recruits_from_fruits(fruits_ref, pars) / fruits_ref
+}
+
+rx <- function(x, pars, disturbance = 0) {
+  fruits_x(x, pars, disturbance) *
+    site_year_recruits_per_fruit(pars)
+}
+
+# Recruit-size distribution.
+recr_y <- function(y, pars) {
+  dnorm(
+    y,
+    mean = get_par(pars, 'recr_mean'),
+    sd = get_par(pars, 'recr_sd'))
+}
+
+# Fertility matrix.
+fy <- function(y, x, pars, h, disturbance = 0) {
+  Pvec <- recr_y(y, pars)
+  recruit_mass <- sum(Pvec * h)
+
+  if (!is.finite(recruit_mass) || recruit_mass <= 0) {
+    stop('Recruit size distribution has no mass inside the mesh')
+  }
+
+  Pvec <- Pvec / recruit_mass
+  Rvec <- rx(x, pars, disturbance)
+
+  outer(Pvec, Rvec) * h
+}
+```
+
+## Kernel
+
+```{r byyear_bysite_fl1x_kernel}
+kernel <- function(pars, disturbance = 0) {
+  n <- as.integer(pars$mat_siz)
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+
+  b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
+
+  Fmat <- fy(
+    y = y,
+    x = y,
+    pars = pars,
+    h = h,
+    disturbance = disturbance)
+
+  Smat <- sx(
+    x = y,
+    pars = pars,
+    disturbance = disturbance)
+
+  Gmat <- matrix(0, n, n)
+  Gmat[] <- t(
+    outer(
+      y,
+      y,
+      Vectorize(function(x, y) {
+        gxy(
+          x = x,
+          y = y,
+          pars = pars,
+          disturbance = disturbance)
+      }))) * h
+
+  Tmat <- matrix(0, n, n)
+
+  for (i in 1:(n / 2)) {
+    Gmat[1, i] <- Gmat[1, i] + 1 - sum(Gmat[, i])
+    Tmat[, i] <- Gmat[, i] * Smat[i]
+  }
+
+  for (i in (n / 2 + 1):n) {
+    Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])
+    Tmat[, i] <- Gmat[, i] * Smat[i]
+  }
+
+  k_yx <- Fmat + Tmat
+
+  list(
+    k_yx = k_yx,
+    Fmat = Fmat,
+    Tmat = Tmat,
+    Gmat = Gmat,
+    Smat = Smat,
+    meshpts = y,
+    h = h)
+}
+
+lambda_ipm <- function(pars, disturbance = 0) {
+  K <- kernel(pars, disturbance)$k_yx
+  Re(eigen(K, only.values = TRUE)$values[1])
+}
+```
+
+## Mean and year-specific population growth
+
+These values use the mean site, meaning that the site recruitment deviation is
+zero. Site-specific values are calculated in the next section.
+
+```{r byyear_bysite_fl1x_lambda}
+lambda_mean_no_fire <- lambda_ipm(
+  pars = pars_mean, disturbance = 0)
+
+lambda_mean_fire <- lambda_ipm(
+  pars = pars_mean, disturbance = 1)
+
+lambda_ipm_year <- function(year, disturbance = 0) {
+  pars_i <- make_ipm_pars(year_i = year)
+  lambda_ipm(pars_i, disturbance)
+}
+
+lambda_year <- tibble(
+  year = ipm_years,
+  lambda_no_fire = purrr::map_dbl(
+    ipm_years,
+    ~ lambda_ipm_year(.x, disturbance = 0)),
+  lambda_fire = purrr::map_dbl(
+    ipm_years,
+    ~ lambda_ipm_year(.x, disturbance = 1)))
+
+lambda_mean_no_fire
+lambda_mean_fire
+lambda_year
+```
+
+## Site-year projections
+
+The validation retains only quadrats sampled in both $t_0$ and $t_1$. Within a
+site-year transition, the initial size distribution and observed abundance are
+therefore based on the same quadrats. The proportion disturbed is calculated
+from those paired quadrats in $t_0$.
+
+For partially disturbed sites, the chapter builds no-fire and fire kernels and
+combines them using the proportion of paired quadrats disturbed. This treats the
+site as a disturbance regime while retaining its site-specific recruitment
+slope.
+
+```{r byyear_bysite_fl1x_site_year_projection}
+# Sampled quadrat-year combinations, including sampled quadrats with no sized
+# individuals.
+df_sampled_quad_year <- df_plot_year_sampled %>%
+  transmute(
+    site = factor(site),
+    quad_id = factor(quad_id),
+    year = as.integer(year)) %>%
+  distinct()
+
+# Counts of sized plants, completed with zeros for sampled quadrats.
+df_sized_quad_year <- df %>%
+  filter(size_t0 > 0, is.finite(logsize_t0)) %>%
+  mutate(year = as.integer(as.character(year))) %>%
+  group_by(site, quad_id, year) %>%
+  summarise(n = n_distinct(plant_id), .groups = 'drop')
+
+df_quad_counts <- df_sampled_quad_year %>%
+  left_join(
+    df_sized_quad_year,
+    by = c('site', 'quad_id', 'year')) %>%
+  mutate(n = replace_na(n, 0))
+
+# Pair the same quadrat in consecutive years.
+df_paired_quad_year <- df_quad_counts %>%
+  rename(n_t0_quad = n) %>%
+  inner_join(
+    df_quad_counts %>%
+      transmute(
+        site,
+        quad_id,
+        year_t1 = year,
+        year = year_t1 - 1,
+        n_t1_quad = n),
+    by = c('site', 'quad_id', 'year')) %>%
+  filter(year %in% ipm_years)
+
+# Observed site-year population growth from paired quadrats.
+df_obs_pgr_site <- df_paired_quad_year %>%
+  group_by(site, year, year_t1) %>%
+  summarise(
+    n_t0 = sum(n_t0_quad),
+    n_t1 = sum(n_t1_quad),
+    n_paired_quads = n_distinct(quad_id),
+    .groups = 'drop') %>%
+  filter(n_t0 > 0) %>%
+  mutate(obs_pgr_site = n_t1 / n_t0)
+
+# Disturbance status of paired quadrats in t0.
+df_disturbance_paired <- df %>%
+  mutate(year = as.integer(as.character(year))) %>%
+  group_by(site, quad_id, year) %>%
+  summarise(
+    disturbance = as.integer(any(disturbance == 1, na.rm = TRUE)),
+    .groups = 'drop') %>%
+  inner_join(
+    df_paired_quad_year %>%
+      select(site, quad_id, year, year_t1),
+    by = c('site', 'quad_id', 'year')) %>%
+  group_by(site, year, year_t1) %>%
+  summarise(
+    p_disturbance = mean(disturbance, na.rm = TRUE),
+    .groups = 'drop')
+
+get_paired_quads <- function(site_i, year_i, year_t1_i) {
+  df_paired_quad_year %>%
+    filter(
+      as.character(site) == as.character(site_i),
+      year == as.integer(year_i),
+      year_t1 == as.integer(year_t1_i)) %>%
+    pull(quad_id) %>%
+    as.character()
+}
+
+make_initial_n_site_year <- function(
+    pars, site_i, year_i, year_t1_i, df_init = df) {
+  n <- as.integer(pars$mat_siz)
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+
+  paired_quads <- get_paired_quads(
+    site_i = site_i,
+    year_i = year_i,
+    year_t1_i = year_t1_i)
+
+  x <- df_init %>%
+    filter(
+      as.character(site) == as.character(site_i),
+      as.integer(as.character(year)) == as.integer(year_i),
+      as.character(quad_id) %in% paired_quads,
+      size_t0 > 0,
+      is.finite(logsize_t0)) %>%
+    pull(logsize_t0)
+
+  if (length(x) == 0) {
+    return(rep(0, n))
+  }
+
+  counts_i <- hist(
+    pmin(pmax(x, L), U),
+    breaks = seq(L, U, length.out = n + 1),
+    include.lowest = TRUE,
+    plot = FALSE)$counts
+
+  counts_i / h
+}
+
+expected_site_year_fruits <- function(
+    pars, site_i, year_i, year_t1_i,
+    disturbance = 0, df_init = df) {
+  n <- as.integer(pars$mat_siz)
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+
+  b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
+
+  n_obs <- make_initial_n_site_year(
+    pars = pars,
+    site_i = site_i,
+    year_i = year_i,
+    year_t1_i = year_t1_i,
+    df_init = df_init)
+
+  sum(
+    fruits_x(y, pars, disturbance) * n_obs * h,
+    na.rm = TRUE)
+}
+
+project_site_year_ipm <- function(
+    site_i, year_i, year_t1_i,
+    p_disturbance_i, df_init = df) {
+  pars_i <- make_ipm_pars(
+    year_i = year_i,
+    site_i = site_i)
+
+  n_obs <- make_initial_n_site_year(
+    pars = pars_i,
+    site_i = site_i,
+    year_i = year_i,
+    year_t1_i = year_t1_i,
+    df_init = df_init)
+
+  h <- (pars_i$U - pars_i$L) / pars_i$mat_siz
+  n_initial <- sum(n_obs) * h
+
+  if (!is.finite(n_initial) || n_initial <= 0) {
+    return(tibble(
+      asym_lambda = NA_real_,
+      proj_lambda = NA_real_,
+      n_obs_model = n_initial,
+      n_proj_model = NA_real_,
+      site_fruits_no_fire = NA_real_,
+      site_fruits_fire = NA_real_,
+      site_fruits_ref = NA_real_,
+      recruits_per_fruit = NA_real_))
+  }
+
+  site_fruits_no_fire <- expected_site_year_fruits(
+    pars = pars_i,
+    site_i = site_i,
+    year_i = year_i,
+    year_t1_i = year_t1_i,
+    disturbance = 0,
+    df_init = df_init)
+
+  site_fruits_fire <- expected_site_year_fruits(
+    pars = pars_i,
+    site_i = site_i,
+    year_i = year_i,
+    year_t1_i = year_t1_i,
+    disturbance = 1,
+    df_init = df_init)
+
+  site_fruits_ref <-
+    (1 - p_disturbance_i) * site_fruits_no_fire +
+    p_disturbance_i * site_fruits_fire
+
+  pars_i$site_fruits_ref <- site_fruits_ref
+
+  K_no_fire <- kernel(pars_i, disturbance = 0)$k_yx
+  K_fire <- kernel(pars_i, disturbance = 1)$k_yx
+
+  K_regime <-
+    (1 - p_disturbance_i) * K_no_fire +
+    p_disturbance_i * K_fire
+
+  n_proj <- K_regime %*% n_obs
+  n_projected <- sum(n_proj) * h
+
+  tibble(
+    asym_lambda = Re(
+      eigen(K_regime, only.values = TRUE)$values[1]),
+    proj_lambda = n_projected / n_initial,
+    n_obs_model = n_initial,
+    n_proj_model = n_projected,
+    site_fruits_no_fire = site_fruits_no_fire,
+    site_fruits_fire = site_fruits_fire,
+    site_fruits_ref = site_fruits_ref,
+    recruits_per_fruit = site_year_recruits_per_fruit(pars_i))
+}
+
+# Site-year projection grid.
+df_site_year_projection_grid <- df_obs_pgr_site %>%
+  left_join(
+    pars_site_year_recruit,
+    by = c('site', 'year', 'year_t1')) %>%
+  left_join(
+    df_disturbance_paired,
+    by = c('site', 'year', 'year_t1')) %>%
+  mutate(p_disturbance = replace_na(p_disturbance, 0)) %>%
+  filter(!is.na(fr2re_b1))
+
+# Run all site-year IPMs.
+df_proj_site <- df_site_year_projection_grid %>%
+  mutate(
+    projection = purrr::pmap(
+      list(site, year, year_t1, p_disturbance),
+      function(site, year, year_t1, p_disturbance) {
+        project_site_year_ipm(
+          site_i = site,
+          year_i = year,
+          year_t1_i = year_t1,
+          p_disturbance_i = p_disturbance,
+          df_init = df)
+      })) %>%
+  select(
+    site, year, year_t1,
+    n_t0, n_t1, n_paired_quads, obs_pgr_site,
+    fr2re_b0, fr2re_b1, site_u1, year_u1,
+    p_disturbance, projection) %>%
+  tidyr::unnest(projection)
+
+df_compare_site <- df_proj_site %>%
+  mutate(
+    error_asymptotic = asym_lambda - obs_pgr_site,
+    error_projected = proj_lambda - obs_pgr_site)
+
+df_compare_site
+```
+
+## Observed population growth versus modeled lambda
+
+The final figure compares observed and modeled population growth for each
+site-year transition. Each point represents the change in population size at
+one site between two consecutive years. Sites are distinguished by color.
+
+Observed population growth was calculated from the change in the number of
+plants between year \(t\) and year \(t+1\). Only quadrats represented in both
+years were included so that differences in sampling effort were not mistaken
+for changes in population size. A value of \(\lambda = 1\) indicates that
+population size remained stable. Values greater than one indicate population
+growth, whereas values below one indicate population decline.
+
+The horizontal axis shows the population growth rate predicted by the IPM, and
+the vertical axis shows the corresponding observed growth rate. The dashed
+one-to-one line represents perfect agreement between the model and the
+observations. Points close to this line indicate that the modeled and observed
+growth rates were similar. Points above the line indicate that observed growth
+was greater than predicted, meaning that the model underestimated population
+growth. Points below the line indicate that the model predicted greater growth
+than was observed.
+
+The two panels show different measures of modeled population growth.
+Asymptotic population growth describes the long-term growth rate expected if
+the demographic conditions estimated for that site and year remained constant
+and the population eventually reached a stable size distribution. It should
+therefore be interpreted as a long-term property of the site-year kernel rather
+than as a direct prediction of the next census.
+
+Projected population growth describes the expected change over a single year
+after applying the site-year kernel to the size distribution that was actually
+observed at the beginning of the transition. Because it retains the observed
+population structure, projected growth provides the more direct comparison
+with the observed change from year \(t\) to year \(t+1\).
+
+Some disagreement between observed and modeled growth is expected. The IPM
+represents the demographic processes included in the fitted vital-rate models,
+whereas observed population change may also be influenced by demographic
+chance, observation error, temporary dormancy, and environmental conditions
+not measured in the study. The figure is therefore used to assess whether the
+model captures the general direction and magnitude of variation in population
+growth among sites and years, rather than whether every modeled value exactly
+matches its corresponding observation.
+
+```{r byyear_bysite_fl1x_lambda_validation, fig.width=8, fig.height=5}
+# Aggregate site projections into one whole-population result per year.
+df_compare <- df_compare_site %>%
+  group_by(year) %>%
+  summarise(
+    asym_lambda = weighted.mean(
+      asym_lambda, w = n_obs_model, na.rm = TRUE),
+    n_t0 = sum(n_t0, na.rm = TRUE),
+    n_t1 = sum(n_t1, na.rm = TRUE),
+    obs_pgr = n_t1 / n_t0,
+    n_obs_model = sum(n_obs_model, na.rm = TRUE),
+    n_proj_model = sum(n_proj_model, na.rm = TRUE),
+    proj_lambda = n_proj_model / n_obs_model,
+    disturbance = if_else(
+      any(p_disturbance > 0, na.rm = TRUE), 'Fire', 'No fire'),
+    .groups = 'drop') %>%
+  mutate(
+    disturbance = factor(
+      disturbance, levels = c('No fire', 'Fire')))
+
+df_plot <- df_compare %>%
+  select(year, obs_pgr, asym_lambda, proj_lambda, disturbance) %>%
+  pivot_longer(
+    cols = c(asym_lambda, proj_lambda),
+    names_to = 'lambda_type',
+    values_to = 'lambda') %>%
+  mutate(
+    lambda_type = recode(
+      lambda_type,
+      asym_lambda = 'Asymptotic lambda',
+      proj_lambda = 'Projected lambda'))
+
+g_mod_vs_obs <- ggplot(
+  df_plot,
+  aes(x = lambda, y = obs_pgr, color = disturbance)) +
+  geom_point(size = 2.5) +
+  geom_abline(intercept = 0, slope = 1, linetype = 2) +
+  facet_wrap(~ lambda_type, scales = 'free_x') +
+  scale_color_manual(
+    values = c('No fire' = 'black', 'Fire' = 'red')) +
+  labs(
+    title = 'Observed population growth vs modeled lambda',
+    subtitle = paste(v_ggp_suffix, '- site-specific recruitment'),
+    x = expression('Modeled ' * lambda),
+    y = 'Observed population growth rate',
+    color = NULL) +
+  theme_classic()
+
+g_mod_vs_obs
+```
+
+```{r byyear_bysite_fl1x_site_validation, fig.width=8, fig.height=5}
+df_plot_site <- df_compare_site %>%
+  select(
+    site, year, year_t1,
+    obs_pgr_site,
+    asym_lambda,
+    proj_lambda) %>%
+  pivot_longer(
+    cols = c(asym_lambda, proj_lambda),
+    names_to = 'lambda_type',
+    values_to = 'lambda') %>%
+  mutate(
+    lambda_type = recode(
+      lambda_type,
+      asym_lambda = 'Asymptotic lambda',
+      proj_lambda = 'Projected lambda'))
+
+fig_mod_vs_obs_site <- ggplot(
+  df_plot_site,
+  aes(x = lambda, y = obs_pgr_site, color = site)) +
+  geom_point(alpha = 0.65, size = 1.8) +
+  geom_abline(intercept = 0, slope = 1, linetype = 'dashed') +
+  facet_wrap(~ lambda_type, scales = 'free') +
+  scale_color_viridis_d() +
+  theme_bw() +
+  labs(
+    title = 'Observed versus modeled site-year population growth',
+    subtitle = v_ggp_suffix,
+    x = expression('Modeled ' * lambda),
+    y = expression('Observed ' * lambda),
+    color = 'Site')
+
+fig_mod_vs_obs_site
+```
+

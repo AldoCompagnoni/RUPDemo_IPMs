@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>3 Investigations | Archbold - Polygala lewtonii - Summary</title>
+  <meta name="description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  <meta name="generator" content="bookdown 0.43 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="3 Investigations | Archbold - Polygala lewtonii - Summary" />
+  <meta property="og:type" content="book" />
+  
+  <meta property="og:description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="3 Investigations | Archbold - Polygala lewtonii - Summary" />
+  
+  <meta name="twitter:description" content="This is the summary to the Archold Crotaliaria avonensis data. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation." />
+  
+
+
+
+<meta name="date" content="2025-08-08" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="data.html"/>
+<link rel="next" href="models.html"/>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/codefolding-lua-1.1/codefolding-lua.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+
+
+<style type="text/css">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+<style type="text/css">
+  
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li class="chapter" data-level="1" data-path="intro.html"><a href="intro.html"><i class="fa fa-check"></i><b>1</b> Introduction</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="intro.html"><a href="intro.html#setup"><i class="fa fa-check"></i><b>1.1</b> Setup</a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="data.html"><a href="data.html"><i class="fa fa-check"></i><b>2</b> Data</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="data.html"><a href="data.html#tails-from-meta"><i class="fa fa-check"></i><b>2.1</b> Tails from meta</a></li>
+<li class="chapter" data-level="2.2" data-path="data.html"><a href="data.html#original-data"><i class="fa fa-check"></i><b>2.2</b> Original data</a></li>
+<li class="chapter" data-level="2.3" data-path="data.html"><a href="data.html#data-exploration"><i class="fa fa-check"></i><b>2.3</b> Data exploration</a></li>
+<li class="chapter" data-level="2.4" data-path="data.html"><a href="data.html#open-questions"><i class="fa fa-check"></i><b>2.4</b> Open questions</a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="investigation.html"><a href="investigation.html"><i class="fa fa-check"></i><b>3</b> Investigations</a>
+<ul>
+<li class="chapter" data-level="3.1" data-path="investigation.html"><a href="investigation.html#seedbank"><i class="fa fa-check"></i><b>3.1</b> Seedbank</a></li>
+<li class="chapter" data-level="3.2" data-path="investigation.html"><a href="investigation.html#fire"><i class="fa fa-check"></i><b>3.2</b> Fire</a>
+<ul>
+<li class="chapter" data-level="3.2.1" data-path="investigation.html"><a href="investigation.html#the-extent-of-fire"><i class="fa fa-check"></i><b>3.2.1</b> The extent of fire</a></li>
+<li class="chapter" data-level="3.2.2" data-path="investigation.html"><a href="investigation.html#fire-on-survival"><i class="fa fa-check"></i><b>3.2.2</b> Fire on Survival</a></li>
+<li class="chapter" data-level="3.2.3" data-path="investigation.html"><a href="investigation.html#fire-on-growth"><i class="fa fa-check"></i><b>3.2.3</b> Fire on Growth</a></li>
+<li class="chapter" data-level="3.2.4" data-path="investigation.html"><a href="investigation.html#fire-on-flowering"><i class="fa fa-check"></i><b>3.2.4</b> Fire on Flowering</a></li>
+<li class="chapter" data-level="3.2.5" data-path="investigation.html"><a href="investigation.html#fire-on-fecundity"><i class="fa fa-check"></i><b>3.2.5</b> Fire on Fecundity</a></li>
+<li class="chapter" data-level="3.2.6" data-path="investigation.html"><a href="investigation.html#fire-on-recruitment-transition"><i class="fa fa-check"></i><b>3.2.6</b> Fire on Recruitment transition</a></li>
+</ul></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="models.html"><a href="models.html"><i class="fa fa-check"></i><b>4</b> Models</a></li>
+<li class="chapter" data-level="5" data-path="bugs.html"><a href="bugs.html"><i class="fa fa-check"></i><b>5</b> BUGS</a></li>
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Archbold - Polygala lewtonii - Summary</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="investigation" class="section level1 hasAnchor" number="3">
+<h1><span class="header-section-number">3</span> Investigations<a href="investigation.html#investigation" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="investigation.html#cb7-1" tabindex="-1"></a><span class="fu">library</span>(MASS)</span></code></pre></div>
+</details>
+<div id="seedbank" class="section level2 hasAnchor" number="3.1">
+<h2><span class="header-section-number">3.1</span> Seedbank<a href="investigation.html#seedbank" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>There is no information on seed banks in the meta data, nor in the original data.</p>
+<p>The published literature and associated unpublished data strongly suggest that Polygala lewtonii relies on a persistent soil seedbank for post-fire recruitment. While the dataset itself contains no direct information on seed banks, several observations and experimental results provide compelling indirect evidence for their ecological importance.</p>
+<p>Field observations indicate that most post-fire recruits emerged in quadrats where no surviving reproductive adults were present, implying that recruitment originated from seeds deposited in earlier years. Specifically, the study notes that:</p>
+<p><em>‘For these 2 cohorts, between 75.8% and 79.0% of seedlings recruited into burned quadrats with no surviving reproductive adults, indicating that most recruitment was from the preburn seedbank rather than from newly produced seeds.’</em></p>
+<p>The timing of recruitment relative to fire and flowering supports this conclusion:</p>
+<p><em>‘Recruits in the first 2 post-burn cohorts (December 2001 and March 2002) came from the seedbank, rather than from seeds shed by surviving adults, which did not produce chasmogamous flowers between the August 2001 burn and the December 2001 and March 2002 censuses.’</em></p>
+<p>Supporting this field evidence, a separate experiment demonstrated long-term seed viability:</p>
+<p><em>‘A separate field experiment demonstrated that buried seeds may retain viability for at least 2 years (C. W. Weekley and E. S. Menges, unpubl. data), indicating that P. lewtonii is capable of accumulating a persistent (sensu Thompson and Grime 1979) soil seedbank.’</em></p>
+<p>The study also suggests that fire enhances the reproductive success of recruits, reinforcing the seedbank’s role in population dynamics:</p>
+<p><em>‘The combined effects of higher seedling recruitment, higher survival to reproduction and earlier flowering indicate that P. lewtonii plants recruiting into burned microsites make a greater contribution to the seedbank, and thus to the long-term viability of the population, than do recruits in unburned microsites.’</em></p>
+<p>While smoke-stimulated germination has been demonstrated in the lab, field evidence is limited:
+However in their publication they do not specify any germination rates <a href="https://www.jstor.org/stable/20433949">(Lindon and Menges, 2008)</a>.</p>
+<p><em>‘In a laboratory experiment, Lindon and Menges (2008) showed that short-term exposure to smoke promoted ex situ germination in P. lewtonii, but this result was not supported by a field experiment (C.W. Weekley, unpubl. data).’</em></p>
+<p>Overall, although the dataset itself does not directly record seedbank dynamics, the documented timing of recruitment, absence of flowering adults, and experimental findings together indicate that P. lewtonii maintains a persistent and ecologically meaningful soil seedbank that plays a key role in its post-fire recovery and long-term persistence.</p>
+</div>
+<div id="fire" class="section level2 hasAnchor" number="3.2">
+<h2><span class="header-section-number">3.2</span> Fire<a href="investigation.html#fire" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>The site experienced four prescribed fires (2001, 2007, 2009, 2015). Post-fire observations included plant-level fire exposure (e.g., singed, scorched, consumed) and percent area burned per plot (except for the 2001 fire). The dataset captures both mortality and recruitment following fire, contributing to an understanding of population responses to disturbance. Importantly, the species does not exhibit dormancy, and plants marked as dead were rarely observed alive in subsequent censuses.</p>
+<p><em>‘This dataset also captures post-fire mortality and recruitment events following four prescribed burns.’</em>
+<em>‘[…] four prescribed burns during the 2001-2017 study, although not all plots were affected’</em>
+<em>‘P. lewtonii plants are usually killed by fire and seedlings recruit post-fire from a soil seedbank (B. Pace-Aldana, pers. comm.; C. W. Weekley, unpubl. data).’</em></p>
+<div id="the-extent-of-fire" class="section level3 hasAnchor" number="3.2.1">
+<h3><span class="header-section-number">3.2.1</span> The extent of fire<a href="investigation.html#the-extent-of-fire" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>To assess whether visual signs of fire damage on individual plants persist beyond the year of fire, we examined the variable postburn_plant, which records damage severity following prescribed burns. Specifically, we tested whether plants showing fire damage in one year continued to exhibit signs of fire in the subsequent year. Despite repeated prescribed burns in 2001, 2007, 2009, and 2015, our analysis found no evidence that fire damage carries over across years at the individual level. That is, plants recorded as damaged in one year were not marked as damaged again in the following year. This suggests that visible fire effects are either short-lived or not consistently recorded beyond the fire year.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="investigation.html#cb8-1" tabindex="-1"></a>df <span class="sc">%&gt;%</span></span>
+<span id="cb8-2"><a href="investigation.html#cb8-2" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(postburn_plant)) <span class="sc">%&gt;%</span></span>
+<span id="cb8-3"><a href="investigation.html#cb8-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span>, <span class="cn">TRUE</span>, <span class="cn">FALSE</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb8-4"><a href="investigation.html#cb8-4" tabindex="-1"></a>  <span class="fu">arrange</span>(id, year) <span class="sc">%&gt;%</span></span>
+<span id="cb8-5"><a href="investigation.html#cb8-5" tabindex="-1"></a>  <span class="fu">group_by</span>(id) <span class="sc">%&gt;%</span></span>
+<span id="cb8-6"><a href="investigation.html#cb8-6" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb8-7"><a href="investigation.html#cb8-7" tabindex="-1"></a>    <span class="at">fire_t =</span> fire,</span>
+<span id="cb8-8"><a href="investigation.html#cb8-8" tabindex="-1"></a>    <span class="at">fire_t1 =</span> <span class="fu">lead</span>(fire),       </span>
+<span id="cb8-9"><a href="investigation.html#cb8-9" tabindex="-1"></a>    <span class="at">year_t1 =</span> <span class="fu">lead</span>(year)) <span class="sc">%&gt;%</span></span>
+<span id="cb8-10"><a href="investigation.html#cb8-10" tabindex="-1"></a>  <span class="fu">filter</span>(year_t1 <span class="sc">==</span> year <span class="sc">+</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb8-11"><a href="investigation.html#cb8-11" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span></code></pre></div>
+</details>
+<pre><code>## # A tibble: 0 × 30
+## # ℹ 30 variables: site &lt;dbl&gt;, quad &lt;dbl&gt;, cohort &lt;dbl&gt;, id &lt;chr&gt;, year &lt;dbl&gt;,
+## #   stage &lt;fct&gt;, survives &lt;dbl&gt;, size_t0 &lt;dbl&gt;, flower &lt;dbl&gt;,
+## #   flowering_stems &lt;dbl&gt;, recruits &lt;dbl&gt;, recruit &lt;dbl&gt;, size_t1 &lt;dbl&gt;,
+## #   logsize_t1 &lt;dbl&gt;, logsize_t0 &lt;dbl&gt;, logsize_t0_2 &lt;dbl&gt;, logsize_t0_3 &lt;dbl&gt;,
+## #   crown_diameter &lt;dbl&gt;, stems &lt;dbl&gt;, postburn_plant &lt;dbl&gt;, volume_t0 &lt;dbl&gt;,
+## #   volume_t1 &lt;dbl&gt;, logvol_t0 &lt;dbl&gt;, logvol_t1 &lt;dbl&gt;, logvol_t0_2 &lt;dbl&gt;,
+## #   logvol_t0_3 &lt;dbl&gt;, fire &lt;lgl&gt;, fire_t &lt;lgl&gt;, fire_t1 &lt;lgl&gt;, year_t1 &lt;dbl&gt;</code></pre>
+<p>To quantify fire severity across space and time, we calculated the proportion of individuals with visible signs of fire damage (postburn_plant &gt; 0) in each plot-year. Only plot-years with at least one scorched individual were included. This metric reflects within-plot fire intensity as experienced by the plant population.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="investigation.html#cb10-1" tabindex="-1"></a>df <span class="sc">%&gt;%</span></span>
+<span id="cb10-2"><a href="investigation.html#cb10-2" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(postburn_plant)) <span class="sc">%&gt;%</span></span>
+<span id="cb10-3"><a href="investigation.html#cb10-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb10-4"><a href="investigation.html#cb10-4" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb10-5"><a href="investigation.html#cb10-5" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb10-6"><a href="investigation.html#cb10-6" tabindex="-1"></a>    <span class="at">n_total =</span> <span class="fu">n</span>(),</span>
+<span id="cb10-7"><a href="investigation.html#cb10-7" tabindex="-1"></a>    <span class="at">n_fire =</span> <span class="fu">sum</span>(fire),</span>
+<span id="cb10-8"><a href="investigation.html#cb10-8" tabindex="-1"></a>    <span class="at">severity =</span> n_fire <span class="sc">/</span> n_total,</span>
+<span id="cb10-9"><a href="investigation.html#cb10-9" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb10-10"><a href="investigation.html#cb10-10" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb10-11"><a href="investigation.html#cb10-11" tabindex="-1"></a>  <span class="fu">filter</span>(n_fire <span class="sc">&gt;</span> <span class="dv">0</span>)</span></code></pre></div>
+</details>
+<pre><code>## # A tibble: 70 × 6
+##     site  quad  year n_total n_fire severity
+##    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;int&gt;  &lt;int&gt;    &lt;dbl&gt;
+##  1     1   625  2009       5      5     1   
+##  2     1   629  2009       2      2     1   
+##  3     1   631  2009       1      1     1   
+##  4     1   633  2009       1      1     1   
+##  5     2   581  2007       1      1     1   
+##  6     2   599  2007       1      1     1   
+##  7     2   601  2007       1      1     1   
+##  8     2   605  2007       2      2     1   
+##  9     2   607  2007       4      1     0.25
+## 10     3   533  2007       1      1     1   
+## # ℹ 60 more rows</code></pre>
+<p>What is up with site 3 quad 539 year 2009</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="investigation.html#cb12-1" tabindex="-1"></a>df_3_539_2009 <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span> </span>
+<span id="cb12-2"><a href="investigation.html#cb12-2" tabindex="-1"></a>  <span class="fu">filter</span>(site <span class="sc">==</span> <span class="dv">3</span> <span class="sc">&amp;</span> quad <span class="sc">==</span> <span class="dv">539</span> <span class="sc">&amp;</span> year <span class="sc">==</span> <span class="dv">2009</span>)</span>
+<span id="cb12-3"><a href="investigation.html#cb12-3" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="investigation.html#cb12-4" tabindex="-1"></a><span class="co"># Bar plot: Stage by recruits</span></span>
+<span id="cb12-5"><a href="investigation.html#cb12-5" tabindex="-1"></a>fig_stage <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb12-6"><a href="investigation.html#cb12-6" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">data =</span> df_3_539_2009, </span>
+<span id="cb12-7"><a href="investigation.html#cb12-7" tabindex="-1"></a>           <span class="fu">aes</span>(<span class="at">x =</span> stage, </span>
+<span id="cb12-8"><a href="investigation.html#cb12-8" tabindex="-1"></a>               <span class="at">fill =</span> <span class="fu">as.factor</span>(recruits), </span>
+<span id="cb12-9"><a href="investigation.html#cb12-9" tabindex="-1"></a>               <span class="at">color =</span> <span class="fu">as.factor</span>(survives)), </span>
+<span id="cb12-10"><a href="investigation.html#cb12-10" tabindex="-1"></a>           <span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span> </span>
+<span id="cb12-11"><a href="investigation.html#cb12-11" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;0&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b7837&#39;</span>, <span class="st">&#39;1&#39;</span> <span class="ot">=</span> <span class="st">&#39;#74add1&#39;</span>)) <span class="sc">+</span> </span>
+<span id="cb12-12"><a href="investigation.html#cb12-12" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;0&#39;</span> <span class="ot">=</span> <span class="st">&#39;#FFD700&#39;</span>, <span class="st">&#39;1&#39;</span> <span class="ot">=</span> <span class="st">&#39;#7E57C2&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb12-13"><a href="investigation.html#cb12-13" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb12-14"><a href="investigation.html#cb12-14" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">fill =</span> <span class="st">&#39;Recruit&#39;</span>,</span>
+<span id="cb12-15"><a href="investigation.html#cb12-15" tabindex="-1"></a>       <span class="at">color =</span> <span class="st">&#39;Survives&#39;</span>,</span>
+<span id="cb12-16"><a href="investigation.html#cb12-16" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&#39;Suspect stage, recruitment &amp; survival&#39;</span>)</span>
+<span id="cb12-17"><a href="investigation.html#cb12-17" tabindex="-1"></a></span>
+<span id="cb12-18"><a href="investigation.html#cb12-18" tabindex="-1"></a><span class="co"># Histogram: logvol_t0 by recruitment</span></span>
+<span id="cb12-19"><a href="investigation.html#cb12-19" tabindex="-1"></a>fig_hist <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span> </span>
+<span id="cb12-20"><a href="investigation.html#cb12-20" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">data =</span> df_3_539_2009, <span class="at">binwidth =</span> <span class="fl">0.4</span>, </span>
+<span id="cb12-21"><a href="investigation.html#cb12-21" tabindex="-1"></a>                 <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">fill =</span> <span class="fu">as.factor</span>(recruits))) <span class="sc">+</span> </span>
+<span id="cb12-22"><a href="investigation.html#cb12-22" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;0&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b7837&#39;</span>, <span class="st">&#39;1&#39;</span> <span class="ot">=</span> <span class="st">&#39;#74add1&#39;</span>)) <span class="sc">+</span> </span>
+<span id="cb12-23"><a href="investigation.html#cb12-23" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb12-24"><a href="investigation.html#cb12-24" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">fill =</span> <span class="st">&#39;Recruit&#39;</span>,</span>
+<span id="cb12-25"><a href="investigation.html#cb12-25" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&#39;Suspect size by recruitment status&#39;</span>)</span>
+<span id="cb12-26"><a href="investigation.html#cb12-26" tabindex="-1"></a></span>
+<span id="cb12-27"><a href="investigation.html#cb12-27" tabindex="-1"></a><span class="co"># Flat jitter plot for overlap</span></span>
+<span id="cb12-28"><a href="investigation.html#cb12-28" tabindex="-1"></a>fig_jitter <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb12-29"><a href="investigation.html#cb12-29" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> df <span class="sc">%&gt;%</span> <span class="fu">filter</span>(recruits <span class="sc">==</span> <span class="dv">1</span>),</span>
+<span id="cb12-30"><a href="investigation.html#cb12-30" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> <span class="dv">0</span>), </span>
+<span id="cb12-31"><a href="investigation.html#cb12-31" tabindex="-1"></a>              <span class="at">height =</span> <span class="fl">0.05</span>, <span class="at">color =</span> <span class="st">&#39;#1ABC9C&#39;</span>, <span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
+<span id="cb12-32"><a href="investigation.html#cb12-32" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> df_3_539_2009 <span class="sc">%&gt;%</span> <span class="fu">filter</span>(logvol_t0 <span class="sc">&lt;</span> <span class="dv">0</span>),</span>
+<span id="cb12-33"><a href="investigation.html#cb12-33" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> <span class="dv">0</span>), </span>
+<span id="cb12-34"><a href="investigation.html#cb12-34" tabindex="-1"></a>              <span class="at">height =</span> <span class="fl">0.05</span>, <span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">color =</span> <span class="st">&#39;#8E44AD&#39;</span>, <span class="at">alpha =</span> <span class="dv">1</span>, <span class="at">size =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb12-35"><a href="investigation.html#cb12-35" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb12-36"><a href="investigation.html#cb12-36" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;logvol_t0&quot;</span>, <span class="at">y =</span> <span class="st">&quot;&quot;</span>,</span>
+<span id="cb12-37"><a href="investigation.html#cb12-37" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Suepects against recruit size&quot;</span>)</span>
+<span id="cb12-38"><a href="investigation.html#cb12-38" tabindex="-1"></a></span>
+<span id="cb12-39"><a href="investigation.html#cb12-39" tabindex="-1"></a><span class="co"># Matching median logvol_t0</span></span>
+<span id="cb12-40"><a href="investigation.html#cb12-40" tabindex="-1"></a>fig_median <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span> </span>
+<span id="cb12-41"><a href="investigation.html#cb12-41" tabindex="-1"></a>  <span class="fu">filter</span>(logvol_t0 <span class="sc">==</span> (df_3_539_2009 <span class="sc">%&gt;%</span></span>
+<span id="cb12-42"><a href="investigation.html#cb12-42" tabindex="-1"></a>                         <span class="fu">filter</span>(logvol_t0 <span class="sc">&lt;</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb12-43"><a href="investigation.html#cb12-43" tabindex="-1"></a>                         <span class="fu">summarise</span>(<span class="fu">median</span>(logvol_t0)) <span class="sc">%&gt;%</span> <span class="fu">pull</span>())) <span class="sc">%&gt;%</span> </span>
+<span id="cb12-44"><a href="investigation.html#cb12-44" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb12-45"><a href="investigation.html#cb12-45" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">as.factor</span>(recruits))) <span class="sc">+</span></span>
+<span id="cb12-46"><a href="investigation.html#cb12-46" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&#39;Recruit&#39;</span>, <span class="at">y =</span> <span class="st">&#39;Count&#39;</span>,</span>
+<span id="cb12-47"><a href="investigation.html#cb12-47" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&#39;Missed recurits potential&#39;</span>) <span class="sc">+</span></span>
+<span id="cb12-48"><a href="investigation.html#cb12-48" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb12-49"><a href="investigation.html#cb12-49" tabindex="-1"></a></span>
+<span id="cb12-50"><a href="investigation.html#cb12-50" tabindex="-1"></a><span class="co"># Combine all plots</span></span>
+<span id="cb12-51"><a href="investigation.html#cb12-51" tabindex="-1"></a>(fig_stage <span class="sc">|</span> fig_hist) <span class="sc">/</span> (fig_jitter <span class="sc">|</span> fig_median)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>To better understand the temporal patterns of fire effects on individual plants, we summarized the presence of fire damage signs (postburn_plant &gt; 0) across months and years. By grouping observations by year and month, we quantified both the number and proportion of individuals exhibiting scorch damage.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="investigation.html#cb13-1" tabindex="-1"></a>df_og <span class="sc">%&gt;%</span></span>
+<span id="cb13-2"><a href="investigation.html#cb13-2" tabindex="-1"></a>  <span class="fu">separate</span>(<span class="at">col =</span> date, <span class="at">into =</span> <span class="fu">c</span>(<span class="st">&quot;year&quot;</span>, <span class="st">&quot;month&quot;</span>), <span class="at">sep =</span> <span class="st">&quot;-&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-3"><a href="investigation.html#cb13-3" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(postburn_plant)) <span class="sc">%&gt;%</span></span>
+<span id="cb13-4"><a href="investigation.html#cb13-4" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-5"><a href="investigation.html#cb13-5" tabindex="-1"></a>  <span class="fu">group_by</span>(year, month) <span class="sc">%&gt;%</span></span>
+<span id="cb13-6"><a href="investigation.html#cb13-6" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb13-7"><a href="investigation.html#cb13-7" tabindex="-1"></a>    <span class="at">n_total =</span> <span class="fu">n</span>(),</span>
+<span id="cb13-8"><a href="investigation.html#cb13-8" tabindex="-1"></a>    <span class="at">n_fire =</span> <span class="fu">sum</span>(fire),</span>
+<span id="cb13-9"><a href="investigation.html#cb13-9" tabindex="-1"></a>    <span class="at">pct_fire =</span> <span class="fu">round</span>(<span class="dv">100</span> <span class="sc">*</span> n_fire <span class="sc">/</span> n_total, <span class="dv">1</span>),</span>
+<span id="cb13-10"><a href="investigation.html#cb13-10" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&quot;drop&quot;</span></span>
+<span id="cb13-11"><a href="investigation.html#cb13-11" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb13-12"><a href="investigation.html#cb13-12" tabindex="-1"></a>  <span class="fu">arrange</span>(year, month)</span></code></pre></div>
+</details>
+<pre><code>## # A tibble: 3 × 5
+##   year  month n_total n_fire pct_fire
+##   &lt;chr&gt; &lt;chr&gt;   &lt;int&gt;  &lt;int&gt;    &lt;dbl&gt;
+## 1 2007  12        188     60     31.9
+## 2 2009  06        414    144     34.8
+## 3 2015  06        236     45     19.1</code></pre>
+</div>
+<div id="fire-on-survival" class="section level3 hasAnchor" number="3.2.2">
+<h3><span class="header-section-number">3.2.2</span> Fire on Survival<a href="investigation.html#fire-on-survival" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="investigation.html#cb15-1" tabindex="-1"></a>df_su <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb15-2"><a href="investigation.html#cb15-2" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), T, F)) <span class="sc">%&gt;%</span> </span>
+<span id="cb15-3"><a href="investigation.html#cb15-3" tabindex="-1"></a>  <span class="fu">filter</span>(size_t0 <span class="sc">!=</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb15-4"><a href="investigation.html#cb15-4" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No fire&#39;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb15-5"><a href="investigation.html#cb15-5" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(id, year, survives,</span>
+<span id="cb15-6"><a href="investigation.html#cb15-6" tabindex="-1"></a>         logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,</span>
+<span id="cb15-7"><a href="investigation.html#cb15-7" tabindex="-1"></a>         fire, fire_label)</span>
+<span id="cb15-8"><a href="investigation.html#cb15-8" tabindex="-1"></a></span>
+<span id="cb15-9"><a href="investigation.html#cb15-9" tabindex="-1"></a><span class="co"># Create binned summary using group_split()</span></span>
+<span id="cb15-10"><a href="investigation.html#cb15-10" tabindex="-1"></a>df_su_binned <span class="ot">&lt;-</span> df_su <span class="sc">%&gt;%</span></span>
+<span id="cb15-11"><a href="investigation.html#cb15-11" tabindex="-1"></a>  <span class="fu">group_split</span>(fire_label) <span class="sc">%&gt;%</span></span>
+<span id="cb15-12"><a href="investigation.html#cb15-12" tabindex="-1"></a>  purrr<span class="sc">::</span><span class="fu">map_df</span>(<span class="sc">~</span> <span class="fu">plot_binned_prop</span>(.x, <span class="dv">10</span>, logvol_t0, survives) <span class="sc">%&gt;%</span></span>
+<span id="cb15-13"><a href="investigation.html#cb15-13" tabindex="-1"></a>                  <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="fu">unique</span>(.x<span class="sc">$</span>fire_label)))</span>
+<span id="cb15-14"><a href="investigation.html#cb15-14" tabindex="-1"></a></span>
+<span id="cb15-15"><a href="investigation.html#cb15-15" tabindex="-1"></a>fig_su_overall <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_su_binned, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> survives, <span class="at">color =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb15-16"><a href="investigation.html#cb15-16" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> df_su, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> survives, <span class="at">color =</span> fire_label),</span>
+<span id="cb15-17"><a href="investigation.html#cb15-17" tabindex="-1"></a>              <span class="at">position =</span> <span class="fu">position_jitter</span>(<span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">height =</span> <span class="fl">0.3</span>), <span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
+<span id="cb15-18"><a href="investigation.html#cb15-18" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb15-19"><a href="investigation.html#cb15-19" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lwr, <span class="at">ymax =</span> upr), <span class="at">width =</span> <span class="fl">0.2</span>, <span class="at">linewidth =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb15-20"><a href="investigation.html#cb15-20" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb15-21"><a href="investigation.html#cb15-21" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">c</span>(<span class="fl">0.1</span>, <span class="fl">0.5</span>, <span class="fl">0.9</span>), <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">1.01</span>)) <span class="sc">+</span></span>
+<span id="cb15-22"><a href="investigation.html#cb15-22" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb15-23"><a href="investigation.html#cb15-23" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb15-24"><a href="investigation.html#cb15-24" tabindex="-1"></a>    <span class="at">axis.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>),</span>
+<span id="cb15-25"><a href="investigation.html#cb15-25" tabindex="-1"></a>    <span class="at">title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>),</span>
+<span id="cb15-26"><a href="investigation.html#cb15-26" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>),</span>
+<span id="cb15-27"><a href="investigation.html#cb15-27" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">&#39;top&#39;</span>) <span class="sc">+</span></span>
+<span id="cb15-28"><a href="investigation.html#cb15-28" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb15-29"><a href="investigation.html#cb15-29" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Survival&#39;</span>,</span>
+<span id="cb15-30"><a href="investigation.html#cb15-30" tabindex="-1"></a>    <span class="at">subtitle =</span> v_ggp_suffix,</span>
+<span id="cb15-31"><a href="investigation.html#cb15-31" tabindex="-1"></a>    <span class="at">x =</span> <span class="fu">expression</span>(<span class="st">&#39;Volume (log)&#39;</span>[t0]),</span>
+<span id="cb15-32"><a href="investigation.html#cb15-32" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&#39;Survival Probability</span><span class="sc">\n</span><span class="st">from time t0 to t1 &#39;</span>,</span>
+<span id="cb15-33"><a href="investigation.html#cb15-33" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">&#39;At time t0&#39;</span>)</span>
+<span id="cb15-34"><a href="investigation.html#cb15-34" tabindex="-1"></a></span>
+<span id="cb15-35"><a href="investigation.html#cb15-35" tabindex="-1"></a>fig_su_overall</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/su_f%20data-1.png" width="672" /></p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="investigation.html#cb16-1" tabindex="-1"></a><span class="co"># Logistic regression</span></span>
+<span id="cb16-2"><a href="investigation.html#cb16-2" tabindex="-1"></a>mod_su_0 <span class="ot">&lt;-</span> <span class="fu">glm</span>(survives <span class="sc">~</span> fire,</span>
+<span id="cb16-3"><a href="investigation.html#cb16-3" tabindex="-1"></a>                <span class="at">data =</span> df_su, <span class="at">family =</span> <span class="st">&#39;binomial&#39;</span>) </span>
+<span id="cb16-4"><a href="investigation.html#cb16-4" tabindex="-1"></a><span class="co"># Logistic regression</span></span>
+<span id="cb16-5"><a href="investigation.html#cb16-5" tabindex="-1"></a>mod_su_1 <span class="ot">&lt;-</span> <span class="fu">glm</span>(survives <span class="sc">~</span> logvol_t0 <span class="sc">+</span> fire,</span>
+<span id="cb16-6"><a href="investigation.html#cb16-6" tabindex="-1"></a>                <span class="at">data =</span> df_su, <span class="at">family =</span> <span class="st">&#39;binomial&#39;</span>) </span>
+<span id="cb16-7"><a href="investigation.html#cb16-7" tabindex="-1"></a><span class="co"># Quadratic logistic model</span></span>
+<span id="cb16-8"><a href="investigation.html#cb16-8" tabindex="-1"></a>mod_su_2 <span class="ot">&lt;-</span> <span class="fu">glm</span>(survives <span class="sc">~</span> logvol_t0 <span class="sc">+</span> logvol_t0_2 <span class="sc">+</span> fire,</span>
+<span id="cb16-9"><a href="investigation.html#cb16-9" tabindex="-1"></a>                <span class="at">data =</span> df_su, <span class="at">family =</span> <span class="st">&#39;binomial&#39;</span>)  </span>
+<span id="cb16-10"><a href="investigation.html#cb16-10" tabindex="-1"></a><span class="co"># Cubic logistic model</span></span>
+<span id="cb16-11"><a href="investigation.html#cb16-11" tabindex="-1"></a>mod_su_3 <span class="ot">&lt;-</span> <span class="fu">glm</span>(survives <span class="sc">~</span> logvol_t0 <span class="sc">+</span> logvol_t0_2 <span class="sc">+</span> logvol_t0_3 <span class="sc">+</span> fire,</span>
+<span id="cb16-12"><a href="investigation.html#cb16-12" tabindex="-1"></a>                <span class="at">data =</span> df_su, <span class="at">family =</span> <span class="st">&#39;binomial&#39;</span>)  </span>
+<span id="cb16-13"><a href="investigation.html#cb16-13" tabindex="-1"></a></span>
+<span id="cb16-14"><a href="investigation.html#cb16-14" tabindex="-1"></a></span>
+<span id="cb16-15"><a href="investigation.html#cb16-15" tabindex="-1"></a><span class="co"># Compare models using AIC</span></span>
+<span id="cb16-16"><a href="investigation.html#cb16-16" tabindex="-1"></a>mods_su      <span class="ot">&lt;-</span> <span class="fu">list</span>(mod_su_0, mod_su_1, mod_su_2, mod_su_3)</span>
+<span id="cb16-17"><a href="investigation.html#cb16-17" tabindex="-1"></a>mods_su_dAIC <span class="ot">&lt;-</span> <span class="fu">AICtab</span>(mods_su, <span class="at">weights =</span> T, <span class="at">sort =</span> F)<span class="sc">$</span>dAIC</span>
+<span id="cb16-18"><a href="investigation.html#cb16-18" tabindex="-1"></a></span>
+<span id="cb16-19"><a href="investigation.html#cb16-19" tabindex="-1"></a><span class="co"># Get the sorted indices of dAIC values</span></span>
+<span id="cb16-20"><a href="investigation.html#cb16-20" tabindex="-1"></a>mods_su_sorted <span class="ot">&lt;-</span> <span class="fu">order</span>(mods_su_dAIC)</span>
+<span id="cb16-21"><a href="investigation.html#cb16-21" tabindex="-1"></a></span>
+<span id="cb16-22"><a href="investigation.html#cb16-22" tabindex="-1"></a><span class="co"># Establish the index of model complexity</span></span>
+<span id="cb16-23"><a href="investigation.html#cb16-23" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">length</span>(v_mod_set_su) <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb16-24"><a href="investigation.html#cb16-24" tabindex="-1"></a>  mod_su_index_bestfit <span class="ot">&lt;-</span> mods_su_sorted[<span class="dv">1</span>]</span>
+<span id="cb16-25"><a href="investigation.html#cb16-25" tabindex="-1"></a>  v_mod_su_index       <span class="ot">&lt;-</span> mod_su_index_bestfit <span class="sc">-</span> <span class="dv">1</span> </span>
+<span id="cb16-26"><a href="investigation.html#cb16-26" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb16-27"><a href="investigation.html#cb16-27" tabindex="-1"></a>  mod_su_index_bestfit <span class="ot">&lt;-</span> v_mod_set_su <span class="sc">+</span><span class="dv">1</span></span>
+<span id="cb16-28"><a href="investigation.html#cb16-28" tabindex="-1"></a>  v_mod_su_index       <span class="ot">&lt;-</span> v_mod_set_su}</span>
+<span id="cb16-29"><a href="investigation.html#cb16-29" tabindex="-1"></a></span>
+<span id="cb16-30"><a href="investigation.html#cb16-30" tabindex="-1"></a>mod_su_bestfit <span class="ot">&lt;-</span> mods_su[[mod_su_index_bestfit]]</span>
+<span id="cb16-31"><a href="investigation.html#cb16-31" tabindex="-1"></a>mod_su_ranef   <span class="ot">&lt;-</span> <span class="fu">coef</span>(mod_su_bestfit)</span>
+<span id="cb16-32"><a href="investigation.html#cb16-32" tabindex="-1"></a></span>
+<span id="cb16-33"><a href="investigation.html#cb16-33" tabindex="-1"></a><span class="co"># Create prediction data frames for fire = 0 and fire = 1</span></span>
+<span id="cb16-34"><a href="investigation.html#cb16-34" tabindex="-1"></a>df_su_pred <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb16-35"><a href="investigation.html#cb16-35" tabindex="-1"></a>  <span class="at">logvol_t0 =</span> <span class="fu">rep</span>(<span class="fu">seq</span>(<span class="fu">min</span>(<span class="fu">na.omit</span>(df_su<span class="sc">$</span>logvol_t0)), </span>
+<span id="cb16-36"><a href="investigation.html#cb16-36" tabindex="-1"></a>                      <span class="fu">max</span>(<span class="fu">na.omit</span>(df_su<span class="sc">$</span>logvol_t0)), <span class="at">length.out =</span> <span class="dv">100</span>), <span class="dv">2</span>),</span>
+<span id="cb16-37"><a href="investigation.html#cb16-37" tabindex="-1"></a>  <span class="at">fire =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>), <span class="at">each =</span> <span class="dv">100</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb16-38"><a href="investigation.html#cb16-38" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">logvol_t0_2 =</span> logvol_t0<span class="sc">^</span><span class="dv">2</span>,</span>
+<span id="cb16-39"><a href="investigation.html#cb16-39" tabindex="-1"></a>         <span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No fire&#39;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb16-40"><a href="investigation.html#cb16-40" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">survives =</span> <span class="fu">predict</span>(mod_su_bestfit, <span class="at">newdata =</span> ., <span class="at">type =</span> <span class="st">&#39;response&#39;</span>))</span>
+<span id="cb16-41"><a href="investigation.html#cb16-41" tabindex="-1"></a></span>
+<span id="cb16-42"><a href="investigation.html#cb16-42" tabindex="-1"></a><span class="co"># Binned observed data for both fire levels</span></span>
+<span id="cb16-43"><a href="investigation.html#cb16-43" tabindex="-1"></a>df_su_binned <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb16-44"><a href="investigation.html#cb16-44" tabindex="-1"></a>  <span class="fu">plot_binned_prop</span>(<span class="fu">filter</span>(df_su, fire <span class="sc">==</span> <span class="dv">0</span>), <span class="dv">10</span>, logvol_t0, survives) <span class="sc">%&gt;%</span></span>
+<span id="cb16-45"><a href="investigation.html#cb16-45" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="st">&#39;No fire&#39;</span>),</span>
+<span id="cb16-46"><a href="investigation.html#cb16-46" tabindex="-1"></a>  <span class="fu">plot_binned_prop</span>(<span class="fu">filter</span>(df_su, fire <span class="sc">==</span> <span class="dv">1</span>), <span class="dv">10</span>, logvol_t0, survives) <span class="sc">%&gt;%</span></span>
+<span id="cb16-47"><a href="investigation.html#cb16-47" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="st">&#39;Fire&#39;</span>))</span>
+<span id="cb16-48"><a href="investigation.html#cb16-48" tabindex="-1"></a></span>
+<span id="cb16-49"><a href="investigation.html#cb16-49" tabindex="-1"></a><span class="co"># Plot 1: Raw data + prediction lines</span></span>
+<span id="cb16-50"><a href="investigation.html#cb16-50" tabindex="-1"></a>fig_su_line_combined <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb16-51"><a href="investigation.html#cb16-51" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> df_su, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> survives, <span class="at">color =</span> fire_label),</span>
+<span id="cb16-52"><a href="investigation.html#cb16-52" tabindex="-1"></a>              <span class="at">alpha =</span> <span class="fl">0.25</span>, <span class="at">width =</span> <span class="fl">0.08</span>, <span class="at">height =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
+<span id="cb16-53"><a href="investigation.html#cb16-53" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> df_su_pred, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> survives, <span class="at">color =</span> fire_label),</span>
+<span id="cb16-54"><a href="investigation.html#cb16-54" tabindex="-1"></a>            <span class="at">linewidth =</span> <span class="fl">0.9</span>) <span class="sc">+</span>  </span>
+<span id="cb16-55"><a href="investigation.html#cb16-55" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb16-56"><a href="investigation.html#cb16-56" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb16-57"><a href="investigation.html#cb16-57" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="cn">NULL</span>, <span class="at">x =</span> <span class="st">&#39;Volume at time t0 (log)&#39;</span>, <span class="at">y =</span> <span class="st">&#39;Survival to time t1&#39;</span>) <span class="sc">+</span></span>
+<span id="cb16-58"><a href="investigation.html#cb16-58" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&#39;none&#39;</span>)</span>
+<span id="cb16-59"><a href="investigation.html#cb16-59" tabindex="-1"></a></span>
+<span id="cb16-60"><a href="investigation.html#cb16-60" tabindex="-1"></a><span class="co"># Plot 2: Binned proportions + prediction lines</span></span>
+<span id="cb16-61"><a href="investigation.html#cb16-61" tabindex="-1"></a>fig_su_bin_combined <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb16-62"><a href="investigation.html#cb16-62" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> df_su_binned, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> survives, <span class="at">color =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb16-63"><a href="investigation.html#cb16-63" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="at">data =</span> df_su_binned, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">ymin =</span> lwr, <span class="at">ymax =</span> upr, <span class="at">color =</span> fire_label),</span>
+<span id="cb16-64"><a href="investigation.html#cb16-64" tabindex="-1"></a>                <span class="at">width =</span> <span class="fl">0.2</span>) <span class="sc">+</span></span>
+<span id="cb16-65"><a href="investigation.html#cb16-65" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> df_su_pred, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> survives, <span class="at">color =</span> fire_label),</span>
+<span id="cb16-66"><a href="investigation.html#cb16-66" tabindex="-1"></a>            <span class="at">linewidth =</span> <span class="fl">0.9</span>) <span class="sc">+</span></span>
+<span id="cb16-67"><a href="investigation.html#cb16-67" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb16-68"><a href="investigation.html#cb16-68" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb16-69"><a href="investigation.html#cb16-69" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>, <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb16-70"><a href="investigation.html#cb16-70" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="cn">NULL</span>, <span class="at">x =</span> <span class="st">&#39;Volume at time t0 (log)&#39;</span>, <span class="at">y =</span> <span class="st">&#39;Survival to time t1&#39;</span>, </span>
+<span id="cb16-71"><a href="investigation.html#cb16-71" tabindex="-1"></a>       <span class="at">color =</span> <span class="st">&#39;At time t0&#39;</span>) <span class="sc">+</span></span>
+<span id="cb16-72"><a href="investigation.html#cb16-72" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&#39;top&#39;</span>)</span>
+<span id="cb16-73"><a href="investigation.html#cb16-73" tabindex="-1"></a></span>
+<span id="cb16-74"><a href="investigation.html#cb16-74" tabindex="-1"></a><span class="co"># Combine the two plots</span></span>
+<span id="cb16-75"><a href="investigation.html#cb16-75" tabindex="-1"></a>fig_su_all <span class="ot">&lt;-</span> fig_su_line_combined <span class="sc">+</span> fig_su_bin_combined <span class="sc">+</span></span>
+<span id="cb16-76"><a href="investigation.html#cb16-76" tabindex="-1"></a>  <span class="fu">plot_annotation</span>(</span>
+<span id="cb16-77"><a href="investigation.html#cb16-77" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Survival&#39;</span>,</span>
+<span id="cb16-78"><a href="investigation.html#cb16-78" tabindex="-1"></a>    <span class="at">subtitle =</span> v_ggp_suffix,</span>
+<span id="cb16-79"><a href="investigation.html#cb16-79" tabindex="-1"></a>    <span class="at">theme =</span> <span class="fu">theme</span>(</span>
+<span id="cb16-80"><a href="investigation.html#cb16-80" tabindex="-1"></a>      <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">&#39;bold&#39;</span>),</span>
+<span id="cb16-81"><a href="investigation.html#cb16-81" tabindex="-1"></a>      <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>, <span class="at">face =</span> <span class="st">&#39;italic&#39;</span>)))</span>
+<span id="cb16-82"><a href="investigation.html#cb16-82" tabindex="-1"></a></span>
+<span id="cb16-83"><a href="investigation.html#cb16-83" tabindex="-1"></a>fig_su_all</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/su_f%20model-1.png" width="672" /></p>
+</div>
+<div id="fire-on-growth" class="section level3 hasAnchor" number="3.2.3">
+<h3><span class="header-section-number">3.2.3</span> Fire on Growth<a href="investigation.html#fire-on-growth" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="investigation.html#cb17-1" tabindex="-1"></a>df_gr <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb17-2"><a href="investigation.html#cb17-2" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), T, F)) <span class="sc">%&gt;%</span> </span>
+<span id="cb17-3"><a href="investigation.html#cb17-3" tabindex="-1"></a>  <span class="fu">filter</span>(size_t0 <span class="sc">!=</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb17-4"><a href="investigation.html#cb17-4" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No fire&#39;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb17-5"><a href="investigation.html#cb17-5" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(id, year,</span>
+<span id="cb17-6"><a href="investigation.html#cb17-6" tabindex="-1"></a>         logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3,</span>
+<span id="cb17-7"><a href="investigation.html#cb17-7" tabindex="-1"></a>         fire, fire_label)</span>
+<span id="cb17-8"><a href="investigation.html#cb17-8" tabindex="-1"></a></span>
+<span id="cb17-9"><a href="investigation.html#cb17-9" tabindex="-1"></a>fig_gr_overall <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_gr, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> logvol_t1, <span class="at">color =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb17-10"><a href="investigation.html#cb17-10" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb17-11"><a href="investigation.html#cb17-11" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb17-12"><a href="investigation.html#cb17-12" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb17-13"><a href="investigation.html#cb17-13" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb17-14"><a href="investigation.html#cb17-14" tabindex="-1"></a>    <span class="at">axis.text       =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>),</span>
+<span id="cb17-15"><a href="investigation.html#cb17-15" tabindex="-1"></a>    <span class="at">title           =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>),</span>
+<span id="cb17-16"><a href="investigation.html#cb17-16" tabindex="-1"></a>    <span class="at">plot.subtitle   =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>),</span>
+<span id="cb17-17"><a href="investigation.html#cb17-17" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">&#39;top&#39;</span>) <span class="sc">+</span></span>
+<span id="cb17-18"><a href="investigation.html#cb17-18" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb17-19"><a href="investigation.html#cb17-19" tabindex="-1"></a>    <span class="at">title    =</span> <span class="st">&#39;Growth&#39;</span>,</span>
+<span id="cb17-20"><a href="investigation.html#cb17-20" tabindex="-1"></a>    <span class="at">subtitle =</span> v_ggp_suffix,</span>
+<span id="cb17-21"><a href="investigation.html#cb17-21" tabindex="-1"></a>    <span class="at">x        =</span> <span class="fu">expression</span>(<span class="st">&#39;Volume (log)&#39;</span>[t0]),</span>
+<span id="cb17-22"><a href="investigation.html#cb17-22" tabindex="-1"></a>    <span class="at">y        =</span> <span class="fu">expression</span>(<span class="st">&#39;Volume (log)&#39;</span>[t1]),</span>
+<span id="cb17-23"><a href="investigation.html#cb17-23" tabindex="-1"></a>    <span class="at">color    =</span> <span class="st">&#39;At time t0&#39;</span>)</span>
+<span id="cb17-24"><a href="investigation.html#cb17-24" tabindex="-1"></a></span>
+<span id="cb17-25"><a href="investigation.html#cb17-25" tabindex="-1"></a>fig_gr_overall</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/gr_f%20data-1.png" width="672" /></p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="investigation.html#cb18-1" tabindex="-1"></a><span class="co"># Intercept model </span></span>
+<span id="cb18-2"><a href="investigation.html#cb18-2" tabindex="-1"></a>mod_gr_0 <span class="ot">&lt;-</span> <span class="fu">lm</span>(logvol_t1 <span class="sc">~</span> fire,</span>
+<span id="cb18-3"><a href="investigation.html#cb18-3" tabindex="-1"></a>               <span class="at">data =</span> df_gr)</span>
+<span id="cb18-4"><a href="investigation.html#cb18-4" tabindex="-1"></a><span class="co"># Linear model</span></span>
+<span id="cb18-5"><a href="investigation.html#cb18-5" tabindex="-1"></a>mod_gr_1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(logvol_t1 <span class="sc">~</span> logvol_t0 <span class="sc">+</span> fire, </span>
+<span id="cb18-6"><a href="investigation.html#cb18-6" tabindex="-1"></a>               <span class="at">data =</span> df_gr)</span>
+<span id="cb18-7"><a href="investigation.html#cb18-7" tabindex="-1"></a><span class="co"># Quadratic model</span></span>
+<span id="cb18-8"><a href="investigation.html#cb18-8" tabindex="-1"></a>mod_gr_2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(logvol_t1 <span class="sc">~</span> logvol_t0 <span class="sc">+</span> logvol_t0_2 <span class="sc">+</span> fire, </span>
+<span id="cb18-9"><a href="investigation.html#cb18-9" tabindex="-1"></a>               <span class="at">data =</span> df_gr)  </span>
+<span id="cb18-10"><a href="investigation.html#cb18-10" tabindex="-1"></a><span class="co"># Cubic model</span></span>
+<span id="cb18-11"><a href="investigation.html#cb18-11" tabindex="-1"></a>mod_gr_3 <span class="ot">&lt;-</span> <span class="fu">lm</span>(logvol_t1 <span class="sc">~</span> logvol_t0 <span class="sc">+</span> logvol_t0_2 <span class="sc">+</span> logvol_t0_3 <span class="sc">+</span> fire, </span>
+<span id="cb18-12"><a href="investigation.html#cb18-12" tabindex="-1"></a>               <span class="at">data =</span> df_gr)</span>
+<span id="cb18-13"><a href="investigation.html#cb18-13" tabindex="-1"></a></span>
+<span id="cb18-14"><a href="investigation.html#cb18-14" tabindex="-1"></a>mods_gr      <span class="ot">&lt;-</span> <span class="fu">list</span>(mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)</span>
+<span id="cb18-15"><a href="investigation.html#cb18-15" tabindex="-1"></a>mods_gr_dAIC <span class="ot">&lt;-</span> <span class="fu">AICtab</span>(mods_gr, <span class="at">weights =</span> T, <span class="at">sort =</span> F)<span class="sc">$</span>dAIC</span>
+<span id="cb18-16"><a href="investigation.html#cb18-16" tabindex="-1"></a></span>
+<span id="cb18-17"><a href="investigation.html#cb18-17" tabindex="-1"></a><span class="co"># Get the sorted indices of dAIC values</span></span>
+<span id="cb18-18"><a href="investigation.html#cb18-18" tabindex="-1"></a>mods_gr_sorted <span class="ot">&lt;-</span> <span class="fu">order</span>(mods_gr_dAIC)</span>
+<span id="cb18-19"><a href="investigation.html#cb18-19" tabindex="-1"></a></span>
+<span id="cb18-20"><a href="investigation.html#cb18-20" tabindex="-1"></a><span class="co"># Establish the index of model complexity</span></span>
+<span id="cb18-21"><a href="investigation.html#cb18-21" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">length</span>(v_mod_set_gr) <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb18-22"><a href="investigation.html#cb18-22" tabindex="-1"></a>  mod_gr_index_bestfit <span class="ot">&lt;-</span> mods_gr_sorted[<span class="dv">1</span>]</span>
+<span id="cb18-23"><a href="investigation.html#cb18-23" tabindex="-1"></a>  v_mod_gr_index       <span class="ot">&lt;-</span> mod_gr_index_bestfit <span class="sc">-</span> <span class="dv">1</span> </span>
+<span id="cb18-24"><a href="investigation.html#cb18-24" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb18-25"><a href="investigation.html#cb18-25" tabindex="-1"></a>  mod_gr_index_bestfit <span class="ot">&lt;-</span> v_mod_set_gr <span class="sc">+</span><span class="dv">1</span></span>
+<span id="cb18-26"><a href="investigation.html#cb18-26" tabindex="-1"></a>  v_mod_gr_index       <span class="ot">&lt;-</span> v_mod_set_gr</span>
+<span id="cb18-27"><a href="investigation.html#cb18-27" tabindex="-1"></a>}</span>
+<span id="cb18-28"><a href="investigation.html#cb18-28" tabindex="-1"></a></span>
+<span id="cb18-29"><a href="investigation.html#cb18-29" tabindex="-1"></a>mod_gr_bestfit         <span class="ot">&lt;-</span> mods_gr[[mod_gr_index_bestfit]]</span>
+<span id="cb18-30"><a href="investigation.html#cb18-30" tabindex="-1"></a>mod_gr_ranef           <span class="ot">&lt;-</span> <span class="fu">coef</span>(mod_gr_bestfit)</span>
+<span id="cb18-31"><a href="investigation.html#cb18-31" tabindex="-1"></a></span>
+<span id="cb18-32"><a href="investigation.html#cb18-32" tabindex="-1"></a><span class="co"># Create prediction data for fire = 0 and fire = 1</span></span>
+<span id="cb18-33"><a href="investigation.html#cb18-33" tabindex="-1"></a>df_gr_pred <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb18-34"><a href="investigation.html#cb18-34" tabindex="-1"></a>  <span class="at">logvol_t0 =</span> <span class="fu">rep</span>(<span class="fu">seq</span>(<span class="fu">min</span>(df_gr<span class="sc">$</span>logvol_t0, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb18-35"><a href="investigation.html#cb18-35" tabindex="-1"></a>                       <span class="fu">max</span>(df_gr<span class="sc">$</span>logvol_t0, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="at">length.out =</span> <span class="dv">100</span>), <span class="dv">2</span>),</span>
+<span id="cb18-36"><a href="investigation.html#cb18-36" tabindex="-1"></a>  <span class="at">fire =</span> <span class="fu">rep</span>(<span class="fu">c</span>(F, T), <span class="at">each =</span> <span class="dv">100</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb18-37"><a href="investigation.html#cb18-37" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No fire&#39;</span>),</span>
+<span id="cb18-38"><a href="investigation.html#cb18-38" tabindex="-1"></a>         <span class="at">logvol_t1  =</span> <span class="fu">predict</span>(mod_gr_bestfit, <span class="at">newdata =</span> .))</span>
+<span id="cb18-39"><a href="investigation.html#cb18-39" tabindex="-1"></a></span>
+<span id="cb18-40"><a href="investigation.html#cb18-40" tabindex="-1"></a><span class="co"># Plot 1: Observed points + prediction lines</span></span>
+<span id="cb18-41"><a href="investigation.html#cb18-41" tabindex="-1"></a>fig_gr_line_combined <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb18-42"><a href="investigation.html#cb18-42" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> df_gr <span class="sc">%&gt;%</span> <span class="fu">filter</span>(fire <span class="sc">==</span> F), </span>
+<span id="cb18-43"><a href="investigation.html#cb18-43" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> logvol_t1, <span class="at">color =</span> fire_label), </span>
+<span id="cb18-44"><a href="investigation.html#cb18-44" tabindex="-1"></a>             <span class="at">alpha =</span> <span class="fl">0.1</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb18-45"><a href="investigation.html#cb18-45" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> df_gr <span class="sc">%&gt;%</span> <span class="fu">filter</span>(fire <span class="sc">==</span> T), </span>
+<span id="cb18-46"><a href="investigation.html#cb18-46" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> logvol_t1, <span class="at">color =</span> fire_label), </span>
+<span id="cb18-47"><a href="investigation.html#cb18-47" tabindex="-1"></a>             <span class="at">alpha =</span> <span class="fl">0.6</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb18-48"><a href="investigation.html#cb18-48" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> df_gr_pred, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> logvol_t1, <span class="at">color =</span> fire_label),</span>
+<span id="cb18-49"><a href="investigation.html#cb18-49" tabindex="-1"></a>            <span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb18-50"><a href="investigation.html#cb18-50" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb18-51"><a href="investigation.html#cb18-51" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb18-52"><a href="investigation.html#cb18-52" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="fu">expression</span>(<span class="st">&#39;Volume (log)&#39;</span>[t0]),</span>
+<span id="cb18-53"><a href="investigation.html#cb18-53" tabindex="-1"></a>       <span class="at">y =</span> <span class="fu">expression</span>(<span class="st">&#39;Volume (log)&#39;</span>[t1])) <span class="sc">+</span></span>
+<span id="cb18-54"><a href="investigation.html#cb18-54" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb18-55"><a href="investigation.html#cb18-55" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">&#39;none&#39;</span>,</span>
+<span id="cb18-56"><a href="investigation.html#cb18-56" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_blank</span>(),</span>
+<span id="cb18-57"><a href="investigation.html#cb18-57" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> <span class="fu">element_blank</span>())</span>
+<span id="cb18-58"><a href="investigation.html#cb18-58" tabindex="-1"></a></span>
+<span id="cb18-59"><a href="investigation.html#cb18-59" tabindex="-1"></a><span class="co"># Plot 2: Predicted vs observed</span></span>
+<span id="cb18-60"><a href="investigation.html#cb18-60" tabindex="-1"></a>fig_gr_pred_combined <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_gr, <span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">predict</span>(mod_gr_bestfit, <span class="at">newdata =</span> df_gr),</span>
+<span id="cb18-61"><a href="investigation.html#cb18-61" tabindex="-1"></a>                                          <span class="at">y =</span> logvol_t1, <span class="at">color =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb18-62"><a href="investigation.html#cb18-62" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.4</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb18-63"><a href="investigation.html#cb18-63" tabindex="-1"></a>  <span class="fu">geom_abline</span>(<span class="at">intercept =</span> <span class="dv">0</span>, <span class="at">slope =</span> <span class="dv">1</span>, <span class="at">color =</span> <span class="st">&#39;black&#39;</span>, <span class="at">linetype =</span> <span class="st">&#39;dashed&#39;</span>, <span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb18-64"><a href="investigation.html#cb18-64" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb18-65"><a href="investigation.html#cb18-65" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb18-66"><a href="investigation.html#cb18-66" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&#39;Predicted&#39;</span>, <span class="at">y =</span> <span class="st">&#39;Observed&#39;</span>, <span class="at">color =</span> <span class="st">&#39;At time t0&#39;</span>) <span class="sc">+</span></span>
+<span id="cb18-67"><a href="investigation.html#cb18-67" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb18-68"><a href="investigation.html#cb18-68" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">&#39;top&#39;</span>,</span>
+<span id="cb18-69"><a href="investigation.html#cb18-69" tabindex="-1"></a>    <span class="at">plot.title =</span> <span class="fu">element_blank</span>(),</span>
+<span id="cb18-70"><a href="investigation.html#cb18-70" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> <span class="fu">element_blank</span>())</span>
+<span id="cb18-71"><a href="investigation.html#cb18-71" tabindex="-1"></a></span>
+<span id="cb18-72"><a href="investigation.html#cb18-72" tabindex="-1"></a><span class="co"># Combine plots</span></span>
+<span id="cb18-73"><a href="investigation.html#cb18-73" tabindex="-1"></a>fig_gr_all_combined <span class="ot">&lt;-</span> fig_gr_line_combined <span class="sc">+</span> fig_gr_pred_combined <span class="sc">+</span></span>
+<span id="cb18-74"><a href="investigation.html#cb18-74" tabindex="-1"></a>  <span class="fu">plot_annotation</span>(</span>
+<span id="cb18-75"><a href="investigation.html#cb18-75" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Growth Prediction&#39;</span>,</span>
+<span id="cb18-76"><a href="investigation.html#cb18-76" tabindex="-1"></a>    <span class="at">subtitle =</span> v_ggp_suffix,</span>
+<span id="cb18-77"><a href="investigation.html#cb18-77" tabindex="-1"></a>    <span class="at">theme =</span> <span class="fu">theme</span>(</span>
+<span id="cb18-78"><a href="investigation.html#cb18-78" tabindex="-1"></a>      <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">&#39;bold&#39;</span>),</span>
+<span id="cb18-79"><a href="investigation.html#cb18-79" tabindex="-1"></a>      <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>, <span class="at">face =</span> <span class="st">&#39;italic&#39;</span>)))</span>
+<span id="cb18-80"><a href="investigation.html#cb18-80" tabindex="-1"></a></span>
+<span id="cb18-81"><a href="investigation.html#cb18-81" tabindex="-1"></a>fig_gr_all_combined</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/gr_f%20model-1.png" width="672" /></p>
+</div>
+<div id="fire-on-flowering" class="section level3 hasAnchor" number="3.2.4">
+<h3><span class="header-section-number">3.2.4</span> Fire on Flowering<a href="investigation.html#fire-on-flowering" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="investigation.html#cb19-1" tabindex="-1"></a>df_fl <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb19-2"><a href="investigation.html#cb19-2" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), T, F)) <span class="sc">%&gt;%</span> </span>
+<span id="cb19-3"><a href="investigation.html#cb19-3" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(flower)) <span class="sc">%&gt;%</span></span>
+<span id="cb19-4"><a href="investigation.html#cb19-4" tabindex="-1"></a>  <span class="co">#filter(!is.na(fire) &amp; !is.na(size_t0) &amp; !is.na(survives)) %&gt;%</span></span>
+<span id="cb19-5"><a href="investigation.html#cb19-5" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(id, year, flower,</span>
+<span id="cb19-6"><a href="investigation.html#cb19-6" tabindex="-1"></a>         logvol_t0, logvol_t1, logvol_t0_2, logvol_t0_3, </span>
+<span id="cb19-7"><a href="investigation.html#cb19-7" tabindex="-1"></a>         fire) <span class="sc">%&gt;%</span></span>
+<span id="cb19-8"><a href="investigation.html#cb19-8" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb19-9"><a href="investigation.html#cb19-9" tabindex="-1"></a>    <span class="at">flower =</span> <span class="fu">if_else</span>(flower <span class="sc">&gt;</span> <span class="dv">0</span>, <span class="dv">1</span>, flower),</span>
+<span id="cb19-10"><a href="investigation.html#cb19-10" tabindex="-1"></a>    <span class="at">fire_label =</span> <span class="fu">if_else</span>(fire <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No fire&#39;</span>))</span>
+<span id="cb19-11"><a href="investigation.html#cb19-11" tabindex="-1"></a></span>
+<span id="cb19-12"><a href="investigation.html#cb19-12" tabindex="-1"></a><span class="co"># Create binned flowering probability by fire group</span></span>
+<span id="cb19-13"><a href="investigation.html#cb19-13" tabindex="-1"></a>df_fl_binned <span class="ot">&lt;-</span> df_fl <span class="sc">%&gt;%</span></span>
+<span id="cb19-14"><a href="investigation.html#cb19-14" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(fire) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(logvol_t0)) <span class="sc">%&gt;%</span> </span>
+<span id="cb19-15"><a href="investigation.html#cb19-15" tabindex="-1"></a>  <span class="fu">group_split</span>(fire_label) <span class="sc">%&gt;%</span></span>
+<span id="cb19-16"><a href="investigation.html#cb19-16" tabindex="-1"></a>  <span class="fu">map_df</span>(<span class="sc">~</span> <span class="fu">plot_binned_prop</span>(.x, <span class="dv">10</span>, logvol_t0, flower) <span class="sc">%&gt;%</span></span>
+<span id="cb19-17"><a href="investigation.html#cb19-17" tabindex="-1"></a>           <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="fu">unique</span>(.x<span class="sc">$</span>fire_label)))</span>
+<span id="cb19-18"><a href="investigation.html#cb19-18" tabindex="-1"></a></span>
+<span id="cb19-19"><a href="investigation.html#cb19-19" tabindex="-1"></a><span class="co"># Plot overlapped flowering probability</span></span>
+<span id="cb19-20"><a href="investigation.html#cb19-20" tabindex="-1"></a>fig_fl_overall <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_fl_binned, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flower, <span class="at">color =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb19-21"><a href="investigation.html#cb19-21" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(</span>
+<span id="cb19-22"><a href="investigation.html#cb19-22" tabindex="-1"></a>    <span class="at">data =</span> df_fl,</span>
+<span id="cb19-23"><a href="investigation.html#cb19-23" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flower, <span class="at">color =</span> fire_label),</span>
+<span id="cb19-24"><a href="investigation.html#cb19-24" tabindex="-1"></a>    <span class="at">position =</span> <span class="fu">position_jitter</span>(<span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">height =</span> <span class="fl">0.3</span>),</span>
+<span id="cb19-25"><a href="investigation.html#cb19-25" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
+<span id="cb19-26"><a href="investigation.html#cb19-26" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb19-27"><a href="investigation.html#cb19-27" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lwr, <span class="at">ymax =</span> upr), <span class="at">width =</span> <span class="fl">0.2</span>, <span class="at">linewidth =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb19-28"><a href="investigation.html#cb19-28" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb19-29"><a href="investigation.html#cb19-29" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">c</span>(<span class="fl">0.1</span>, <span class="fl">0.5</span>, <span class="fl">0.9</span>), <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">1.01</span>)) <span class="sc">+</span></span>
+<span id="cb19-30"><a href="investigation.html#cb19-30" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb19-31"><a href="investigation.html#cb19-31" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb19-32"><a href="investigation.html#cb19-32" tabindex="-1"></a>    <span class="at">axis.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>),</span>
+<span id="cb19-33"><a href="investigation.html#cb19-33" tabindex="-1"></a>    <span class="at">title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>),</span>
+<span id="cb19-34"><a href="investigation.html#cb19-34" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">8</span>),</span>
+<span id="cb19-35"><a href="investigation.html#cb19-35" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">&#39;top&#39;</span>) <span class="sc">+</span></span>
+<span id="cb19-36"><a href="investigation.html#cb19-36" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb19-37"><a href="investigation.html#cb19-37" tabindex="-1"></a>    <span class="at">title    =</span> <span class="st">&#39;Flowering probability by fire status&#39;</span>,</span>
+<span id="cb19-38"><a href="investigation.html#cb19-38" tabindex="-1"></a>    <span class="at">subtitle =</span> v_ggp_suffix,</span>
+<span id="cb19-39"><a href="investigation.html#cb19-39" tabindex="-1"></a>    <span class="at">x        =</span> <span class="fu">expression</span>(<span class="st">&#39;Volume (log)&#39;</span>[t0]),</span>
+<span id="cb19-40"><a href="investigation.html#cb19-40" tabindex="-1"></a>    <span class="at">y        =</span> <span class="st">&#39;Flowering Probability</span><span class="sc">\n</span><span class="st">at time t0&#39;</span>,</span>
+<span id="cb19-41"><a href="investigation.html#cb19-41" tabindex="-1"></a>    <span class="at">color    =</span> <span class="st">&#39;At time t0&#39;</span>)</span>
+<span id="cb19-42"><a href="investigation.html#cb19-42" tabindex="-1"></a></span>
+<span id="cb19-43"><a href="investigation.html#cb19-43" tabindex="-1"></a>fig_fl_overall</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/fl_f%20data-1.png" width="672" /></p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="investigation.html#cb20-1" tabindex="-1"></a><span class="co"># Logistic regression</span></span>
+<span id="cb20-2"><a href="investigation.html#cb20-2" tabindex="-1"></a>mod_fl_0 <span class="ot">&lt;-</span> <span class="fu">glm</span>(flower <span class="sc">~</span> fire,</span>
+<span id="cb20-3"><a href="investigation.html#cb20-3" tabindex="-1"></a>                <span class="at">data =</span> df_fl, <span class="at">family =</span> <span class="st">&#39;binomial&#39;</span>) </span>
+<span id="cb20-4"><a href="investigation.html#cb20-4" tabindex="-1"></a><span class="co"># Logistic regression</span></span>
+<span id="cb20-5"><a href="investigation.html#cb20-5" tabindex="-1"></a>mod_fl_1 <span class="ot">&lt;-</span> <span class="fu">glm</span>(flower <span class="sc">~</span> logvol_t0 <span class="sc">+</span> fire,</span>
+<span id="cb20-6"><a href="investigation.html#cb20-6" tabindex="-1"></a>                <span class="at">data =</span> df_fl, <span class="at">family =</span> <span class="st">&#39;binomial&#39;</span>) </span>
+<span id="cb20-7"><a href="investigation.html#cb20-7" tabindex="-1"></a><span class="co"># Quadratic logistic model</span></span>
+<span id="cb20-8"><a href="investigation.html#cb20-8" tabindex="-1"></a>mod_fl_2 <span class="ot">&lt;-</span> <span class="fu">glm</span>(flower <span class="sc">~</span> logvol_t0 <span class="sc">+</span> logvol_t0_2 <span class="sc">+</span> fire,</span>
+<span id="cb20-9"><a href="investigation.html#cb20-9" tabindex="-1"></a>                <span class="at">data =</span> df_fl, <span class="at">family =</span> <span class="st">&#39;binomial&#39;</span>)  </span>
+<span id="cb20-10"><a href="investigation.html#cb20-10" tabindex="-1"></a><span class="co"># Cubic logistic model</span></span>
+<span id="cb20-11"><a href="investigation.html#cb20-11" tabindex="-1"></a>mod_fl_3 <span class="ot">&lt;-</span> <span class="fu">glm</span>(flower <span class="sc">~</span> logvol_t0 <span class="sc">+</span> logvol_t0_2 <span class="sc">+</span> logvol_t0_3 <span class="sc">+</span> fire,</span>
+<span id="cb20-12"><a href="investigation.html#cb20-12" tabindex="-1"></a>                <span class="at">data =</span> df_fl, <span class="at">family =</span> <span class="st">&#39;binomial&#39;</span>)  </span>
+<span id="cb20-13"><a href="investigation.html#cb20-13" tabindex="-1"></a></span>
+<span id="cb20-14"><a href="investigation.html#cb20-14" tabindex="-1"></a><span class="co"># Compare models using AIC</span></span>
+<span id="cb20-15"><a href="investigation.html#cb20-15" tabindex="-1"></a>mods_fl      <span class="ot">&lt;-</span> <span class="fu">list</span>(mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)</span>
+<span id="cb20-16"><a href="investigation.html#cb20-16" tabindex="-1"></a>mods_fl_dAIC <span class="ot">&lt;-</span> <span class="fu">AICtab</span>(mods_fl, <span class="at">weights =</span> T, <span class="at">sort =</span> F)<span class="sc">$</span>dAIC</span>
+<span id="cb20-17"><a href="investigation.html#cb20-17" tabindex="-1"></a></span>
+<span id="cb20-18"><a href="investigation.html#cb20-18" tabindex="-1"></a><span class="co"># Get the sorted indices of dAIC values</span></span>
+<span id="cb20-19"><a href="investigation.html#cb20-19" tabindex="-1"></a>mods_fl_sorted <span class="ot">&lt;-</span> <span class="fu">order</span>(mods_fl_dAIC)</span>
+<span id="cb20-20"><a href="investigation.html#cb20-20" tabindex="-1"></a></span>
+<span id="cb20-21"><a href="investigation.html#cb20-21" tabindex="-1"></a><span class="co"># Establish the index of model complexity</span></span>
+<span id="cb20-22"><a href="investigation.html#cb20-22" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">length</span>(v_mod_set_fl) <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb20-23"><a href="investigation.html#cb20-23" tabindex="-1"></a>  mod_fl_index_bestfit <span class="ot">&lt;-</span> mods_fl_sorted[<span class="dv">1</span>]</span>
+<span id="cb20-24"><a href="investigation.html#cb20-24" tabindex="-1"></a>  v_mod_fl_index       <span class="ot">&lt;-</span> mod_fl_index_bestfit <span class="sc">-</span> <span class="dv">1</span> </span>
+<span id="cb20-25"><a href="investigation.html#cb20-25" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb20-26"><a href="investigation.html#cb20-26" tabindex="-1"></a>  mod_fl_index_bestfit <span class="ot">&lt;-</span> v_mod_set_fl <span class="sc">+</span><span class="dv">1</span></span>
+<span id="cb20-27"><a href="investigation.html#cb20-27" tabindex="-1"></a>  v_mod_fl_index       <span class="ot">&lt;-</span> v_mod_set_fl</span>
+<span id="cb20-28"><a href="investigation.html#cb20-28" tabindex="-1"></a>  }</span>
+<span id="cb20-29"><a href="investigation.html#cb20-29" tabindex="-1"></a></span>
+<span id="cb20-30"><a href="investigation.html#cb20-30" tabindex="-1"></a>mod_fl_bestfit <span class="ot">&lt;-</span> mods_fl[[mod_fl_index_bestfit]]</span>
+<span id="cb20-31"><a href="investigation.html#cb20-31" tabindex="-1"></a>mod_fl_ranef   <span class="ot">&lt;-</span> <span class="fu">coef</span>(mod_fl_bestfit)</span>
+<span id="cb20-32"><a href="investigation.html#cb20-32" tabindex="-1"></a></span>
+<span id="cb20-33"><a href="investigation.html#cb20-33" tabindex="-1"></a></span>
+<span id="cb20-34"><a href="investigation.html#cb20-34" tabindex="-1"></a><span class="co"># Add predictions using model</span></span>
+<span id="cb20-35"><a href="investigation.html#cb20-35" tabindex="-1"></a>df_fl_pred <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb20-36"><a href="investigation.html#cb20-36" tabindex="-1"></a>  <span class="at">logvol_t0 =</span> <span class="fu">rep</span>(<span class="fu">seq</span>(</span>
+<span id="cb20-37"><a href="investigation.html#cb20-37" tabindex="-1"></a>    <span class="fu">min</span>(df_fl<span class="sc">$</span>logvol_t0, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), </span>
+<span id="cb20-38"><a href="investigation.html#cb20-38" tabindex="-1"></a>    <span class="fu">max</span>(df_fl<span class="sc">$</span>logvol_t0, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="at">length.out =</span> <span class="dv">100</span>), <span class="dv">2</span>),</span>
+<span id="cb20-39"><a href="investigation.html#cb20-39" tabindex="-1"></a>  <span class="at">fire =</span> <span class="fu">rep</span>(<span class="fu">c</span>(F, T), <span class="at">each =</span> <span class="dv">100</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb20-40"><a href="investigation.html#cb20-40" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb20-41"><a href="investigation.html#cb20-41" tabindex="-1"></a>    <span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No fire&#39;</span>),</span>
+<span id="cb20-42"><a href="investigation.html#cb20-42" tabindex="-1"></a>    <span class="at">logvol_t0_2 =</span> logvol_t0<span class="sc">^</span><span class="dv">2</span>,</span>
+<span id="cb20-43"><a href="investigation.html#cb20-43" tabindex="-1"></a>    <span class="at">logvol_t0_3 =</span> logvol_t0<span class="sc">^</span><span class="dv">3</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb20-44"><a href="investigation.html#cb20-44" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">flower =</span> <span class="fu">predict</span>(mod_fl_bestfit, <span class="at">newdata =</span> ., <span class="at">type =</span> <span class="st">&#39;response&#39;</span>))</span>
+<span id="cb20-45"><a href="investigation.html#cb20-45" tabindex="-1"></a></span>
+<span id="cb20-46"><a href="investigation.html#cb20-46" tabindex="-1"></a><span class="co"># Binned observed data for both fire levels</span></span>
+<span id="cb20-47"><a href="investigation.html#cb20-47" tabindex="-1"></a>df_fl_binned <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb20-48"><a href="investigation.html#cb20-48" tabindex="-1"></a>  <span class="fu">plot_binned_prop</span>(<span class="fu">filter</span>(df_fl, fire <span class="sc">==</span> <span class="dv">0</span>), <span class="dv">10</span>, logvol_t0, flower) <span class="sc">%&gt;%</span></span>
+<span id="cb20-49"><a href="investigation.html#cb20-49" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="st">&#39;No fire&#39;</span>),</span>
+<span id="cb20-50"><a href="investigation.html#cb20-50" tabindex="-1"></a>  <span class="fu">plot_binned_prop</span>(<span class="fu">filter</span>(df_fl, fire <span class="sc">==</span> <span class="dv">1</span>), <span class="dv">10</span>, logvol_t0, flower) <span class="sc">%&gt;%</span></span>
+<span id="cb20-51"><a href="investigation.html#cb20-51" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="st">&#39;Fire&#39;</span>))</span>
+<span id="cb20-52"><a href="investigation.html#cb20-52" tabindex="-1"></a></span>
+<span id="cb20-53"><a href="investigation.html#cb20-53" tabindex="-1"></a><span class="co"># Plot 1: Raw jitter + prediction lines</span></span>
+<span id="cb20-54"><a href="investigation.html#cb20-54" tabindex="-1"></a>fig_fl_line_combined <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb20-55"><a href="investigation.html#cb20-55" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> df_fl <span class="sc">%&gt;%</span> <span class="fu">filter</span>(fire <span class="sc">==</span> <span class="dv">0</span>), </span>
+<span id="cb20-56"><a href="investigation.html#cb20-56" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flower, <span class="at">color =</span> fire_label),</span>
+<span id="cb20-57"><a href="investigation.html#cb20-57" tabindex="-1"></a>              <span class="at">alpha =</span> <span class="fl">0.1</span>, <span class="at">width =</span> <span class="fl">0.08</span>, <span class="at">height =</span> <span class="fl">0.2</span>) <span class="sc">+</span></span>
+<span id="cb20-58"><a href="investigation.html#cb20-58" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> df_fl <span class="sc">%&gt;%</span> <span class="fu">filter</span>(fire <span class="sc">==</span> <span class="dv">1</span>), </span>
+<span id="cb20-59"><a href="investigation.html#cb20-59" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flower, <span class="at">color =</span> fire_label),</span>
+<span id="cb20-60"><a href="investigation.html#cb20-60" tabindex="-1"></a>              <span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">width =</span> <span class="fl">0.08</span>, <span class="at">height =</span> <span class="fl">0.2</span>) <span class="sc">+</span></span>
+<span id="cb20-61"><a href="investigation.html#cb20-61" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> df_fl_pred, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flower, <span class="at">color =</span> fire_label),</span>
+<span id="cb20-62"><a href="investigation.html#cb20-62" tabindex="-1"></a>            <span class="at">linewidth =</span> <span class="fl">0.9</span>) <span class="sc">+</span></span>
+<span id="cb20-63"><a href="investigation.html#cb20-63" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb20-64"><a href="investigation.html#cb20-64" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb20-65"><a href="investigation.html#cb20-65" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="cn">NULL</span>, <span class="at">x =</span> <span class="st">&#39;Size at time t0 (log)&#39;</span>, <span class="at">y =</span> <span class="st">&#39;Flowering Probability&#39;</span>) <span class="sc">+</span></span>
+<span id="cb20-66"><a href="investigation.html#cb20-66" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&#39;none&#39;</span>)</span>
+<span id="cb20-67"><a href="investigation.html#cb20-67" tabindex="-1"></a></span>
+<span id="cb20-68"><a href="investigation.html#cb20-68" tabindex="-1"></a><span class="co"># Plot 2: Binned points + error bars + prediction lines</span></span>
+<span id="cb20-69"><a href="investigation.html#cb20-69" tabindex="-1"></a>fig_fl_bin_combined <span class="ot">&lt;-</span> <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb20-70"><a href="investigation.html#cb20-70" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> df_fl_binned, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flower, <span class="at">color =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb20-71"><a href="investigation.html#cb20-71" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="at">data =</span> df_fl_binned, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">ymin =</span> lwr, <span class="at">ymax =</span> upr, <span class="at">color =</span> fire_label),</span>
+<span id="cb20-72"><a href="investigation.html#cb20-72" tabindex="-1"></a>                <span class="at">width =</span> <span class="fl">0.2</span>) <span class="sc">+</span></span>
+<span id="cb20-73"><a href="investigation.html#cb20-73" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> df_fl_pred, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flower, <span class="at">color =</span> fire_label),</span>
+<span id="cb20-74"><a href="investigation.html#cb20-74" tabindex="-1"></a>            <span class="at">linewidth =</span> <span class="fl">0.9</span>) <span class="sc">+</span></span>
+<span id="cb20-75"><a href="investigation.html#cb20-75" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb20-76"><a href="investigation.html#cb20-76" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb20-77"><a href="investigation.html#cb20-77" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>, <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb20-78"><a href="investigation.html#cb20-78" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="cn">NULL</span>, <span class="at">x =</span> <span class="st">&#39;Size at time t0 (log)&#39;</span>, <span class="at">y =</span> <span class="st">&#39;Flowering Probability&#39;</span>) <span class="sc">+</span></span>
+<span id="cb20-79"><a href="investigation.html#cb20-79" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.title =</span> <span class="fu">element_blank</span>(), <span class="at">legend.position =</span> <span class="st">&#39;top&#39;</span>)</span>
+<span id="cb20-80"><a href="investigation.html#cb20-80" tabindex="-1"></a></span>
+<span id="cb20-81"><a href="investigation.html#cb20-81" tabindex="-1"></a><span class="co"># Combine the two plots with patchwork</span></span>
+<span id="cb20-82"><a href="investigation.html#cb20-82" tabindex="-1"></a>fig_fl_all <span class="ot">&lt;-</span> fig_fl_line_combined <span class="sc">+</span> fig_fl_bin_combined <span class="sc">+</span></span>
+<span id="cb20-83"><a href="investigation.html#cb20-83" tabindex="-1"></a>  <span class="fu">plot_annotation</span>(</span>
+<span id="cb20-84"><a href="investigation.html#cb20-84" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Flowering&#39;</span>,</span>
+<span id="cb20-85"><a href="investigation.html#cb20-85" tabindex="-1"></a>    <span class="at">subtitle =</span> v_ggp_suffix,</span>
+<span id="cb20-86"><a href="investigation.html#cb20-86" tabindex="-1"></a>    <span class="at">theme =</span> <span class="fu">theme</span>(</span>
+<span id="cb20-87"><a href="investigation.html#cb20-87" tabindex="-1"></a>      <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">&#39;bold&#39;</span>),</span>
+<span id="cb20-88"><a href="investigation.html#cb20-88" tabindex="-1"></a>      <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">10</span>, <span class="at">face =</span> <span class="st">&#39;italic&#39;</span>)))</span>
+<span id="cb20-89"><a href="investigation.html#cb20-89" tabindex="-1"></a></span>
+<span id="cb20-90"><a href="investigation.html#cb20-90" tabindex="-1"></a>fig_fl_all</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/fl_f%20model-1.png" width="672" /></p>
+</div>
+<div id="fire-on-fecundity" class="section level3 hasAnchor" number="3.2.5">
+<h3><span class="header-section-number">3.2.5</span> Fire on Fecundity<a href="investigation.html#fire-on-fecundity" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="investigation.html#cb21-1" tabindex="-1"></a>df_fe <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb21-2"><a href="investigation.html#cb21-2" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), T, F),</span>
+<span id="cb21-3"><a href="investigation.html#cb21-3" tabindex="-1"></a>         <span class="at">fire_label =</span> <span class="fu">if_else</span>(fire <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No fire&#39;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb21-4"><a href="investigation.html#cb21-4" tabindex="-1"></a>  <span class="fu">filter</span>(flower <span class="sc">==</span> <span class="dv">1</span>, <span class="sc">!</span><span class="fu">is.na</span>(logvol_t0)) <span class="sc">%&gt;%</span> </span>
+<span id="cb21-5"><a href="investigation.html#cb21-5" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(flowering_stems, fire, fire_label, </span>
+<span id="cb21-6"><a href="investigation.html#cb21-6" tabindex="-1"></a>                logvol_t0, logvol_t0_2, logvol_t0_3)</span></code></pre></div>
+</details>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="investigation.html#cb22-1" tabindex="-1"></a>mod_fe_0 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(flowering_stems <span class="sc">~</span> fire, <span class="at">data =</span> df_fe)</span>
+<span id="cb22-2"><a href="investigation.html#cb22-2" tabindex="-1"></a>mod_fe_1 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(flowering_stems <span class="sc">~</span> fire <span class="sc">+</span> logvol_t0, <span class="at">data =</span> df_fe)</span>
+<span id="cb22-3"><a href="investigation.html#cb22-3" tabindex="-1"></a>mod_fe_2 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(flowering_stems <span class="sc">~</span> fire <span class="sc">+</span> logvol_t0 <span class="sc">+</span> logvol_t0_2, <span class="at">data =</span> df_fe)</span>
+<span id="cb22-4"><a href="investigation.html#cb22-4" tabindex="-1"></a>mod_fe_3 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(flowering_stems <span class="sc">~</span> fire <span class="sc">+</span> logvol_t0 <span class="sc">+</span> logvol_t0_2 <span class="sc">+</span> logvol_t0_3, <span class="at">data =</span> df_fe)</span>
+<span id="cb22-5"><a href="investigation.html#cb22-5" tabindex="-1"></a></span>
+<span id="cb22-6"><a href="investigation.html#cb22-6" tabindex="-1"></a>mods_fe      <span class="ot">&lt;-</span> <span class="fu">list</span>(mod_fe_0, mod_fe_1, mod_fe_2, mod_fe_3)</span>
+<span id="cb22-7"><a href="investigation.html#cb22-7" tabindex="-1"></a>mods_fe_dAIC <span class="ot">&lt;-</span> <span class="fu">AICctab</span>(mods_fe, <span class="at">weights =</span> T, <span class="at">sort =</span> F)<span class="sc">$</span>dAIC</span>
+<span id="cb22-8"><a href="investigation.html#cb22-8" tabindex="-1"></a>mods_fe_i_sort <span class="ot">&lt;-</span> <span class="fu">order</span>(mods_fe_dAIC)</span>
+<span id="cb22-9"><a href="investigation.html#cb22-9" tabindex="-1"></a></span>
+<span id="cb22-10"><a href="investigation.html#cb22-10" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">length</span>(v_mod_set_fe) <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb22-11"><a href="investigation.html#cb22-11" tabindex="-1"></a>  mod_fe_i_best <span class="ot">&lt;-</span> mods_fe_i_sort[<span class="dv">1</span>]</span>
+<span id="cb22-12"><a href="investigation.html#cb22-12" tabindex="-1"></a>  v_mod_fe_i    <span class="ot">&lt;-</span> mod_fe_i_best <span class="sc">-</span> <span class="dv">1</span> </span>
+<span id="cb22-13"><a href="investigation.html#cb22-13" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb22-14"><a href="investigation.html#cb22-14" tabindex="-1"></a>  mod_fe_i_best <span class="ot">&lt;-</span> v_mod_set_fe <span class="sc">+</span><span class="dv">1</span></span>
+<span id="cb22-15"><a href="investigation.html#cb22-15" tabindex="-1"></a>  v_mod_fe_i    <span class="ot">&lt;-</span> v_mod_set_fe</span>
+<span id="cb22-16"><a href="investigation.html#cb22-16" tabindex="-1"></a>  }</span>
+<span id="cb22-17"><a href="investigation.html#cb22-17" tabindex="-1"></a></span>
+<span id="cb22-18"><a href="investigation.html#cb22-18" tabindex="-1"></a>mod_fe_best  <span class="ot">&lt;-</span> mods_fe[[mod_fe_i_best]]</span>
+<span id="cb22-19"><a href="investigation.html#cb22-19" tabindex="-1"></a>mod_fe_ranef <span class="ot">&lt;-</span> <span class="fu">coef</span>(mod_fe_best)</span>
+<span id="cb22-20"><a href="investigation.html#cb22-20" tabindex="-1"></a></span>
+<span id="cb22-21"><a href="investigation.html#cb22-21" tabindex="-1"></a>df_fe_preddata <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb22-22"><a href="investigation.html#cb22-22" tabindex="-1"></a>  <span class="at">logvol_t0 =</span> <span class="fu">rep</span>(<span class="fu">seq</span>(<span class="fu">min</span>(df_fe<span class="sc">$</span>logvol_t0, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb22-23"><a href="investigation.html#cb22-23" tabindex="-1"></a>                  <span class="fu">max</span>(df_fe<span class="sc">$</span>logvol_t0, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb22-24"><a href="investigation.html#cb22-24" tabindex="-1"></a>                  <span class="at">length.out =</span> <span class="dv">100</span>), <span class="dv">2</span>),</span>
+<span id="cb22-25"><a href="investigation.html#cb22-25" tabindex="-1"></a>  <span class="at">fire       =</span> <span class="fu">rep</span>(<span class="fu">c</span>(F, T), <span class="at">each =</span> <span class="dv">100</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb22-26"><a href="investigation.html#cb22-26" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">logvol_t0_2 =</span> logvol_t0<span class="sc">^</span><span class="dv">2</span>,</span>
+<span id="cb22-27"><a href="investigation.html#cb22-27" tabindex="-1"></a>         <span class="at">logvol_t0_3 =</span> logvol_t0<span class="sc">^</span><span class="dv">3</span>,</span>
+<span id="cb22-28"><a href="investigation.html#cb22-28" tabindex="-1"></a>         <span class="at">fire_label  =</span> <span class="fu">ifelse</span>(fire <span class="sc">==</span> <span class="dv">1</span>, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No fire&#39;</span>))</span>
+<span id="cb22-29"><a href="investigation.html#cb22-29" tabindex="-1"></a></span>
+<span id="cb22-30"><a href="investigation.html#cb22-30" tabindex="-1"></a>mod_fe_pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_fe_best, <span class="at">newdata =</span> df_fe_preddata, <span class="at">type =</span> <span class="st">&#39;link&#39;</span>, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb22-31"><a href="investigation.html#cb22-31" tabindex="-1"></a></span>
+<span id="cb22-32"><a href="investigation.html#cb22-32" tabindex="-1"></a>df_fe_preddata <span class="ot">&lt;-</span> df_fe_preddata <span class="sc">%&gt;%</span></span>
+<span id="cb22-33"><a href="investigation.html#cb22-33" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb22-34"><a href="investigation.html#cb22-34" tabindex="-1"></a>    <span class="at">fit_link =</span> mod_fe_pred<span class="sc">$</span>fit,</span>
+<span id="cb22-35"><a href="investigation.html#cb22-35" tabindex="-1"></a>    <span class="at">se_link  =</span> mod_fe_pred<span class="sc">$</span>se.fit,</span>
+<span id="cb22-36"><a href="investigation.html#cb22-36" tabindex="-1"></a>    <span class="at">fit_link_lower =</span> fit_link <span class="sc">-</span> <span class="fl">1.96</span> <span class="sc">*</span> se_link,</span>
+<span id="cb22-37"><a href="investigation.html#cb22-37" tabindex="-1"></a>    <span class="at">fit_link_upper =</span> fit_link <span class="sc">+</span> <span class="fl">1.96</span> <span class="sc">*</span> se_link,</span>
+<span id="cb22-38"><a href="investigation.html#cb22-38" tabindex="-1"></a>    <span class="at">predicted_stems =</span> <span class="fu">exp</span>(fit_link),</span>
+<span id="cb22-39"><a href="investigation.html#cb22-39" tabindex="-1"></a>    <span class="at">predicted_stems_lower =</span> <span class="fu">exp</span>(fit_link_lower),</span>
+<span id="cb22-40"><a href="investigation.html#cb22-40" tabindex="-1"></a>    <span class="at">predicted_stems_upper =</span> <span class="fu">exp</span>(fit_link_upper))</span>
+<span id="cb22-41"><a href="investigation.html#cb22-41" tabindex="-1"></a></span>
+<span id="cb22-42"><a href="investigation.html#cb22-42" tabindex="-1"></a>fig_fe <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(df_fe, <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flowering_stems, <span class="at">color =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb22-43"><a href="investigation.html#cb22-43" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> df_fe <span class="sc">%&gt;%</span> <span class="fu">filter</span>(fire <span class="sc">==</span> F), </span>
+<span id="cb22-44"><a href="investigation.html#cb22-44" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flowering_stems, <span class="at">color =</span> fire_label),</span>
+<span id="cb22-45"><a href="investigation.html#cb22-45" tabindex="-1"></a>              <span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">height =</span> <span class="fl">0.2</span>, <span class="at">alpha =</span> <span class="fl">0.1</span>) <span class="sc">+</span></span>
+<span id="cb22-46"><a href="investigation.html#cb22-46" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(<span class="at">data =</span> df_fe <span class="sc">%&gt;%</span> <span class="fu">filter</span>(fire <span class="sc">==</span> T), </span>
+<span id="cb22-47"><a href="investigation.html#cb22-47" tabindex="-1"></a>              <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> flowering_stems, <span class="at">color =</span> fire_label),</span>
+<span id="cb22-48"><a href="investigation.html#cb22-48" tabindex="-1"></a>              <span class="at">width =</span> <span class="fl">0.1</span>, <span class="at">height =</span> <span class="fl">0.2</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb22-49"><a href="investigation.html#cb22-49" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> df_fe_preddata, </span>
+<span id="cb22-50"><a href="investigation.html#cb22-50" tabindex="-1"></a>            <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">y =</span> predicted_stems, <span class="at">color =</span> fire_label), <span class="at">size =</span> <span class="fl">1.2</span>) <span class="sc">+</span></span>
+<span id="cb22-51"><a href="investigation.html#cb22-51" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(</span>
+<span id="cb22-52"><a href="investigation.html#cb22-52" tabindex="-1"></a>    <span class="at">data =</span> df_fe_preddata,</span>
+<span id="cb22-53"><a href="investigation.html#cb22-53" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> logvol_t0, <span class="at">ymin =</span> predicted_stems_lower, <span class="at">ymax =</span> predicted_stems_upper, <span class="at">fill =</span> fire_label),</span>
+<span id="cb22-54"><a href="investigation.html#cb22-54" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.1</span>, <span class="at">inherit.aes =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb22-55"><a href="investigation.html#cb22-55" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb22-56"><a href="investigation.html#cb22-56" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;black&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;red&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb22-57"><a href="investigation.html#cb22-57" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb22-58"><a href="investigation.html#cb22-58" tabindex="-1"></a>    <span class="at">title    =</span> <span class="st">&#39;Fecundity&#39;</span>,</span>
+<span id="cb22-59"><a href="investigation.html#cb22-59" tabindex="-1"></a>    <span class="at">subtitle =</span> v_ggp_suffix,</span>
+<span id="cb22-60"><a href="investigation.html#cb22-60" tabindex="-1"></a>    <span class="at">x        =</span> <span class="st">&#39;Volume t0 (log)&#39;</span>,</span>
+<span id="cb22-61"><a href="investigation.html#cb22-61" tabindex="-1"></a>    <span class="at">y        =</span> <span class="st">&#39;Number of Flowering Stems</span><span class="sc">\n</span><span class="st">in time t0&#39;</span>,</span>
+<span id="cb22-62"><a href="investigation.html#cb22-62" tabindex="-1"></a>    <span class="at">color    =</span> <span class="st">&#39;At time t0&#39;</span>,</span>
+<span id="cb22-63"><a href="investigation.html#cb22-63" tabindex="-1"></a>    <span class="at">fill     =</span> <span class="st">&#39;At time t0&#39;</span>) <span class="sc">+</span></span>
+<span id="cb22-64"><a href="investigation.html#cb22-64" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
+<span id="cb22-65"><a href="investigation.html#cb22-65" tabindex="-1"></a>fig_fe</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/fe_model-1.png" width="672" /></p>
+</div>
+<div id="fire-on-recruitment-transition" class="section level3 hasAnchor" number="3.2.6">
+<h3><span class="header-section-number">3.2.6</span> Fire on Recruitment transition<a href="investigation.html#fire-on-recruitment-transition" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>This analysis examines how the total number of flowering stems in year t influences recruitment in year t+1, and whether this relationship is affected by fire in the previous year.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="investigation.html#cb23-1" tabindex="-1"></a>df_fs2r <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb23-2"><a href="investigation.html#cb23-2" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb23-3"><a href="investigation.html#cb23-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), T, F)) <span class="sc">%&gt;%</span></span>
+<span id="cb23-4"><a href="investigation.html#cb23-4" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb23-5"><a href="investigation.html#cb23-5" tabindex="-1"></a>    <span class="at">total_stocks =</span> <span class="fu">sum</span>(flowering_stems, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb23-6"><a href="investigation.html#cb23-6" tabindex="-1"></a>    <span class="at">fire =</span> <span class="fu">any</span>(fire <span class="sc">==</span> T),</span>
+<span id="cb23-7"><a href="investigation.html#cb23-7" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb23-8"><a href="investigation.html#cb23-8" tabindex="-1"></a>  <span class="fu">full_join</span>(df <span class="sc">%&gt;%</span></span>
+<span id="cb23-9"><a href="investigation.html#cb23-9" tabindex="-1"></a>               <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb23-10"><a href="investigation.html#cb23-10" tabindex="-1"></a>               <span class="fu">summarise</span>(</span>
+<span id="cb23-11"><a href="investigation.html#cb23-11" tabindex="-1"></a>                 <span class="at">recruit_count_t1 =</span> <span class="fu">sum</span>(recruits, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb23-12"><a href="investigation.html#cb23-12" tabindex="-1"></a>                 <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb23-13"><a href="investigation.html#cb23-13" tabindex="-1"></a>               <span class="fu">mutate</span>(<span class="at">year =</span> year <span class="sc">-</span> <span class="dv">1</span>), </span>
+<span id="cb23-14"><a href="investigation.html#cb23-14" tabindex="-1"></a>             <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&#39;site&#39;</span>, <span class="st">&#39;quad&#39;</span>, <span class="st">&#39;year&#39;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb23-15"><a href="investigation.html#cb23-15" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire, <span class="st">&quot;Fire&quot;</span>, <span class="st">&quot;No Fire&quot;</span>))</span>
+<span id="cb23-16"><a href="investigation.html#cb23-16" tabindex="-1"></a>  </span>
+<span id="cb23-17"><a href="investigation.html#cb23-17" tabindex="-1"></a>mod_fs2r_01 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> fire, <span class="at">data =</span> df_fs2r)</span>
+<span id="cb23-18"><a href="investigation.html#cb23-18" tabindex="-1"></a>mod_fs2r_02 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> total_stocks <span class="sc">+</span> fire, <span class="at">data =</span> df_fs2r)</span>
+<span id="cb23-19"><a href="investigation.html#cb23-19" tabindex="-1"></a>mod_fs2r_11 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> total_stocks <span class="sc">*</span> fire, <span class="at">data =</span> df_fs2r)</span>
+<span id="cb23-20"><a href="investigation.html#cb23-20" tabindex="-1"></a></span>
+<span id="cb23-21"><a href="investigation.html#cb23-21" tabindex="-1"></a>mods_fs2r      <span class="ot">&lt;-</span> <span class="fu">list</span>(mod_fs2r_01,  mod_fs2r_02, mod_fs2r_11)</span>
+<span id="cb23-22"><a href="investigation.html#cb23-22" tabindex="-1"></a>mods_fs2r_dAIC <span class="ot">&lt;-</span> <span class="fu">AICctab</span>(mods_fs2r, <span class="at">weights =</span> T, <span class="at">sort =</span> F)<span class="sc">$</span>dAIC</span>
+<span id="cb23-23"><a href="investigation.html#cb23-23" tabindex="-1"></a></span>
+<span id="cb23-24"><a href="investigation.html#cb23-24" tabindex="-1"></a><span class="co"># Plot: Effect of fire only (mod_fs2r_01)</span></span>
+<span id="cb23-25"><a href="investigation.html#cb23-25" tabindex="-1"></a>df_fs2r_newdata <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">fire =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>))</span>
+<span id="cb23-26"><a href="investigation.html#cb23-26" tabindex="-1"></a>df_fs2r_newdata<span class="sc">$</span>fit <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_fs2r_01, <span class="at">newdata =</span> df_fs2r_newdata, <span class="at">type =</span> <span class="st">&#39;response&#39;</span>)</span>
+<span id="cb23-27"><a href="investigation.html#cb23-27" tabindex="-1"></a>pred_link <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_fs2r_01, <span class="at">newdata =</span> df_fs2r_newdata, <span class="at">type =</span> <span class="st">&#39;link&#39;</span>, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb23-28"><a href="investigation.html#cb23-28" tabindex="-1"></a>df_fs2r_newdata<span class="sc">$</span>lower <span class="ot">&lt;-</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">-</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit)</span>
+<span id="cb23-29"><a href="investigation.html#cb23-29" tabindex="-1"></a>df_fs2r_newdata<span class="sc">$</span>upper <span class="ot">&lt;-</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">+</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit)</span>
+<span id="cb23-30"><a href="investigation.html#cb23-30" tabindex="-1"></a>df_fs2r_newdata<span class="sc">$</span>fire <span class="ot">&lt;-</span> <span class="fu">factor</span>(df_fs2r_newdata<span class="sc">$</span>fire, <span class="at">levels =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span>, <span class="st">&#39;Fire&#39;</span>))</span>
+<span id="cb23-31"><a href="investigation.html#cb23-31" tabindex="-1"></a></span>
+<span id="cb23-32"><a href="investigation.html#cb23-32" tabindex="-1"></a><span class="fu">ggplot</span>(df_fs2r_newdata, <span class="fu">aes</span>(<span class="at">x =</span> fire, <span class="at">y =</span> fit, <span class="at">fill =</span> fire)) <span class="sc">+</span></span>
+<span id="cb23-33"><a href="investigation.html#cb23-33" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">width =</span> <span class="fl">0.6</span>, <span class="at">color =</span> <span class="st">&#39;gray30&#39;</span>) <span class="sc">+</span></span>
+<span id="cb23-34"><a href="investigation.html#cb23-34" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lower, <span class="at">ymax =</span> upper), <span class="at">width =</span> <span class="fl">0.2</span>, <span class="at">color =</span> <span class="st">&#39;gray30&#39;</span>) <span class="sc">+</span></span>
+<span id="cb23-35"><a href="investigation.html#cb23-35" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span> </span>
+<span id="cb23-36"><a href="investigation.html#cb23-36" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb23-37"><a href="investigation.html#cb23-37" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>,</span>
+<span id="cb23-38"><a href="investigation.html#cb23-38" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&#39;Predicted Recruitment Count (t+1)&#39;</span>,</span>
+<span id="cb23-39"><a href="investigation.html#cb23-39" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Effect of Fire on Recruitment&#39;</span>) <span class="sc">+</span></span>
+<span id="cb23-40"><a href="investigation.html#cb23-40" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb23-41"><a href="investigation.html#cb23-41" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&#39;none&#39;</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="investigation.html#cb24-1" tabindex="-1"></a><span class="co"># Plot: Effect of total_stocks and fire interaction (mod_fs2r_11)</span></span>
+<span id="cb24-2"><a href="investigation.html#cb24-2" tabindex="-1"></a>df_fs2r_predgrid <span class="ot">&lt;-</span> df_fs2r <span class="sc">%&gt;%</span></span>
+<span id="cb24-3"><a href="investigation.html#cb24-3" tabindex="-1"></a>  <span class="fu">filter</span>(total_stocks <span class="sc">&lt;</span> <span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb24-4"><a href="investigation.html#cb24-4" tabindex="-1"></a>  <span class="fu">group_by</span>(fire) <span class="sc">%&gt;%</span></span>
+<span id="cb24-5"><a href="investigation.html#cb24-5" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb24-6"><a href="investigation.html#cb24-6" tabindex="-1"></a>    <span class="at">min_ts =</span> <span class="fu">min</span>(total_stocks, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb24-7"><a href="investigation.html#cb24-7" tabindex="-1"></a>    <span class="at">max_ts =</span> <span class="fu">max</span>(total_stocks, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb24-8"><a href="investigation.html#cb24-8" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb24-9"><a href="investigation.html#cb24-9" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb24-10"><a href="investigation.html#cb24-10" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">total_stocks_seq =</span> <span class="fu">list</span>(<span class="fu">seq</span>(min_ts, max_ts, <span class="at">length.out =</span> <span class="dv">100</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb24-11"><a href="investigation.html#cb24-11" tabindex="-1"></a>  <span class="fu">unnest</span>(total_stocks_seq) <span class="sc">%&gt;%</span></span>
+<span id="cb24-12"><a href="investigation.html#cb24-12" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">total_stocks =</span> total_stocks_seq)</span>
+<span id="cb24-13"><a href="investigation.html#cb24-13" tabindex="-1"></a></span>
+<span id="cb24-14"><a href="investigation.html#cb24-14" tabindex="-1"></a><span class="co"># Predict</span></span>
+<span id="cb24-15"><a href="investigation.html#cb24-15" tabindex="-1"></a>pred_link <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_fs2r_11, <span class="at">newdata =</span> df_fs2r_predgrid, <span class="at">type =</span> <span class="st">&#39;link&#39;</span>, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb24-16"><a href="investigation.html#cb24-16" tabindex="-1"></a></span>
+<span id="cb24-17"><a href="investigation.html#cb24-17" tabindex="-1"></a>df_fs2r_predgrid <span class="ot">&lt;-</span> df_fs2r_predgrid <span class="sc">%&gt;%</span></span>
+<span id="cb24-18"><a href="investigation.html#cb24-18" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb24-19"><a href="investigation.html#cb24-19" tabindex="-1"></a>    <span class="at">fit   =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit),</span>
+<span id="cb24-20"><a href="investigation.html#cb24-20" tabindex="-1"></a>    <span class="at">lower =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">-</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb24-21"><a href="investigation.html#cb24-21" tabindex="-1"></a>    <span class="at">upper =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">+</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb24-22"><a href="investigation.html#cb24-22" tabindex="-1"></a>    <span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No Fire&#39;</span>))</span>
+<span id="cb24-23"><a href="investigation.html#cb24-23" tabindex="-1"></a></span>
+<span id="cb24-24"><a href="investigation.html#cb24-24" tabindex="-1"></a><span class="co"># Plot</span></span>
+<span id="cb24-25"><a href="investigation.html#cb24-25" tabindex="-1"></a><span class="fu">ggplot</span>(df_fs2r_predgrid, <span class="fu">aes</span>(<span class="at">x =</span> total_stocks, <span class="at">y =</span> fit, <span class="at">color =</span> fire_label, <span class="at">fill =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb24-26"><a href="investigation.html#cb24-26" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lower, <span class="at">ymax =</span> upper), <span class="at">alpha =</span> <span class="fl">0.15</span>, <span class="at">color =</span> <span class="cn">NA</span>) <span class="sc">+</span></span>
+<span id="cb24-27"><a href="investigation.html#cb24-27" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb24-28"><a href="investigation.html#cb24-28" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(</span>
+<span id="cb24-29"><a href="investigation.html#cb24-29" tabindex="-1"></a>    <span class="at">data =</span> df_fs2r <span class="sc">%&gt;%</span> <span class="fu">filter</span>(total_stocks <span class="sc">&lt;</span> <span class="dv">100</span> <span class="sc">&amp;</span> fire_label <span class="sc">==</span> <span class="st">&#39;No Fire&#39;</span>),</span>
+<span id="cb24-30"><a href="investigation.html#cb24-30" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> total_stocks, <span class="at">y =</span> recruit_count_t1, <span class="at">color =</span> fire_label),</span>
+<span id="cb24-31"><a href="investigation.html#cb24-31" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.1</span>, <span class="at">size =</span> <span class="fl">1.8</span>, <span class="at">width =</span> <span class="fl">0.3</span>, <span class="at">height =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb24-32"><a href="investigation.html#cb24-32" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(</span>
+<span id="cb24-33"><a href="investigation.html#cb24-33" tabindex="-1"></a>    <span class="at">data =</span> df_fs2r <span class="sc">%&gt;%</span> <span class="fu">filter</span>(total_stocks <span class="sc">&lt;</span> <span class="dv">100</span> <span class="sc">&amp;</span> fire_label <span class="sc">==</span> <span class="st">&#39;Fire&#39;</span>),</span>
+<span id="cb24-34"><a href="investigation.html#cb24-34" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> total_stocks, <span class="at">y =</span> recruit_count_t1, <span class="at">color =</span> fire_label),</span>
+<span id="cb24-35"><a href="investigation.html#cb24-35" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="fl">1.8</span>, <span class="at">width =</span> <span class="fl">0.3</span>, <span class="at">height =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb24-36"><a href="investigation.html#cb24-36" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb24-37"><a href="investigation.html#cb24-37" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>( <span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb24-38"><a href="investigation.html#cb24-38" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb24-39"><a href="investigation.html#cb24-39" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&#39;Total Flowering Stems (t)&#39;</span>,</span>
+<span id="cb24-40"><a href="investigation.html#cb24-40" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&#39;Predicted Recruitment Count (t+1)&#39;</span>,</span>
+<span id="cb24-41"><a href="investigation.html#cb24-41" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Effect of Fire and Flowering Stems on Recruitment&#39;</span>,</span>
+<span id="cb24-42"><a href="investigation.html#cb24-42" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>,</span>
+<span id="cb24-43"><a href="investigation.html#cb24-43" tabindex="-1"></a>    <span class="at">fill  =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>) <span class="sc">+</span></span>
+<span id="cb24-44"><a href="investigation.html#cb24-44" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/unnamed-chunk-7-2.png" width="672" />
+Here, we focus on whether the number of mature, reproductive individuals (stage 3 plants) in a plot during year t predicts recruitment in the following year and Fire.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="investigation.html#cb25-1" tabindex="-1"></a>df_ir2r <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb25-2"><a href="investigation.html#cb25-2" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb25-3"><a href="investigation.html#cb25-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), <span class="cn">TRUE</span>, <span class="cn">FALSE</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb25-4"><a href="investigation.html#cb25-4" tabindex="-1"></a>  <span class="fu">filter</span>(stage <span class="sc">==</span> <span class="dv">3</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb25-5"><a href="investigation.html#cb25-5" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb25-6"><a href="investigation.html#cb25-6" tabindex="-1"></a>    <span class="at">fire =</span> <span class="fu">any</span>(fire <span class="sc">==</span> <span class="cn">TRUE</span>),</span>
+<span id="cb25-7"><a href="investigation.html#cb25-7" tabindex="-1"></a>    <span class="at">nr_repro_indiv =</span> <span class="fu">n</span>(),</span>
+<span id="cb25-8"><a href="investigation.html#cb25-8" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-9"><a href="investigation.html#cb25-9" tabindex="-1"></a>  <span class="fu">full_join</span>(</span>
+<span id="cb25-10"><a href="investigation.html#cb25-10" tabindex="-1"></a>    df <span class="sc">%&gt;%</span></span>
+<span id="cb25-11"><a href="investigation.html#cb25-11" tabindex="-1"></a>      <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb25-12"><a href="investigation.html#cb25-12" tabindex="-1"></a>      <span class="fu">summarise</span>(</span>
+<span id="cb25-13"><a href="investigation.html#cb25-13" tabindex="-1"></a>        <span class="at">recruit_count_t1 =</span> <span class="fu">sum</span>(recruits, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb25-14"><a href="investigation.html#cb25-14" tabindex="-1"></a>        <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb25-15"><a href="investigation.html#cb25-15" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">year =</span> year <span class="sc">-</span> <span class="dv">1</span>), </span>
+<span id="cb25-16"><a href="investigation.html#cb25-16" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&#39;site&#39;</span>, <span class="st">&#39;quad&#39;</span>, <span class="st">&#39;year&#39;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb25-17"><a href="investigation.html#cb25-17" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb25-18"><a href="investigation.html#cb25-18" tabindex="-1"></a>    <span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No Fire&#39;</span>))</span>
+<span id="cb25-19"><a href="investigation.html#cb25-19" tabindex="-1"></a></span>
+<span id="cb25-20"><a href="investigation.html#cb25-20" tabindex="-1"></a>mod_ir2r_01 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> fire, <span class="at">data =</span> df_ir2r)</span>
+<span id="cb25-21"><a href="investigation.html#cb25-21" tabindex="-1"></a>mod_ir2r_02 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> nr_repro_indiv <span class="sc">+</span> fire, <span class="at">data =</span> df_ir2r)</span>
+<span id="cb25-22"><a href="investigation.html#cb25-22" tabindex="-1"></a>mod_ir2r_11 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> nr_repro_indiv <span class="sc">*</span> fire, <span class="at">data =</span> df_ir2r)</span>
+<span id="cb25-23"><a href="investigation.html#cb25-23" tabindex="-1"></a></span>
+<span id="cb25-24"><a href="investigation.html#cb25-24" tabindex="-1"></a>mods_ir2r      <span class="ot">&lt;-</span> <span class="fu">list</span>(mod_ir2r_01,  mod_ir2r_02, mod_ir2r_11)</span>
+<span id="cb25-25"><a href="investigation.html#cb25-25" tabindex="-1"></a>mods_ir2r_dAIC <span class="ot">&lt;-</span> <span class="fu">AICctab</span>(mods_ir2r, <span class="at">weights =</span> <span class="cn">TRUE</span>, <span class="at">sort =</span> <span class="cn">FALSE</span>)<span class="sc">$</span>dAIC</span>
+<span id="cb25-26"><a href="investigation.html#cb25-26" tabindex="-1"></a></span>
+<span id="cb25-27"><a href="investigation.html#cb25-27" tabindex="-1"></a>df_ir2r_newdata <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">fire =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>))</span>
+<span id="cb25-28"><a href="investigation.html#cb25-28" tabindex="-1"></a>pred_link <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_ir2r_01, <span class="at">newdata =</span> df_ir2r_newdata, <span class="at">type =</span> <span class="st">&#39;link&#39;</span>, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb25-29"><a href="investigation.html#cb25-29" tabindex="-1"></a>df_ir2r_newdata <span class="ot">&lt;-</span> df_ir2r_newdata <span class="sc">%&gt;%</span></span>
+<span id="cb25-30"><a href="investigation.html#cb25-30" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb25-31"><a href="investigation.html#cb25-31" tabindex="-1"></a>    <span class="at">fit   =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit),</span>
+<span id="cb25-32"><a href="investigation.html#cb25-32" tabindex="-1"></a>    <span class="at">lower =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">-</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb25-33"><a href="investigation.html#cb25-33" tabindex="-1"></a>    <span class="at">upper =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">+</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb25-34"><a href="investigation.html#cb25-34" tabindex="-1"></a>    <span class="at">fire  =</span> <span class="fu">factor</span>(fire, <span class="at">levels =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span>, <span class="st">&#39;Fire&#39;</span>)))</span>
+<span id="cb25-35"><a href="investigation.html#cb25-35" tabindex="-1"></a></span>
+<span id="cb25-36"><a href="investigation.html#cb25-36" tabindex="-1"></a><span class="fu">ggplot</span>(df_ir2r_newdata, <span class="fu">aes</span>(<span class="at">x =</span> fire, <span class="at">y =</span> fit, <span class="at">fill =</span> fire)) <span class="sc">+</span></span>
+<span id="cb25-37"><a href="investigation.html#cb25-37" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">width =</span> <span class="fl">0.6</span>, <span class="at">color =</span> <span class="st">&#39;gray30&#39;</span>) <span class="sc">+</span></span>
+<span id="cb25-38"><a href="investigation.html#cb25-38" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lower, <span class="at">ymax =</span> upper), <span class="at">width =</span> <span class="fl">0.2</span>, <span class="at">color =</span> <span class="st">&#39;gray30&#39;</span>) <span class="sc">+</span></span>
+<span id="cb25-39"><a href="investigation.html#cb25-39" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb25-40"><a href="investigation.html#cb25-40" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb25-41"><a href="investigation.html#cb25-41" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>,</span>
+<span id="cb25-42"><a href="investigation.html#cb25-42" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&#39;Predicted Recruitment Count (t+1)&#39;</span>,</span>
+<span id="cb25-43"><a href="investigation.html#cb25-43" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Effect of Fire on Recruitment&#39;</span>) <span class="sc">+</span></span>
+<span id="cb25-44"><a href="investigation.html#cb25-44" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb25-45"><a href="investigation.html#cb25-45" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&#39;none&#39;</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="investigation.html#cb26-1" tabindex="-1"></a>df_ir2r_predgrid <span class="ot">&lt;-</span> df_ir2r <span class="sc">%&gt;%</span></span>
+<span id="cb26-2"><a href="investigation.html#cb26-2" tabindex="-1"></a>  <span class="fu">filter</span>(nr_repro_indiv <span class="sc">&lt;</span> <span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb26-3"><a href="investigation.html#cb26-3" tabindex="-1"></a>  <span class="fu">group_by</span>(fire) <span class="sc">%&gt;%</span></span>
+<span id="cb26-4"><a href="investigation.html#cb26-4" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb26-5"><a href="investigation.html#cb26-5" tabindex="-1"></a>    <span class="at">min_nr =</span> <span class="fu">min</span>(nr_repro_indiv, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb26-6"><a href="investigation.html#cb26-6" tabindex="-1"></a>    <span class="at">max_nr =</span> <span class="fu">max</span>(nr_repro_indiv, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb26-7"><a href="investigation.html#cb26-7" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb26-8"><a href="investigation.html#cb26-8" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb26-9"><a href="investigation.html#cb26-9" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">nr_seq =</span> <span class="fu">list</span>(<span class="fu">seq</span>(min_nr, max_nr, <span class="at">length.out =</span> <span class="dv">100</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb26-10"><a href="investigation.html#cb26-10" tabindex="-1"></a>  <span class="fu">unnest</span>(nr_seq) <span class="sc">%&gt;%</span></span>
+<span id="cb26-11"><a href="investigation.html#cb26-11" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">nr_repro_indiv =</span> nr_seq) <span class="sc">%&gt;%</span></span>
+<span id="cb26-12"><a href="investigation.html#cb26-12" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">as.logical</span>(fire))  </span>
+<span id="cb26-13"><a href="investigation.html#cb26-13" tabindex="-1"></a></span>
+<span id="cb26-14"><a href="investigation.html#cb26-14" tabindex="-1"></a>pred_link <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_ir2r_11, <span class="at">newdata =</span> df_ir2r_predgrid, <span class="at">type =</span> <span class="st">&#39;link&#39;</span>, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb26-15"><a href="investigation.html#cb26-15" tabindex="-1"></a>df_ir2r_predgrid <span class="ot">&lt;-</span> df_ir2r_predgrid <span class="sc">%&gt;%</span></span>
+<span id="cb26-16"><a href="investigation.html#cb26-16" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb26-17"><a href="investigation.html#cb26-17" tabindex="-1"></a>    <span class="at">fit   =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit),</span>
+<span id="cb26-18"><a href="investigation.html#cb26-18" tabindex="-1"></a>    <span class="at">lower =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">-</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb26-19"><a href="investigation.html#cb26-19" tabindex="-1"></a>    <span class="at">upper =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">+</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb26-20"><a href="investigation.html#cb26-20" tabindex="-1"></a>    <span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No Fire&#39;</span>)</span>
+<span id="cb26-21"><a href="investigation.html#cb26-21" tabindex="-1"></a>  )</span>
+<span id="cb26-22"><a href="investigation.html#cb26-22" tabindex="-1"></a></span>
+<span id="cb26-23"><a href="investigation.html#cb26-23" tabindex="-1"></a><span class="fu">ggplot</span>(df_ir2r_predgrid, <span class="fu">aes</span>(<span class="at">x =</span> nr_repro_indiv, <span class="at">y =</span> fit, <span class="at">color =</span> fire_label, <span class="at">fill =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb26-24"><a href="investigation.html#cb26-24" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lower, <span class="at">ymax =</span> upper), <span class="at">alpha =</span> <span class="fl">0.15</span>, <span class="at">color =</span> <span class="cn">NA</span>) <span class="sc">+</span></span>
+<span id="cb26-25"><a href="investigation.html#cb26-25" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb26-26"><a href="investigation.html#cb26-26" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(</span>
+<span id="cb26-27"><a href="investigation.html#cb26-27" tabindex="-1"></a>    <span class="at">data =</span> df_ir2r <span class="sc">%&gt;%</span> <span class="fu">filter</span>(nr_repro_indiv <span class="sc">&lt;</span> <span class="dv">100</span> <span class="sc">&amp;</span> fire_label <span class="sc">==</span> <span class="st">&#39;No Fire&#39;</span>),</span>
+<span id="cb26-28"><a href="investigation.html#cb26-28" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> nr_repro_indiv, <span class="at">y =</span> recruit_count_t1, <span class="at">color =</span> fire_label),</span>
+<span id="cb26-29"><a href="investigation.html#cb26-29" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.1</span>, <span class="at">size =</span> <span class="fl">1.8</span>, <span class="at">width =</span> <span class="fl">0.3</span>, <span class="at">height =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb26-30"><a href="investigation.html#cb26-30" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(</span>
+<span id="cb26-31"><a href="investigation.html#cb26-31" tabindex="-1"></a>    <span class="at">data =</span> df_ir2r <span class="sc">%&gt;%</span> <span class="fu">filter</span>(nr_repro_indiv <span class="sc">&lt;</span> <span class="dv">100</span> <span class="sc">&amp;</span> fire_label <span class="sc">==</span> <span class="st">&#39;Fire&#39;</span>),</span>
+<span id="cb26-32"><a href="investigation.html#cb26-32" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> nr_repro_indiv, <span class="at">y =</span> recruit_count_t1, <span class="at">color =</span> fire_label),</span>
+<span id="cb26-33"><a href="investigation.html#cb26-33" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="fl">1.8</span>, <span class="at">width =</span> <span class="fl">0.3</span>, <span class="at">height =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb26-34"><a href="investigation.html#cb26-34" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb26-35"><a href="investigation.html#cb26-35" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb26-36"><a href="investigation.html#cb26-36" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb26-37"><a href="investigation.html#cb26-37" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&#39;Number of Reproductive Individuals (t)&#39;</span>,</span>
+<span id="cb26-38"><a href="investigation.html#cb26-38" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&#39;Predicted Recruitment Count (t+1)&#39;</span>,</span>
+<span id="cb26-39"><a href="investigation.html#cb26-39" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Effect of Fire and Reproductive Individuals on Recruitment&#39;</span>,</span>
+<span id="cb26-40"><a href="investigation.html#cb26-40" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>,</span>
+<span id="cb26-41"><a href="investigation.html#cb26-41" tabindex="-1"></a>    <span class="at">fill  =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>) <span class="sc">+</span></span>
+<span id="cb26-42"><a href="investigation.html#cb26-42" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/unnamed-chunk-8-2.png" width="672" /></p>
+<p>This broader model includes all observed individuals (regardless of life stage), evaluating the relationship between total reproductive presence and subsequent recruitment.</p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="investigation.html#cb27-1" tabindex="-1"></a>df_ia2r <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb27-2"><a href="investigation.html#cb27-2" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb27-3"><a href="investigation.html#cb27-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), <span class="cn">TRUE</span>, <span class="cn">FALSE</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb27-4"><a href="investigation.html#cb27-4" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">fire =</span> <span class="fu">any</span>(fire <span class="sc">==</span> <span class="cn">TRUE</span>),</span>
+<span id="cb27-5"><a href="investigation.html#cb27-5" tabindex="-1"></a>            <span class="at">nr_repro_indiv =</span> <span class="fu">n</span>(),</span>
+<span id="cb27-6"><a href="investigation.html#cb27-6" tabindex="-1"></a>            <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb27-7"><a href="investigation.html#cb27-7" tabindex="-1"></a>  <span class="fu">full_join</span>(</span>
+<span id="cb27-8"><a href="investigation.html#cb27-8" tabindex="-1"></a>    df <span class="sc">%&gt;%</span></span>
+<span id="cb27-9"><a href="investigation.html#cb27-9" tabindex="-1"></a>      <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb27-10"><a href="investigation.html#cb27-10" tabindex="-1"></a>      <span class="fu">summarise</span>(</span>
+<span id="cb27-11"><a href="investigation.html#cb27-11" tabindex="-1"></a>        <span class="at">recruit_count_t1 =</span> <span class="fu">sum</span>(recruits, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb27-12"><a href="investigation.html#cb27-12" tabindex="-1"></a>        <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb27-13"><a href="investigation.html#cb27-13" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">year =</span> year <span class="sc">-</span> <span class="dv">1</span>), </span>
+<span id="cb27-14"><a href="investigation.html#cb27-14" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&#39;site&#39;</span>, <span class="st">&#39;quad&#39;</span>, <span class="st">&#39;year&#39;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb27-15"><a href="investigation.html#cb27-15" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No Fire&#39;</span>))</span>
+<span id="cb27-16"><a href="investigation.html#cb27-16" tabindex="-1"></a></span>
+<span id="cb27-17"><a href="investigation.html#cb27-17" tabindex="-1"></a></span>
+<span id="cb27-18"><a href="investigation.html#cb27-18" tabindex="-1"></a>mod_ia2r_01 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> fire, <span class="at">data =</span> df_ia2r)</span>
+<span id="cb27-19"><a href="investigation.html#cb27-19" tabindex="-1"></a>mod_ia2r_02 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> nr_repro_indiv <span class="sc">+</span> fire, <span class="at">data =</span> df_ia2r)</span>
+<span id="cb27-20"><a href="investigation.html#cb27-20" tabindex="-1"></a>mod_ia2r_11 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> nr_repro_indiv <span class="sc">*</span> fire, <span class="at">data =</span> df_ia2r)</span>
+<span id="cb27-21"><a href="investigation.html#cb27-21" tabindex="-1"></a></span>
+<span id="cb27-22"><a href="investigation.html#cb27-22" tabindex="-1"></a>mods_ia2r      <span class="ot">&lt;-</span> <span class="fu">list</span>(mod_ia2r_01,  mod_ia2r_02, mod_ia2r_11)</span>
+<span id="cb27-23"><a href="investigation.html#cb27-23" tabindex="-1"></a>mods_ia2r_dAIC <span class="ot">&lt;-</span> <span class="fu">AICctab</span>(mods_ia2r, <span class="at">weights =</span> <span class="cn">TRUE</span>, <span class="at">sort =</span> <span class="cn">FALSE</span>)<span class="sc">$</span>dAIC</span>
+<span id="cb27-24"><a href="investigation.html#cb27-24" tabindex="-1"></a></span>
+<span id="cb27-25"><a href="investigation.html#cb27-25" tabindex="-1"></a></span>
+<span id="cb27-26"><a href="investigation.html#cb27-26" tabindex="-1"></a>df_ia2r_newdata <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">fire =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>))</span>
+<span id="cb27-27"><a href="investigation.html#cb27-27" tabindex="-1"></a>pred_link <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_ia2r_01, <span class="at">newdata =</span> df_ia2r_newdata, <span class="at">type =</span> <span class="st">&#39;link&#39;</span>, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb27-28"><a href="investigation.html#cb27-28" tabindex="-1"></a></span>
+<span id="cb27-29"><a href="investigation.html#cb27-29" tabindex="-1"></a>df_ia2r_newdata <span class="ot">&lt;-</span> df_ia2r_newdata <span class="sc">%&gt;%</span></span>
+<span id="cb27-30"><a href="investigation.html#cb27-30" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb27-31"><a href="investigation.html#cb27-31" tabindex="-1"></a>    <span class="at">fit   =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit),</span>
+<span id="cb27-32"><a href="investigation.html#cb27-32" tabindex="-1"></a>    <span class="at">lower =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">-</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb27-33"><a href="investigation.html#cb27-33" tabindex="-1"></a>    <span class="at">upper =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">+</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb27-34"><a href="investigation.html#cb27-34" tabindex="-1"></a>    <span class="at">fire  =</span> <span class="fu">factor</span>(fire, <span class="at">levels =</span> <span class="fu">c</span>(<span class="cn">FALSE</span>, <span class="cn">TRUE</span>), <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span>, <span class="st">&#39;Fire&#39;</span>)))</span>
+<span id="cb27-35"><a href="investigation.html#cb27-35" tabindex="-1"></a></span>
+<span id="cb27-36"><a href="investigation.html#cb27-36" tabindex="-1"></a><span class="fu">ggplot</span>(df_ia2r_newdata, <span class="fu">aes</span>(<span class="at">x =</span> fire, <span class="at">y =</span> fit, <span class="at">fill =</span> fire)) <span class="sc">+</span></span>
+<span id="cb27-37"><a href="investigation.html#cb27-37" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">width =</span> <span class="fl">0.6</span>, <span class="at">color =</span> <span class="st">&#39;gray30&#39;</span>) <span class="sc">+</span></span>
+<span id="cb27-38"><a href="investigation.html#cb27-38" tabindex="-1"></a>  <span class="fu">geom_errorbar</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lower, <span class="at">ymax =</span> upper), <span class="at">width =</span> <span class="fl">0.2</span>, <span class="at">color =</span> <span class="st">&#39;gray30&#39;</span>) <span class="sc">+</span></span>
+<span id="cb27-39"><a href="investigation.html#cb27-39" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb27-40"><a href="investigation.html#cb27-40" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb27-41"><a href="investigation.html#cb27-41" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>,</span>
+<span id="cb27-42"><a href="investigation.html#cb27-42" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&#39;Predicted Recruitment Count (t+1)&#39;</span>,</span>
+<span id="cb27-43"><a href="investigation.html#cb27-43" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Effect of Fire on Recruitment&#39;</span>) <span class="sc">+</span></span>
+<span id="cb27-44"><a href="investigation.html#cb27-44" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>) <span class="sc">+</span></span>
+<span id="cb27-45"><a href="investigation.html#cb27-45" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&#39;none&#39;</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="investigation.html#cb28-1" tabindex="-1"></a>df_ia2r_predgrid <span class="ot">&lt;-</span> df_ia2r <span class="sc">%&gt;%</span></span>
+<span id="cb28-2"><a href="investigation.html#cb28-2" tabindex="-1"></a>  <span class="fu">filter</span>(nr_repro_indiv <span class="sc">&lt;</span> <span class="dv">100</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb28-3"><a href="investigation.html#cb28-3" tabindex="-1"></a>  <span class="fu">group_by</span>(fire) <span class="sc">%&gt;%</span></span>
+<span id="cb28-4"><a href="investigation.html#cb28-4" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb28-5"><a href="investigation.html#cb28-5" tabindex="-1"></a>    <span class="at">min_nr =</span> <span class="fu">min</span>(nr_repro_indiv, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb28-6"><a href="investigation.html#cb28-6" tabindex="-1"></a>    <span class="at">max_nr =</span> <span class="fu">max</span>(nr_repro_indiv, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb28-7"><a href="investigation.html#cb28-7" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb28-8"><a href="investigation.html#cb28-8" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb28-9"><a href="investigation.html#cb28-9" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">nr_seq =</span> <span class="fu">list</span>(<span class="fu">seq</span>(min_nr, max_nr, <span class="at">length.out =</span> <span class="dv">100</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb28-10"><a href="investigation.html#cb28-10" tabindex="-1"></a>  <span class="fu">unnest</span>(nr_seq) <span class="sc">%&gt;%</span></span>
+<span id="cb28-11"><a href="investigation.html#cb28-11" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">nr_repro_indiv =</span> nr_seq) <span class="sc">%&gt;%</span></span>
+<span id="cb28-12"><a href="investigation.html#cb28-12" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">as.logical</span>(fire))</span>
+<span id="cb28-13"><a href="investigation.html#cb28-13" tabindex="-1"></a></span>
+<span id="cb28-14"><a href="investigation.html#cb28-14" tabindex="-1"></a>pred_link <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_ia2r_02, <span class="at">newdata =</span> df_ia2r_predgrid, <span class="at">type =</span> <span class="st">&#39;link&#39;</span>, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb28-15"><a href="investigation.html#cb28-15" tabindex="-1"></a>df_ia2r_predgrid <span class="ot">&lt;-</span> df_ia2r_predgrid <span class="sc">%&gt;%</span></span>
+<span id="cb28-16"><a href="investigation.html#cb28-16" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb28-17"><a href="investigation.html#cb28-17" tabindex="-1"></a>    <span class="at">fit   =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit),</span>
+<span id="cb28-18"><a href="investigation.html#cb28-18" tabindex="-1"></a>    <span class="at">lower =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">-</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb28-19"><a href="investigation.html#cb28-19" tabindex="-1"></a>    <span class="at">upper =</span> <span class="fu">exp</span>(pred_link<span class="sc">$</span>fit <span class="sc">+</span> <span class="fl">1.96</span> <span class="sc">*</span> pred_link<span class="sc">$</span>se.fit),</span>
+<span id="cb28-20"><a href="investigation.html#cb28-20" tabindex="-1"></a>    <span class="at">fire_label =</span> <span class="fu">ifelse</span>(fire, <span class="st">&#39;Fire&#39;</span>, <span class="st">&#39;No Fire&#39;</span>))</span>
+<span id="cb28-21"><a href="investigation.html#cb28-21" tabindex="-1"></a></span>
+<span id="cb28-22"><a href="investigation.html#cb28-22" tabindex="-1"></a><span class="fu">ggplot</span>(df_ia2r_predgrid, <span class="fu">aes</span>(<span class="at">x =</span> nr_repro_indiv, <span class="at">y =</span> fit, <span class="at">color =</span> fire_label, <span class="at">fill =</span> fire_label)) <span class="sc">+</span></span>
+<span id="cb28-23"><a href="investigation.html#cb28-23" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lower, <span class="at">ymax =</span> upper), <span class="at">alpha =</span> <span class="fl">0.15</span>, <span class="at">color =</span> <span class="cn">NA</span>) <span class="sc">+</span></span>
+<span id="cb28-24"><a href="investigation.html#cb28-24" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">size =</span> <span class="fl">1.1</span>) <span class="sc">+</span></span>
+<span id="cb28-25"><a href="investigation.html#cb28-25" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(</span>
+<span id="cb28-26"><a href="investigation.html#cb28-26" tabindex="-1"></a>    <span class="at">data =</span> df_ia2r <span class="sc">%&gt;%</span> <span class="fu">filter</span>(nr_repro_indiv <span class="sc">&lt;</span> <span class="dv">100</span> <span class="sc">&amp;</span> fire_label <span class="sc">==</span> <span class="st">&#39;No Fire&#39;</span>),</span>
+<span id="cb28-27"><a href="investigation.html#cb28-27" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> nr_repro_indiv, <span class="at">y =</span> recruit_count_t1, <span class="at">color =</span> fire_label),</span>
+<span id="cb28-28"><a href="investigation.html#cb28-28" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.1</span>, <span class="at">size =</span> <span class="fl">1.8</span>, <span class="at">width =</span> <span class="fl">0.3</span>, <span class="at">height =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb28-29"><a href="investigation.html#cb28-29" tabindex="-1"></a>  <span class="fu">geom_jitter</span>(</span>
+<span id="cb28-30"><a href="investigation.html#cb28-30" tabindex="-1"></a>    <span class="at">data =</span> df_ia2r <span class="sc">%&gt;%</span> <span class="fu">filter</span>(nr_repro_indiv <span class="sc">&lt;</span> <span class="dv">100</span> <span class="sc">&amp;</span> fire_label <span class="sc">==</span> <span class="st">&#39;Fire&#39;</span>),</span>
+<span id="cb28-31"><a href="investigation.html#cb28-31" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">x =</span> nr_repro_indiv, <span class="at">y =</span> recruit_count_t1, <span class="at">color =</span> fire_label),</span>
+<span id="cb28-32"><a href="investigation.html#cb28-32" tabindex="-1"></a>    <span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="fl">1.8</span>, <span class="at">width =</span> <span class="fl">0.3</span>, <span class="at">height =</span> <span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb28-33"><a href="investigation.html#cb28-33" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb28-34"><a href="investigation.html#cb28-34" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">&#39;No Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#1b9e77&#39;</span>, <span class="st">&#39;Fire&#39;</span> <span class="ot">=</span> <span class="st">&#39;#d95f02&#39;</span>)) <span class="sc">+</span></span>
+<span id="cb28-35"><a href="investigation.html#cb28-35" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb28-36"><a href="investigation.html#cb28-36" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&#39;Number of Reproductive Individuals (t)&#39;</span>,</span>
+<span id="cb28-37"><a href="investigation.html#cb28-37" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&#39;Predicted Recruitment Count (t+1)&#39;</span>,</span>
+<span id="cb28-38"><a href="investigation.html#cb28-38" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&#39;Effect of Fire and Reproductive Individuals on Recruitment&#39;</span>,</span>
+<span id="cb28-39"><a href="investigation.html#cb28-39" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>,</span>
+<span id="cb28-40"><a href="investigation.html#cb28-40" tabindex="-1"></a>    <span class="at">fill  =</span> <span class="st">&#39;Fire in Previous Year&#39;</span>) <span class="sc">+</span></span>
+<span id="cb28-41"><a href="investigation.html#cb28-41" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">14</span>)</span></code></pre></div>
+</details>
+<p><img src="_main_files/figure-html/unnamed-chunk-9-2.png" width="672" /></p>
+<details class=chunk-details><summary class=chunk-summary><span class=chunk-summary-text>Code</span></summary>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="investigation.html#cb29-1" tabindex="-1"></a>df_2r <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb29-2"><a href="investigation.html#cb29-2" tabindex="-1"></a>  <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb29-3"><a href="investigation.html#cb29-3" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb29-4"><a href="investigation.html#cb29-4" tabindex="-1"></a>    <span class="at">total_stocks =</span> <span class="fu">sum</span>(flowering_stems, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb29-5"><a href="investigation.html#cb29-5" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb29-6"><a href="investigation.html#cb29-6" tabindex="-1"></a>  <span class="fu">full_join</span>(df <span class="sc">%&gt;%</span></span>
+<span id="cb29-7"><a href="investigation.html#cb29-7" tabindex="-1"></a>              <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb29-8"><a href="investigation.html#cb29-8" tabindex="-1"></a>              <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(</span>
+<span id="cb29-9"><a href="investigation.html#cb29-9" tabindex="-1"></a>                postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), <span class="cn">TRUE</span>, <span class="cn">FALSE</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb29-10"><a href="investigation.html#cb29-10" tabindex="-1"></a>              <span class="fu">filter</span>(stage <span class="sc">==</span> <span class="dv">3</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb29-11"><a href="investigation.html#cb29-11" tabindex="-1"></a>              <span class="fu">summarise</span>(</span>
+<span id="cb29-12"><a href="investigation.html#cb29-12" tabindex="-1"></a>                <span class="at">nr_repro_indiv =</span> <span class="fu">n</span>(),</span>
+<span id="cb29-13"><a href="investigation.html#cb29-13" tabindex="-1"></a>                <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>), </span>
+<span id="cb29-14"><a href="investigation.html#cb29-14" tabindex="-1"></a>            <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&#39;site&#39;</span>, <span class="st">&#39;quad&#39;</span>, <span class="st">&#39;year&#39;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb29-15"><a href="investigation.html#cb29-15" tabindex="-1"></a>  <span class="fu">full_join</span>(df <span class="sc">%&gt;%</span></span>
+<span id="cb29-16"><a href="investigation.html#cb29-16" tabindex="-1"></a>              <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb29-17"><a href="investigation.html#cb29-17" tabindex="-1"></a>              <span class="fu">mutate</span>(<span class="at">fire =</span> <span class="fu">if_else</span>(postburn_plant <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(postburn_plant), T, F)) <span class="sc">%&gt;%</span></span>
+<span id="cb29-18"><a href="investigation.html#cb29-18" tabindex="-1"></a>              <span class="fu">summarise</span>(</span>
+<span id="cb29-19"><a href="investigation.html#cb29-19" tabindex="-1"></a>                <span class="at">nr_total_indiv =</span> <span class="fu">n</span>(),</span>
+<span id="cb29-20"><a href="investigation.html#cb29-20" tabindex="-1"></a>                <span class="at">fire =</span> <span class="fu">any</span>(fire <span class="sc">==</span> T),</span>
+<span id="cb29-21"><a href="investigation.html#cb29-21" tabindex="-1"></a>                <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>), </span>
+<span id="cb29-22"><a href="investigation.html#cb29-22" tabindex="-1"></a>            <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&#39;site&#39;</span>, <span class="st">&#39;quad&#39;</span>, <span class="st">&#39;year&#39;</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb29-23"><a href="investigation.html#cb29-23" tabindex="-1"></a>  <span class="fu">full_join</span>(df <span class="sc">%&gt;%</span></span>
+<span id="cb29-24"><a href="investigation.html#cb29-24" tabindex="-1"></a>              <span class="fu">group_by</span>(site, quad, year) <span class="sc">%&gt;%</span></span>
+<span id="cb29-25"><a href="investigation.html#cb29-25" tabindex="-1"></a>              <span class="fu">summarise</span>(</span>
+<span id="cb29-26"><a href="investigation.html#cb29-26" tabindex="-1"></a>                <span class="at">recruit_count_t1 =</span> <span class="fu">sum</span>(recruits, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb29-27"><a href="investigation.html#cb29-27" tabindex="-1"></a>                <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb29-28"><a href="investigation.html#cb29-28" tabindex="-1"></a>              <span class="fu">mutate</span>(<span class="at">year =</span> year <span class="sc">-</span> <span class="dv">1</span>), </span>
+<span id="cb29-29"><a href="investigation.html#cb29-29" tabindex="-1"></a>            <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&#39;site&#39;</span>, <span class="st">&#39;quad&#39;</span>, <span class="st">&#39;year&#39;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb29-30"><a href="investigation.html#cb29-30" tabindex="-1"></a>  <span class="fu">drop_na</span>()</span>
+<span id="cb29-31"><a href="investigation.html#cb29-31" tabindex="-1"></a></span>
+<span id="cb29-32"><a href="investigation.html#cb29-32" tabindex="-1"></a><span class="co"># Models</span></span>
+<span id="cb29-33"><a href="investigation.html#cb29-33" tabindex="-1"></a>mod_2r_00 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> fire,                  <span class="at">data =</span> df_2r)</span>
+<span id="cb29-34"><a href="investigation.html#cb29-34" tabindex="-1"></a>mod_2r_11 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> total_stocks   <span class="sc">+</span> fire, <span class="at">data =</span> df_2r)</span>
+<span id="cb29-35"><a href="investigation.html#cb29-35" tabindex="-1"></a>mod_2r_12 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> total_stocks   <span class="sc">*</span> fire, <span class="at">data =</span> df_2r)</span>
+<span id="cb29-36"><a href="investigation.html#cb29-36" tabindex="-1"></a>mod_2r_21 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> nr_repro_indiv <span class="sc">+</span> fire, <span class="at">data =</span> df_2r)</span>
+<span id="cb29-37"><a href="investigation.html#cb29-37" tabindex="-1"></a>mod_2r_22 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> nr_repro_indiv <span class="sc">*</span> fire, <span class="at">data =</span> df_2r)</span>
+<span id="cb29-38"><a href="investigation.html#cb29-38" tabindex="-1"></a>mod_2r_31 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> nr_total_indiv <span class="sc">+</span> fire, <span class="at">data =</span> df_2r)</span>
+<span id="cb29-39"><a href="investigation.html#cb29-39" tabindex="-1"></a>mod_2r_32 <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(recruit_count_t1 <span class="sc">~</span> nr_total_indiv <span class="sc">*</span> fire, <span class="at">data =</span> df_2r)</span>
+<span id="cb29-40"><a href="investigation.html#cb29-40" tabindex="-1"></a></span>
+<span id="cb29-41"><a href="investigation.html#cb29-41" tabindex="-1"></a>mods_2r      <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb29-42"><a href="investigation.html#cb29-42" tabindex="-1"></a>  mod_2r_00, mod_2r_11, mod_2r_12, mod_2r_21, mod_2r_22, mod_2r_31, mod_2r_32)</span>
+<span id="cb29-43"><a href="investigation.html#cb29-43" tabindex="-1"></a>mods_2r_dAIC <span class="ot">&lt;-</span> <span class="fu">AICctab</span>(mods_2r, <span class="at">weights =</span> T, <span class="at">sort =</span> F)<span class="sc">$</span>dAIC</span></code></pre></div>
+</details>
+
+</div>
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="data.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="models.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+  "sharing": {
+    "github": false,
+    "facebook": true,
+    "twitter": true,
+    "linkedin": false,
+    "weibo": false,
+    "instapaper": false,
+    "vk": false,
+    "whatsapp": false,
+    "all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+  },
+  "fontsettings": {
+    "theme": "white",
+    "family": "sans",
+    "size": 2
+  },
+  "edit": {
+    "link": null,
+    "text": null
+  },
+  "history": {
+    "link": null,
+    "text": null
+  },
+  "view": {
+    "link": null,
+    "text": null
+  },
+  "download": null,
+  "search": {
+    "engine": "fuse",
+    "options": null
+  },
+  "toc": {
+    "collapse": "subsection"
+  }
+});
+});
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,580 @@
+# Year-specific disturbance IPM {#dist-year-flx2-fl2re}
+
+## Overview
+
+This chapter describes the year-specific integral projection model (IPM) for
+*Chrysopsis highlandsensis*. The model follows individuals from year `t0` to
+`t1` and contains five demographic processes:
+
+1. survival;
+2. growth in log rosette diameter;
+3. flowering probability;
+4. flowerhead number conditional on flowering; and
+5. recruitment from flowerheads in `t0` to recruits in `t1`.
+
+Fire is included as a fixed effect in the four size-dependent vital rates.
+Survival, growth, flowering, and flowerhead production vary among years.
+Recruitment may also vary among recruit years, but it has **no site random
+effect**. Sites are retained when constructing observed population sizes and
+initial size distributions, not as recruitment coefficients.
+
+The hidden chunk below runs the standalone model script. The following sections
+show only the code needed to understand the main decisions and results.
+
+```{r dist-year-run, include=FALSE}
+script_candidates <- c(
+  file.path(
+    'C:', 'code', 'RUPDemo_IPMs',
+    'archbold', 'R', 'chhi',
+    'archbold_chhi_ipm_year_dist_flx2_fl2re.R'),
+  'archbold_chhi_ipm_year_dist_flx2_fl2re.R')
+
+script_path <- script_candidates[file.exists(script_candidates)][1]
+
+if (is.na(script_path)) {
+  stop('Could not locate archbold_chhi_ipm_year_dist_flx2_fl2re.R')
+}
+
+source(script_path, local = knitr::knit_global())
+```
+
+```{r dist-year-summaries, include=FALSE}
+model_formula <- function(model) {
+  paste(deparse(stats::formula(model)), collapse = ' ')
+}
+
+fixed_effect <- function(model, term) {
+  coefs <- if (inherits(model, 'merMod')) {
+    lme4::fixef(model)
+  } else {
+    stats::coef(model)
+  }
+
+  if (term %in% names(coefs)) {
+    unname(coefs[[term]])
+  } else {
+    NA_real_
+  }
+}
+
+selected_models <- tibble::tibble(
+  process = c(
+    'Survival',
+    'Growth',
+    'Flowering probability',
+    'Flowerheads given flowering',
+    'Flowerheads to recruits'),
+  selected_formula = c(
+    model_formula(mod_su_best),
+    model_formula(mod_gr_best),
+    model_formula(mod_fl_best),
+    model_formula(mod_fl_n_best),
+    model_formula(mod_re_best)))
+
+lambda_year_long <- lambda_year %>%
+  tidyr::pivot_longer(
+    cols = c(lambda_no_fire, lambda_fire),
+    names_to = 'fire_state',
+    values_to = 'lambda') %>%
+  mutate(
+    fire_state = dplyr::recode(
+      fire_state,
+      lambda_no_fire = 'No fire',
+      lambda_fire = 'Fire'))
+
+validation_summary <- df_compare %>%
+  summarise(
+    n_years = n(),
+    cor_asym = cor(obs_pgr, asym_lambda, use = 'complete.obs'),
+    cor_proj = cor(obs_pgr, proj_lambda, use = 'complete.obs'),
+    mae_asym = mean(abs(obs_pgr - asym_lambda), na.rm = TRUE),
+    mae_proj = mean(abs(obs_pgr - proj_lambda), na.rm = TRUE))
+```
+
+## How recruitment was defined
+
+Recruitment was initially identified only from annual seedling stage
+(`astg == 1`). Console checks showed that seedlings were not counted in
+multiple years, but the quarterly censuses contained additional plants marked
+as `new plant`. Most first observations of this kind occurred in the first year
+that a site was monitored, when prior presence was unknown; these were not
+accepted as recruits. The remaining 280 plants appeared after site monitoring
+had begun and were therefore added as recruits.
+
+The final rule classifies a plant as a recruit when it is either a seedling or a
+first observation after site establishment with a quarterly `new plant` status.
+
+```{r dist-year-recruit-code, eval=FALSE}
+df_recruit_flag <- df_og %>%
+  rename(
+    plant_id = identifier,
+    year = year0) %>%
+  mutate(
+    new_plant_status = if_any(
+      c(s_03, s_06, s_09, s_12), ~ .x == 3)) %>%
+  group_by(site) %>%
+  mutate(site_first_year = min(year, na.rm = TRUE)) %>%
+  group_by(site, plant_id) %>%
+  mutate(first_plant_year = min(year, na.rm = TRUE)) %>%
+  group_by(site, plant_id, year) %>%
+  summarise(
+    seedling = any(astg == 1, na.rm = TRUE),
+    new_plant_status = any(new_plant_status, na.rm = TRUE),
+    site_first_year = first(site_first_year),
+    first_plant_year = first(first_plant_year),
+    .groups = 'drop') %>%
+  mutate(
+    recruit = as.integer(
+      seedling |
+        (new_plant_status &
+           year == first_plant_year &
+           year > site_first_year)))
+```
+
+After this classification, the annual dataset contains
+`r sum(df$recruit == 1, na.rm = TRUE)` recruit records across
+`r dplyr::n_distinct(df$site)` sites and years
+`r min(df$year, na.rm = TRUE)`--`r max(df$year, na.rm = TRUE)`.
+
+## Annual demographic data
+
+Repeated observations are collapsed to one record per site, plant, and year.
+The annual record retains survival, maximum rosette diameter, next-year
+rosette diameter, and maximum flowerhead count. Diameter is log-transformed for
+all size-dependent models. Fire is attached to the transition beginning in
+`t0`.
+
+```{r dist-year-data-code, eval=FALSE}
+df <- df_og %>%
+  rename(
+    plant_id = identifier,
+    year = year0,
+    survival = survival_1) %>%
+  group_by(site, plant_id, year) %>%
+  summarise(
+    survives = if (all(is.na(survival))) {
+      NA_real_
+    } else {
+      min(survival, na.rm = TRUE)
+    },
+    size_t0 = if (all(is.na(dia))) NA_real_ else max(dia, na.rm = TRUE),
+    size_t1 = if (all(is.na(dia_1))) NA_real_ else max(dia_1, na.rm = TRUE),
+    flower = if (all(is.na(hd))) NA_real_ else max(hd, na.rm = TRUE),
+    .groups = 'drop') %>%
+  left_join(df_recruit_flag, by = c('site', 'plant_id', 'year')) %>%
+  mutate(
+    fl_nr = flower,
+    flower = if_else(flower > 0, 1, flower),
+    logsize_t0 = log(size_t0),
+    logsize_t1 = log(size_t1),
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3)
+```
+
+Keeping `fl_nr` and `flower` separately is important. `flower` is the binary
+response for flowering probability, whereas `fl_nr` is the count response for
+flowerhead production among flowering plants.
+
+## Vital-rate models
+
+Candidate models range from intercept-only to cubic size dependence. AICc
+selects the supported polynomial complexity. Fire remains a fixed effect, while
+year enters as a random effect.
+
+```{r dist-year-selected-models}
+knitr::kable(
+  selected_models,
+  col.names = c('Process', 'Selected model'),
+  caption = 'Vital-rate models selected by AICc.')
+```
+
+### Survival
+
+Survival is binary and is fitted with a binomial mixed model. The year random
+intercept allows generally favorable and unfavorable survival years, while the
+fire coefficient shifts the curve between burned and unburned transitions.
+
+```{r dist-year-survival-code, eval=FALSE}
+mod_su_0 <- glmer(
+  survives ~ fire + (1 | year),
+  data = df_su, family = binomial)
+
+mod_su_1 <- glmer(
+  survives ~ logsize_t0 + fire + (1 | year),
+  data = df_su, family = binomial)
+
+# Quadratic and cubic size candidates are fitted in the same way.
+mod_su_best <- mods_su[[order(mods_su_dAIC)[1]]]
+```
+
+The selected model is
+`r model_formula(mod_su_best)`. The fixed fire coefficient is
+`r round(fixed_effect(mod_su_best, 'fireFire'), 3)` on the logit scale. In the
+figure, separation between the black and red curves is the modeled fire effect;
+vertical changes among panels are year effects.
+
+```{r dist-year-survival-figure, fig.width=12, fig.height=15, out.width='100%'}
+g_surv_years +
+  patchwork::plot_annotation(
+    title = 'Survival - year specific',
+    subtitle = v_ggp_suffix)
+```
+
+### Growth
+
+Growth predicts log size in `t1` from log size in `t0`. The model includes a
+random year intercept and size slope, allowing both average growth and the
+size--growth relationship to change among years. Residual variance is modeled
+separately because growth variability changes along the fitted growth curve.
+
+```{r dist-year-growth-code, eval=FALSE}
+mod_gr_1 <- lmer(
+  logsize_t1 ~ logsize_t0 + fire + (logsize_t0 | year),
+  data = df_gr)
+
+mod_gr_2 <- lmer(
+  logsize_t1 ~ logsize_t0 + logsize_t0_2 + fire +
+    (logsize_t0 | year),
+  data = df_gr)
+
+mod_gr_best <- mods_gr[[order(mods_gr_dAIC)[1]]]
+
+gr_var <- nls(
+  resid(mod_gr_best)^2 ~ a * exp(b * fitted(mod_gr_best)),
+  start = list(a = 1, b = 0))
+```
+
+The selected growth model is
+`r model_formula(mod_gr_best)`. The blue dashed line in each panel represents
+no change in size. Curves above this line indicate expected growth, whereas
+curves below it indicate expected shrinkage.
+
+```{r dist-year-growth-figure, fig.width=12, fig.height=15, out.width='100%'}
+g_grow_years
+```
+
+### Flowering probability and flowerhead number
+
+Reproduction is separated into two processes. First, a binomial model estimates
+the probability that a plant flowers. Second, a negative-binomial model
+estimates flowerhead number among plants that flowered. This avoids treating all
+zero flowerhead observations as part of the flowerhead count distribution.
+
+```{r dist-year-flowering-code, eval=FALSE}
+mod_fl_1 <- glmer(
+  flower ~ logsize_t0 + fire + (1 | year),
+  data = df_fl, family = binomial)
+
+mod_fl_n_1 <- glmer.nb(
+  fl_nr ~ logsize_t0 + fire + (1 | year),
+  data = df_fl_cond)
+```
+
+The selected flowering model is
+`r model_formula(mod_fl_best)`, and the selected conditional flowerhead model is
+`r model_formula(mod_fl_n_best)`. Their expected product is the mean number of
+flowerheads produced by an individual of a given size:
+
+\[
+E(FH \mid x) = \Pr(\text{flowering} \mid x)\,
+E(FH \mid \text{flowering},x).
+\]
+
+The following plots reproduce the year-panel logic used for survival and growth.
+Points are binned observations and lines are conditional year predictions.
+
+```{r dist-year-flowering-plots, fig.width=12, fig.height=15, out.width='100%'}
+make_year_prediction_grid <- function(data, n = 100) {
+  data %>%
+    group_by(year) %>%
+    summarise(
+      xmin = min(logsize_t0, na.rm = TRUE),
+      xmax = max(logsize_t0, na.rm = TRUE),
+      .groups = 'drop') %>%
+    tidyr::crossing(
+      fire = factor(
+        c('No fire', 'Fire'),
+        levels = c('No fire', 'Fire'))) %>%
+    rowwise() %>%
+    mutate(logsize_t0 = list(seq(xmin, xmax, length.out = n))) %>%
+    tidyr::unnest(logsize_t0) %>%
+    ungroup() %>%
+    mutate(
+      year = factor(year, levels = levels(data$year)),
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3)
+}
+
+fl_pred <- make_year_prediction_grid(df_fl) %>%
+  mutate(
+    prediction = predict(
+      mod_fl_best,
+      newdata = ., type = 'response', re.form = NULL))
+
+fl_points <- df_fl %>%
+  group_by(year, fire) %>%
+  mutate(bin = dplyr::ntile(logsize_t0, 8)) %>%
+  group_by(year, fire, bin) %>%
+  summarise(
+    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+    response = mean(flower, na.rm = TRUE),
+    .groups = 'drop')
+
+fig_fl_years <- ggplot() +
+  geom_point(
+    data = fl_points,
+    aes(logsize_t0, response, color = fire),
+    size = 1) +
+  geom_line(
+    data = fl_pred,
+    aes(logsize_t0, prediction, color = fire),
+    linewidth = 0.8) +
+  facet_wrap(~ year, ncol = 4) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme_bw() +
+  labs(
+    title = 'Flowering probability - year specific',
+    subtitle = v_ggp_suffix,
+    x = expression('log(size)'[t0]),
+    y = 'Flowering probability',
+    color = NULL) +
+  theme(legend.position = 'top')
+
+fig_fl_years
+```
+
+```{r dist-year-flowerhead-plots, fig.width=12, fig.height=15, out.width='100%'}
+fln_pred <- make_year_prediction_grid(df_fl_cond) %>%
+  mutate(
+    prediction = predict(
+      mod_fl_n_best,
+      newdata = ., type = 'response', re.form = NULL))
+
+fln_points <- df_fl_cond %>%
+  group_by(year, fire) %>%
+  mutate(bin = dplyr::ntile(logsize_t0, 8)) %>%
+  group_by(year, fire, bin) %>%
+  summarise(
+    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+    response = mean(fl_nr, na.rm = TRUE),
+    .groups = 'drop')
+
+fig_fln_years <- ggplot() +
+  geom_point(
+    data = fln_points,
+    aes(logsize_t0, response, color = fire),
+    size = 1) +
+  geom_line(
+    data = fln_pred,
+    aes(logsize_t0, prediction, color = fire),
+    linewidth = 0.8) +
+  facet_wrap(~ year, ncol = 4, scales = 'free_y') +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
+  theme_bw() +
+  labs(
+    title = 'Flowerhead number given flowering - year specific',
+    subtitle = v_ggp_suffix,
+    x = expression('log(size)'[t0]),
+    y = 'Expected flowerheads',
+    color = NULL) +
+  theme(legend.position = 'top')
+
+fig_fln_years
+```
+
+## Flowerhead-to-recruit transition
+
+Recruitment is fitted at the site-year level. Flowerheads produced in year `t0`
+are paired with recruits observed in `t1`, and both quantities are transformed
+with `log1p`. The candidate models allow recruitment to vary among recruit years
+but deliberately omit site random effects.
+
+```{r dist-year-recruitment-model-code, eval=FALSE}
+df_re <- df_site_year %>%
+  transmute(site, year_t1 = year, re_t1 = re) %>%
+  left_join(
+    df_site_year %>%
+      transmute(
+        site,
+        year_t0 = year,
+        year_t1 = year + 1,
+        fh_t0 = fh),
+    by = c('site', 'year_t1')) %>%
+  mutate(
+    re_t1_log = log1p(re_t1),
+    fh_t0_log = log1p(fh_t0))
+
+mod_re_0 <- glm(
+  re_t1_log ~ fh_t0_log,
+  data = df_re)
+
+mod_re_2 <- lmer(
+  re_t1_log ~ fh_t0_log + (fh_t0_log | year_t1),
+  data = df_re, REML = FALSE)
+```
+
+The selected recruitment model is
+`r model_formula(mod_re_best)`, fitted to `r nrow(df_re)` site-year
+transitions. Colored symbols identify sites, but each panel has one black
+recruitment relationship because recruitment coefficients vary by year rather
+than by site.
+
+The intercept is retained. Consequently, the relationship is an **effective
+flowerhead-to-recruit transition**, not a claim that all recruits originate
+only from flowerheads counted in the immediately preceding census. A non-zero
+intercept can absorb carry-over from persistent seeds, unobserved flowerheads,
+and other mismatch between annual flowerhead and recruit censuses.
+
+```{r dist-year-recruitment-figure, fig.width=12, fig.height=15, out.width='100%'}
+g_re_years
+```
+
+## From vital rates to the IPM
+
+The parameter-extraction section separates population-level fixed effects from
+year-specific conditional coefficients. `make_ipm_pars()` begins with the mean
+parameter list and replaces coefficients with those for the requested year.
+Recruitment-year effects are indexed by `t1`, because they describe the year in
+which recruits are observed.
+
+```{r dist-year-parameter-code, eval=FALSE}
+pars_i <- make_ipm_pars(
+  pars_mean = pars_all_mean,
+  pars_year = pars_all_year,
+  pars_re_year_t1 = pars_all_re_year_t1,
+  year = year,
+  re_year_t1 = year + 1)
+```
+
+The annual kernel is the sum of two components:
+
+\[
+K(y,x) = T(y,x) + F(y,x).
+\]
+
+`T` combines survival and growth. `F` combines flowering probability,
+flowerhead number, the effective recruits-per-flowerhead conversion, and the
+observed recruit-size distribution.
+
+```{r dist-year-kernel-code, eval=FALSE}
+# Survival-growth transition
+Tmat[, i] <- Gmat[, i] * Smat[i]
+
+# Fertility contribution
+Rvec <- fhx(x, pars, fire) * recruits_per_flowerhead
+Fmat <- outer(recruit_size_density, Rvec) * h
+
+# Complete kernel
+K <- Tmat + Fmat
+```
+
+The mesh contains `r pars_all_mean$mat_siz` size classes, ranging from
+`r round(pars_all_mean$L, 2)` to `r round(pars_all_mean$U, 2)` on the log-size
+scale. Eviction correction places growth probability outside the mesh into the
+smallest or largest size class, preventing loss of probability mass at the
+boundaries.
+
+## Year-specific population growth
+
+For every year, the model builds one no-fire kernel and one fire kernel. The
+dominant eigenvalue is the asymptotic population growth rate, \(\lambda\), for
+that year's vital rates.
+
+```{r dist-year-lambda-code, eval=FALSE}
+lambda_year <- data.frame(
+  year = ipm_years,
+  lambda_no_fire = sapply(
+    ipm_years,
+    function(i) lambda_ipm_year(i, fire = 0)),
+  lambda_fire = sapply(
+    ipm_years,
+    function(i) lambda_ipm_year(i, fire = 1)))
+```
+
+Across `r nrow(lambda_year)` modeled years, no-fire \(\lambda\) ranges from
+`r round(min(lambda_year$lambda_no_fire, na.rm = TRUE), 3)` to
+`r round(max(lambda_year$lambda_no_fire, na.rm = TRUE), 3)`, while fire
+\(\lambda\) ranges from
+`r round(min(lambda_year$lambda_fire, na.rm = TRUE), 3)` to
+`r round(max(lambda_year$lambda_fire, na.rm = TRUE), 3)`. Fire produces the
+lower value in
+`r sum(lambda_year$lambda_fire < lambda_year$lambda_no_fire, na.rm = TRUE)` of
+`r nrow(lambda_year)` years. Variation shared by both lines reflects changing
+year effects; the gap between the lines reflects the fixed fire effects carried
+through all vital rates.
+
+```{r dist-year-lambda-figure, fig.width=8, fig.height=4.5, out.width='90%'}
+fig_lambda_year <- ggplot(
+  lambda_year_long,
+  aes(x = year, y = lambda, color = fire_state)) +
+  geom_hline(yintercept = 1, linetype = 'dotted') +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.6) +
+  scale_color_manual(values = c('No fire' = 'black', 'Fire' = 'red')) +
+  theme_bw() +
+  labs(
+    title = 'Year-specific asymptotic population growth',
+    subtitle = v_ggp_suffix,
+    x = 'Projection year',
+    y = expression(lambda),
+    color = NULL) +
+  theme(legend.position = 'top')
+
+fig_lambda_year
+```
+
+Values above one indicate asymptotic increase under that year's kernel, and
+values below one indicate decline. These are long-run rates for a fixed annual
+kernel; they are not the same as the observed one-year change from the current
+population structure.
+
+## Observed versus modeled growth
+
+Validation retains only site-year pairs observed in both `t0` and `t1`. Each
+site is projected from its observed size distribution using the corresponding
+year and fire kernel. Site projections are then combined to obtain:
+
+- **projected lambda**, the modeled one-year change from the observed size
+  distribution; and
+- **asymptotic lambda**, the dominant eigenvalue of the kernel, averaged across
+  sites with abundance weights.
+
+```{r dist-year-validation-code, eval=FALSE}
+n_proj <- K %*% n_obs
+
+proj_lambda <- sum(n_proj) / sum(n_obs)
+asym_lambda <- Re(eigen(K, only.values = TRUE)$values[1])
+obs_pgr <- n_t1 / n_t0
+```
+
+The comparison contains `r validation_summary$n_years` annual transitions. The
+correlation with observed growth is
+`r round(validation_summary$cor_proj, 2)` for projected lambda and
+`r round(validation_summary$cor_asym, 2)` for asymptotic lambda. Their mean
+absolute errors are `r round(validation_summary$mae_proj, 2)` and
+`r round(validation_summary$mae_asym, 2)`, respectively.
+
+```{r dist-year-validation-figure, fig.width=9, fig.height=4.5, out.width='95%'}
+g_mod_vs_obs
+```
+
+Points on the dashed line would represent exact agreement. Differences are not
+necessarily model failures: observed growth includes demographic stochasticity,
+sampling variation, and recruitment pulses, while the IPM describes expected
+rates from fitted vital-rate relationships. Projected lambda is usually the
+fairer one-year comparison because it starts from the observed size structure;
+asymptotic lambda answers a longer-term question.
+
+## Main conclusions
+
+- The model represents reproduction as flowering probability multiplied by
+  flowerhead number, followed by an empirical flowerhead-to-recruit transition.
+- The revised recruitment definition captures both seedlings and verified new
+  plants appearing after site monitoring began.
+- Year variation is included throughout the vital-rate pathway, whereas site
+  recruitment effects are intentionally excluded.
+- Fire affects the IPM through fixed effects on survival, growth, flowering,
+  and flowerhead production.
+- The observed-versus-modeled comparison distinguishes a one-year projection
+  from the asymptotic growth rate of the annual kernel.

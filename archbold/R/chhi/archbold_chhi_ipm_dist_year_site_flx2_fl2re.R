@@ -105,39 +105,118 @@ df_fire <- read_csv(file.path(dir_data, 'chrysopsis_highlandsensis_fire.csv')) %
   select(!c(year0, notes))
 
 
-# Mean data frame --------------------------------------------------------------
-df <- df_og %>% 
+# Recruitment classification --------------------------------------------------
+# Recruits include:
+# 1. plants classified as seedlings;
+# 2. plants first observed after site monitoring began and recorded as
+#    "new plant" in at least one quarterly census.
+#
+# New plants from a site's first census are excluded because they may have
+# existed before monitoring started.
+# Recruitment was initially identified solely from the annual stage classification, 
+# with individuals recorded as seedlings (`astg = 1`) classified as recruits. 
+# Diagnostic checks showed that no individual was classified 
+# as a seedling recruit in more than one year and that 
+# all seedling records occurred in the individual's first observed year. 
+# However, examination of the quarterly census status variables revealed 
+# additional first-observed individuals coded as “new plant” but already 
+# classified as vegetative or bolting at the annual census. Among the records 
+# that could be assigned relative to the start of site monitoring, 828 occurred 
+# during a site's initial census and were not considered recruits because their 
+# previous presence was unknown. A further 280 new plants appeared after 
+# monitoring had begun, comprising 264 vegetative and 16 bolting individuals. 
+# These individuals were classified as recruits because they were first observed 
+# during an established monitoring period and were explicitly recorded as new 
+# plants. Recruitment was therefore defined as either seedling stage or first 
+# observation after site establishment with at least one quarterly census status 
+# indicating a new plant.
+
+
+df_recruit_flag <- df_og %>%
   rename(
     plant_id = identifier,
-    year     = year0,
-    survival = survival_1) %>%  
+    year = year0) %>%
+  filter(
+    !is.na(site),
+    !is.na(plant_id),
+    !is.na(year)) %>%
   mutate(
-    plant_id = as.factor(plant_id)) %>%
-  arrange(site, plant_id, year, survival) %>%
-  mutate(recruit = ifelse(astg == 1, 1, 0)) %>%
-  group_by(site , plant_id, year) %>%
+    new_plant_status = if_any(
+      c(s_03, s_06, s_09, s_12), ~ .x == 3)) %>%
+  group_by(site) %>%
+  mutate(site_first_year = min(year, na.rm = TRUE)) %>%
+  group_by(site, plant_id) %>%
+  mutate(first_plant_year = min(year, na.rm = TRUE)) %>%
+  group_by(site, plant_id, year) %>%
   summarise(
-    survives = if (all(is.na(survival))) NA_real_ else min(survival, na.rm = TRUE),
-    size_t0  = if (all(is.na(dia)))      NA_real_ else max(dia,      na.rm = TRUE),
-    size_t1  = if (all(is.na(dia_1)))    NA_real_ else max(dia_1,    na.rm = TRUE),
-    flower   = if (all(is.na(hd)))       NA_real_ else max(hd,       na.rm = TRUE),
-    recruit  = if (all(is.na(recruit)))  NA_real_ else min(recruit,  na.rm = TRUE),
-    .groups = 'drop') %>%
+    seedling = any(astg == 1, na.rm = TRUE),
+    new_plant_status = any(new_plant_status, na.rm = TRUE),
+    site_first_year = first(site_first_year),
+    first_plant_year = first(first_plant_year),
+    .groups = "drop") %>%
   mutate(
-    fl_nr  = flower,
-    flower = if_else(flower > 0, 1, flower)) %>% 
+    recruit = as.integer(
+      seedling |
+        (new_plant_status &
+           year == first_plant_year &
+           year > site_first_year)),
+    recruit_source = case_when(
+      seedling ~ "Seedling stage",
+      recruit == 1 ~ "New plant after site establishment",
+      TRUE ~ "Not recruit"))
+
+
+# Mean data frame --------------------------------------------------------------
+df <- df_og %>%
+  rename(
+    plant_id = identifier,
+    year = year0,
+    survival = survival_1) %>%
+  arrange(site, plant_id, year, survival) %>%
+  group_by(site, plant_id, year) %>%
+  summarise(
+    survives = if (all(is.na(survival))) {
+      NA_real_
+    } else {
+      min(survival, na.rm = TRUE)
+    },
+    size_t0 = if (all(is.na(dia))) {
+      NA_real_
+    } else {
+      max(dia, na.rm = TRUE)
+    },
+    size_t1 = if (all(is.na(dia_1))) {
+      NA_real_
+    } else {
+      max(dia_1, na.rm = TRUE)
+    },
+    flower = if (all(is.na(hd))) {
+      NA_real_
+    } else {
+      max(hd, na.rm = TRUE)
+    },
+    .groups = "drop") %>%
+  left_join(
+    df_recruit_flag %>%
+      select(site, plant_id, year, recruit, recruit_source),
+    by = c("site", "plant_id", "year")) %>%
   mutate(
-    logsize_t0   = log(size_t0),
-    logsize_t1   = log(size_t1),
+    plant_id = factor(plant_id),
+    recruit = replace_na(recruit, 0L),
+    recruit_source = replace_na(recruit_source, "Not recruit"),
+    fl_nr = flower,
+    flower = if_else(flower > 0, 1, flower),
+    logsize_t0 = log(size_t0),
+    logsize_t1 = log(size_t1),
     logsize_t0_2 = logsize_t0^2,
     logsize_t0_3 = logsize_t0^3) %>%
-  full_join(df_fire, by = c('site', 'year')) %>%
+  full_join(df_fire, by = c("site", "year")) %>%
   mutate(
     fire = case_when(
-      is.na(fire)    ~ 'No fire',
-      fire == 'burn' ~ 'Fire',
-      TRUE           ~ NA_character_),
-    fire = factor(fire, levels = c('No fire', 'Fire')))
+      is.na(fire) ~ "No fire",
+      fire == "burn" ~ "Fire",
+      TRUE ~ NA_character_),
+    fire = factor(fire, levels = c("No fire", "Fire")))
 
 
 # Survival data ----------------------------------------------------------------
@@ -515,17 +594,12 @@ mod_fl_n_best <- mods_fl_n[[mods_fl_n_sorted[1]]]
 v_mod_fl_n_index <- mods_fl_n_sorted[1] - 1
 
 
-# Flowerhead production in t0 affects recruits in t1 -------------------------
+# Flowerhead production in t0 affects recruits in t1 --------------------------
 
-df_ind <- df_og %>% 
-  rename(plant_id = identifier, year = year0) %>% 
-  mutate(recruit = if_else(astg == 1, 1, 0)) %>% 
-  group_by(site, plant_id, year) %>% 
-  summarise(
-    fh_nr = max(hd, na.rm = TRUE),
-    recruit = max(recruit, na.rm = TRUE),
-    .groups = "drop") %>% 
-  mutate(fh_nr = if_else(is.infinite(fh_nr), 0, fh_nr))
+df_ind <- df %>%
+  filter(!is.na(site), !is.na(plant_id), !is.na(year)) %>%
+  transmute(site, plant_id, year, fh_nr = replace_na(fl_nr, 0),
+            recruit = replace_na(recruit, 0L))
 
 df_site_year <- df_ind %>% 
   group_by(site, year) %>% 
@@ -1864,3 +1938,105 @@ df_compare %>%
 
 df_compare %>%
   print(n = 100)
+
+
+
+# Site-year observed versus modeled lambda ------------------------------------
+use_site_specific_recruitment <- TRUE
+
+df_plot_site <- df_compare_site %>%
+  select(
+    site, year, fire, obs_pgr,
+    asym_lambda, proj_lambda) %>%
+  pivot_longer(
+    cols = c(asym_lambda, proj_lambda),
+    names_to = "lambda_type",
+    values_to = "lambda") %>%
+  mutate(
+    lambda_type = recode(
+      lambda_type,
+      asym_lambda = "Asymptotic lambda",
+      proj_lambda = "Projected lambda"))
+
+g_mod_vs_obs_site <- ggplot(
+  df_plot_site,
+  aes(x = lambda, y = obs_pgr, color = factor(year))) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed") +
+  facet_wrap(~ lambda_type, scales = "free") +
+  scale_color_viridis_d() +
+  labs(
+    title = "Observed versus modeled site-year population growth",
+    subtitle = "Site and year-specific recruitment effects",
+    x = expression("Modeled " * lambda),
+    y = expression("Observed " * lambda),
+    color = "Year") +
+  theme_bw()
+
+g_mod_vs_obs_site
+
+
+# Investigation into observed population growth rates above 2.5 
+#  for site and year combinations
+extreme_pairs <- df_compare_site %>%
+  filter(obs_pgr > 2.5) %>%
+  select(site, year)
+
+plant_presence <- df %>%
+  filter(!is.na(logsize_t0), is.finite(logsize_t0)) %>%
+  distinct(site, year, plant_id)
+
+df_id_transition <- full_join(
+  plant_presence %>%
+    mutate(in_t0 = TRUE),
+  plant_presence %>%
+    transmute(
+      site,
+      year = year - 1,
+      plant_id,
+      in_t1 = TRUE),
+  by = c("site", "year", "plant_id")) %>%
+  mutate(
+    in_t0 = replace_na(in_t0, FALSE),
+    in_t1 = replace_na(in_t1, FALSE)) %>%
+  semi_join(extreme_pairs, by = c("site", "year")) %>%
+  group_by(site, year) %>%
+  summarise(
+    n_t0 = sum(in_t0),
+    n_t1 = sum(in_t1),
+    persisted = sum(in_t0 & in_t1),
+    disappeared = sum(in_t0 & !in_t1),
+    new_ids = sum(!in_t0 & in_t1),
+    .groups = "drop") %>%
+  mutate(obs_pgr = n_t1 / n_t0) %>%
+  arrange(desc(obs_pgr))
+
+df_id_transition
+
+
+df_new_ids <- df %>%
+  filter(!is.na(logsize_t0), is.finite(logsize_t0)) %>%
+  transmute(
+    site,
+    year = year - 1,
+    plant_id,
+    recruit) %>%
+  anti_join(
+    df %>%
+      filter(!is.na(logsize_t0), is.finite(logsize_t0)) %>%
+      distinct(site, year, plant_id),
+    by = c("site", "year", "plant_id")) %>%
+  semi_join(extreme_pairs, by = c("site", "year")) %>%
+  group_by(site, year) %>%
+  summarise(
+    new_ids = n(),
+    recruits = sum(recruit == 1, na.rm = TRUE),
+    non_recruits = sum(recruit == 0, na.rm = TRUE),
+    recruit_unknown = sum(is.na(recruit)),
+    .groups = "drop") %>%
+  arrange(desc(new_ids))
+
+df_new_ids

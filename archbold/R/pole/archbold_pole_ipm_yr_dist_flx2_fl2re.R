@@ -1691,13 +1691,24 @@ df_compare_summary <- df_compare %>%
     geometric_mean_asym_lambda = exp(mean(log(asym_lambda), na.rm = TRUE)),
     arithmetic_mean_proj_lambda = mean(proj_lambda, na.rm = TRUE),
     geometric_mean_proj_lambda = exp(mean(log(proj_lambda), na.rm = TRUE)),
-    mean_error_asymptotic_vs_obs = mean(asym_lambda - obs_pgr,
-                                        na.rm = TRUE),
-    mean_error_projected_vs_obs = mean(proj_lambda - obs_pgr, na.rm = TRUE),
-    rmse_asymptotic_vs_obs = sqrt(mean((asym_lambda - obs_pgr)^2,
-                                       na.rm = TRUE)),
-    rmse_projected_vs_obs = sqrt(mean((proj_lambda - obs_pgr)^2,
-                                      na.rm = TRUE)))
+    mean_error_asymptotic_vs_obs = mean(
+      asym_lambda - obs_pgr, na.rm = TRUE),
+    mean_error_projected_vs_obs = mean(
+      proj_lambda - obs_pgr, na.rm = TRUE),
+    percent_bias_asymptotic_vs_obs = 100 * sum(
+      asym_lambda - obs_pgr, na.rm = TRUE) /
+      sum(obs_pgr, na.rm = TRUE),
+    percent_bias_projected_vs_obs = 100 * sum(
+      proj_lambda - obs_pgr, na.rm = TRUE) /
+      sum(obs_pgr, na.rm = TRUE),
+    rmse_asymptotic_vs_obs = sqrt(mean(
+      (asym_lambda - obs_pgr)^2, na.rm = TRUE)),
+    rmse_projected_vs_obs = sqrt(mean(
+      (proj_lambda - obs_pgr)^2, na.rm = TRUE))) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "statistic",
+    values_to = "value")
 
 df_compare_summary
 

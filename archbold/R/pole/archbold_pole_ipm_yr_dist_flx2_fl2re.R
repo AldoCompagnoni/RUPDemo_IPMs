@@ -218,8 +218,11 @@ mods_su_dAIC
 # Survival plots by year -------------------------------------------------------
 make_su_year_plot <- function(year_i) {
   df_i <- df_su %>% filter(year == year_i)
-  x <- seq(min(df_i$logvol_t0, na.rm = TRUE),
-           max(df_i$logvol_t0, na.rm = TRUE), length.out = 100)
+  
+  x <- seq(
+    min(df_i$logvol_t0, na.rm = TRUE),
+    max(df_i$logvol_t0, na.rm = TRUE), length.out = 100)
+  
   pred_i <- tidyr::expand_grid(
     logvol_t0 = x,
     disturbance = levels(df_su$disturbance)) %>%
@@ -230,39 +233,36 @@ make_su_year_plot <- function(year_i) {
         disturbance, levels = levels(df_su$disturbance)),
       year = factor(year_i, levels = levels(df_su$year)))
   
-  pred_i <- pred_i %>%
-    mutate(
-      survives = predict(
-        mod_su_best,
-        newdata = pred_i,
-        type = "response",
-        re.form = NULL))
+  pred_i$survives <- predict(
+    mod_su_best, newdata = pred_i,
+    type = "response", re.form = NULL)
+  
   pts_i <- df_i %>%
     mutate(bin = cut(logvol_t0, breaks = 8)) %>%
     group_by(bin, disturbance) %>%
     summarise(
       logvol_t0 = mean(logvol_t0, na.rm = TRUE),
       survives = mean(survives, na.rm = TRUE),
-      n = n(), .groups = 'drop') %>%
+      n = n(), .groups = "drop") %>%
     filter(!is.na(logvol_t0), n > 0)
+  
   ggplot() +
     geom_point(
       data = pts_i,
-      aes(logvol_t0, survives, color = disturbance),
-      size = 1.1) +
+      aes(logvol_t0, survives, color = disturbance), size = 1.1) +
     geom_line(
       data = pred_i,
       aes(logvol_t0, survives, color = disturbance,
           linetype = disturbance),
       linewidth = 0.7) +
-    scale_color_manual(values = c('0' = 'black', '1' = 'red')) +
+    scale_color_manual(values = c("0" = "black", "1" = "red")) +
     labs(
       title = year_i,
-      x = expression('log(volume)'[t0]),
-      y = expression('Survival probability'[t1])) +
+      x = expression("log(volume)"[t0]),
+      y = expression("Survival probability"[t1])) +
     ylim(0, 1) +
     theme_bw() +
-    theme(text = element_text(size = 5), legend.position = 'none')
+    theme(text = element_text(size = 5), legend.position = "none")
 }
 
 su_yrs <- lapply(levels(df_su$year), make_su_year_plot)
@@ -726,20 +726,63 @@ ctrl_re <- lmerControl(optimizer = 'bobyqa', optCtrl = list(maxfun = 2e5))
 df_fs2r <- df_fs2r %>%
   mutate(disturbance = as.numeric(as.character(disturbance_t0)))
 
+# through the origin, no fire effect
 mod_re_0 <- lmer(
   re_t1_log ~ 0 + fs_t0_log + (0 + fs_t0_log | year_t1),
   data = df_fs2r, REML = FALSE, control = ctrl_re)
 
+# through the origin, fire changes the slope
 mod_re_1 <- lmer(
-  re_t1_log ~ 0 + fs_t0_log + fs_t0_log:disturbance + (0 + fs_t0_log | year_t1),
+  re_t1_log ~ 0 + fs_t0_log + fs_t0_log:disturbance +
+    (0 + fs_t0_log | year_t1),
   data = df_fs2r, REML = FALSE, control = ctrl_re)
 
+# intercept, no fire effect
 mod_re_2 <- lmer(
-  re_t1_log ~ fs_t0_log + disturbance_t0 + (1 | site) + (1 | year_t1),
+  re_t1_log ~ fs_t0_log + (0 + fs_t0_log | year_t1),
+  data = df_fs2r, REML = FALSE, control = ctrl_re)
+
+# intercept, fire changes the intercept
+mod_re_3 <- lmer(
+  re_t1_log ~ fs_t0_log + disturbance +
+    (0 + fs_t0_log | year_t1),
+  data = df_fs2r, REML = FALSE, control = ctrl_re)
+
+# intercept, fire changes the slope
+mod_re_4 <- lmer(
+  re_t1_log ~ fs_t0_log + fs_t0_log:disturbance +
+    (0 + fs_t0_log | year_t1),
+  data = df_fs2r, REML = FALSE, control = ctrl_re)
+
+# intercept, fire changes both intercept and slope
+mod_re_5 <- lmer(
+  re_t1_log ~ fs_t0_log * disturbance +
+    (0 + fs_t0_log | year_t1),
+  data = df_fs2r, REML = FALSE, control = ctrl_re)
+
+# intercept, fire changes the intercept
+mod_re_6 <- lmer(
+  re_t1_log ~ fs_t0_log + disturbance +
+    (1 | year_t1),
+  data = df_fs2r, REML = FALSE, control = ctrl_re)
+
+# intercept, fire changes the slope
+mod_re_7 <- lmer(
+  re_t1_log ~ fs_t0_log + fs_t0_log:disturbance +
+    (1 | year_t1),
+  data = df_fs2r, REML = FALSE, control = ctrl_re)
+
+# intercept, fire changes both intercept and slope
+mod_re_8 <- lmer(
+  re_t1_log ~ fs_t0_log * disturbance +
+    (1 | year_t1),
   data = df_fs2r, REML = FALSE, control = ctrl_re)
 
 
-mods_re <- list(mod_re_0, mod_re_1, mod_re_2)
+mods_re <- list(
+  mod_re_0, mod_re_1, mod_re_2,
+  mod_re_3, mod_re_4, mod_re_5,
+  mod_re_6, mod_re_7, mod_re_8)
 
 mods_re_dAIC <- bbmle::AICctab(mods_re, weights = TRUE, sort = FALSE)$dAIC
 mods_re_sorted <- order(mods_re_dAIC)
@@ -1020,7 +1063,10 @@ fln_term_map <- make_term_map("fln_", lagged_size_term_map)
 re_term_map <- list(
   re_b0 = c('(Intercept)'),
   re_b1 = c('fs_t0_log'),
-  re_bf = c('fs_t0_log:disturbance', 'disturbance:fs_t0_log'))
+  re_bf0 = c('disturbance'),
+  re_bf1 = c(
+    'fs_t0_log:disturbance',
+    'disturbance:fs_t0_log'))
 
 
 # Fixed parameters -------------------------------------------------------------
@@ -1189,10 +1235,13 @@ fs_x <- function(x, pars, disturbance_prev = 0) {
 }
 
 re_total_ref <- function(pars, disturbance = 0) {
-  re_slope <- get_par(pars, 're_b1', 0) +
-    get_par(pars, 're_bf', 0) * disturbance
+  re_intercept <- get_par(pars, 're_b0', 0) +
+    get_par(pars, 're_bf0', 0) * disturbance
   
-  re_log <- re_slope *
+  re_slope <- get_par(pars, 're_b1', 0) +
+    get_par(pars, 're_bf1', 0) * disturbance
+  
+  re_log <- re_intercept + re_slope *
     get_par(pars, 'fs_t0_ref_log', 0)
   
   re_value <- expm1(

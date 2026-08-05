@@ -2030,6 +2030,89 @@ df_compare_site_summary %>%
     n = 100,
     width = Inf)
  
+
+
+df_plot_site <- df_compare_site %>%
+  mutate(
+    disturbance_scenario = case_when(
+      disturbance_num == 0 & disturbance_prev_num == 0 ~ "Undisturbed",
+      disturbance_num == 1 & disturbance_prev_num == 0 ~ "Current fire",
+      disturbance_num == 0 & disturbance_prev_num == 1 ~ "Previous fire",
+      disturbance_num == 1 & disturbance_prev_num == 1 ~ "Consecutive fire"),
+    disturbance_scenario = factor(
+      disturbance_scenario,
+      levels = c(
+        "Undisturbed", "Current fire",
+        "Previous fire", "Consecutive fire"))) %>%
+  select(
+    year, site, obs_pgr, asym_lambda, proj_lambda,
+    disturbance_scenario) %>%
+  pivot_longer(
+    cols = c(asym_lambda, proj_lambda),
+    names_to = "lambda_type",
+    values_to = "lambda") %>%
+  mutate(
+    lambda_type = recode(
+      lambda_type,
+      asym_lambda = "Site-year asymptotic lambda",
+      proj_lambda = "Site-year projected lambda"))
+
+fig_mod_vs_obs_site <- ggplot(
+  df_plot_site,
+  aes(
+    x = lambda,
+    y = obs_pgr,
+    color = disturbance_scenario)) +
+  geom_point(size = 2.5, alpha = 0.75) +
+  geom_abline(intercept = 0, slope = 1, linetype = 2) +
+  facet_wrap(~ lambda_type, scales = "free_x") +
+  scale_color_manual(
+    values = c(
+      "Undisturbed" = "black",
+      "Current fire" = "red",
+      "Previous fire" = "blue",
+      "Consecutive fire" = "purple")) +
+  labs(
+    title = "Observed population growth vs site-year modeled lambda",
+    subtitle = v_ggp_suffix,
+    x = expression("Modeled " * lambda),
+    y = "Observed population growth rate",
+    color = "Disturbance",
+    shape = "Site") +
+  theme_classic()
+
+fig_mod_vs_obs_site
+
+
+
+fig_mod_vs_obs_site_log <- ggplot(
+  df_plot_site %>% filter(obs_pgr > 0, lambda > 0),
+  aes(
+    x = lambda,
+    y = obs_pgr,
+    color = disturbance_scenario)) +
+  geom_point(size = 2, alpha = 0.65) +
+  geom_abline(intercept = 0, slope = 1, linetype = 2) +
+  facet_wrap(~ lambda_type) +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_color_manual(
+    values = c(
+      "Undisturbed" = "black",
+      "Current fire" = "red",
+      "Previous fire" = "blue",
+      "Consecutive fire" = "purple")) +
+  labs(
+    title = "Observed population growth vs site-year modeled lambda",
+    subtitle = v_ggp_suffix,
+    x = expression("Modeled " * lambda * " (log scale)"),
+    y = "Observed population growth rate (log scale)",
+    color = "Disturbance",
+    shape = "Site") +
+  theme_classic()
+
+fig_mod_vs_obs_site_log
+
 # # Save key outputs -------------------------------------------------------------
 # # Uncomment if needed.
 # # saveRDS(pars_all_mean,

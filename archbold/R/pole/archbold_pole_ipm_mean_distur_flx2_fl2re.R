@@ -109,15 +109,15 @@ df <- read.csv(
 
 # Add disturbance from the exact previous year --------------------------------
 df_dist_prev <- df %>%
-  distinct(site, year, dist_transition) %>%
+  distinct(quad, year, dist_transition) %>%
   transmute(
-    site,
+    quad,
     year = year + 1,
     disturbance_prev = dist_transition)
 
 df <- df %>%
-  select(-any_of('disturbance_prev')) %>%
-  left_join(df_dist_prev, by = c('site', 'year')) %>%
+  select(-any_of("disturbance_prev")) %>%
+  left_join(df_dist_prev, by = c("quad", "year")) %>%
   mutate(
     disturbance_prev = replace_na(disturbance_prev, 0),
     disturbance = as.numeric(dist_transition),

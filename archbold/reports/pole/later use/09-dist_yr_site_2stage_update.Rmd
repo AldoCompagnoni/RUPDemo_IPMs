@@ -86,7 +86,7 @@ df_dist_prev <- df %>%
     disturbance_prev = dist_transition)
 
 df <- df %>%
-  select(-any_of("disturbance_prev")) %>%
+  dplyr::select(-any_of("disturbance_prev")) %>%
   left_join(df_dist_prev, by = c("site", "year")) %>%
   mutate(
     disturbance_prev = replace_na(disturbance_prev, 0),

@@ -11,6 +11,15 @@
 # Time period: 2001-2024, through 2025
 
 
+################################################################################
+################################################################################
+
+# ATTENTION: This runs over multiple hours
+
+################################################################################
+################################################################################
+
+
 # Setting the stage ------------------------------------------------------------
 # rm(list = ls())
 set.seed(100)
@@ -114,28 +123,27 @@ df <- read.csv(
 
 
 
-# Add disturbance from the exact previous year ----
-
+# Add disturbance from the exact previous year --------------------------------
 df_dist_prev <- df %>%
-  distinct(site, year, dist_transition) %>%
+  distinct(quad, year, dist_transition) %>%
   transmute(
-    site,
+    quad,
     year = year + 1,
     disturbance_prev = dist_transition)
 
+n_rows_before <- nrow(df)
+
 df <- df %>%
   select(-any_of("disturbance_prev")) %>%
-  left_join(df_dist_prev, by = c("site", "year")) %>%
+  left_join(df_dist_prev, by = c("quad", "year")) %>%
   mutate(
     disturbance_prev = replace_na(disturbance_prev, 0),
-    disturbance = factor(dist_transition, levels = c(0, 1)),
-    disturbance_prev = factor(disturbance_prev, levels = c(0, 1)),
+    disturbance = as.numeric(dist_transition),
+    disturbance_prev = as.numeric(disturbance_prev),
     year = as.integer(year),
-    site = factor(site))
+    site = factor(site)) %>%
+  filter(!is.na(year), !(year %in% v_years_re))
 
-if (length(v_years_re) > 0) {
-  df <- df %>% filter(!year %in% v_years_re)
-}
 
 
 # Controls ---------------------------------------------------------------------

@@ -10,7 +10,7 @@
 # Link: 
 # Meta data link: 
 # Citing publication: https://doi.org/10.1071/BT11271
-# Time periode: 2001-2017
+# Time periode: 2001-2025
 
 
 # Setting the stage ------------------------------------------------------------
@@ -25,7 +25,7 @@ options(stringsAsFactors = F)
 
 # load packages
 source('helper_functions/load_packages.R')
-load_packages(MASS, tidyverse, patchwork, skimr, ipmr, binom, bbmle, janitor, lme4, GGally)
+load_packages(MASS, patchwork, skimr, ipmr, binom, bbmle, janitor, lme4, GGally, tidyverse)
 
 
 # Specification ----------------------------------------------------------------
@@ -190,23 +190,41 @@ df_og %>%
 
 
 # Build transition disturbance data ----
+# Disturbance was recorded at the quadrat level. Missing assessments during
+# known fire events are retained as NA rather than coded as undisturbed,
+# because absence of data does not confirm absence of fire. This affects
+# 35 annual records: 2 in 2019 and 33 in 2021. Years without a fire event
+# are coded as 0.
 df_dist_event <- df_oglong %>%
   group_by(quad) %>%
   summarise(
-    dist_2001 = as.numeric(any(postburn_status1201 > 0, na.rm = TRUE)),
-    dist_2007 = as.numeric(any(postburn_pct1207 > 0, na.rm = TRUE)),
-    dist_2009 = as.numeric(any(postburn_pct0609 > 0, na.rm = TRUE)),
-    dist_2015 = as.numeric(any(postburn_pct0615 > 0, na.rm = TRUE)),
-    dist_2019 = as.numeric(any(postburn_pct0319 > 0, na.rm = TRUE)),
-    dist_2020 = as.numeric(any(postburn_pct0120 > 0, na.rm = TRUE)),
-    dist_2022 = as.numeric(any(postburn_pct0322 > 0, na.rm = TRUE)),
+    dist_2001 = if_else(
+      all(is.na(postburn_status1201)), NA_real_,
+      as.numeric(any(postburn_status1201 > 0, na.rm = TRUE))),
+    dist_2007 = if_else(
+      all(is.na(postburn_pct1207)), NA_real_,
+      as.numeric(any(postburn_pct1207 > 0, na.rm = TRUE))),
+    dist_2009 = if_else(
+      all(is.na(postburn_pct0609)), NA_real_,
+      as.numeric(any(postburn_pct0609 > 0, na.rm = TRUE))),
+    dist_2015 = if_else(
+      all(is.na(postburn_pct0615)), NA_real_,
+      as.numeric(any(postburn_pct0615 > 0, na.rm = TRUE))),
+    dist_2019 = if_else(
+      all(is.na(postburn_pct0319)), NA_real_,
+      as.numeric(any(postburn_pct0319 > 0, na.rm = TRUE))),
+    dist_2020 = if_else(
+      all(is.na(postburn_pct0120)), NA_real_,
+      as.numeric(any(postburn_pct0120 > 0, na.rm = TRUE))),
+    dist_2022 = if_else(
+      all(is.na(postburn_pct0322)), NA_real_,
+      as.numeric(any(postburn_pct0322 > 0, na.rm = TRUE))),
     .groups = "drop")
 
 
-# The word postburn strongly suggests that burn condition was assessed after the 
-# March fire. That makes it likely that the corresponding field visit occurred 
-# after the burn—or that at least a separate post-fire visit occurred during 
-# that month.
+# The postburn variables were recorded after the corresponding fire event.
+# Fire occurring in March is assigned to the annual transition beginning in
+# the preceding census year.
 df_dist_transition <- bind_rows(
   df_dist_event %>%
     transmute(quad, year = 2001, dist_transition = dist_2001),
@@ -223,50 +241,58 @@ df_dist_transition <- bind_rows(
   df_dist_event %>%
     transmute(quad, year = 2021, dist_transition = dist_2022))
 
+# Recruits ---------------------------------------------------------------------
+df_recruit <- df_og %>%
+  filter(qsurv == 5) %>%
+  transmute(
+    id,
+    recruit_year = case_when(
+      year == 2001 & month == 4 ~ 2001,
+      month > 3 ~ year + 1,
+      TRUE ~ year)) %>%
+  distinct(id, recruit_year) %>%
+  mutate(recruit_qsurv_t0 = 1)
+
+
+# Death during annual transition ----------------------------------------------
+df_death_interval <- df_og %>%
+  filter(!is.na(stg)) %>%
+  transmute(
+    id, year,
+    census_time = year * 12 + month,
+    target_time = (year + 1) * 12 + 3) %>%
+  left_join(
+    df_og %>%
+      filter(qsurv == 0) %>%
+      transmute(id, death_time = year * 12 + month),
+    by = "id", relationship = "many-to-many") %>%
+  group_by(id, year) %>%
+  summarise(
+    death_in_interval = any(
+      !is.na(death_time) &
+        death_time > census_time &
+        death_time <= target_time),
+    .groups = "drop")
+
+
 # Generating data --------------------------------------------------------------
 df_gen <- df_og %>%
-  arrange(id, year, month) %>% #view()
-  # Month of death
-  group_by(id) %>%
-  mutate(death = paste0(year, "_", month)[which(qsurv == 0)[1]]) %>%
-  # ungroup() %>% 
-  # group_by(id, year) %>%
-  # mutate(postburn_plant = if_else(all(is.na(postburn_plant)), NA_real_,
-  #                                 max(postburn_plant, na.rm = TRUE))) %>%
-  # ungroup() %>% #view()
-  # filter(survival < 9) %>% 
-  # # Recruits: 5 indicates that the plant was detected for the first time. 
-  # #  however, there are plants that were detected in a month without size measurement
-  # #  many of them are present in the next year too.. for now I will count them as recruits too
-  # #  actually I can give them a 2 - I like it, easy to change later too..
-  # # Furthermore, 1_609_101_100-19 is an example of how it is not considered a recruit in the original data set
-  # #  if the plant was there already in the fist year of the sampling campaign (i.e. 2001)
-  # #  We also don't know if it was or wasn't a recruit and thus it gets an NA
-  
-  # Recruits
-  # Individuals were classified as recruits when they were first detected after 
-  # the previous annual census. In some cases, first detection occurred during a 
-  # quarterly census without size or stage measurements. These individuals were 
-  # therefore retained as recruits at the following annual census, even when 
-  # they had already reached reproductive stage 3. This classification reflects 
-  # recruitment timing rather than plant size or developmental stage at the 
-  # annual census.
-  
-  group_by(id) %>%
-  mutate(
-    recruit = if_else(
-      lag(qsurv) == 5 & is.na(lag(stg)), 2, 0, missing = 0),
-    recruit = if_else(qsurv == 5, 1, recruit),
-    recruit = if_else(stg == 1, 1, recruit),
-    recruit = if_else(year == 2001, NA_real_, recruit)) %>% #view()
-  # Survival: 
-  #  Since there is no dormancy I can remove everything that does not have a size 
+  arrange(id, year, month) %>%
+  # Retain annual census records
   filter(!is.na(stg)) %>%
+  # Recruitment
+  left_join(
+    df_recruit,
+    by = c("id", "year" = "recruit_year")) %>%
   mutate(
-    census_time = year * 12 + month,
-    death_year = as.numeric(str_extract(death, "^[0-9]+")),
-    death_month = as.numeric(str_extract(death, "[0-9]+$")),
-    death_time = death_year * 12 + death_month) %>%
+    recruit = case_when(
+      year == 2001 ~ NA_real_,
+      recruit_qsurv_t0 == 1 ~ 1,
+      TRUE ~ 0)) %>%
+  # Death during the following annual transition
+  left_join(df_death_interval, by = c("id", "year")) %>%
+  mutate(
+    death_in_interval = replace_na(death_in_interval, FALSE)) %>%
   group_by(id) %>%
   arrange(year, month, .by_group = TRUE) %>%
   mutate(
@@ -274,30 +300,35 @@ df_gen <- df_og %>%
     last_observed_year = max(year, na.rm = TRUE),
     annual_transition = coalesce(next_year == year + 1, FALSE),
     observed_later = last_observed_year > year,
-    target_time = (year + 1) * 12 + 3,
+    valid_growth_transition =
+      annual_transition & !death_in_interval,
     survives = case_when(
+      death_in_interval ~ 0,
       annual_transition ~ 1,
       observed_later ~ 1,
-      !is.na(death_time) &
-        death_time > census_time &
-        death_time <= target_time ~ 0,
       TRUE ~ NA_real_),
-    size_t1 = if_else(annual_transition, lead(ht), NA_real_),
-    c_dim_t1 = if_else(annual_transition, lead(mcd), NA_real_),
-    stems_t1 = if_else(annual_transition, lead(st), NA_real_),
+    size_t1 = if_else(
+      valid_growth_transition, lead(ht), NA_real_),
+    c_dim_t1 = if_else(
+      valid_growth_transition, lead(mcd), NA_real_),
+    stems_t1 = if_else(
+      valid_growth_transition, lead(st), NA_real_),
     volume_t0 = ((mcd / 2)^2) * pi * ht,
     volume_t1 = if_else(
-      annual_transition, lead(volume_t0), NA_real_)) %>%
+      valid_growth_transition, lead(volume_t0), NA_real_)) %>%
   ungroup() %>%
-  # Distrubance
+  # Disturbance
   left_join(df_dist_transition, by = c("quad", "year")) %>%
   mutate(
-    dist_transition = replace_na(dist_transition, 0))  #%>% view()
+    dist_transition = case_when(
+      year %in% c(2001, 2007, 2009, 2015, 2018, 2019, 2021) ~
+        dist_transition,
+      TRUE ~ 0))
 
 
 # Working data -----------------------------------------------------------------
 df <- df_gen %>%
-  rename(size_t0 = ht, site = quad, fl_nr = flst) %>%
+  rename(size_t0 = ht, site = patch, fl_nr = flst) %>%
   mutate(logsize_t0   = log(size_t0),
          logsize_t1   = log(size_t1),    
          logsize_t0_2 = logsize_t0^2,     
@@ -311,7 +342,7 @@ df <- df_gen %>%
          recruits     = if_else(recruit > 0, 1, recruit),
          flower       = if_else(fl_nr > 0, 1, fl_nr)) %>%
   dplyr::select(
-    site, id, year, stage, survives, size_t0, flower, fl_nr,
+    site, quad, id, year, stage, survives, size_t0, flower, fl_nr,
     recruits, recruit, size_t1, logsize_t1, logsize_t0,
     logsize_t0_2, logsize_t0_3, dist_transition,
     mcd, st, volume_t0, volume_t1, logvol_t0, logvol_t1,

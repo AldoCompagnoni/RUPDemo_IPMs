@@ -1,0 +1,789 @@
+# Updated data {#data_debugged}
+
+This chapter documents the updated *Polygala lewtonii* dataset and the
+construction of the revised working data. The new dataset is not simply an
+extension of the data described in Chapter \@ref(data). It adds observations
+from more recent years, reorganizes the original data structure, and provides
+additional information at the individual, quadrat, and site levels.
+Consequently, the complete data-processing workflow was reviewed and updated.
+
+The main aim of this chapter is to describe the newly provided files, compare
+them with the data used in Chapter \@ref(data), document the decisions made
+during data cleaning, and explain how the final working dataset was produced.
+
+## Overview
+
+The updated data were provided as an Excel workbook containing four principal
+worksheets: `Demog_longform`, `Demog`, `QuadLevel`, and `SiteHistory`. Each
+worksheet is accompanied by separate metadata describing its variables and
+coding.
+
+The demographic records now extend through 2025. In addition to the longer
+study period, the updated workbook separates repeated demographic
+observations, quadrat-level information, and site-level management history
+more clearly than the dataset used in Chapter \@ref(data). These structural
+changes required us to reassess plant identity, annual transitions,
+recruitment, mortality, growth, and disturbance exposure before constructing
+the revised working dataset.
+
+
+```{r 8_setup}
+library(dplyr)
+
+file_workbook <- paste0(
+  "C:/code/RUPDemo_IPMs/archbold/data/pole/",
+  "Pol_lew_CCS_2025_complete.xlsx")
+
+df_workbook_sheets <- tibble(
+  sheet = readxl::excel_sheets(file_workbook)) %>%
+  mutate(
+    type = if_else(
+      str_detect(sheet, "metadata$"),
+      "Metadata", "Data"),
+    dataset = str_remove(sheet, " metadata$")) %>%
+  dplyr::select(dataset, type, sheet)
+
+knitr::kable(
+  df_workbook_sheets,
+  col.names = c("Dataset", "Worksheet type", "Worksheet name"))
+```
+
+`Demog_longform` contains the repeated demographic censuses,
+whereas `Demog` provides the demographic records in a wider format.
+`QuadLevel` contains information recorded at the quadrat level, and
+`SiteHistory` documents disturbance and management history at the site level.
+
+```{r data-debugged-dataset-dimensions}
+data_sheets <- c(
+  "Demog_longform", "Demog", "QuadLevel", "SiteHistory")
+
+df_dataset_dimensions <- map_dfr(data_sheets, function(sheet_i) {
+  data_i <- readxl::read_excel(file_workbook, sheet = sheet_i)
+
+  tibble(
+    dataset = sheet_i,
+    rows = nrow(data_i),
+    columns = ncol(data_i))
+})
+
+knitr::kable(
+  df_dataset_dimensions,
+  col.names = c("Dataset", "Rows", "Columns"))
+```
+
+```{r data-debugged-read-sheets, include=FALSE}
+df_demog_long <- readxl::read_excel(
+  file_workbook,
+  sheet = "Demog_longform",
+  na = c("", "NA")) %>%
+  janitor::clean_names()
+
+df_demog_wide <- readxl::read_excel(
+  file_workbook,
+  sheet = "Demog",
+  na = c("", "NA")) %>%
+  janitor::clean_names()
+
+df_quad <- readxl::read_excel(
+  file_workbook,
+  sheet = "QuadLevel",
+  na = c("", "NA")) %>%
+  janitor::clean_names()
+
+df_site <- readxl::read_excel(
+  file_workbook,
+  sheet = "SiteHistory",
+  col_types = c("numeric", "text", "text", "text")) %>%
+  janitor::clean_names() %>%
+  mutate(
+    date = case_when(
+      is.na(date) ~ NA_character_,
+      str_detect(date, "^\\d+$") ~ format(
+        as.Date(
+          as.numeric(date),
+          origin = "1899-12-30"),
+        "%m/%d/%Y"),
+      TRUE ~ date))
+```
+
+
+## Data worksheets
+
+
+### Demog_longform
+
+`Demog_longform` is the main demographic dataset used in this analysis. It
+contains 43,869 observations and 12 variables. Each row represents one
+individual plant during one quarterly census. Plants are identified by a
+unique individual ID and linked to their quadrat and patch.
+
+Survival was recorded during the quarterly censuses in March, June, September,
+and December. Stage, height, maximum crown diameter, stem number, and flowering
+stem number were generally recorded during the annual March census. The first
+annual census was carried out in April 2001.
+
+Compared with the dataset used in Chapter \@ref(data), the updated long-format
+dataset extends the demographic record through 2025 and already contains a
+consistent `unique_ID`.
+
+```{r data-debugged-show-demog-long}
+df_demog_long %>%
+  slice_head(n = 10) %>%
+  knitr::kable()
+```
+
+### Demog
+
+`Demog` contains 7,424 rows and 309 columns. It stores the demographic history
+in wide format, with one row per individual and separate columns for each
+census date. For example, survival, stage, height, crown diameter, stem number,
+and flowering stem number are stored in variables such as `surv0325`,
+`stg0325`, and `ht0325`.
+
+The two demographic worksheets therefore contain much of the same underlying
+information but organize it differently. `Demog`
+retains additional information such as cohort, plant position, comments,
+annual-survival variables, and historical post-burn measurements.
+
+
+### QuadLevel
+
+`QuadLevel` contains one row for each of the 220 permanent quadrats. It includes
+the quadrat coordinates, treatment block, patch, monitoring level, recent
+plant counts, flowering-stem counts, stem counts, occupancy, and measurements
+of the 2022 prescribed burn.
+
+This worksheet is particularly important for understanding the change in
+sampling after June 2022. Some quadrats continued under Level 3 individual
+demographic monitoring, whereas the remaining quadrats were reduced to Level 2
+count-based monitoring. The Level 2 observations are stored in this worksheet
+rather than in the individual demographic dataset.
+
+
+```{r data-debugged-show-quad}
+df_quad %>%
+  dplyr::select(
+    patch, quad, lvl3, n2025, flst0325, stm0325,
+    n2024, flst0324, stm0324, n2023,
+    postburn_status0322, postburn_pct0322) %>%
+  dplyr::slice_head(n = 10) %>%
+  knitr::kable()
+```
+
+### SiteHistory
+
+`SiteHistory` provides a chronological record of major natural disturbances
+and management events at the study site. The worksheet includes prescribed
+burns in 2001, 2007, 2009, 2015, 2019, 2020, and 2022, several hurricanes in
+2004, Hurricane Irma in 2017, and hardwood reduction in 2023.
+
+This is an important addition to the data described in Chapter \@ref(data),
+which only included the four prescribed burns up to 2015. Fire is central to
+the demography of *P. lewtonii*: established plants are commonly killed by
+fire, while large seedling cohorts can recruit from the persistent soil
+seedbank after burning. Other disturbances, including hurricanes and hardwood
+removal, may also alter survival, recruitment, vegetation cover, and the
+availability of open habitat. Disturbance history is therefore treated as a
+central part of the demographic data rather than only as background site
+information.
+
+Note to the data provider: The date recorded for the 2015 prescribed burn incorrectly gives the year 2025. This is a known typographical error, and the event is treated as a 2015
+burn throughout the analysis.
+
+```{r data-debugged-show-site-history}
+(df_site) %>% print()
+```
+
+## Differences from the previous dataset
+
+The updated dataset differs from the data used in Chapter \@ref(data) in both
+its time span and structure. The earlier dataset covered the monitoring period
+from 2001 to 2017, whereas the updated demographic records extend through
+2025.
+
+```{r data-debugged-differences}
+df_data_differences <- tribble(
+  ~Aspect, ~`Previous dataset`, ~`Updated dataset`,
+  "Study period",
+  "2001--2017",
+  "2001--2025",
+  "Plant identity",
+  paste(
+    "Identity reconstructed from management unit, quadrat, plant tag,",
+    "angle, and distance"),
+  "A unique individual identifier is supplied",
+  "Demographic structure",
+  "Quarterly observations stored in one main table",
+  paste(
+    "Quarterly long-format data and individual-level wide-format data",
+    "are supplied separately"),
+  "Spatial information",
+  "Stored together with the demographic observations",
+  paste(
+    "Additional quadrat-level information is supplied in",
+    "`QuadLevel`"),
+  "Disturbance history",
+  "Four prescribed burns through 2015",
+  paste(
+    "Prescribed burns through 2022 and additional disturbance history",
+    "are supplied"),
+  "Monitoring design",
+  "Individual demographic monitoring across the permanent quadrats",
+  paste(
+    "Level 3 individual monitoring and Level 2 count monitoring are",
+    "distinguished after 2022"))
+
+knitr::kable(df_data_differences)
+```
+
+The supplied unique individual identifier is an improvement. In the
+previous analysis, plant tags were not always unique through time and plant
+identity therefore had to be reconstructed from the tag and its position
+within the quadrat. The updated `unique_ID` variable removes this step and is
+used as the individual identifier throughout the revised data preparation.
+
+The updated workbook also separates information that was previously combined
+within the demographic records. Repeated demographic observations are taken
+from `Demog_longform`, while additional individual, quadrat, and disturbance
+information can be obtained from the other worksheets. This provides more
+information, but also requires the different spatial and temporal levels of
+the data to be handled explicitly.
+
+The revised working-data procedure was therefore rebuilt rather than simply
+applied to the additional years. In particular, recruitment timing, annual
+survival, growth transitions, and disturbance exposure were checked again
+against the quarterly census structure.
+
+
+## Construction of the annual demographic dataset
+
+The demographic data contain quarterly observations, but the IPMs describe
+transitions between annual censuses. The annual dataset was therefore created
+by retaining records with a recorded stage. Stage, plant size, stem number, and
+flowering stem number were normally measured during the March census. The
+initial annual census was conducted in April 2001.
+
+Annual census records were identified by the presence of a stage
+classification. Unlike filtering by height or crown diameter, this approach
+also retains individuals with incomplete size measurements, including
+confirmed recruits that could not be assigned a volume.
+
+```{r data-debugged-annual-data}
+df_annual <- df_demog_long %>%
+  rename(id = unique_id) %>%
+  filter(!is.na(stg)) %>%
+  arrange(id, year, month)
+
+n_annual_duplicates <- df_annual %>%
+  count(id, year) %>%
+  filter(n > 1) %>%
+  nrow()
+
+df_annual_summary <- df_annual %>%
+  summarise(
+    records = n(),
+    individuals = n_distinct(id),
+    quadrats = n_distinct(quad),
+    sites = n_distinct(patch),
+    first_year = min(year, na.rm = TRUE),
+    last_year = max(year, na.rm = TRUE))
+
+knitr::kable(
+  df_annual_summary,
+  col.names = c(
+    "Annual records", "Individuals", "Quadrats", "Sites",
+    "First year", "Last year"))
+```
+
+Each row in the resulting dataset represents one individual at one annual
+census. No duplicated individual-year records were found
+(`r n_annual_duplicates` cases).
+
+```{r data-debugged-annual-census-timing}
+df_census_timing <- df_annual %>%
+  group_by(month) %>%
+  summarise(
+    first_year = min(year, na.rm = TRUE),
+    last_year = max(year, na.rm = TRUE),
+    years = n_distinct(year),
+    records = n(),
+    .groups = "drop")
+
+knitr::kable(
+  df_census_timing,
+  col.names = c(
+    "Census month", "First year", "Last year",
+    "Number of years", "Annual records"))
+```
+
+The April records belong exclusively to the first census in 2001. All
+subsequent annual records were collected in March. The annual transition
+represented by a row therefore generally begins in March of year \(t\) and
+ends in March of year \(t+1\). The first transition begins in April 2001 and
+ends in March 2002.
+
+
+## Recruitment
+
+Recruitment was identified from the quarterly survival code `qsurv == 5`,
+which records the first observation of an individual as a seedling. Recruitment
+was assigned to the annual census at the end of the corresponding census
+interval.
+
+Seedlings recorded during March were assigned to that census year. Seedlings
+first recorded from June to December were assigned to the following annual
+census. Recruitment in 2001 was left as unknown because the first census
+represents the beginning of the study rather than a complete annual
+recruitment interval.
+
+```{r data-debugged-recruitment}
+df_recruit <- df_demog_long %>%
+  filter(qsurv == 5) %>%
+  transmute(
+    id = unique_id,
+    recruit_year = case_when(
+      year == 2001 & month == 4 ~ 2001,
+      month > 3 ~ year + 1,
+      TRUE ~ year)) %>%
+  distinct(id, recruit_year) %>%
+  mutate(recruit_qsurv = 1)
+
+df_annual_recruit <- df_annual %>%
+  left_join(
+    df_recruit,
+    by = c("id", "year" = "recruit_year")) %>%
+  mutate(
+    recruit = case_when(
+      year == 2001 ~ NA_real_,
+      recruit_qsurv == 1 ~ 1,
+      TRUE ~ 0))
+
+df_recruit_summary <- df_annual_recruit %>%
+  summarise(
+    confirmed_recruits = sum(recruit == 1, na.rm = TRUE),
+    non_recruits = sum(recruit == 0, na.rm = TRUE),
+    baseline_unknown = sum(is.na(recruit)))
+
+knitr::kable(
+  df_recruit_summary,
+  col.names = c(
+    "Confirmed recruits", "Non-recruits",
+    "Unknown baseline records"))
+```
+
+The previous preparation combined three criteria: the immediately preceding
+quarterly survival code, the current quarterly survival code, and annual stage
+1. This could miss seedlings first observed earlier in the annual interval if
+later quarterly observations occurred before the annual census.
+
+The revised method searches the complete interval for a confirmed seedling
+record and does not depend on the immediately preceding observation. Annual
+stage is not used to define recruitment. Individuals recorded as new adults
+(`qsurv == 3`) are also not classified as recruits because their seedling
+status during that year cannot be confirmed. :contentReference[oaicite:0]{index=0}
+
+
+
+## Survival and growth transitions
+
+Survival and growth were defined over the interval between consecutive annual
+censuses. All recorded deaths (`qsurv == 0`) occurring after the census in year
+\(t\) and no later than the census in year \(t+1\) were assigned to that annual
+transition.
+
+A recorded death was treated as direct evidence of mortality during the annual
+transition. In a small number of cases, an individual was coded as dead during
+one quarterly census but was recorded again at a later quarterly census within
+the same annual interval. However, the individual was absent from the next
+full annual census and did not appear in subsequent annual records. The later
+quarterly observation was therefore not interpreted as survival to \(t+1\).
+
+The annual transition containing the death was classified as
+`survives = 0`. Any later quarterly size measurement within that interval was
+not used as the individual's size at \(t+1\), so the transition was also
+excluded from the growth data.
+
+| Census | Observation | Interpretation |
+|:--|:--|:--|
+| March, year \(t\) | Individual measured during the annual census | Alive at \(t\) |
+| June, year \(t\) | Individual coded as dead (`qsurv = 0`) | Death occurred during the transition |
+| September, year \(t\) | Individual recorded again during a quarterly census | Does not override the death record |
+| March, year \(t+1\) | Individual absent from the annual census | `survives = 0`; no growth transition |
+
+```{r data-debugged-survival-growth}
+df_death_interval <- df_demog_long %>%
+  filter(!is.na(stg)) %>%
+  transmute(
+    id = unique_id, year,
+    census_time = year * 12 + month,
+    target_time = (year + 1) * 12 + 3) %>%
+  left_join(
+    df_demog_long %>%
+      filter(qsurv == 0) %>%
+      transmute(
+        id = unique_id,
+        death_time = year * 12 + month),
+    by = "id", relationship = "many-to-many") %>%
+  group_by(id, year) %>%
+  summarise(
+    death_in_interval = any(
+      !is.na(death_time) &
+        death_time > census_time &
+        death_time <= target_time),
+    .groups = "drop")
+
+df_transitions <- df_annual_recruit %>%
+  left_join(df_death_interval, by = c("id", "year")) %>%
+  mutate(
+    death_in_interval = replace_na(death_in_interval, FALSE)) %>%
+  group_by(id) %>%
+  arrange(year, month, .by_group = TRUE) %>%
+  mutate(
+    next_year = lead(year),
+    last_observed_year = max(year, na.rm = TRUE),
+    annual_transition = coalesce(next_year == year + 1, FALSE),
+    observed_later = last_observed_year > year,
+    valid_growth_transition =
+      annual_transition & !death_in_interval,
+    survives = case_when(
+      death_in_interval ~ 0,
+      annual_transition ~ 1,
+      observed_later ~ 1,
+      TRUE ~ NA_real_)) %>%
+  ungroup()
+
+df_transition_summary <- df_transitions %>%
+  summarise(
+    recorded_deaths = sum(death_in_interval),
+    observed_survival = sum(
+      annual_transition & !death_in_interval),
+    inferred_survival = sum(
+      observed_later & !annual_transition &
+        !death_in_interval),
+    unknown_survival = sum(is.na(survives)),
+    growth_transitions = sum(valid_growth_transition))
+
+knitr::kable(
+  df_transition_summary,
+  col.names = c(
+    "Recorded deaths",
+    "Observed survival",
+    "Survival inferred from later observations",
+    "Unknown survival",
+    "Valid growth transitions"))
+```
+
+When an individual was not recorded in year \(t+1\), but was observed again in
+a later year, it was considered to have survived the first transition. This
+accounts for known gaps in annual sampling. Growth was not reconstructed across
+these gaps because no consecutive size measurement was available.
+
+Growth measurements at \(t+1\) were retained only when the individual was
+recorded in the following annual census and no death occurred during the
+transition.
+
+
+
+## Disturbance
+
+Disturbance was assigned at the quadrat level rather than the site level.
+Prescribed burns did not affect every quadrat within a site equally. In the
+updated data, several site-year combinations contain both disturbed and
+undisturbed quadrats. Aggregating disturbance to the site level would therefore
+remove observed spatial variation.
+
+The disturbance variable describes whether a quadrat was affected by fire
+during an annual transition. A positive post-burn category was coded as 1,
+while an assessed quadrat with no recorded fire effect was coded as 0.
+If all disturbance measurements were missing for a quadrat during a known fire
+event, disturbance was retained as `NA` rather than treated as absence of fire.
+Years without a recorded fire event were coded as 0.
+
+```{r data-debugged-disturbance}
+df_dist_event <- df_demog_wide %>%
+  group_by(quad) %>%
+  summarise(
+    dist_2001 = if_else(
+      all(is.na(postburn_status1201)), NA_real_,
+      as.numeric(any(postburn_status1201 > 0, na.rm = TRUE))),
+    dist_2007 = if_else(
+      all(is.na(postburn_pct1207)), NA_real_,
+      as.numeric(any(postburn_pct1207 > 0, na.rm = TRUE))),
+    dist_2009 = if_else(
+      all(is.na(postburn_pct0609)), NA_real_,
+      as.numeric(any(postburn_pct0609 > 0, na.rm = TRUE))),
+    dist_2015 = if_else(
+      all(is.na(postburn_pct0615)), NA_real_,
+      as.numeric(any(postburn_pct0615 > 0, na.rm = TRUE))),
+    dist_2019 = if_else(
+      all(is.na(postburn_pct0319)), NA_real_,
+      as.numeric(any(postburn_pct0319 > 0, na.rm = TRUE))),
+    dist_2020 = if_else(
+      all(is.na(postburn_pct0120)), NA_real_,
+      as.numeric(any(postburn_pct0120 > 0, na.rm = TRUE))),
+    dist_2022 = if_else(
+      all(is.na(postburn_pct0322)), NA_real_,
+      as.numeric(any(postburn_pct0322 > 0, na.rm = TRUE))),
+    .groups = "drop")
+
+df_dist_transition <- bind_rows(
+  df_dist_event %>%
+    transmute(quad, year = 2001, dist_transition = dist_2001),
+  df_dist_event %>%
+    transmute(quad, year = 2007, dist_transition = dist_2007),
+  df_dist_event %>%
+    transmute(quad, year = 2009, dist_transition = dist_2009),
+  df_dist_event %>%
+    transmute(quad, year = 2015, dist_transition = dist_2015),
+  df_dist_event %>%
+    transmute(quad, year = 2018, dist_transition = dist_2019),
+  df_dist_event %>%
+    transmute(quad, year = 2019, dist_transition = dist_2020),
+  df_dist_event %>%
+    transmute(quad, year = 2021, dist_transition = dist_2022))
+
+df_transitions_dist <- df_transitions %>%
+  left_join(df_dist_transition, by = c("quad", "year")) %>%
+  mutate(
+    dist_transition = case_when(
+      year %in% c(2001, 2007, 2009, 2015, 2018, 2019, 2021) ~
+        dist_transition,
+      TRUE ~ 0))
+
+n_mixed_site_years <- df_transitions_dist %>%
+  filter(!is.na(dist_transition)) %>%
+  distinct(patch, year, dist_transition) %>%
+  count(patch, year) %>%
+  filter(n > 1) %>%
+  nrow()
+
+df_disturbance_mapping <- tribble(
+  ~`Fire year`, ~`Source variable`, ~`Transition year`,
+  2001, "postburn_status1201", 2001,
+  2007, "postburn_pct1207", 2007,
+  2009, "postburn_pct0609", 2009,
+  2015, "postburn_pct0615", 2015,
+  2019, "postburn_pct0319", 2018,
+  2020, "postburn_pct0120", 2019,
+  2022, "postburn_pct0322", 2021) %>%
+  left_join(
+    df_transitions_dist %>%
+      filter(is.na(dist_transition)) %>%
+      count(year, name = "Missing annual records"),
+    by = c("Transition year" = "year")) %>%
+  mutate(
+    `Missing annual records` =
+      replace_na(`Missing annual records`, 0L))
+
+knitr::kable(df_disturbance_mapping)
+```
+
+The fire event was assigned to the annual transition during which it occurred.
+The fires in 2001, 2007, 2009, and 2015 occurred after the annual census and
+were assigned to transitions beginning in those years. The fires in 2019,
+2020, and 2022 were assigned to the transitions ending in those years.
+
+Disturbance differed among quadrats within
+`r n_mixed_site_years` site-year combinations, supporting its retention at the
+quadrat level. Missing fire assessments affect
+`r sum(is.na(df_transitions_dist$dist_transition))` annual records: two records
+in transition year 2019 and 33 records in transition year 2021.
+
+
+
+## Final working dataset
+
+The cleaned annual records were exported as the working dataset used by the
+demographic models. The dataset retains the site, quadrat, individual, and year
+identifiers so that observations can be analysed at the appropriate spatial
+and temporal levels.
+
+```{r data-debugged-final-working-data}
+file_workdata <- file.path(
+  dirname(file_workbook),
+  "ab_pole_df_workdata_260519.csv")
+
+df_work <- readr::read_csv(
+  file_workdata,
+  show_col_types = FALSE)
+
+df_work_summary <- df_work %>%
+  summarise(
+    records = n(),
+    individuals = n_distinct(id),
+    quadrats = n_distinct(quad),
+    sites = n_distinct(site),
+    first_year = min(year, na.rm = TRUE),
+    last_year = max(year, na.rm = TRUE),
+    recruits = sum(recruit == 1, na.rm = TRUE),
+    deaths = sum(survives == 0, na.rm = TRUE))
+
+knitr::kable(
+  df_work_summary,
+  col.names = c(
+    "Records", "Individuals", "Quadrats", "Sites",
+    "First year", "Last year", "Recruits", "Deaths"))
+```
+
+Each row represents one individual at one annual census. Variables measured at
+the beginning of the transition are labelled with `t0`, while measurements
+from the following annual census are labelled with `t1`. A `t1` measurement is
+only available when the individual has a valid transition to the next annual
+census.
+
+The final dataset includes height, crown diameter, stem number, flowering stem
+number, stage, recruitment, survival, growth, and quadrat-level disturbance.
+Plant volume was calculated as a cylindrical size index:
+
+\[
+\text{volume} =
+\pi \left(\frac{\text{crown diameter}}{2}\right)^2
+\times \text{height}.
+\]
+
+Log-transformed height and volume variables, including quadratic and cubic
+terms, were added for later comparison of nonlinear vital-rate models.
+
+```{r data-debugged-working-missingness}
+df_work_missing <- tibble(
+  variable = c(
+    "survives", "size_t0", "size_t1",
+    "volume_t0", "volume_t1", "dist_transition"),
+  missing = c(
+    sum(is.na(df_work$survives)),
+    sum(is.na(df_work$size_t0)),
+    sum(is.na(df_work$size_t1)),
+    sum(is.na(df_work$volume_t0)),
+    sum(is.na(df_work$volume_t1)),
+    sum(is.na(df_work$dist_transition)))) %>%
+  mutate(percent = 100 * missing / nrow(df_work))
+
+knitr::kable(
+  df_work_missing,
+  digits = 2,
+  col.names = c("Variable", "Missing records", "Percent missing"))
+```
+
+Missing `size_t1` and `volume_t1` values mainly represent individuals without a
+valid consecutive annual transition. Missing `volume_t0` values occur mainly
+among recruits for which crown diameter was not measured. These recruits are
+retained in the dataset because they still contribute to recruitment counts,
+even when they cannot be used in volume-based vital-rate models.
+
+Disturbance is missing only when a quadrat was not assessed during a known fire
+event. These observations were retained as unknown rather than being classified
+as undisturbed.
+
+
+
+## Monitoring levels after 2022
+
+Following the 2022 field season, monitoring was reduced in a subset of the
+permanent quadrats. The variable `lvl3` identifies whether a quadrat continued
+under Level 3 individual demographic monitoring or was monitored using the
+reduced Level 2 protocol.
+
+The two monitoring levels contain different types of information:
+
+```{r data-debugged-monitoring-level-definition}
+df_level_definition <- tribble(
+  ~Feature, ~`Level 2`, ~`Level 3`,
+  "Observation unit",
+  "Whole quadrat",
+  "Individually marked plants",
+  "Information recorded",
+  paste(
+    "Total plants, flowering stems and stems",
+    "within the quadrat"),
+  paste(
+    "Survival, recruitment, stage, size and flowering",
+    "of individual plants"),
+  "Main worksheet",
+  "`QuadLevel`",
+  "`Demog_longform`",
+  "Use in this project",
+  "Population counts and monitoring effort",
+  "Annual transitions and vital-rate models")
+
+knitr::kable(df_level_definition)
+```
+
+Level 3 monitoring follows individual plants through time. It therefore
+provides the information required to estimate individual survival, growth,
+flowering and recruitment. These records are stored in `Demog_longform` and
+form the basis of the annual working dataset.
+
+Level 2 monitoring does not follow individual plants. Instead, the field team
+records quadrat-level totals, including the number of plants, flowering stems
+and stems. These observations are stored in `QuadLevel`. Level 2 quadrats
+therefore remain part of the monitoring programme, but they cannot provide
+individual annual transitions.
+
+The distribution of quadrats between the two monitoring levels and the
+availability of recent count data are shown below.
+
+```{r data-debugged-monitoring-level-summary}
+df_level_summary <- df_quad %>%
+  mutate(
+    monitoring_level = case_when(
+      lvl3 == 0 ~ "Level 2",
+      lvl3 == 1 ~ "Level 3",
+      TRUE ~ "Unknown")) %>%
+  group_by(monitoring_level) %>%
+  summarise(
+    quadrats = n_distinct(quad),
+    sites = n_distinct(patch),
+    count_2023 = sum(!is.na(n2023)),
+    count_2024 = sum(!is.na(n2024)),
+    count_2025 = sum(!is.na(n2025)),
+    .groups = "drop")
+
+knitr::kable(
+  df_level_summary,
+  col.names = c(
+    "Monitoring level", "Quadrats", "Sites",
+    "Quadrats with 2023 counts",
+    "Quadrats with 2024 counts",
+    "Quadrats with 2025 counts"))
+```
+
+The following table shows which monitoring levels contributed individual
+demographic records from 2023 onward.
+
+```{r data-debugged-monitoring-level-demography}
+df_level_demography <- df_demog_long %>%
+  filter(year >= 2023) %>%
+  dplyr::select(unique_id, quad, year) %>%
+  left_join(
+    df_quad %>%
+      dplyr::select(quad, lvl3),
+    by = "quad") %>%
+  mutate(
+    monitoring_level = case_when(
+      lvl3 == 0 ~ "Level 2",
+      lvl3 == 1 ~ "Level 3",
+      TRUE ~ "Unknown")) %>%
+  group_by(monitoring_level) %>%
+  summarise(
+    demographic_records = n(),
+    individuals = n_distinct(unique_id),
+    quadrats = n_distinct(quad),
+    .groups = "drop")
+
+knitr::kable(
+  df_level_demography,
+  col.names = c(
+    "Monitoring level", "Demographic records",
+    "Individuals", "Quadrats"))
+```
+
+This distinction is important when interpreting changes in the number of
+records after 2022. A reduction in individual records does not necessarily
+represent a decline in the population. It can also reflect the change from
+Level 3 individual monitoring to Level 2 quadrat-level counts.
+
+The working dataset is constructed from `Demog_longform` and therefore uses
+individual-level observations. Level 2 data must be analysed separately or
+explicitly incorporated as quadrat-level counts. Raw population totals from
+the working dataset should consequently not be compared across the monitoring
+change without accounting for the number and type of quadrats sampled.

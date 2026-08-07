@@ -15,7 +15,7 @@ We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 # Packages
-packages <- c('tidyverse', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 'lme4', 'readxl')
+packages <- c('patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 'lme4', 'readxl', 'tidyverse')
 lapply(packages, library, character.only = TRUE)
 
 

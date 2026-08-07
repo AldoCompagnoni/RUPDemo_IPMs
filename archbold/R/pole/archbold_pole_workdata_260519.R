@@ -101,6 +101,14 @@ df_meta <- data.frame(
     'Total number of stems; Numeric',
     'Number of flowering stems; Numeric'))
 
+df_quad <- readxl::read_excel(
+  file.path(
+    dir_data,
+    "Pol_lew_CCS_2025_complete.xlsx"),
+  sheet = "QuadLevel",
+  na = c("", "NA")) %>%
+  janitor::clean_names()
+
 
 # Tails from meta --------------------------------------------------------------
 "Plants were censused during their peak of reproduction annually in July and August"
@@ -190,12 +198,20 @@ df_og %>%
 
 
 # Build transition disturbance data ----
-# Disturbance was recorded at the quadrat level. Missing assessments during
-# known fire events are retained as NA rather than coded as undisturbed,
-# because absence of data does not confirm absence of fire. This affects
-# 35 annual records: 2 in 2019 and 33 in 2021. Years without a fire event
-# are coded as 0.
+# Disturbance was recorded at the quadrat level. Fire information through 2020
+# is obtained from the wide demographic data. The 2022 fire classification is
+# taken from QuadLevel because the Demog worksheet lacks the 2022 status for
+# many quadrats. A missing classification remains NA rather than being treated
+# as evidence that the quadrat was unburned.
+
+df_dist_2022 <- df_quad %>%
+  transmute(
+    quad,
+    dist_2022 = as.numeric(postburn_status0322))
+
 df_dist_event <- df_oglong %>%
+  # filter NAs that are not a real quadrats but from rows in df_oglong where quad itself is missing
+  filter(!is.na(quad)) %>%
   group_by(quad) %>%
   summarise(
     dist_2001 = if_else(
@@ -216,10 +232,10 @@ df_dist_event <- df_oglong %>%
     dist_2020 = if_else(
       all(is.na(postburn_pct0120)), NA_real_,
       as.numeric(any(postburn_pct0120 > 0, na.rm = TRUE))),
-    dist_2022 = if_else(
-      all(is.na(postburn_pct0322)), NA_real_,
-      as.numeric(any(postburn_pct0322 > 0, na.rm = TRUE))),
-    .groups = "drop")
+    .groups = "drop") %>%
+  left_join(
+    df_dist_2022,
+    by = "quad")
 
 
 # The postburn variables were recorded after the corresponding fire event.
@@ -240,6 +256,12 @@ df_dist_transition <- bind_rows(
     transmute(quad, year = 2019, dist_transition = dist_2020),
   df_dist_event %>%
     transmute(quad, year = 2021, dist_transition = dist_2022))
+
+df_dist_previous <- df_dist_transition %>%
+  transmute(
+    quad,
+    year = year + 1,
+    disturbance_prev = dist_transition)
 
 # Recruits ---------------------------------------------------------------------
 df_recruit <- df_og %>%
@@ -318,11 +340,25 @@ df_gen <- df_og %>%
       valid_growth_transition, lead(volume_t0), NA_real_)) %>%
   ungroup() %>%
   # Disturbance
-  left_join(df_dist_transition, by = c("quad", "year")) %>%
+  # Disturbance
+  left_join(
+    df_dist_transition,
+    by = c("quad", "year")) %>%
+  left_join(
+    df_dist_previous,
+    by = c("quad", "year")) %>%
   mutate(
     dist_transition = case_when(
-      year %in% c(2001, 2007, 2009, 2015, 2018, 2019, 2021) ~
+      year %in% c(
+        2001, 2007, 2009, 2015,
+        2018, 2019, 2021) ~
         dist_transition,
+      TRUE ~ 0),
+    disturbance_prev = case_when(
+      year %in% c(
+        2002, 2008, 2010, 2016,
+        2019, 2020, 2022) ~
+        disturbance_prev,
       TRUE ~ 0))
 
 
@@ -344,7 +380,8 @@ df <- df_gen %>%
   dplyr::select(
     site, quad, id, year, stage, survives, size_t0, flower, fl_nr,
     recruits, recruit, size_t1, logsize_t1, logsize_t0,
-    logsize_t0_2, logsize_t0_3, dist_transition,
+    logsize_t0_2, logsize_t0_3,
+    dist_transition, disturbance_prev,
     mcd, st, volume_t0, volume_t1, logvol_t0, logvol_t1,
     logvol_t0_2, logvol_t0_3)
 

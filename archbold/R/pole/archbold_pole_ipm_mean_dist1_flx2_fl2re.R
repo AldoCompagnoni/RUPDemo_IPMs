@@ -833,35 +833,35 @@ gxy <- function(x, y, pars, disturbance = 0) {
 
 
 # Flowering probability --------------------------------------------------------
-fl_x <- function(x, pars, disturbance_prev = 0) {
+fl_x <- function(x, pars, disturbance = 0) {
   plogis(vital_lp(
     x = x,
     pars = pars,
     prefix = 'fl_',
-    disturbance = disturbance_prev))
+    disturbance = disturbance))
 }
 
 
 # Flowering-stem number conditional on flowering ------------------------------
-fln_x <- function(x, pars, disturbance_prev = 0) {
+fln_x <- function(x, pars, disturbance = 0) {
   exp(vital_lp(
     x = x,
     pars = pars,
     prefix = 'fln_',
-    disturbance = disturbance_prev))
+    disturbance = disturbance))
 }
 
 
 # Expected flowering stems per individual ------------------------------------
-fs_x <- function(x, pars, disturbance_prev = 0) {
+fs_x <- function(x, pars, disturbance = 0) {
   fl_x(
     x = x,
     pars = pars,
-    disturbance_prev = disturbance_prev) *
+    disturbance = disturbance) *
     fln_x(
       x = x,
       pars = pars,
-      disturbance_prev = disturbance_prev)
+      disturbance = disturbance)
 }
 
 
@@ -869,17 +869,17 @@ fs_x <- function(x, pars, disturbance_prev = 0) {
 predict_recruits_from_stems <- function(
     flowering_stems, pars, disturbance = 0) {
   stems_nonnegative <- pmax(flowering_stems, 0)
-  
+
   slope <- get_par(pars, 're_b1') +
     get_par(pars, 're_bf') * disturbance
-  
+
   eta <- get_par(pars, 're_b0') +
     get_par(pars, 're_bd') * disturbance +
     slope * log1p(stems_nonnegative)
-  
+
   recruits <- expm1(
     eta + 0.5 * get_par(pars, 're_sigma')^2)
-  
+
   pmax(recruits, 0)
 }
 
@@ -896,12 +896,11 @@ recruits_per_stem <- function(pars, disturbance = 0) {
     disturbance = disturbance) / fs_ref
 }
 
-rx <- function(
-    x, pars, disturbance = 0, disturbance_prev = 0) {
+rx <- function(x, pars, disturbance = 0) {
   fs_x(
     x = x,
     pars = pars,
-    disturbance_prev = disturbance_prev) *
+    disturbance = disturbance) *
     recruits_per_stem(
       pars = pars,
       disturbance = disturbance)
@@ -918,8 +917,7 @@ recr_y <- function(y, pars) {
 
 
 # Fertility matrix -------------------------------------------------------------
-fy <- function(
-    y, x, pars, h, disturbance = 0, disturbance_prev = 0) {
+fy <- function(y, x, pars, h, disturbance = 0) {
   Pvec <- recr_y(y, pars)
   recruit_mass <- sum(Pvec * h)
 
@@ -932,16 +930,14 @@ fy <- function(
   Rvec <- rx(
     x = x,
     pars = pars,
-    disturbance = disturbance,
-    disturbance_prev = disturbance_prev)
+    disturbance = disturbance)
 
   outer(Pvec, Rvec) * h
 }
 
 
 # Kernel -----------------------------------------------------------------------
-kernel <- function(
-    pars, disturbance = 0, disturbance_prev = 0) {
+kernel <- function(pars, disturbance = 0) {
   n <- as.integer(pars$mat_siz)
   L <- pars$L
   U <- pars$U
@@ -955,8 +951,7 @@ kernel <- function(
     x = y,
     pars = pars,
     h = h,
-    disturbance = disturbance,
-    disturbance_prev = disturbance_prev)
+    disturbance = disturbance)
 
   Smat <- sx(
     x = y,
@@ -1000,12 +995,10 @@ kernel <- function(
     h = h)
 }
 
-lambda_ipm <- function(
-    pars, disturbance = 0, disturbance_prev = 0) {
+lambda_ipm <- function(pars, disturbance = 0) {
   K <- kernel(
     pars = pars,
-    disturbance = disturbance,
-    disturbance_prev = disturbance_prev)$k_yx
+    disturbance = disturbance)$k_yx
 
   Re(eigen(K, only.values = TRUE)$values[1])
 }
@@ -1064,154 +1057,95 @@ make_initial_n_mean <- function(pars, df_init = df) {
 # Quadrat-level flowering-stem reference --------------------------------------
 # The flowering-stem-to-recruit model is fitted to quadrat-year totals.
 # Its flowering-stem reference must therefore also be on the quadrat scale.
-df_fs2r_previous_fire <- df_fs2r %>%
-  left_join(
-    df %>%
-      distinct(
-        site,
-        quad,
-        year,
-        disturbance_prev),
-    by = c(
-      "site",
-      "quad",
-      "year")) %>%
-  filter(!is.na(disturbance_prev))
-
-df_stem_reference <- df_fs2r_previous_fire %>%
-  group_by(disturbance_prev) %>%
+df_stem_reference <- df_fs2r %>%
+  group_by(disturbance) %>%
   summarise(
     fs_ref = mean(fs_t0),
     n_quadrat_transitions = n(),
     .groups = "drop")
 
-get_stem_reference <- function(disturbance_prev_i) {
+get_stem_reference <- function(disturbance_i) {
   df_stem_reference %>%
-    filter(
-      disturbance_prev ==
-        disturbance_prev_i) %>%
+    filter(disturbance == disturbance_i) %>%
     pull(fs_ref)
 }
 
-mean_stems_no_previous_fire <- get_stem_reference(0)
-mean_stems_previous_fire <- get_stem_reference(1)
+mean_stems_no_fire <- get_stem_reference(0)
+mean_stems_fire <- get_stem_reference(1)
 
 df_stem_reference
 
 
 # Mean disturbance exposure ---------------------------------------------------
-# Each sampled quadrat-year receives equal weight. The four combinations
-# preserve the distinction between current fire and fire in the previous year.
+# Each sampled quadrat-year receives equal weight. The IPM uses one shared
+# disturbance state for all vital rates.
 df_disturbance_regime <- df %>%
   filter(
     !is.na(quad),
     !is.na(year),
-    !is.na(disturbance),
-    !is.na(disturbance_prev)) %>%
+    !is.na(disturbance)) %>%
   distinct(
     quad,
     year,
-    disturbance,
-    disturbance_prev) %>%
+    disturbance) %>%
   count(
     disturbance,
-    disturbance_prev,
     name = 'n_quadrat_years') %>%
   complete(
     disturbance = c(0, 1),
-    disturbance_prev = c(0, 1),
     fill = list(n_quadrat_years = 0)) %>%
   mutate(
     p_state = n_quadrat_years /
       sum(n_quadrat_years)) %>%
-  arrange(
-    disturbance,
-    disturbance_prev)
+  arrange(disturbance)
 
 df_disturbance_regime
 
-get_state_probability <- function(disturbance_i, disturbance_prev_i) {
+get_state_probability <- function(disturbance_i) {
   df_disturbance_regime %>%
-    filter(
-      disturbance == disturbance_i,
-      disturbance_prev == disturbance_prev_i) %>%
+    filter(disturbance == disturbance_i) %>%
     pull(p_state)
 }
 
-p_00 <- get_state_probability(0, 0)
-p_01 <- get_state_probability(0, 1)
-p_10 <- get_state_probability(1, 0)
-p_11 <- get_state_probability(1, 1)
+p_0 <- get_state_probability(0)
+p_1 <- get_state_probability(1)
 
-p_previous_fire <- p_01 + p_11
 mean_stems_regime <-
-  (1 - p_previous_fire) * mean_stems_no_previous_fire +
-  p_previous_fire * mean_stems_previous_fire
+  p_0 * mean_stems_no_fire +
+  p_1 * mean_stems_fire
 
 
 # State-specific and disturbance-regime kernels -------------------------------
-pars_00 <- pars_mean
-pars_00$fs_ref <- mean_stems_no_previous_fire
+pars_0 <- pars_mean
+pars_0$fs_ref <- mean_stems_no_fire
 
-pars_01 <- pars_mean
-pars_01$fs_ref <- mean_stems_previous_fire
-
-pars_10 <- pars_mean
-pars_10$fs_ref <- mean_stems_no_previous_fire
-
-pars_11 <- pars_mean
-pars_11$fs_ref <- mean_stems_previous_fire
+pars_1 <- pars_mean
+pars_1$fs_ref <- mean_stems_fire
 
 # All mixture components use the same expected total flowering-stem production
 # under the observed disturbance regime.
 pars_regime <- pars_mean
 pars_regime$fs_ref <- mean_stems_regime
 
-K_00 <- kernel(
-  pars = pars_00,
-  disturbance = 0,
-  disturbance_prev = 0)$k_yx
+K_0 <- kernel(
+  pars = pars_0,
+  disturbance = 0)$k_yx
 
-K_01 <- kernel(
-  pars = pars_01,
-  disturbance = 0,
-  disturbance_prev = 1)$k_yx
+K_1 <- kernel(
+  pars = pars_1,
+  disturbance = 1)$k_yx
 
-K_10 <- kernel(
-  pars = pars_10,
-  disturbance = 1,
-  disturbance_prev = 0)$k_yx
-
-K_11 <- kernel(
-  pars = pars_11,
-  disturbance = 1,
-  disturbance_prev = 1)$k_yx
-
-K_regime_00 <- kernel(
+K_regime_0 <- kernel(
   pars = pars_regime,
-  disturbance = 0,
-  disturbance_prev = 0)$k_yx
+  disturbance = 0)$k_yx
 
-K_regime_01 <- kernel(
+K_regime_1 <- kernel(
   pars = pars_regime,
-  disturbance = 0,
-  disturbance_prev = 1)$k_yx
-
-K_regime_10 <- kernel(
-  pars = pars_regime,
-  disturbance = 1,
-  disturbance_prev = 0)$k_yx
-
-K_regime_11 <- kernel(
-  pars = pars_regime,
-  disturbance = 1,
-  disturbance_prev = 1)$k_yx
+  disturbance = 1)$k_yx
 
 K_regime <-
-  p_00 * K_regime_00 +
-  p_01 * K_regime_01 +
-  p_10 * K_regime_10 +
-  p_11 * K_regime_11
+  p_0 * K_regime_0 +
+  p_1 * K_regime_1
 
 
 # Asymptotic and projected lambda ---------------------------------------------
@@ -1232,14 +1166,13 @@ project_kernel <- function(K, pars, label, df_init = df) {
 }
 
 make_state_lambda <- function(
-    K, pars, label, disturbance, disturbance_prev, p_state) {
+    K, pars, label, disturbance, p_state) {
   project_kernel(
     K = K,
     pars = pars,
     label = label) %>%
     mutate(
       disturbance = disturbance,
-      disturbance_prev = disturbance_prev,
       observed_state_probability = p_state,
       flowering_stems_ref = pars$fs_ref,
       recruits_ref = predict_recruits_from_stems(
@@ -1254,40 +1187,24 @@ make_state_lambda <- function(
 
 df_lambda_states <- bind_rows(
   make_state_lambda(
-    K = K_00,
-    pars = pars_00,
+    K = K_0,
+    pars = pars_0,
     label = 'Undisturbed',
     disturbance = 0,
-    disturbance_prev = 0,
-    p_state = p_00),
+    p_state = p_0),
   make_state_lambda(
-    K = K_10,
-    pars = pars_10,
-    label = 'Current-year fire',
+    K = K_1,
+    pars = pars_1,
+    label = 'Fire',
     disturbance = 1,
-    disturbance_prev = 0,
-    p_state = p_10),
-  make_state_lambda(
-    K = K_01,
-    pars = pars_01,
-    label = 'Previous-year fire',
-    disturbance = 0,
-    disturbance_prev = 1,
-    p_state = p_01),
-  make_state_lambda(
-    K = K_11,
-    pars = pars_11,
-    label = 'Fire in both years',
-    disturbance = 1,
-    disturbance_prev = 1,
-    p_state = p_11))
+    p_state = p_1))
 
 recruits_ref_regime <-
-  (p_00 + p_01) * predict_recruits_from_stems(
+  p_0 * predict_recruits_from_stems(
     flowering_stems = mean_stems_regime,
     pars = pars_regime,
     disturbance = 0) +
-  (p_10 + p_11) * predict_recruits_from_stems(
+  p_1 * predict_recruits_from_stems(
     flowering_stems = mean_stems_regime,
     pars = pars_regime,
     disturbance = 1)
@@ -1298,7 +1215,6 @@ df_lambda_regime <- project_kernel(
   label = 'Expected disturbance regime') %>%
   mutate(
     disturbance = NA_real_,
-    disturbance_prev = NA_real_,
     observed_state_probability = 1,
     flowering_stems_ref = mean_stems_regime,
     recruits_ref = recruits_ref_regime,
@@ -1421,27 +1337,19 @@ fig_lambda_mean
 df_kernel_diagnostics <- tibble(
   kernel = c(
     'Undisturbed',
-    'Current-year fire',
-    'Previous-year fire', 
-    'Fire in both years',
+    'Fire',
     'Expected disturbance regime'),
   min_entry = c(
-    min(K_00),
-    min(K_10),
-    min(K_01),
-    min(K_11),
+    min(K_0),
+    min(K_1),
     min(K_regime)),
   max_entry = c(
-    max(K_00),
-    max(K_10),
-    max(K_01),
-    max(K_11),
+    max(K_0),
+    max(K_1),
     max(K_regime)),
   any_nonfinite = c(
-    any(!is.finite(K_00)),
-    any(!is.finite(K_10)),
-    any(!is.finite(K_01)),
-    any(!is.finite(K_11)),
+    any(!is.finite(K_0)),
+    any(!is.finite(K_1)),
     any(!is.finite(K_regime))))
 
 df_kernel_diagnostics

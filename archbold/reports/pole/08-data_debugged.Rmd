@@ -493,87 +493,208 @@ undisturbed quadrats. Aggregating disturbance to the site level would therefore
 remove observed spatial variation.
 
 The disturbance variable describes whether a quadrat was affected by fire
-during an annual transition. A positive post-burn category was coded as 1,
-while an assessed quadrat with no recorded fire effect was coded as 0.
-If all disturbance measurements were missing for a quadrat during a known fire
-event, disturbance was retained as `NA` rather than treated as absence of fire.
-Years without a recorded fire event were coded as 0.
+during an annual transition. A recorded fire effect was coded as 1 and an
+explicitly unburned quadrat was coded as 0. A missing classification was
+retained as `NA`, because it provides no evidence that the quadrat was
+unburned.
+
+### Source of the 2022 fire classification
+
+Fire information through 2020 was obtained from the historical post-burn
+variables in `Demog`. The 2022 fire classification was instead obtained from
+`QuadLevel`.
+
+The metadata for `postburn_status0322` distinguishes three possible values:
+1 for burned, 0 for unburned, and `NA` for a missing plot. However, the workbook
+does not establish why a classification is missing. A missing value could
+represent a missing field observation, incomplete data entry, or another
+unrecorded reason. It is therefore described here simply as having no recorded
+classification.
+
+The two worksheets were compared before selecting the source of the 2022
+variable.
+
+```{r data-debugged-disturbance-source}
+df_dist_2022_demog <- df_demog_wide %>%
+  filter(!is.na(quad)) %>%
+  group_by(quad) %>%
+  summarise(
+    dist_2022_demog = if_else(
+      all(is.na(postburn_status0322)),
+      NA_real_,
+      as.numeric(
+        any(postburn_status0322 == 1, na.rm = TRUE))),
+    .groups = "drop")
+
+df_dist_2022 <- df_quad %>%
+  transmute(
+    quad,
+    dist_2022 = as.numeric(postburn_status0322))
+
+df_2022_source_summary <- df_dist_2022 %>%
+  left_join(
+    df_dist_2022_demog,
+    by = "quad") %>%
+  summarise(
+    quadrats = n(),
+    missing_in_quadlevel = sum(is.na(dist_2022)),
+    missing_in_demog = sum(is.na(dist_2022_demog)),
+    available_in_quadlevel_but_missing_in_demog = sum(
+      !is.na(dist_2022) &
+        is.na(dist_2022_demog)),
+    conflicting_values = sum(
+      !is.na(dist_2022) &
+        !is.na(dist_2022_demog) &
+        dist_2022 != dist_2022_demog))
+
+knitr::kable(
+  df_2022_source_summary,
+  col.names = c(
+    "Quadrats",
+    "Missing in QuadLevel",
+    "Missing in Demog",
+    "Available only in QuadLevel",
+    "Conflicting values"))
+```
+
+`QuadLevel` contained an explicit 2022 classification for
+`r df_2022_source_summary$available_in_quadlevel_but_missing_in_demog`
+quadrats that lacked the corresponding information in `Demog`. There were
+`r df_2022_source_summary$conflicting_values` conflicts among quadrats with
+information in both worksheets. `QuadLevel` was therefore used as the source
+of the 2022 fire classification.
+
+Only `r df_2022_source_summary$missing_in_quadlevel` actual quadrat lacked a
+recorded 2022 classification. This quadrat was retained as `NA` rather than
+being added to the explicitly unburned group.
+
+### Assignment to annual transitions
+
+For the fires through 2020, a positive post-burn category was coded as 1 and a
+recorded category of zero was coded as 0. If all relevant measurements were
+missing during a known fire event, the classification remained `NA`. The 2022
+classification was joined from `QuadLevel`.
 
 ```{r data-debugged-disturbance}
 df_dist_event <- df_demog_wide %>%
+  filter(!is.na(quad)) %>%
   group_by(quad) %>%
   summarise(
     dist_2001 = if_else(
       all(is.na(postburn_status1201)), NA_real_,
-      as.numeric(any(postburn_status1201 > 0, na.rm = TRUE))),
+      as.numeric(any(
+        postburn_status1201 > 0,
+        na.rm = TRUE))),
     dist_2007 = if_else(
       all(is.na(postburn_pct1207)), NA_real_,
-      as.numeric(any(postburn_pct1207 > 0, na.rm = TRUE))),
+      as.numeric(any(
+        postburn_pct1207 > 0,
+        na.rm = TRUE))),
     dist_2009 = if_else(
       all(is.na(postburn_pct0609)), NA_real_,
-      as.numeric(any(postburn_pct0609 > 0, na.rm = TRUE))),
+      as.numeric(any(
+        postburn_pct0609 > 0,
+        na.rm = TRUE))),
     dist_2015 = if_else(
       all(is.na(postburn_pct0615)), NA_real_,
-      as.numeric(any(postburn_pct0615 > 0, na.rm = TRUE))),
+      as.numeric(any(
+        postburn_pct0615 > 0,
+        na.rm = TRUE))),
     dist_2019 = if_else(
       all(is.na(postburn_pct0319)), NA_real_,
-      as.numeric(any(postburn_pct0319 > 0, na.rm = TRUE))),
+      as.numeric(any(
+        postburn_pct0319 > 0,
+        na.rm = TRUE))),
     dist_2020 = if_else(
       all(is.na(postburn_pct0120)), NA_real_,
-      as.numeric(any(postburn_pct0120 > 0, na.rm = TRUE))),
-    dist_2022 = if_else(
-      all(is.na(postburn_pct0322)), NA_real_,
-      as.numeric(any(postburn_pct0322 > 0, na.rm = TRUE))),
-    .groups = "drop")
+      as.numeric(any(
+        postburn_pct0120 > 0,
+        na.rm = TRUE))),
+    .groups = "drop") %>%
+  left_join(
+    df_dist_2022,
+    by = "quad")
 
 df_dist_transition <- bind_rows(
   df_dist_event %>%
-    transmute(quad, year = 2001, dist_transition = dist_2001),
+    transmute(
+      quad,
+      year = 2001,
+      dist_transition = dist_2001),
   df_dist_event %>%
-    transmute(quad, year = 2007, dist_transition = dist_2007),
+    transmute(
+      quad,
+      year = 2007,
+      dist_transition = dist_2007),
   df_dist_event %>%
-    transmute(quad, year = 2009, dist_transition = dist_2009),
+    transmute(
+      quad,
+      year = 2009,
+      dist_transition = dist_2009),
   df_dist_event %>%
-    transmute(quad, year = 2015, dist_transition = dist_2015),
+    transmute(
+      quad,
+      year = 2015,
+      dist_transition = dist_2015),
   df_dist_event %>%
-    transmute(quad, year = 2018, dist_transition = dist_2019),
+    transmute(
+      quad,
+      year = 2018,
+      dist_transition = dist_2019),
   df_dist_event %>%
-    transmute(quad, year = 2019, dist_transition = dist_2020),
+    transmute(
+      quad,
+      year = 2019,
+      dist_transition = dist_2020),
   df_dist_event %>%
-    transmute(quad, year = 2021, dist_transition = dist_2022))
+    transmute(
+      quad,
+      year = 2021,
+      dist_transition = dist_2022))
 
 df_transitions_dist <- df_transitions %>%
-  left_join(df_dist_transition, by = c("quad", "year")) %>%
+  left_join(
+    df_dist_transition,
+    by = c("quad", "year")) %>%
   mutate(
     dist_transition = case_when(
-      year %in% c(2001, 2007, 2009, 2015, 2018, 2019, 2021) ~
+      year %in% c(
+        2001, 2007, 2009, 2015,
+        2018, 2019, 2021) ~
         dist_transition,
       TRUE ~ 0))
 
 n_mixed_site_years <- df_transitions_dist %>%
   filter(!is.na(dist_transition)) %>%
-  distinct(patch, year, dist_transition) %>%
+  distinct(
+    patch,
+    year,
+    dist_transition) %>%
   count(patch, year) %>%
   filter(n > 1) %>%
   nrow()
 
 df_disturbance_mapping <- tribble(
-  ~`Fire year`, ~`Source variable`, ~`Transition year`,
-  2001, "postburn_status1201", 2001,
-  2007, "postburn_pct1207", 2007,
-  2009, "postburn_pct0609", 2009,
-  2015, "postburn_pct0615", 2015,
-  2019, "postburn_pct0319", 2018,
-  2020, "postburn_pct0120", 2019,
-  2022, "postburn_pct0322", 2021) %>%
+  ~`Fire year`, ~`Source`, ~`Source variable`,
+  ~`Transition year`,
+  2001, "Demog", "postburn_status1201", 2001,
+  2007, "Demog", "postburn_pct1207", 2007,
+  2009, "Demog", "postburn_pct0609", 2009,
+  2015, "Demog", "postburn_pct0615", 2015,
+  2019, "Demog", "postburn_pct0319", 2018,
+  2020, "Demog", "postburn_pct0120", 2019,
+  2022, "QuadLevel", "postburn_status0322", 2021) %>%
   left_join(
     df_transitions_dist %>%
       filter(is.na(dist_transition)) %>%
-      count(year, name = "Missing annual records"),
+      count(
+        year,
+        name = "Missing annual records"),
     by = c("Transition year" = "year")) %>%
   mutate(
-    `Missing annual records` =
-      replace_na(`Missing annual records`, 0L))
+    `Missing annual records` = replace_na(
+      `Missing annual records`,
+      0L))
 
 knitr::kable(df_disturbance_mapping)
 ```
@@ -585,9 +706,11 @@ were assigned to transitions beginning in those years. The fires in 2019,
 
 Disturbance differed among quadrats within
 `r n_mixed_site_years` site-year combinations, supporting its retention at the
-quadrat level. Missing fire assessments affect
-`r sum(is.na(df_transitions_dist$dist_transition))` annual records: two records
-in transition year 2019 and 33 records in transition year 2021.
+quadrat level. In total,
+`r sum(is.na(df_transitions_dist$dist_transition))` annual records have no
+recorded fire classification during a known fire transition. The number
+associated with each fire is reported in the final column of the table.
+
 
 
 
@@ -670,10 +793,55 @@ among recruits for which crown diameter was not measured. These recruits are
 retained in the dataset because they still contribute to recruitment counts,
 even when they cannot be used in volume-based vital-rate models.
 
-Disturbance is missing only when a quadrat was not assessed during a known fire
-event. These observations were retained as unknown rather than being classified
-as undisturbed.
+Disturbance remains missing when no fire classification is recorded for a
+quadrat during a known fire event. The available data do not establish why a
+classification is missing. These observations were therefore retained as
+unknown rather than being classified as undisturbed.
 
+## Sampling inventory
+
+The following figure shows the quadrat-year combinations represented in the
+individual demographic data. Each point indicates that at least one individual
+record occurs for that quadrat and year. The figure therefore shows the
+temporal coverage of the individual-level dataset, including gaps in annual
+records and the reduction in individual demographic monitoring after 2022.
+
+```{r data-debugged-sampling-inventory, fig.width=10, fig.height=7}
+df_sampling_inventory <- df_demog_long %>%
+  filter(
+    !is.na(quad),
+    !is.na(year)) %>%
+  distinct(quad, year)
+
+fig_sampling <- ggplot(
+  df_sampling_inventory,
+  aes(
+    x = year,
+    y = quad)) +
+  geom_point(size = 0.8) +
+  scale_x_continuous(
+    breaks = sort(
+      unique(df_sampling_inventory$year))) +
+  theme_bw() +
+  labs(
+    title = "Sampling inventory",
+    x = "Year",
+    y = "Quadrat") +
+  theme(
+    axis.text.y = element_text(size = 5),
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1))
+
+fig_sampling
+```
+
+Because this figure is constructed from individual records in
+`Demog_longform`, the absence of a point means that no individual demographic
+record is available for that quadrat-year. It does not necessarily demonstrate
+that the quadrat was not visited. This distinction is especially important
+after 2022, when Level 2 quadrats continued to provide quadrat-level counts but
+no longer contributed complete individual demographic records.
 
 
 ## Monitoring levels after 2022
@@ -787,3 +955,4 @@ individual-level observations. Level 2 data must be analysed separately or
 explicitly incorporated as quadrat-level counts. Raw population totals from
 the working dataset should consequently not be compared across the monitoring
 change without accounting for the number and type of quadrats sampled.
+  

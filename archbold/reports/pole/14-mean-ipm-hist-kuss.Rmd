@@ -80,12 +80,52 @@ Although both approaches enlarge the population state and produce a
 megamatrix, the biological meaning of the additional state differs between
 them.
 
+
+## Readings
+**Kuss, P., Rees, M., Ægisdóttir, H. H., Ellner, S. P., & Stöcklin, J. (2008). Evolutionary demography of long‐lived monocarpic perennials: a time‐lagged integral projection model. Journal of Ecology, 96(4), 821-832.**
+
+1. “*So far, the existing class of models assume that demographic rates are only influenced by current individual state, say size and/or age. In many species, however, the decision to flower is made many months (e.g. Agave deserti; Tissue & Nobel 1990) or years (Frasera speciosa; Taylor & Inouye 1985) before flowering occurs. Additionally, flowering individuals of monocarpic perennials often have a different morphology, for example, withered or absent rosette leaves, such that size measurements in the year of flowering cannot be compared with the years prior to flowering (e.g. Campanula sibirica, C. spicata; Hegi 1975). In these latter cases, an additional time-lag needs to be incorporated into the models in order to faithfully represent the demography of a study species.*”
+
+2. “*Our objectives in this study are therefore (i) to present a theoretical and computational framework for a time-lagged IPM which allows demographic transitions to depend on an individual’s state either in the current year or the year before, (ii) to demonstrate that the novel combination of field methods (permanent plots and herb chronology) can be used to parameterize efficiently and validate IPMs with data from the long-lived monocarpic C. thyrsoides collected from a relatively short census period, (iii) to use the model to predict the age-structure observed in the field and determine the evolutionarily stable flowering strategy, and (iv) to draw general conclusions about the evolution of the flowering strategies in long-lived vs. short-lived monocarpic plant species.*”
+
+3. “*However, in many species a complication arises because either (i) rosette size cannot be measured in the year the plants flower or (ii) the decision to flower is made the year before plants flower. As a consequence the probability of flowering and seed production in year t has to be predicted as a function of plant size in year t − 1, and any seedlings produced then enter the population in year t + 1. Therefore the time-lagged IPM becomes*”
+
+4. “*The matrix K is useful for calculating various measures of population growth; however, it is inappropriate for sensitivity and elasticity analyses because the identity matrix, I, in the lower left hand corner is simply a computational device and not a biological transition.*”
+
+
+**Ehrlén, J. (2000). The dynamics of plant populations: does the history of individuals matter?. Ecology, 81(6), 1675-1684.**
+
+1. “*At the level of individuals, historical effects in which past conditions influence future performance are particularly likely to occur in long-lived organisms that store resources between seasons and that form organs months or years before their elaboration. Such carry-over mechanisms have been documented in several perennial plant species, but the implications for population processes are poorly known. In this study, I examine how the history of individuals influences their future performance, population dynamics, and life cycle structure in the long-lived herb Lathyrus vernus. Overall effects of plant history on population dynamics, in terms of growth rate, reproductive values, stable stage distribution, and elasticities, are examined by comparing an ordinary first-order matrix model with a second-order matrix model. In the latter, not only the present state of individuals, but also their past state is allowed to influence future fate.*”
+
+2. “*In perennial plants, the current phenotype of an individual and its response to environmental change have been shown to reflect the individual’s history, i.e., its past phenotype and environment (Primack and Hall 1990, Bullock et al. 1993, Geber et al. 1997). Such carry-over mechanisms imply that the performance of individuals can be influenced both by past environmental conditions, such as herbivory or abiotic factors (Taylor and Inouye 1985, Nobel 1987, Bullock et al. 1993, 1995, Crone 1997, Rose et al. 1998), and by past internal plant events such as morphological development and resource allocation patterns (Karlsson 1986, Karlsson et al. 1990, Primack and Hall 1990, Geber et al. 1997). The mechanisms by which past events can influence plant phenotypes and their ability to respond to environmental variation include resource storage and a temporal separation between organ formation and elaboration. Resource stores are widely recognized as important to the ecology of perennial plants (Chapin et al. 1990), and organ preformation is widespread among angiosperms (Geber et al. 1997). Hence, carry-over mechanisms and historical effects are likely to occur in many perennial plant species.*”
+
+3. “*There are several ways in which historical events may influence the future performance of plants that currently belong to the same stage. Such historical effects may arise because the costs of allocating resources to one function, e.g., reproduction, in terms of decreased allocation to other functions, are not expressed until after more than one year (e.g., Primack and Hall 1990). Moreover, in plants that have the potential to accumulate resources and store them among seasons, plant size may be partly restored after it has been depressed during one season, e.g., by herbivory. In addition, correlations between past and current performance can be mediated by the external environment. If size changes of individuals reflect altered environmental conditions that persist for more than one season, then individuals experiencing a certain size change during one year are likely to experience a similar change during the next year.*”
+
+4. “*Conventional matrix models are first-order models, i.e., the stage distribution at time t + 1 depends solely on the stage distribution at time t.[...] When the Markovian process is extended to be second order, the stage distribution at time t + 1 becomes dependent upon the distribution at time t − 1 as well as that at time t, and on second-order transition probabilities (Tanner et al. 1996). The matrix of transition probabilities in a second-order model is no longer two-dimensional, but instead becomes three-dimensional. In analogy with the conventional notation, the equation for the system can be expressed as: x(t + 1, t) = Ax(t, t − 1), where A is the three-dimensional transition probability matrix and x(t + 1, t) is a two-dimensional matrix describing the joint stage distributions at times t + 1 and t. Thus, the element aijk of A represents the probability that an individual of stages k and j in years t − 1 and t, respectively, transitions to stages j and i in years t and t + 1.*”
+
+5. “*In ‘historical’ models, each transition from year t to year t + 1 was calculated separately for the seven stages of individuals in year t − 1 (Table 2). To allow for the analytical procedures developed for first-order models, three-dimensional matrices can be converted to a two-dimensional form and two-dimensional stage vectors can be transformed into an one-dimensional form. In this two-dimensional matrix, the columns represent the combinations of individual stages in years t − 1 and t (j, k), and rows represent the combination of individual stages in years t and t + 1 (i, j). Hence, the three-dimensional matrix for L. vernus was converted to a two-dimensional form, including transitions from all combinations of stage year t − 1 and year t to all combinations of stage year t and stage year t + 1.*”
+
+
+**Shefferson, R. P., Kurokawa, S., & Ehrlén, J. (2021). lefko3: Analysing individual history through size‐classified matrix population models. Methods in Ecology and Evolution, 12(2), 378-382.**
+
+1. “*Matrix projection models typically assume that the histories of individuals do not influence population dynamics. Specifically, the state of an individual in time t + 1 is solely dependent on the state of that individual at time t. We refer to such MPMs as ahistorical MPMs, or ahMPMs, and use the term MPM to refer generally to any kind of MPM. This assumption is a temporal interpretation of the assumption of independence and identical distribution (iid) in vital rates, and it allows the creation of low-dimension MPMs in which columns represent life-history stage (or age) in time t and rows represent stage (or age) in time t + 1 (Caswell, 2001). When stage-based MPMs are characterized by transitions between life-history stages, yielding a matrix in which the transition probabilities and fecundity of an individual in time t + 1 are governed solely by its condition in time t (Lefkovitch, 1965). Integral projection models (IPMs) are function-based MPMs in which size follows a Gaussian distribution (Ellner & Rees, 2006). Neither traditional MPMs nor IPMs incorporate individual history.*”
+
+2. “*Matrix projection models typically assume that the histories of individuals do not influence population dynamics. Specifically, the state of an individual in time t + 1 is solely dependent on the state of that individual at time t. We refer to such MPMs as ahistorical MPMs, or ahMPMs, and use the term MPM to refer generally to any kind of MPM. This assumption is a temporal interpretation of the assumption of independence and identical distribution (iid) in vital rates, and it allows the creation of low-dimension MPMs in which columns represent life-history stage (or age) in time t and rows represent stage (or age) in time t + 1 (Caswell, 2001). When stage-based MPMs are characterized by transitions between life-history stages, yielding a matrix in which the transition probabilities and fecundity of an individual in time t + 1 are governed solely by its condition in time t (Lefkovitch, 1965). Integral projection models (IPMs) are function-based MPMs in which size follows a Gaussian distribution (Ellner & Rees, 2006). Neither traditional MPMs nor IPMs incorporate individual history.*”
+
+3. “*In an ahMPM, rows and columns correspond to the states of individuals in times t and t + 1 (Table 1a). hMPMs add time t − 1 into the two-dimensional matrix by recharacterizing the rows and columns of the matrix so that they correspond to stage-pairs defined across two consecutive times (Table 1b). Redefining stages in this way leads to large, sparse matrices. An ahMPM with m stages will have m2 elements, all of which may be non-zero. A hMPM with m stages will have m2 stage-pairs on each axis and m4 elements, of which m3 elements are potentially estimable and (m − 1)m3 elements are structural zeroes. Structural zeroes result from the fact that row stage pairs and column stage pairs both include stage in time t, and so stage at time t must be equal in both for a transition to be estimable.*”
+
+4. “*Function modelsearch() takes historical vertical datasets and estimates historical and ahistorical linear models of all necessary vital rates to create function-based MPMs, including complex IPMs.[...] Historical global models can include size and reproductive status in times t and t − 1 and their interactions.*”
+
+
 ## Time-lagged IPM
 
 Kuss et al. (2008) developed a time-lagged IPM for a demographic system in
 which reproduction could not be related to individual size in the same year.
 Survival and growth were determined by size at time $t$, whereas reproduction
 contributing to the population at $t+1$ depended on size at $t-1$.
+
+Kuss et al. (2008): “demographic transitions to depend on an individual’s
+state either in the current year or the year before”
 
 The resulting population projection is
 
@@ -147,6 +187,8 @@ the following state.
 
 Importantly, $\mathbf{I}$ is only a bookkeeping device. It does not represent
 a biological demographic transition.
+Kuss et al. (2008): “simply a computational device and not a biological
+transition”
 
 ### Implementation for *Polygala lewtonii*
 
@@ -192,6 +234,10 @@ D_t
 $$
 
 denote disturbance during the interval from $t$ to $t+1$.
+
+Yet again: Ehrlén (2000): “the current phenotype of an individual and its response to
+environmental change have been shown to reflect the individual’s history,
+i.e., its past phenotype and environment”
 
 These two disturbance states affect different demographic processes.
 Survival and growth from $t$ to $t+1$ depend on $D_t$. Recruitment from
@@ -430,9 +476,6 @@ $(z_{t-1},z_t)$, and transitions occur between consecutive state pairs
 (Ehrlén 2000; Shefferson et al. 2021). The models implemented here instead
 focus on two specific forms of temporal dependence that are directly relevant
 to the demographic structure of the *Polygala lewtonii* IPM.
-
-
-
 
 
 ## Data and metadata

@@ -204,7 +204,7 @@ mods_su_dAIC
 ```
 
 
-```{r}
+```{r, fig.width=10, fig.height=12}
 # Survival plots by year -------------------------------------------------------
 make_su_year_plot <- function(year_i) {
   df_i <- df_su %>% filter(year == year_i)
@@ -345,7 +345,7 @@ mods_gr_dAIC
 ```
 
 
-```{r}
+```{r, fig.width=10, fig.height=12}
 # Growth plots by year ---------------------------------------------------------
 make_gr_year_plot <- function(year_i) {
   df_i <- df_gr %>% filter(year == year_i)
@@ -497,7 +497,7 @@ mods_fl_dAIC
 ```
 
 
-```{r}
+```{r, fig.width=10, fig.height=12}
 # Flowering plots by year ------------------------------------------------------
 make_fl_year_plot <- function(year_i) {
   df_i <- df_fl %>% filter(year == year_i)
@@ -607,7 +607,7 @@ mods_fl_n_dAIC
 ```
 
 
-```{r}
+```{r, fig.width=10, fig.height=12}
 # Flower number plots by year --------------------------------------------------
 make_fl_n_year_plot <- function(year_i) {
   df_i <- df_fl_cond %>% filter(year == year_i)
@@ -671,7 +671,7 @@ fig_fl_n_years
 ```
 
 ### Flwoers to recuit transition
-```{r}
+```{r, fig.width=5, fig.height=8}
 # Flowering stems to recruits --------------------------------------------------
 # Total flowering stems in quadrat q during year t predict recruits in the
 # same quadrat during year t + 1. Current fire is retained at the quadrat level.
@@ -846,7 +846,7 @@ mods_re_dAIC
 ```
 
 
-```{r}
+```{r, fig.width=5, fig.height=8}
 # Recruitment plots by recruit year -------------------------------------------
 predict_re_safe <- function(model, newdata, re.form = NULL) {
   if (inherits(model, 'merMod')) {
@@ -1806,7 +1806,7 @@ df_compare_site %>%
 
 ### Whole-population annual comparison
 Annual totals contain only quadrats represented in t - 1, t, and t + 1.
-```{r}
+```{r, fig.width=5, fig.height=8}
 df_compare <- df_compare_quad %>%
   group_by(year) %>%
   summarise(
@@ -1853,7 +1853,7 @@ df_compare <- df_compare_quad %>%
 # Observed vs modeled plot
 
 df_plot <- df_compare %>%
-  select(year, obs_pgr, asym_lambda, proj_lambda, disturbance) %>%
+  dplyr::select(year, obs_pgr, asym_lambda, proj_lambda, disturbance) %>%
   pivot_longer(
     cols = c(asym_lambda, proj_lambda),
     names_to = 'lambda_type',
@@ -1883,7 +1883,7 @@ fig_mod_vs_obs
 ```
 
 ### Log-transformed observed vs modeled plot
-```{r}
+```{r, fig.width=5, fig.height=8}
 df_plot_log <- df_plot %>%
   filter(obs_pgr > 0, lambda > 0) %>%
   mutate(

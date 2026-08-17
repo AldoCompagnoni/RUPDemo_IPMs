@@ -2070,7 +2070,7 @@ df_compare_site %>%
 ```
 
 ## Whole-population annual comparison
-```{r, fig.width=5, fig.height=8}
+```{r}
 # Annual totals contain only quadrats represented in both t and t + 1.
 df_compare <- df_compare_quad %>%
   group_by(year) %>%

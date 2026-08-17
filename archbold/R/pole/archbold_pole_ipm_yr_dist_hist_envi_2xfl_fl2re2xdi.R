@@ -46,7 +46,7 @@ load_packages(
 v_head <- c('archbold')
 v_species <- c('Polygala lewtonii')
 custom_delimiter <- c()
-v_years_re <- c(2001)
+v_years_re <- c()
 
 v_sp_abb <- tolower(
   gsub(' ', '', paste(

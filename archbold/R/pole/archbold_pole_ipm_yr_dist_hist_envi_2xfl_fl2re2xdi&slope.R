@@ -1,112 +1,122 @@
-# Yearly historical kuss projection model {#yr-ipm-hist-kuss}
-## Introduction
+# IPM year-specific, environmental and historical, with fire 
+# Archbold - Polygala lewtonii
 
-This analysis develops a **year-specific historical integral projection model
-(IPM)** for *Polygala lewtonii* at Archbold. The model combines annual variation
-in demographic rates with the delayed contribution of reproduction to
-recruitment.
+# Author: Niklas Neisse (neisse.n@protonmail.com)
+# Co    : Aspen Workman, Aldo Compagnoni*
+# Email : aldo.compagnoni@idiv.de
+# Web   : https://aldocompagnoni.weebly.com/
+# Date  : 2026.08.14
 
-Survival, growth, flowering, flowering-stem production, and recruitment are
-first modeled separately. Year-specific demographic variation is introduced
-through the year effects from the fitted mixed models. This means that each
-annual IPM uses the demographic conditions estimated for that particular year,
-rather than applying one mean set of vital-rate parameters to the full time
-series.
-
-Disturbance is incorporated as a single common fire state within the IPM.
-Survival, growth, flowering, flowering-stem production, and recruitment are
-therefore evaluated under either
-
-- no disturbance (`disturbance = 0`), or
-- disturbance (`disturbance = 1`).
-
-This deliberately places disturbance on the same level for all demographic
-processes inside the IPM. The underlying flowering and flower-number models are
-still fitted using previous-year disturbance, as in the original demographic
-models, but their disturbance coefficients are applied to the common
-disturbance state when the IPM is constructed.
-
-The historical structure is needed because flowering in year \(t\) contributes
-to recruitment in year \(t+1\). The population state therefore contains both
-the current and previous size distributions,
-
-\[
-\mathbf{n}^{H}_t =
-\begin{pmatrix}
-\mathbf{n}_t \\
-\mathbf{n}_{t-1}
-\end{pmatrix}.
-\]
-
-The corresponding historical kernel is
-
-\[
-\mathbf{K}^{H}_t =
-\begin{pmatrix}
-\mathbf{T}_t & \mathbf{F}_t \\
-\mathbf{I}   & \mathbf{0}
-\end{pmatrix},
-\]
-
-where \(\mathbf{T}_t\) contains survival and growth, \(\mathbf{F}_t\) contains
-fertility, \(\mathbf{I}\) transfers the current population into the lagged
-state, and \(\mathbf{0}\) prevents the lagged state from persisting beyond one
-year. Projection therefore gives
-
-\[
-\begin{pmatrix}
-\mathbf{n}_{t+1} \\
-\mathbf{n}_t
-\end{pmatrix}
-=
-\begin{pmatrix}
-\mathbf{T}_t & \mathbf{F}_t \\
-\mathbf{I}   & \mathbf{0}
-\end{pmatrix}
-\begin{pmatrix}
-\mathbf{n}_t \\
-\mathbf{n}_{t-1}
-\end{pmatrix}.
-\]
-
-For the **year-specific model**, a separate historical kernel is constructed
-for each year using that year's demographic parameters. For every year, two
-asymptotic scenarios are evaluated: one assuming no fire and one assuming
-fire. The dominant eigenvalue of the corresponding historical kernel gives the
-year-specific asymptotic population growth rate under that disturbance state.
-
-The yearly model is also used for one-step projections of the observed
-population. For each quadrat-year transition, the observed size distribution
-in year \(t\) is combined with the observed size distribution from year
-\(t-1\). The historical kernel for year \(t\), using the observed disturbance
-state of that quadrat, is then applied once to obtain the predicted population
-in year \(t+1\).
-
-The projected population growth rate is calculated as
-
-\[
-\lambda_{\mathrm{proj},t}
-=
-\frac{N_{\mathrm{projected},t+1}}
-     {N_{\mathrm{observed},t}}.
-\]
-
-This differs from the asymptotic growth rate. The projected lambda depends on
-the actual observed population structure in years \(t\) and \(t-1\), whereas
-the asymptotic lambda is determined by the dominant eigenvalue of the annual
-historical kernel and represents the long-term growth rate that would result
-if the demographic conditions and disturbance state of that year were held
-constant.
-
-Observed population growth from \(t\) to \(t+1\) is then compared with both the
-projected and asymptotic growth rates. This allows the year-specific model to
-be evaluated against the realized annual population dynamics while retaining
-the historical lag between flowering and recruitment.
+# Study organism: Polygala lewtonii
+# Citing publication: https://doi.org/10.1071/BT11271
+# Time period: 2001-2024, through 2025
 
 
+################################################################################
+################################################################################
 
-## Working dataset
-```{r}
+# ATTENTION: This runs over multiple hours
+
+################################################################################
+################################################################################
+
+
+# Setting the stage ------------------------------------------------------------
+# rm(list = ls())
+set.seed(100)
+options(stringsAsFactors = F)
+
+
+# Packages --------------------------------------------------------------------
+source('helper_functions/load_packages.R')
+load_packages(
+  MASS,
+  tidyverse,
+  patchwork,
+  skimr,
+  ipmr,
+  binom,
+  bbmle,
+  janitor,
+  lme4,
+  GGally)
+
+
+# Specification ----------------------------------------------------------------
+v_head <- c('archbold')
+v_species <- c('Polygala lewtonii')
+custom_delimiter <- c()
+v_years_re <- c()
+
+v_sp_abb <- tolower(
+  gsub(' ', '', paste(
+    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
+
+v_script_prefix <- str_c(v_head)
+v_ggp_suffix <- paste(tools::toTitleCase(v_head), '-', v_species)
+
+# Keep the manual model choices from the mean script unless changed here.
+v_mod_set_su   <- c()
+v_mod_set_gr   <- c()
+v_mod_set_fl   <- c()
+v_mod_set_fl_n <- c()
+v_mod_set_re   <- c()
+
+
+# Directory --------------------------------------------------------------------
+dir_pub <- file.path(paste0(v_head))
+dir_R <- file.path(dir_pub, 'R', v_sp_abb)
+dir_data <- file.path(dir_pub, 'data', v_sp_abb)
+dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+
+if (!dir.exists(paste0(dir_pub, '/R'))) {
+  dir.create(paste0(dir_pub, '/R'))}
+if (!dir.exists(paste0(dir_pub, '/data'))) {
+  dir.create(paste0(dir_pub, '/data'))}
+if (!dir.exists(paste0(dir_pub, '/results'))) {
+  dir.create(paste0(dir_pub, '/results'))}
+
+if (!dir.exists(dir_R)) {dir.create(dir_R)}
+if (!dir.exists(dir_data)) {dir.create(dir_data)}
+if (!dir.exists(dir_result)) {dir.create(dir_result)}
+
+
+# Functions --------------------------------------------------------------------
+source('helper_functions/plot_binned_prop.R')
+source('helper_functions/plot_binned_prop_year.R')
+source('helper_functions/line_color_pred_fun.R')
+source('helper_functions/predictor_fun.R')
+
+
+# Data -------------------------------------------------------------------------
+df_og <- read.csv(
+  file.path(dir_data, paste0('ab_', v_sp_abb, '_df_original_260519.csv')))
+
+df_site <- read.csv(
+  file.path(dir_data, paste0('ab_', v_sp_abb, '_df_sitehist_260519.csv')))
+
+df_meta <- data.frame(
+  variable = c(
+    'unique_ID', 'quad', 'patch', 'year', 'month', 'date', 'qsurv',
+    'stg', 'ht', 'mcd', 'st', 'flst'),
+  description = c(
+    'Unique identifier for each individual plant; Numeric',
+    'Name of circular quadrat with radius of 0.25m; Numeric',
+    'Name of an aggregate of several quads; Numeric',
+    'Year data were collected; Numeric',
+    'Month data were collected for March, June, September, and December. April was also used in the first sampling; Numeric',
+    'Combination of year and month; MMYY',
+    'Quarterly survival code. 0 or 1 refer to survival from the previous quarter. If a plant was dropped from monitoring, survival is NA and these plants should NOT be considered dead. 0 = dead; 1 = alive; 2 = missing; 3 = new adult; 5 = seedling',
+    'Stage class from March census. If plant was a seedling during the previous year it is considered a seedling here. 1 = putative seedling; 2 = vegetative; 3 = reproductive adult',
+    'Height from March census in cm; Numeric',
+    'Maximum crown diameter from March census in cm; Numeric',
+    'Total number of stems; Numeric',
+    'Number of flowering stems; Numeric'),
+  stringsAsFactors = FALSE)
+
+
+
+# Load workdata ---------------------------------------------------------------
 df <- read.csv(
   file.path(
     dir_data,
@@ -119,10 +129,10 @@ df <- read.csv(
   filter(
     !is.na(year),
     !(year %in% v_years_re))
-```
 
-### Controls
-```{r}
+
+
+# Controls ---------------------------------------------------------------------
 ctrl_glmer <- glmerControl(
   optimizer = 'bobyqa',
   optCtrl = list(maxfun = 2e5))
@@ -130,11 +140,9 @@ ctrl_glmer <- glmerControl(
 ctrl_lmer <- lmerControl(
   optimizer = 'bobyqa',
   optCtrl = list(maxfun = 2e5))
-```
 
-## Vital rates
-### Survival
-```{r}
+
+# Survival data ----------------------------------------------------------------
 df_su <- df %>%
   filter(
     !is.na(survives),
@@ -201,10 +209,7 @@ mod_su_best
 summary(mod_su_best)
 mods_su_dAIC
 
-```
 
-
-```{r, fig.width=10, fig.height=12}
 # Survival plots by year -------------------------------------------------------
 make_su_year_plot <- function(year_i) {
   df_i <- df_su %>% filter(year == year_i)
@@ -266,10 +271,8 @@ fig_su_years <- wrap_plots(su_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_su_years
-```
 
-### Grwoth
-```{r}
+
 # Growth data ------------------------------------------------------------------
 df_gr <- df %>%
   filter(
@@ -292,6 +295,18 @@ df_gr <- df %>%
     logvol_t0_2, logvol_t0_3,
     disturbance, stage)
 
+fig_gr_raw <- ggplot(df_gr, aes(logvol_t0, logvol_t1)) +
+  geom_point(alpha = 0.5, pch = 16, size = 0.7) +
+  geom_abline(intercept = 0, slope = 1) +
+  theme_bw() +
+  labs(
+    title = 'Growth',
+    subtitle = v_ggp_suffix,
+    x = expression('log(volume)'[t0]),
+    y = expression('log(volume)'[t1])) +
+  theme(plot.subtitle = element_text(size = 8))
+
+fig_gr_raw
 
 
 # Growth model -----------------------------------------------------------------
@@ -342,10 +357,8 @@ mod_gr_ranef <- coef(mod_gr_best)$year
 mod_gr_best
 summary(mod_gr_best)
 mods_gr_dAIC
-```
 
 
-```{r, fig.width=10, fig.height=12}
 # Growth plots by year ---------------------------------------------------------
 make_gr_year_plot <- function(year_i) {
   df_i <- df_gr %>% filter(year == year_i)
@@ -406,10 +419,8 @@ fig_gr_years <- wrap_plots(gr_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_gr_years
-```
 
 
-```{r}
 # Growth variance --------------------------------------------------------------
 mod_gr_x <- fitted(mod_gr_best)
 mod_gr_y <- resid(mod_gr_best)^2
@@ -417,10 +428,8 @@ mod_gr_var <- nls(
   mod_gr_y ~ a * exp(b * mod_gr_x),
   start = list(a = 1, b = 0),
   control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE))
-```
 
-### Flowering probability
-```{r}
+
 # Flower data ------------------------------------------------------------------
 # Recruits should theoretically be excluded from flowering probability and flower-number models.
 # That exclusion is not supported by the data, because 35 recruits did flower, 
@@ -494,10 +503,8 @@ mod_fl_ranef <- coef(mod_fl_best)$year
 mod_fl_best
 summary(mod_fl_best)
 mods_fl_dAIC
-```
 
 
-```{r, fig.width=10, fig.height=12}
 # Flowering plots by year ------------------------------------------------------
 make_fl_year_plot <- function(year_i) {
   df_i <- df_fl %>% filter(year == year_i)
@@ -559,10 +566,8 @@ fig_fl_years <- wrap_plots(fl_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_fl_years
-```
 
-### Numbers of flowers
-```{r}
+
 # Flower number conditional on flowering data ----------------------------------
 df_fl_cond <- df_fl %>%
   filter(flower == 1, !is.na(fl_nr), fl_nr > 0, fl_nr == round(fl_nr)) %>%
@@ -604,10 +609,8 @@ mod_fl_n_ranef <- coef(mod_fl_n_best)$year
 mod_fl_n_best
 summary(mod_fl_n_best)
 mods_fl_n_dAIC
-```
 
 
-```{r, fig.width=10, fig.height=12}
 # Flower number plots by year --------------------------------------------------
 make_fl_n_year_plot <- function(year_i) {
   df_i <- df_fl_cond %>% filter(year == year_i)
@@ -668,10 +671,8 @@ fig_fl_n_years <- wrap_plots(fl_n_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_fl_n_years
-```
 
-### Flwoers to recuit transition
-```{r, fig.width=5, fig.height=8}
+
 # Flowering stems to recruits --------------------------------------------------
 # Total flowering stems in quadrat q during year t predict recruits in the
 # same quadrat during year t + 1. Current fire is retained at the quadrat level.
@@ -751,78 +752,108 @@ fig_fs2r_raw <- ggplot(
     color = 'Fire')
 
 fig_fs2r_raw
-```
 
 
-```{r}
-# Flowering-stem reference by disturbance --------------------------------------
-df_stem_reference <- df_fs2r %>%
-  group_by(disturbance) %>%
+# Flowering-stem reference by previous-year fire -------------------------------
+df_fs2r_previous_fire <- df_fs2r %>%
+  left_join(
+    df %>%
+      distinct(
+        site,
+        quad,
+        year,
+        disturbance_prev),
+    by = c(
+      'site',
+      'quad',
+      'year')) %>%
+  filter(!is.na(disturbance_prev))
+
+df_stem_reference <- df_fs2r_previous_fire %>%
+  group_by(disturbance_prev) %>%
   summarise(
     fs_t0_ref = mean(fs_t0),
-    n_quadrat_transitions = n(), .groups = 'drop')
+    n_quadrat_transitions = n(),
+    .groups = 'drop')
 
 df_stem_reference
-```
 
 
-```{r}
 # Flower 2 Recruit model -------------------------------------------------------
-ctrl_re <- lmerControl(
+ctrl_re <- glmerControl(
   optimizer = 'bobyqa',
   optCtrl = list(maxfun = 2e5))
 
-df_fs2r <- df_fs2r %>%
+df_fs2r_mod <- df_fs2r_previous_fire %>%
   mutate(
-    disturbance =
-      as.numeric(as.character(disturbance_t0)))
+    disturbance = as.numeric(as.character(disturbance_t0)),
+    disturbance_prev = as.numeric(disturbance_prev))
+
 
 # Intercept only
-mod_re_00 <- lmer(
-  re_t1_log ~ 1 +
+mod_re_00 <- glmer.nb(
+  re_t1 ~ 1 +
     (1 | year_t1),
-  data = df_fs2r,
-  REML = FALSE,
+  data = df_fs2r_mod,
   control = ctrl_re)
 
-# Disturbance only
-mod_re_0 <- lmer(
-  re_t1_log ~ disturbance +
+
+# Current disturbance only
+mod_re_0 <- glmer.nb(
+  re_t1 ~ disturbance +
     (1 | year_t1),
-  data = df_fs2r,
-  REML = FALSE,
+  data = df_fs2r_mod,
   control = ctrl_re)
+
+
+# Current + previous disturbance
+mod_re_01 <- glmer.nb(
+  re_t1 ~ disturbance + disturbance_prev +
+    (1 | year_t1),
+  data = df_fs2r_mod,
+  control = ctrl_re)
+
 
 # Flowering stems only
-mod_re_10 <- lmer(
-  re_t1_log ~ fs_t0_log +
+mod_re_10 <- glmer.nb(
+  re_t1 ~ fs_t0_log +
     (1 | year_t1),
-  data = df_fs2r,
-  REML = FALSE,
+  data = df_fs2r_mod,
   control = ctrl_re)
 
-# Flowering stems + disturbance
-mod_re_1 <- lmer(
-  re_t1_log ~ fs_t0_log + disturbance +
+
+# Flowering stems + current disturbance
+mod_re_1 <- glmer.nb(
+  re_t1 ~ fs_t0_log + disturbance +
     (1 | year_t1),
-  data = df_fs2r,
-  REML = FALSE,
+  data = df_fs2r_mod,
   control = ctrl_re)
 
-# Flowering stems x disturbance
-mod_re_20 <- lmer(
-  re_t1_log ~ fs_t0_log * disturbance +
+
+# Flowering stems x current disturbance
+mod_re_20 <- glmer.nb(
+  re_t1 ~ fs_t0_log * disturbance +
     (1 | year_t1),
-  data = df_fs2r,
-  REML = FALSE,
+  data = df_fs2r_mod,
   control = ctrl_re)
+
+
+# Current fire effect varies among recruitment years
+mod_re_yrfire <- glmer.nb(
+  re_t1 ~ disturbance + disturbance_prev +
+    (1 + disturbance || year_t1),
+  data = df_fs2r_mod,
+  control = ctrl_re)
+
 
 mods_re <- list(
   mod_re_00,
   mod_re_0,
+  mod_re_01,
   mod_re_10,
   mod_re_1,
-  mod_re_20)
+  mod_re_20,
+  mod_re_yrfire)
 
 mods_re_dAIC <- bbmle::AICctab(
   mods_re,
@@ -843,74 +874,115 @@ mod_re_best <- mods_re[[mod_re_index_bestfit]]
 mod_re_best
 summary(mod_re_best)
 mods_re_dAIC
-```
 
 
-```{r, fig.width=5, fig.height=8}
 # Recruitment plots by recruit year -------------------------------------------
 predict_re_safe <- function(model, newdata, re.form = NULL) {
-  if (inherits(model, 'merMod')) {
+  if (inherits(model, 'glmerMod')) {
     out <- predict(
-      model, newdata = newdata, re.form = re.form, allow.new.levels = TRUE)
+      model, newdata = newdata, type = 'response',
+      re.form = re.form, allow.new.levels = TRUE)
+  } else if (inherits(model, 'merMod')) {
+    out <- predict(
+      model, newdata = newdata, re.form = re.form,
+      allow.new.levels = TRUE)
   } else {
     out <- predict(model, newdata = newdata)
   }
   return(out)
 }
 
-shape_values_re <- c(16, 17, 15, 18, 3, 4, 7, 8, 0, 1, 2, 5, 6, 9)
-site_shapes_re <- setNames(
-  shape_values_re[seq_along(levels(df_fs2r$site))],
-  levels(df_fs2r$site))
-
 make_re_year_plot <- function(year_i) {
-  df_i <- df_fs2r %>% filter(year_t1 == year_i)
+  
+  df_i <- df_fs2r_mod %>%
+    filter(year_t1 == year_i) %>%
+    mutate(
+      fire_group = case_when(
+        disturbance == 0 & disturbance_prev == 0 ~
+          'No fire',
+        disturbance == 1 & disturbance_prev == 0 ~
+          'Current-year fire',
+        disturbance == 0 & disturbance_prev == 1 ~
+          'Previous-year fire',
+        disturbance == 1 & disturbance_prev == 1 ~
+          'Fire in both years'))
   
   x <- seq(
-    0, max(df_i$fs_t0_log, na.rm = TRUE), length.out = 100)
+    0,
+    max(df_i$fs_t0_log, na.rm = TRUE),
+    length.out = 100)
   
   pred_i <- tidyr::expand_grid(
     fs_t0_log = x,
-    disturbance_t0 = levels(df_fs2r$disturbance_t0)) %>%
+    disturbance = c(0, 1),
+    disturbance_prev = c(0, 1)) %>%
     mutate(
-      disturbance =
-        as.numeric(as.character(disturbance_t0)),
-      year_t1 = factor(year_i, levels = levels(df_fs2r$year_t1)),
-      disturbance_t0 = factor(
-        disturbance_t0, levels = levels(df_fs2r$disturbance_t0)))
+      year_t1 = factor(
+        year_i,
+        levels = levels(df_fs2r_mod$year_t1)),
+      fire_group = case_when(
+        disturbance == 0 & disturbance_prev == 0 ~
+          'No fire',
+        disturbance == 1 & disturbance_prev == 0 ~
+          'Current-year fire',
+        disturbance == 0 & disturbance_prev == 1 ~
+          'Previous-year fire',
+        disturbance == 1 & disturbance_prev == 1 ~
+          'Fire in both years'))
   
   pred_i <- pred_i %>%
     mutate(
-      pred_re = predict_re_safe(
-        mod_re_best, pred_i, re.form = NULL))
+      pred_re = log1p(
+        predict_re_safe(
+          mod_re_best,
+          pred_i,
+          re.form = NULL)))
   
   ggplot() +
     geom_point(
       data = df_i,
-      aes(fs_t0_log, re_t1_log, color = site, shape = site),
-      alpha = 0.75, size = 2) +
+      aes(
+        fs_t0_log,
+        re_t1_log,
+        color = fire_group),
+      alpha = 0.75,
+      size = 2) +
     geom_line(
       data = pred_i,
       aes(
-        fs_t0_log, pred_re,
-        group = disturbance_t0,
-        linetype = disturbance_t0),
-      inherit.aes = FALSE, color = 'black', linewidth = 0.8) +
-    scale_color_viridis_d(option = 'turbo', end = 0.95) +
-    scale_shape_manual(values = site_shapes_re) +
-    scale_linetype_manual(values = c('0' = 'solid', '1' = 'dashed')) +
+        fs_t0_log,
+        pred_re,
+        color = fire_group,
+        linetype = fire_group),
+      linewidth = 0.8) +
+    scale_color_manual(
+      values = c(
+        'No fire' = 'black',
+        'Current-year fire' = 'red',
+        'Previous-year fire' = 'purple',
+        'Fire in both years' = 'magenta')) +
+    scale_linetype_manual(
+      values = c(
+        'No fire' = 'solid',
+        'Current-year fire' = 'dashed',
+        'Previous-year fire' = 'dotted',
+        'Fire in both years' = 'dotdash')) +
     theme_bw() +
     labs(
       title = year_i,
       x = expression('log(1 + flowering stems)'[t0]),
       y = expression('log(1 + recruits)'[t1]),
-      color = 'Site',
-      shape = 'Site',
-      linetype = 'Fire') +
-    theme(text = element_text(size = 5), legend.position = 'none')
+      color = 'Fire history',
+      linetype = 'Fire history') +
+    theme(
+      text = element_text(size = 5))
 }
 
-re_yrs <- lapply(levels(df_fs2r$year_t1), make_re_year_plot)
+
+re_yrs <- lapply(
+  levels(df_fs2r_mod$year_t1),
+  make_re_year_plot)
+
 fig_re_years <- wrap_plots(re_yrs) +
   plot_layout(ncol = 4) +
   plot_annotation(
@@ -921,10 +993,8 @@ fig_re_years <- wrap_plots(re_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_re_years
-```
 
-### Recruits
-```{r}
+
 # Recruit size distribution ----------------------------------------------------
 df_recr <- df %>%
   filter(recruits == 1, volume_t0 > 0, is.finite(logvol_t0))
@@ -932,10 +1002,8 @@ df_recr <- df %>%
 rc_sz <- data.frame(
   mean = mean(df_recr$logvol_t0, na.rm = TRUE),
   sd = sd(df_recr$logvol_t0, na.rm = TRUE))
-```
 
-## Parameter extraction
-```{r}
+
 # Parameter extraction helpers -------------------------------------------------
 empty_coef_df <- function() {
   data.frame(coefficient = character(), value = numeric())
@@ -1059,30 +1127,35 @@ extract_re_ranef_devs <- function(model, group_var, group_label) {
   if (!inherits(model, 'merMod')) {
     return(empty_coef_df())
   }
+  
   ranef_list <- ranef(model)
+  
   if (!(group_var %in% names(ranef_list))) {
     return(empty_coef_df())
   }
+  
   ranef_matrix <- ranef_list[[group_var]]
   out <- list()
+  
   if ('(Intercept)' %in% colnames(ranef_matrix)) {
     out[['intercept']] <- data.frame(
-      coefficient = paste0('re_u0_', group_label, '_',
-                           rownames(ranef_matrix)),
+      coefficient = paste0(
+        're_u0_', group_label, '_', rownames(ranef_matrix)),
       value = ranef_matrix[, '(Intercept)'])
   }
-  if ('fs_t0_log' %in% colnames(ranef_matrix)) {
-    out[['slope']] <- data.frame(
-      coefficient = paste0('re_u1_', group_label, '_',
-                           rownames(ranef_matrix)),
-      value = ranef_matrix[, 'fs_t0_log'])
+  
+  if ('disturbance' %in% colnames(ranef_matrix)) {
+    out[['disturbance']] <- data.frame(
+      coefficient = paste0(
+        're_ud_', group_label, '_', rownames(ranef_matrix)),
+      value = ranef_matrix[, 'disturbance'])
   }
+  
   bind_coef_rows(out)
 }
-```
 
-### Term maps 
-```{r}
+
+# Term maps --------------------------------------------------------------------
 size_term_map <- list(
   b0 = c('(Intercept)'),
   b1 = c('logvol_t0'),
@@ -1112,25 +1185,19 @@ fl_term_map  <- make_term_map("fl_",  lagged_size_term_map)
 fln_term_map <- make_term_map("fln_", lagged_size_term_map)
 re_term_map <- list(
   re_b0 = c('(Intercept)'),
-  re_b1 = c('fs_t0_log'),
   re_bd = c('disturbance'),
-  re_bf = c(
-    'fs_t0_log:disturbance',
-    'disturbance:fs_t0_log'))
-```
+  re_bdp = c('disturbance_prev'))
 
 
-### Fixed parameters
-```{r}
+# Fixed parameters -------------------------------------------------------------
 su_fe <- extract_fixed_pars(mod_su_best, su_term_map, fill_missing = TRUE)
 gr_fe <- extract_fixed_pars(mod_gr_best, gr_term_map, fill_missing = TRUE)
 fl_fe <- extract_fixed_pars(mod_fl_best, fl_term_map, fill_missing = TRUE)
 fln_fe <- extract_fixed_pars(mod_fl_n_best, fln_term_map, fill_missing = TRUE)
 re_fe <- extract_fixed_pars(mod_re_best, re_term_map, fill_missing = TRUE)
-```
 
-### Constants
-```{r}
+
+# Constants --------------------------------------------------------------------
 gr_var_coef <- coef(mod_gr_var)
 
 constants <- tibble::tribble(
@@ -1142,11 +1209,8 @@ constants <- tibble::tribble(
   'L', min(c(df_gr$logvol_t0, df_fl$logvol_t0), na.rm = TRUE) - 0.1,
   'U', max(c(df_gr$logvol_t0, df_fl$logvol_t0), na.rm = TRUE) + 0.1,
   'mat_siz', 200,
-  'fs_t0_ref_0', df_stem_reference %>%
-    filter(disturbance == 0) %>% pull(fs_t0_ref),
-  'fs_t0_ref_1', df_stem_reference %>%
-    filter(disturbance == 1) %>% pull(fs_t0_ref),
-  're_sigma', sigma(mod_re_best),
+  'fs_t0_ref_0', df_stem_reference %>% filter(disturbance_prev == 0) %>% pull(fs_t0_ref),
+  'fs_t0_ref_1', df_stem_reference %>% filter(disturbance_prev == 1) %>% pull(fs_t0_ref),
   'mod_su_index', v_mod_su_index,
   'mod_gr_index', v_mod_gr_index,
   'mod_fl_index', v_mod_fl_index,
@@ -1159,10 +1223,9 @@ pars_cons <- bind_coef_rows(list(su_fe, gr_fe, fl_fe, fln_fe, re_fe,
 check_duplicate_coefficients(pars_cons, object_name = 'pars_cons')
 pars_all_mean <- coef_df_to_list(pars_cons)
 pars_mean <- pars_all_mean
-```
 
-### Year-varying parameters
-```{r}
+
+# Year-varying parameters ------------------------------------------------------
 su_out_yr <- extract_group_pars(mod_su_best, 'year', su_term_map,
                                 fill_missing = TRUE)
 gr_out_yr <- extract_group_pars(mod_gr_best, 'year', gr_term_map,
@@ -1176,20 +1239,92 @@ pars_var <- bind_coef_rows(list(su_out_yr, gr_out_yr, fl_out_yr,
                                 fln_out_yr))
 check_duplicate_coefficients(pars_var, object_name = 'pars_var')
 pars_all_year <- coef_df_to_list(pars_var)
-```
 
-### Recruitment-year random-effect deviations
-```{r}
+
+# Recruitment-year random-effect deviations ---------------------------
 pars_re_year_t1 <- extract_re_ranef_devs(
   mod_re_best, 'year_t1', 'year_t1') %>%
   mutate(coefficient = as.character(coefficient))
 check_duplicate_coefficients(
   pars_re_year_t1, object_name = 'pars_re_year_t1')
 pars_all_re_year_t1 <- coef_df_to_list(pars_re_year_t1)
-```
 
-## IPM helper functions
-```{r}
+
+# Disturbance transition probabilities ----------------------------------------
+# Current disturbance refers to t -> t + 1 and previous disturbance to
+# t - 1 -> t.
+
+df_disturbance_regime <- df %>%
+  filter(
+    !is.na(site),
+    !is.na(quad),
+    !is.na(year),
+    !is.na(disturbance),
+    !is.na(disturbance_prev)) %>%
+  distinct(
+    site,
+    quad,
+    year,
+    disturbance,
+    disturbance_prev) %>%
+  count(
+    disturbance,
+    disturbance_prev,
+    name = 'n_quadrat_years') %>%
+  complete(
+    disturbance = c(0, 1),
+    disturbance_prev = c(0, 1),
+    fill = list(n_quadrat_years = 0)) %>%
+  arrange(
+    disturbance_prev,
+    disturbance)
+
+df_disturbance_regime
+
+
+df_disturbance_transition <- df_disturbance_regime %>%
+  group_by(disturbance_prev) %>%
+  mutate(
+    p_transition = n_quadrat_years /
+      sum(n_quadrat_years)) %>%
+  ungroup()
+
+df_disturbance_transition
+
+
+get_transition_probability <- function(
+    disturbance_i,
+    disturbance_prev_i) {
+  
+  df_disturbance_transition %>%
+    filter(
+      disturbance == disturbance_i,
+      disturbance_prev == disturbance_prev_i) %>%
+    pull(p_transition)
+}
+
+
+p_0_given_0 <- get_transition_probability(
+  disturbance_i = 0,
+  disturbance_prev_i = 0)
+
+p_1_given_0 <- get_transition_probability(
+  disturbance_i = 1,
+  disturbance_prev_i = 0)
+
+p_0_given_1 <- get_transition_probability(
+  disturbance_i = 0,
+  disturbance_prev_i = 1)
+
+p_1_given_1 <- get_transition_probability(
+  disturbance_i = 1,
+  disturbance_prev_i = 1)
+
+
+df_disturbance_transition
+
+
+# IPM helper functions ---------------------------------------------------------
 inv_logit <- function(x) {
   plogis(x)
 }
@@ -1229,10 +1364,11 @@ make_ipm_pars <- function(
       get_par(
         pars_re_year_t1,
         paste0('re_u0_year_t1_', re_year_t1), 0)
-    pars$re_b1 <- get_par(pars, 're_b1', 0) +
+    
+    pars$re_bd <- get_par(pars, 're_bd', 0) +
       get_par(
         pars_re_year_t1,
-        paste0('re_u1_year_t1_', re_year_t1), 0)
+        paste0('re_ud_year_t1_', re_year_t1), 0)
   }
   
   pars
@@ -1269,101 +1405,112 @@ gxy <- function(x, y, pars, disturbance = 0) {
     sd = grow_sd(x, pars))
 }
 
-# Flowering probability
-fl_x <- function(x, pars, disturbance = 0) {
-  eta <- get_par(pars, 'fl_b0', 0) +
-    get_par(pars, 'fl_b1', 0) * x +
-    get_par(pars, 'fl_b2', 0) * x^2 +
-    get_par(pars, 'fl_b3', 0) * x^3 +
-    get_par(pars, 'fl_bf', 0) * disturbance
-  
+fl_x <- function(x, pars, disturbance_prev = 0) {
+  eta <- get_par(pars, "fl_b0", 0) +
+    get_par(pars, "fl_b1", 0) * x +
+    get_par(pars, "fl_b2", 0) * x^2 +
+    get_par(pars, "fl_b3", 0) * x^3 +
+    get_par(pars, "fl_bf", 0) * disturbance_prev
   inv_logit(eta)
 }
 
-
-# Flowering-stem number conditional on flowering
-fl_n_x <- function(x, pars, disturbance = 0) {
-  eta <- get_par(pars, 'fln_b0', 0) +
-    get_par(pars, 'fln_b1', 0) * x +
-    get_par(pars, 'fln_b2', 0) * x^2 +
-    get_par(pars, 'fln_b3', 0) * x^3 +
-    get_par(pars, 'fln_bf', 0) * disturbance
-  
+fl_n_x <- function(x, pars, disturbance_prev = 0) {
+  eta <- get_par(pars, "fln_b0", 0) +
+    get_par(pars, "fln_b1", 0) * x +
+    get_par(pars, "fln_b2", 0) * x^2 +
+    get_par(pars, "fln_b3", 0) * x^3 +
+    get_par(pars, "fln_bf", 0) * disturbance_prev
   exp(eta)
 }
 
-
-# Expected flowering stems per individual
-fs_x <- function(x, pars, disturbance = 0) {
-  fl_x(x, pars, disturbance) * fl_n_x(x, pars, disturbance)
+fs_x <- function(x, pars, disturbance_prev = 0) {
+  fl_x(x, pars, disturbance_prev) *
+    fl_n_x(x, pars, disturbance_prev)
 }
 
-
-# Flowering-stem reference
-get_fs_ref <- function(pars, disturbance = 0) {
-  if (disturbance == 1) {
+get_fs_ref <- function(
+    pars,
+    disturbance_prev = 0) {
+  
+  if (disturbance_prev == 1) {
     get_par(pars, 'fs_t0_ref_1')
   } else {
     get_par(pars, 'fs_t0_ref_0')
   }
 }
 
-
-# Flowering-stem-to-recruit conversion
-re_total_ref <- function(pars, disturbance = 0) {
-  re_intercept <- get_par(pars, 're_b0', 0) +
-    get_par(pars, 're_bd', 0) * disturbance
+re_total_ref <- function(
+    pars,
+    disturbance = 0,
+    disturbance_prev = 0) {
   
-  re_slope <- get_par(pars, 're_b1', 0) +
-    get_par(pars, 're_bf', 0) * disturbance
+  re_eta <- get_par(pars, 're_b0', 0) +
+    get_par(pars, 're_bd', 0) * disturbance +
+    get_par(pars, 're_bdp', 0) * disturbance_prev
   
-  fs_ref <- get_fs_ref(pars, disturbance)
-  
-  re_log <- re_intercept + re_slope * log1p(fs_ref)
-  
-  re_value <- expm1(
-    re_log + 0.5 * get_par(pars, 're_sigma', 0)^2)
+  re_value <- exp(re_eta)
   
   pmax(re_value, 0)
 }
 
-
-rx <- function(x, pars, disturbance = 0) {
-  fs_value <- fs_x(x, pars, disturbance)
-  fs_ref <- get_fs_ref(pars, disturbance)
-  re_ref <- re_total_ref(pars, disturbance)
+rx <- function(
+    x,
+    pars,
+    disturbance = 0,
+    disturbance_prev = 0) {
   
-  re_per_fs <- re_ref / pmax(fs_ref, .Machine$double.eps)
+  fs_value <- fs_x(
+    x,
+    pars,
+    disturbance_prev = disturbance_prev)
+  
+  fs_ref <- get_fs_ref(
+    pars,
+    disturbance_prev = disturbance_prev)
+  
+  re_ref <- re_total_ref(
+    pars,
+    disturbance = disturbance,
+    disturbance_prev = disturbance_prev)
+  
+  re_per_fs <- re_ref /
+    pmax(
+      fs_ref,
+      .Machine$double.eps)
   
   fs_value * re_per_fs
 }
 
-
-# Recruit size distribution
 re_y_dist <- function(y, pars, h = NULL) {
   dens <- dnorm(y, mean = pars$recr_sz, sd = pars$recr_sd)
-  
   if (!is.null(h)) {
     dens <- dens / sum(dens * h)
   }
-  
   dens
 }
 
-
-# Fertility matrix
-fyx <- function(y, x, pars, h, disturbance = 0) {
+fyx <- function(
+    y,
+    x,
+    pars,
+    h,
+    disturbance = 0,
+    disturbance_prev = 0) {
   Pvec <- re_y_dist(y, pars, h = h)
-  Rvec <- rx(x, pars, disturbance)
-  
+  Rvec <- rx(
+    x,
+    pars,
+    disturbance = disturbance,
+    disturbance_prev = disturbance_prev)
   outer(Pvec, Rvec) * h
 }
-```
 
 
-## Kernel: historical size-structured
-```{r}
-kernel <- function(pars, disturbance = 0) {
+# Single-state size-structured kernel ------------------------------------------
+kernel <- function(
+    pars,
+    disturbance = 0,
+    disturbance_prev = 0) {
   n <- pars$mat_siz
   L <- pars$L
   U <- pars$U
@@ -1393,24 +1540,15 @@ kernel <- function(pars, disturbance = 0) {
     x = y,
     pars = pars,
     h = h,
-    disturbance = disturbance)
+    disturbance = disturbance,
+    disturbance_prev = disturbance_prev)
   
   k_yx <- T + F
   
-  Imat <- diag(n)
-  Zmat <- matrix(0, n, n)
-  
-  K_hist <- rbind(
-    cbind(T, F),
-    cbind(Imat, Zmat))
-  
   list(
     k_yx = k_yx,
-    K_hist = K_hist,
     T = T,
     F = F,
-    Imat = Imat,
-    Zmat = Zmat,
     G = G,
     S = S,
     meshpts = y,
@@ -1419,28 +1557,85 @@ kernel <- function(pars, disturbance = 0) {
     U = U)
 }
 
-lambda_ipm <- function(pars, disturbance = 0) {
-  K <- kernel(
-    pars = pars,
-    disturbance = disturbance)$K_hist
-  
-  Re(eigen(K, only.values = TRUE)$values[1])
+lambda_ipm <- function(
+    pars,
+    disturbance = 0,
+    disturbance_prev = 0) {
+  Re(eigen(
+    kernel(
+      pars,
+      disturbance = disturbance,
+      disturbance_prev = disturbance_prev)$k_yx)$values[1])
 }
-```
 
 
-## Mean IPMs
-```{r}
-lambda_ipm(pars_mean, disturbance = 0)
-lambda_ipm(pars_mean, disturbance = 1)
-```
+# Environmental-history kernel ------------------------------------------------
+kernel_env_hist <- function(pars) {
+  
+  K_00 <- kernel(
+    pars = pars,
+    disturbance = 0,
+    disturbance_prev = 0)$k_yx
+  
+  K_10 <- kernel(
+    pars = pars,
+    disturbance = 1,
+    disturbance_prev = 0)$k_yx
+  
+  K_01 <- kernel(
+    pars = pars,
+    disturbance = 0,
+    disturbance_prev = 1)$k_yx
+  
+  K_11 <- kernel(
+    pars = pars,
+    disturbance = 1,
+    disturbance_prev = 1)$k_yx
+  
+  K_env <- rbind(
+    cbind(
+      p_0_given_0 * K_00,
+      p_0_given_1 * K_01),
+    cbind(
+      p_1_given_0 * K_10,
+      p_1_given_1 * K_11))
+  
+  list(
+    K_env = K_env,
+    K_00 = K_00,
+    K_10 = K_10,
+    K_01 = K_01,
+    K_11 = K_11)
+}
 
 
-## Year-specific IPMs
-```{r}
+# Environmental-history asymptotic lambda -------------------------------------
+lambda_env_hist <- function(pars) {
+  
+  K <- kernel_env_hist(
+    pars = pars)$K_env
+  
+  Re(
+    eigen(
+      K,
+      only.values = TRUE)$values[1])
+}
+
+
+# Mean IPMs --------------------------------------------------------------------
+lambda_ipm(pars_mean, disturbance = 0, disturbance_prev = 0)
+lambda_ipm(pars_mean, disturbance = 0, disturbance_prev = 1)
+lambda_ipm(pars_mean, disturbance = 1, disturbance_prev = 1)
+lambda_ipm(pars_mean, disturbance = 1, disturbance_prev = 0)
+
+lambda_env_hist(pars_mean)
+
+
+# Year-specific IPMs -----------------------------------------------------------
 lambda_ipm_year <- function(
     year,
     disturbance = 0,
+    disturbance_prev = 0,
     re_year_t1 = NULL) {
   pars_i <- make_ipm_pars(
     pars_mean = pars_all_mean,
@@ -1451,20 +1646,57 @@ lambda_ipm_year <- function(
   
   lambda_ipm(
     pars_i,
-    disturbance = disturbance)
+    disturbance = disturbance,
+    disturbance_prev = disturbance_prev)
 }
 
-# Year-specific disturbance scenarios ----
+
+# Year-specific environmental-history lambda -----------------------------------
+lambda_env_hist_year <- function(
+    year,
+    re_year_t1 = NULL) {
+  
+  pars_i <- make_ipm_pars(
+    pars_mean = pars_all_mean,
+    pars_year = pars_all_year,
+    pars_re_year_t1 = pars_all_re_year_t1,
+    year = year,
+    re_year_t1 = re_year_t1)
+  
+  lambda_env_hist(
+    pars = pars_i)
+}
+
+
+# Year-specific disturbance scenarios ------------------------------------------
 ipm_years <- sort(unique(as.integer(as.character(df_su$year))))
 
 lambda_year <- data.frame(
   year = ipm_years,
   lambda_undisturbed = sapply(ipm_years, function(i) {
-    lambda_ipm_year(year = i, disturbance = 0)}),
-  lambda_fire = sapply(ipm_years, function(i) {
-    lambda_ipm_year(year = i, disturbance = 1)})
+    lambda_ipm_year(
+      year = i,
+      disturbance = 0,
+      disturbance_prev = 0)}),
+  lambda_current_fire = sapply(ipm_years, function(i) {
+    lambda_ipm_year(
+      year = i,
+      disturbance = 1,
+      disturbance_prev = 0)}),
+  lambda_previous_fire = sapply(ipm_years, function(i) {
+    lambda_ipm_year(
+      year = i,
+      disturbance = 0,
+      disturbance_prev = 1)}),
+  lambda_consecutive_fire = sapply(ipm_years, function(i) {
+    lambda_ipm_year(
+      year = i,
+      disturbance = 1,
+      disturbance_prev = 1)}),
+  lambda_environmental_history = sapply(ipm_years, function(i) {
+    lambda_env_hist_year(
+      year = i)})
 )
-
 
 fig_lambda_year <- lambda_year %>%
   pivot_longer(
@@ -1475,7 +1707,10 @@ fig_lambda_year <- lambda_year %>%
     disturbance = recode(
       disturbance,
       lambda_undisturbed = 'Undisturbed',
-      lambda_fire = 'Fire')) %>%
+      lambda_current_fire = 'Current-year fire',
+      lambda_previous_fire = 'Previous-year fire',
+      lambda_consecutive_fire = 'Fire in both years',
+      lambda_environmental_history = 'Environmental-history regime')) %>%
   ggplot(aes(year, lambda, color = disturbance)) +
   geom_hline(yintercept = 1, linetype = 'dashed') +
   geom_point() +
@@ -1489,64 +1724,32 @@ fig_lambda_year <- lambda_year %>%
     color = 'Disturbance')
 
 fig_lambda_year
-```
-
-## Historical kernel diagnostics by year
-```{r}
-df_hist_kernel_check <- bind_rows(
-  lapply(ipm_years, function(year_i) {
-    pars_i <- make_ipm_pars(
-      pars_mean = pars_all_mean,
-      pars_year = pars_all_year,
-      pars_re_year_t1 = pars_all_re_year_t1,
-      year = year_i,
-      re_year_t1 = year_i + 1)
-    
-    bind_rows(
-      lapply(c(0, 1), function(disturbance_i) {
-        kern_i <- kernel(
-          pars = pars_i,
-          disturbance = disturbance_i)
-        
-        n <- pars_i$mat_siz
-        K <- kern_i$K_hist
-        
-        tibble(
-          year = year_i,
-          disturbance = disturbance_i,
-          n_rows = nrow(K),
-          n_cols = ncol(K),
-          identity_block = isTRUE(all.equal(
-            K[(n + 1):(2 * n), 1:n],
-            diag(n))),
-          zero_block = all(
-            K[(n + 1):(2 * n), (n + 1):(2 * n)] == 0),
-          any_nonfinite = any(!is.finite(K)))
-      }))
-  }))
-
-df_hist_kernel_check
-```
 
 
-## Observed and projected population growth
-Observed growth is calculated from quadrats represented in t - 1, t, and t + 1. Each quadrat is projected with its observed disturbance at year t.
+# Observed and projected population growth ------------------------------------
+# Observed growth is calculated from the same quadrats represented in both
+# consecutive years. Each quadrat is projected with its own current- and
+# previous-year disturbance state.
 
 
-### Quadrat-year disturbance lookup
-```{r}
+# Quadrat-year disturbance lookup ---------------------------------------------
 fire_lookup_quad <- df %>%
-  group_by(site, quad, year) %>%
+  group_by(
+    site,
+    quad,
+    year) %>%
   summarise(
     disturbance_num = first(
       disturbance[!is.na(disturbance)],
       default = NA_real_),
+    disturbance_prev_num = first(
+      disturbance_prev[!is.na(disturbance_prev)],
+      default = NA_real_),
     .groups = 'drop')
-```
 
-### Quadrat-year abundance
-Counts include sized plants and recruits without a usable size measurement.
-```{r}
+
+# Quadrat-year abundance -------------------------------------------------------
+# Counts include sized plants and recruits without a usable size measurement.
 df_counts_quad_year <- df %>%
   filter(
     !is.na(site),
@@ -1565,35 +1768,41 @@ df_counts_quad_year <- df %>%
       na.rm = TRUE),
     n_ipm_state = n_sized + n_unsized_recruits,
     .groups = 'drop')
-```
 
-### Matched consecutive quadrat transitions
-```{r}
+
+# Matched consecutive quadrat transitions -------------------------------------
 df_obs_pgr_quad <- df_counts_quad_year %>%
-  arrange(site, quad, year) %>%
-  group_by(site, quad) %>%
+  arrange(
+    site,
+    quad,
+    year) %>%
+  group_by(
+    site,
+    quad) %>%
   mutate(
-    year_tm1 = lag(year),
-    n_tm1 = lag(n_ipm_state),
     year_t1 = lead(year),
     n_t1 = lead(n_ipm_state),
-    year_gap_prev = year - year_tm1,
-    year_gap_next = year_t1 - year) %>%
+    year_gap = year_t1 - year) %>%
   ungroup() %>%
   filter(
-    year_gap_prev == 1,
-    year_gap_next == 1,
+    year_gap == 1,
     n_ipm_state > 0) %>%
-  rename(n_t0 = n_ipm_state) %>%
+  rename(
+    n_t0 = n_ipm_state) %>%
   left_join(
     fire_lookup_quad,
-    by = c('site', 'quad', 'year')) %>%
-  filter(!is.na(disturbance_num)) %>%
-  mutate(obs_pgr = n_t1 / n_t0)
-```
+    by = c(
+      'site',
+      'quad',
+      'year')) %>%
+  filter(
+    !is.na(disturbance_num),
+    !is.na(disturbance_prev_num)) %>%
+  mutate(
+    obs_pgr = n_t1 / n_t0)
 
-### Initial quadrat size distribution
-```{r}
+
+# Initial quadrat size distribution -------------------------------------------
 make_initial_n_quad <- function(
     year0,
     site_i,
@@ -1655,15 +1864,15 @@ make_initial_n_quad <- function(
   
   n_density
 }
-```
 
-### Project one quadrat-year
-```{r}
+
+# Project one quadrat-year -----------------------------------------------------
 project_one_quad_year <- function(
     yr,
     site_i,
     quad_i,
-    disturbance_y) {
+    disturbance_y,
+    disturbance_prev_y) {
   
   pars_y <- make_ipm_pars(
     pars_mean = pars_all_mean,
@@ -1672,28 +1881,21 @@ project_one_quad_year <- function(
     year = yr,
     re_year_t1 = yr + 1)
   
-  n_current <- make_initial_n_quad(
+  n_obs <- make_initial_n_quad(
     year0 = yr,
     site_i = site_i,
     quad_i = quad_i,
     pars = pars_y)
   
-  n_previous <- make_initial_n_quad(
-    year0 = yr - 1,
-    site_i = site_i,
-    quad_i = quad_i,
-    pars = pars_y)
-  
-  n_hist <- c(n_current, n_previous)
-  
   K <- kernel(
     pars = pars_y,
-    disturbance = disturbance_y)$K_hist
+    disturbance = disturbance_y,
+    disturbance_prev = disturbance_prev_y)$k_yx
   
-  n <- pars_y$mat_siz
-  h <- (pars_y$U - pars_y$L) / n
+  h <- (pars_y$U - pars_y$L) /
+    pars_y$mat_siz
   
-  n_initial <- sum(n_current) * h
+  n_initial <- sum(n_obs) * h
   
   if (n_initial <= 0) {
     return(
@@ -1702,31 +1904,35 @@ project_one_quad_year <- function(
         site = site_i,
         quad = quad_i,
         disturbance_num = disturbance_y,
+        disturbance_prev_num = disturbance_prev_y,
         n_obs_model = n_initial,
         n_proj_model = NA_real_,
-        asym_lambda = NA_real_,
+        state_asym_lambda = NA_real_,
         proj_lambda = NA_real_))
   }
   
-  n_proj_hist <- as.numeric(K %*% n_hist)
-  n_next <- n_proj_hist[1:n]
-  n_projected <- sum(n_next) * h
+  n_proj <- K %*% n_obs
+  
+  n_projected <- sum(n_proj) * h
   
   data.frame(
     year = yr,
     site = site_i,
     quad = quad_i,
     disturbance_num = disturbance_y,
+    disturbance_prev_num = disturbance_prev_y,
     n_obs_model = n_initial,
     n_proj_model = n_projected,
-    asym_lambda = Re(eigen(K, only.values = TRUE)$values[1]),
-    proj_lambda = n_projected / n_initial)
+    state_asym_lambda = Re(
+      eigen(
+        K,
+        only.values = TRUE)$values[1]),
+    proj_lambda = as.numeric(
+      n_projected / n_initial))
 }
-```
 
 
-### Project all matched quadrat transitions
-```{r}
+# Project all matched quadrat transitions -------------------------------------
 df_proj_quad <- bind_rows(
   lapply(
     seq_len(nrow(df_obs_pgr_quad)),
@@ -1736,13 +1942,14 @@ df_proj_quad <- bind_rows(
         yr = df_obs_pgr_quad$year[i],
         site_i = df_obs_pgr_quad$site[i],
         quad_i = df_obs_pgr_quad$quad[i],
-        disturbance_y = df_obs_pgr_quad$disturbance_num[i])
+        disturbance_y =
+          df_obs_pgr_quad$disturbance_num[i],
+        disturbance_prev_y =
+          df_obs_pgr_quad$disturbance_prev_num[i])
     }))
-```
 
 
-### Quadrat-level observed and modeled growth
-```{r}
+# Quadrat-level observed and modeled growth -----------------------------------
 df_compare_quad <- df_obs_pgr_quad %>%
   left_join(
     df_proj_quad,
@@ -1750,25 +1957,44 @@ df_compare_quad <- df_obs_pgr_quad %>%
       'year',
       'site',
       'quad',
-      'disturbance_num')) %>%
+      'disturbance_num',
+      'disturbance_prev_num')) %>%
   mutate(
-    error_asymptotic_vs_obs =
-      asym_lambda - obs_pgr,
+    error_state_asymptotic_vs_obs =
+      state_asym_lambda - obs_pgr,
     error_projected_vs_obs =
       proj_lambda - obs_pgr)
-```
 
-### Site-year comparison from matched quadrats
-```{r}
+
+# Disturbance-state kernel used for each quadrat-year --------------------------
+df_compare_quad <- df_compare_quad %>%
+  mutate(
+    kernel_state = case_when(
+      disturbance_num == 0 & disturbance_prev_num == 0 ~ 'K_00',
+      disturbance_num == 1 & disturbance_prev_num == 0 ~ 'K_10',
+      disturbance_num == 0 & disturbance_prev_num == 1 ~ 'K_01',
+      disturbance_num == 1 & disturbance_prev_num == 1 ~ 'K_11',
+      TRUE ~ NA_character_))
+
+
+df_kernel_state_use <- df_compare_quad %>%
+  count(
+    year,
+    kernel_state,
+    name = 'n_quadrat_transitions') %>%
+  arrange(
+    year,
+    kernel_state)
+
+df_kernel_state_use
+
+
+# Site-year comparison from matched quadrats ----------------------------------
 df_compare_site <- df_compare_quad %>%
   group_by(
     site,
     year) %>%
   summarise(
-    asym_lambda = weighted.mean(
-      asym_lambda,
-      w = n_obs_model,
-      na.rm = TRUE),
     n_t0 = sum(
       n_t0,
       na.rm = TRUE),
@@ -1789,7 +2015,19 @@ df_compare_site <- df_compare_quad %>%
       any(
         disturbance_num == 1,
         na.rm = TRUE)),
+    disturbance_prev_num = as.numeric(
+      any(
+        disturbance_prev_num == 1,
+        na.rm = TRUE)),
     .groups = 'drop') %>%
+  left_join(
+    lambda_year %>%
+      select(
+        year,
+        lambda_environmental_history),
+    by = 'year') %>%
+  rename(
+    asym_lambda = lambda_environmental_history) %>%
   mutate(
     obs_pgr = n_t1 / n_t0,
     proj_lambda = n_proj_model / n_obs_model,
@@ -1802,18 +2040,13 @@ df_compare_site %>%
   print(
     n = 100,
     width = Inf)
-```
 
-### Whole-population annual comparison
-Annual totals contain only quadrats represented in t - 1, t, and t + 1.
-```{r}
+
+# Whole-population annual comparison ------------------------------------------
+# Annual totals contain only quadrats represented in both t and t + 1.
 df_compare <- df_compare_quad %>%
   group_by(year) %>%
   summarise(
-    asym_lambda = weighted.mean(
-      asym_lambda,
-      w = n_obs_model,
-      na.rm = TRUE),
     n_t0 = sum(
       n_t0,
       na.rm = TRUE),
@@ -1841,6 +2074,14 @@ df_compare <- df_compare_quad %>%
       'Fire',
       'No fire'),
     .groups = 'drop') %>%
+  left_join(
+    lambda_year %>%
+      select(
+        year,
+        lambda_environmental_history),
+    by = 'year') %>%
+  rename(
+    asym_lambda = lambda_environmental_history) %>%
   mutate(
     obs_pgr = n_t1 / n_t0,
     proj_lambda = n_proj_model / n_obs_model,
@@ -1853,7 +2094,7 @@ df_compare <- df_compare_quad %>%
 # Observed vs modeled plot
 
 df_plot <- df_compare %>%
-  dplyr::select(year, obs_pgr, asym_lambda, proj_lambda, disturbance) %>%
+  select(year, obs_pgr, asym_lambda, proj_lambda, disturbance) %>%
   pivot_longer(
     cols = c(asym_lambda, proj_lambda),
     names_to = 'lambda_type',
@@ -1861,7 +2102,7 @@ df_plot <- df_compare %>%
   mutate(
     lambda_type = recode(
       lambda_type,
-      asym_lambda = 'Abundance-weighted asymptotic lambda',
+      asym_lambda = 'Environmental-history asymptotic lambda',
       proj_lambda = 'Projected lambda from observed quadrat size distributions'))
 
 fig_mod_vs_obs <- ggplot(
@@ -1880,10 +2121,9 @@ fig_mod_vs_obs <- ggplot(
   theme_classic()
 
 fig_mod_vs_obs
-```
 
-### Log-transformed observed vs modeled plot
-```{r}
+# Log-transformed observed vs modeled plot
+
 df_plot_log <- df_plot %>%
   filter(obs_pgr > 0, lambda > 0) %>%
   mutate(
@@ -1906,47 +2146,67 @@ fig_mod_vs_obs_log <- ggplot(
   theme_classic()
 
 fig_mod_vs_obs_log
-```
 
 
-### Summary statistics
-```{r}
+# Summary statistics -----------------------------------------------------------
 df_compare_summary <- df_compare %>%
   summarise(
     n_years = n(),
-    arithmetic_mean_obs_pgr = mean(obs_pgr, na.rm = TRUE),
-    geometric_mean_obs_pgr = exp(mean(log(obs_pgr), na.rm = TRUE)),
-    arithmetic_mean_asym_lambda = mean(asym_lambda, na.rm = TRUE),
-    geometric_mean_asym_lambda = exp(mean(log(asym_lambda), na.rm = TRUE)),
-    arithmetic_mean_proj_lambda = mean(proj_lambda, na.rm = TRUE),
-    geometric_mean_proj_lambda = exp(mean(log(proj_lambda), na.rm = TRUE)),
-    mean_error_asymptotic_vs_obs = mean(
-      asym_lambda - obs_pgr, na.rm = TRUE),
-    mean_error_projected_vs_obs = mean(
-      proj_lambda - obs_pgr, na.rm = TRUE),
-    percent_bias_asymptotic_vs_obs = 100 * sum(
-      asym_lambda - obs_pgr, na.rm = TRUE) /
-      sum(obs_pgr, na.rm = TRUE),
-    percent_bias_projected_vs_obs = 100 * sum(
-      proj_lambda - obs_pgr, na.rm = TRUE) /
-      sum(obs_pgr, na.rm = TRUE),
-    rmse_asymptotic_vs_obs = sqrt(mean(
-      (asym_lambda - obs_pgr)^2, na.rm = TRUE)),
-    rmse_projected_vs_obs = sqrt(mean(
-      (proj_lambda - obs_pgr)^2, na.rm = TRUE))) %>%
+    arithmetic_mean_obs_pgr =
+      mean(obs_pgr, na.rm = TRUE),
+    geometric_mean_obs_pgr =
+      exp(mean(log(obs_pgr), na.rm = TRUE)),
+    arithmetic_mean_env_hist_lambda =
+      mean(asym_lambda, na.rm = TRUE),
+    geometric_mean_env_hist_lambda =
+      exp(mean(log(asym_lambda), na.rm = TRUE)),
+    arithmetic_mean_proj_lambda =
+      mean(proj_lambda, na.rm = TRUE),
+    geometric_mean_proj_lambda =
+      exp(mean(log(proj_lambda), na.rm = TRUE)),
+    mean_error_env_hist_vs_obs =
+      mean(
+        asym_lambda - obs_pgr,
+        na.rm = TRUE),
+    mean_error_projected_vs_obs =
+      mean(
+        proj_lambda - obs_pgr,
+        na.rm = TRUE),
+    percent_bias_env_hist_vs_obs =
+      100 * sum(
+        asym_lambda - obs_pgr,
+        na.rm = TRUE) /
+      sum(
+        obs_pgr,
+        na.rm = TRUE),
+    percent_bias_projected_vs_obs =
+      100 * sum(
+        proj_lambda - obs_pgr,
+        na.rm = TRUE) /
+      sum(
+        obs_pgr,
+        na.rm = TRUE),
+    rmse_env_hist_vs_obs =
+      sqrt(
+        mean(
+          (asym_lambda - obs_pgr)^2,
+          na.rm = TRUE)),
+    rmse_projected_vs_obs =
+      sqrt(
+        mean(
+          (proj_lambda - obs_pgr)^2,
+          na.rm = TRUE))) %>%
   pivot_longer(
     cols = everything(),
-    names_to = "statistic",
-    values_to = "value")
+    names_to = 'statistic',
+    values_to = 'value')
 
 df_compare_summary
 
 df_compare %>% print(n = 100)
-```
 
 
-### Site-level summary
-```{r}
+# Site-level summary -----------------------------------------------------------
 df_compare_site_summary <- df_compare_site %>%
   filter(
     !is.na(obs_pgr),
@@ -1958,26 +2218,79 @@ df_compare_site_summary <- df_compare_site %>%
   group_by(site) %>%
   summarise(
     n_year_transitions = n(),
-    lambda_obs_geometric = exp(mean(log(obs_pgr), na.rm = TRUE)),
-    lambda_obs_arithmetic = mean(obs_pgr, na.rm = TRUE),
-    lambda_asymptotic_geometric = exp(mean(log(asym_lambda),
-                                           na.rm = TRUE)),
-    lambda_asymptotic_arithmetic = mean(asym_lambda, na.rm = TRUE),
-    lambda_projected_geometric = exp(mean(log(proj_lambda),
-                                          na.rm = TRUE)),
-    lambda_projected_arithmetic = mean(proj_lambda, na.rm = TRUE),
+    lambda_obs_geometric =
+      exp(mean(log(obs_pgr), na.rm = TRUE)),
+    lambda_obs_arithmetic =
+      mean(obs_pgr, na.rm = TRUE),
+    lambda_env_hist_geometric =
+      exp(mean(log(asym_lambda), na.rm = TRUE)),
+    lambda_env_hist_arithmetic =
+      mean(asym_lambda, na.rm = TRUE),
+    lambda_projected_geometric =
+      exp(mean(log(proj_lambda), na.rm = TRUE)),
+    lambda_projected_arithmetic =
+      mean(proj_lambda, na.rm = TRUE),
+    error_env_hist_geo_vs_obs_geo =
+      lambda_env_hist_geometric -
+      lambda_obs_geometric,
     error_projected_geo_vs_obs_geo =
-      lambda_projected_geometric - lambda_obs_geometric,
-    rmse_projected_vs_obs = sqrt(mean((proj_lambda - obs_pgr)^2,
-                                      na.rm = TRUE)),
-    mean_n_initial = mean(n_obs_model, na.rm = TRUE),
-    mean_disturbance = mean(disturbance_num, na.rm = TRUE),
+      lambda_projected_geometric -
+      lambda_obs_geometric,
+    rmse_env_hist_vs_obs =
+      sqrt(mean(
+        (asym_lambda - obs_pgr)^2,
+        na.rm = TRUE)),
+    rmse_projected_vs_obs =
+      sqrt(mean(
+        (proj_lambda - obs_pgr)^2,
+        na.rm = TRUE)),
+    mean_n_initial =
+      mean(n_obs_model, na.rm = TRUE),
+    mean_disturbance =
+      mean(disturbance_num, na.rm = TRUE),
     .groups = 'drop') %>%
   arrange(as.numeric(as.character(site)))
 
-df_compare_site_summary %>% print(n = 100, width = Inf)
+df_compare_site_summary %>%
+  print(
+    n = 100,
+    width = Inf)
 
-# 
+
+# Yearly lambda comparison diagnostic -----------------------------------------
+df_lambda_year_check <- lambda_year %>%
+  mutate(
+    min_state_lambda = pmin(
+      lambda_undisturbed,
+      lambda_current_fire,
+      lambda_previous_fire,
+      lambda_consecutive_fire),
+    max_state_lambda = pmax(
+      lambda_undisturbed,
+      lambda_current_fire,
+      lambda_previous_fire,
+      lambda_consecutive_fire),
+    env_hist_minus_undisturbed =
+      lambda_environmental_history -
+      lambda_undisturbed) %>%
+  select(
+    year,
+    lambda_undisturbed,
+    lambda_current_fire,
+    lambda_previous_fire,
+    lambda_consecutive_fire,
+    lambda_environmental_history,
+    min_state_lambda,
+    max_state_lambda,
+    env_hist_minus_undisturbed)
+
+df_lambda_year_check %>%
+  as_tibble() %>%
+  print(
+    n = 100,
+    width = Inf)
+
+
 # # Save key outputs -------------------------------------------------------------
 # # Uncomment if needed.
 # # saveRDS(pars_all_mean,
@@ -1988,4 +2301,3 @@ df_compare_site_summary %>% print(n = 100, width = Inf)
 # #         file.path(dir_result, 'pole_year_fire_lambda_compare.rds'))
 # # saveRDS(df_compare_site,
 # #         file.path(dir_result, 'pole_year_fire_lambda_compare_site.rds'))
-```

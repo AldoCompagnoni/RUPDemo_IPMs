@@ -22,8 +22,8 @@
 set.seed(100)
 options(stringsAsFactors = F)
 
-# Packages ---------------------------------------------------------------------
 
+# Packages ---------------------------------------------------------------------
 # load packages
 source('helper_functions/load_packages.R')
 load_packages(MASS, patchwork, skimr, ipmr, binom, bbmle, janitor, lme4,
@@ -325,7 +325,8 @@ df_transition <- df_annual %>%
       annual_transition, lead(state_clean), NA_character_),
     size_t0 = if_else(state_clean == "active", dia, NA_real_),
     size_t1 = if_else(
-      annual_transition & lead(state_clean) == "active",
+      annual_transition & state_clean == "active" &
+        lead(state_clean) == "active",
       lead(dia), NA_real_)) %>%
   ungroup()
 
@@ -343,13 +344,6 @@ df_transition %>%
     state_t1 != "active") %>%
   count(year, state_t1) |> 
   print(n=100)
-
-
-# Monitoring end ---------------------------------------------------------------
-df_monitor_end <- df_annual %>%
-  filter(state_clean != "discontinued") %>%
-  group_by(site, pop, qu) %>%
-  summarise(last_monitor_year = max(year), .groups = "drop")
 
 
 # Unresolved absence periods ---------------------------------------------------
@@ -438,7 +432,6 @@ df_annual %>%
     site, pop, qu, plant, id, year, s_clean, stage_clean, dia, scape) %>%
   arrange(id, year)
 
-
 df_transition %>%
   summarise(
     n_active_active = sum(
@@ -464,7 +457,6 @@ df_transition <- df_transition %>%
     logsize_t1 = log(size_t1),
     logsize_t0_2 = logsize_t0^2,
     logsize_t0_3 = logsize_t0^3)
-
 
 df_transition %>%
   filter(
@@ -552,22 +544,6 @@ df_recruit_cohort <- df_recruit_first %>%
       recruit_type == "seedling" ~ annual_entry_year,
       recruit_type == "new_adult" ~ annual_entry_year - 1))
 
-df_recruit_quad <- df_demog_june %>%
-  distinct(site, pop, qu, year) %>%
-  left_join(
-    df_recruit_cohort %>%
-      count(
-        site, pop, qu, recruit_year, recruit_type,
-        name = "nr_recruits") %>%
-      pivot_wider(
-        names_from = recruit_type,
-        values_from = nr_recruits,
-        values_fill = 0),
-    by = c("site", "pop", "qu", "year" = "recruit_year")) %>%
-  mutate(
-    seedling = replace_na(seedling, 0),
-    new_adult = replace_na(new_adult, 0))
-
 df_transition %>%
   filter(stage_clean == 1) %>%
   count(survives)
@@ -640,46 +616,168 @@ df_recruit_entry %>%
   count(recruit_class, fecundity_usable)
 
 
-# Recruitment by fecundity year and quadrat -----------------------------------
-df_recruit_quad <- df_demog_june %>%
-  distinct(site, pop, qu, year) %>%
+# Quadrat monitoring history --------------------------------------------------
+df_quad_monitor <- df_annual %>%
+  group_by(site, pop, qu, year) %>%
+  summarise(
+    monitored = any(state_clean != "discontinued", na.rm = TRUE),
+    .groups = "drop") %>%
+  filter(monitored) %>%
+  select(-monitored)
+
+
+# Recruitment follow-up availability ------------------------------------------
+df_recruit_followup <- df_quad_monitor %>%
   left_join(
-    df_recruit_entry %>%
-      filter(fecundity_usable) %>%
-      count(
-        site, pop, qu, fecundity_year, recruit_class,
-        name = "nr_recruits") %>%
-      pivot_wider(
-        names_from = recruit_class,
-        values_from = nr_recruits,
-        values_fill = 0),
+    df_quad_monitor %>%
+      transmute(
+        site, pop, qu,
+        year = year - 1,
+        monitored_t1 = TRUE),
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_quad_monitor %>%
+      transmute(
+        site, pop, qu,
+        year = year - 2,
+        monitored_t2 = TRUE),
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    monitored_t1 = replace_na(monitored_t1, FALSE),
+    monitored_t2 = replace_na(monitored_t2, FALSE))
+
+
+# Recruitment counts by fecundity year ----------------------------------------
+df_recruit_count <- df_recruit_entry %>%
+  filter(fecundity_usable) %>%
+  count(
+    site, pop, qu, fecundity_year, recruit_class,
+    name = "nr_recruits") %>%
+  pivot_wider(
+    names_from = recruit_class,
+    values_from = nr_recruits,
+    values_fill = 0)
+
+
+# Recruitment working structure -----------------------------------------------
+df_recruit_quad <- df_recruit_followup %>%
+  left_join(
+    df_recruit_count,
     by = c(
       "site", "pop", "qu",
       "year" = "fecundity_year")) %>%
   mutate(
-    observed_seedling = replace_na(observed_seedling, 0),
-    presumed_2yr = replace_na(presumed_2yr, 0))
+    observed_seedling = case_when(
+      monitored_t1 ~ replace_na(observed_seedling, 0L),
+      TRUE ~ NA_integer_),
+    presumed_2yr = case_when(
+      monitored_t2 ~ replace_na(presumed_2yr, 0L),
+      TRUE ~ NA_integer_),
+    recruitment_complete = monitored_t1 & monitored_t2,
+    nr_recruit = case_when(
+      recruitment_complete ~ observed_seedling + presumed_2yr,
+      TRUE ~ NA_integer_))
 
+df_recruit_quad %>%
+  count(year, monitored_t1, monitored_t2) %>%
+  print(n = 100)
+
+df_recruit_quad %>%
+  summarise(
+    n_quad_years = n(),
+    n_complete = sum(recruitment_complete),
+    n_incomplete = sum(!recruitment_complete),
+    n_seedling_unknown = sum(is.na(observed_seedling)),
+    n_presumed_unknown = sum(is.na(presumed_2yr)))
 
 # Parental reproductive abundance ---------------------------------------------
-df_repro_quad <- df_transition %>%
-  filter(state_clean == "active") %>%
-  group_by(site, pop, qu, year) %>%
-  summarise(
-    nr_active = n(),
-    nr_flowering = sum(flower == 1, na.rm = TRUE),
-    nr_flower_na = sum(is.na(flower)),
-    nr_scapes = if_else(
-      all(is.na(fl_nr)), NA_real_, sum(fl_nr, na.rm = TRUE)),
-    nr_invol_obs = sum(!is.na(invol)),
-    nr_invol = if_else(
-      nr_invol_obs == 0, NA_real_, sum(invol, na.rm = TRUE)),
-    .groups = "drop")
+df_repro_quad <- df_quad_monitor %>%
+  left_join(
+    df_annual %>%
+      filter(state_clean != "discontinued") %>%
+      group_by(site, pop, qu, year) %>%
+      summarise(
+        nr_active = sum(state_clean == "active", na.rm = TRUE),
+        nr_flower_obs = sum(
+          state_clean == "active" & !is.na(scape), na.rm = TRUE),
+        flowering_sum = sum(
+          state_clean == "active" & scape > 0, na.rm = TRUE),
+        scape_sum = sum(
+          if_else(state_clean == "active", scape, NA_real_),
+          na.rm = TRUE),
+        nr_invol_obs = sum(
+          state_clean == "active" & !is.na(invol), na.rm = TRUE),
+        invol_sum = sum(
+          if_else(state_clean == "active", invol, NA_real_),
+          na.rm = TRUE), .groups = "drop") %>%
+      mutate(
+        nr_flowering = case_when(
+          nr_active == 0 ~ 0,
+          nr_flower_obs == 0 ~ NA_real_,
+          TRUE ~ as.numeric(flowering_sum)),
+        nr_scapes = case_when(
+          nr_active == 0 ~ 0,
+          nr_flower_obs == 0 ~ NA_real_,
+          TRUE ~ scape_sum),
+        nr_invol = case_when(
+          nr_active == 0 ~ 0,
+          nr_invol_obs == 0 ~ NA_real_,
+          TRUE ~ invol_sum)) %>%
+      select(
+        site, pop, qu, year, nr_active, nr_flower_obs,
+        nr_flowering, nr_scapes, nr_invol_obs, nr_invol),
+    by = c("site", "pop", "qu", "year"))
 
+
+# Population-level reproductive abundance -------------------------------------
+df_repro_pop <- df_repro_quad %>%
+  group_by(site, pop, year) %>%
+  summarise(
+    nr_quads = n(),
+    nr_active_pop = sum(nr_active),
+    nr_quads_flower_obs = sum(!is.na(nr_flowering)),
+    nr_flowering_pop_obs = sum(nr_flowering, na.rm = TRUE),
+    nr_quads_scape_obs = sum(!is.na(nr_scapes)),
+    nr_scapes_pop_obs = sum(nr_scapes, na.rm = TRUE),
+    .groups = "drop") %>%
+  mutate(
+    nr_flowering_pop = if_else(
+      nr_quads_flower_obs == nr_quads,
+      nr_flowering_pop_obs, NA_real_),
+    nr_scapes_pop = if_else(
+      nr_quads_scape_obs == nr_quads,
+      nr_scapes_pop_obs, NA_real_),
+    mean_flowering_pop = if_else(
+      nr_quads_flower_obs > 0,
+      nr_flowering_pop_obs / nr_quads_flower_obs, NA_real_),
+    mean_scapes_pop = if_else(
+      nr_quads_scape_obs > 0,
+      nr_scapes_pop_obs / nr_quads_scape_obs, NA_real_))
+
+
+# Add reproductive abundance to recruitment data ------------------------------
 df_recruit_quad <- df_recruit_quad %>%
   left_join(
     df_repro_quad,
-    by = c("site", "pop", "qu", "year"))
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_repro_pop,
+    by = c("site", "pop", "year")) %>%
+  mutate(
+    nr_flowering_other =
+      nr_flowering_pop_obs - replace_na(nr_flowering, 0),
+    nr_quads_flower_other =
+      nr_quads_flower_obs - as.integer(!is.na(nr_flowering)),
+    mean_flowering_other = if_else(
+      nr_quads_flower_other > 0,
+      nr_flowering_other / nr_quads_flower_other, NA_real_),
+    nr_scapes_other =
+      nr_scapes_pop_obs - replace_na(nr_scapes, 0),
+    nr_quads_scape_other =
+      nr_quads_scape_obs - as.integer(!is.na(nr_scapes)),
+    mean_scapes_other = if_else(
+      nr_quads_scape_other > 0,
+      nr_scapes_other / nr_quads_scape_other, NA_real_))
 
 
 # Recruitment without local flowering -----------------------------------------
@@ -712,36 +810,456 @@ df_recruit_pop %>%
   filter(nr_recruit > 0, nr_flowering == 0)
 
 
-# Population-level reproductive abundance -------------------------------------
-df_repro_pop <- df_repro_quad %>%
-  group_by(site, pop, year) %>%
+# Fire-event structure ---------------------------------------------------------
+df_fire <- df_burn %>%
+  mutate(
+    fire_year = year,
+    fire_month = month,
+    fire_event = date,
+    burned = case_when(
+      burn == 0 ~ 0,
+      burn %in% c(1, 2, 4) ~ 1,
+      TRUE ~ NA_real_),
+    fire_severity = case_when(
+      burn == 0 ~ "unburned",
+      burn == 1 ~ "scorched",
+      burn == 2 ~ "consumed",
+      burn == 4 ~ "burned_unspecified",
+      TRUE ~ NA_character_),
+    transition_year = case_when(
+      fire_event == "1998-05" ~ 1997,
+      fire_event == "1998-07" ~ 1998,
+      fire_event == "2001-08" ~ 2001,
+      fire_event == "2002-10" ~ 2002,
+      fire_event == "2005-04" ~ 2004,
+      fire_event == "2007-12" ~ 2007,
+      TRUE ~ NA_real_),
+    timing_known = !is.na(transition_year))
+
+df_fire %>%
+  count(fire_event, fire_severity)
+
+df_fire %>%
+  group_by(fire_event, site, pop, qu) %>%
+  summarise(
+    nr_scored = n(),
+    nr_burned = sum(burned == 1, na.rm = TRUE),
+    prop_burned = mean(burned, na.rm = TRUE),
+    .groups = "drop") %>%
+  group_by(fire_event) %>%
   summarise(
     nr_quads = n(),
-    nr_flowering_pop = sum(nr_flowering),
-    nr_scapes_pop = sum(nr_scapes, na.rm = TRUE),
+    min_prop = min(prop_burned),
+    mean_prop = mean(prop_burned),
+    max_prop = max(prop_burned),
     .groups = "drop")
+
+
+# Fire records relative to demographic observations ---------------------------
+df_first_demog <- df_demog %>%
+  group_by(id) %>%
+  summarise(
+    first_demog_date = min(date),
+    .groups = "drop")
+
+df_fire_history_check <- df_fire %>%
+  left_join(df_first_demog, by = "id") %>%
+  mutate(
+    fire_time = as.Date(paste0(fire_event, "-01")),
+    first_demog_time = as.Date(paste0(first_demog_date, "-01")),
+    first_observed_after_fire = first_demog_time > fire_time)
+
+df_fire_history_check %>%
+  count(fire_event, first_observed_after_fire)
+
+df_fire_history_check %>%
+  filter(fire_event == "2001-08") %>%
+  count(first_demog_date)
+
+# Quadrat-level fire exposure --------------------------------------------------
+df_fire_quad <- df_fire %>%
+  group_by(fire_event, site, pop, qu) %>%
+  summarise(
+    transition_year = first(transition_year),
+    timing_known = first(timing_known),
+    nr_scored = n(),
+    nr_burned = sum(burned == 1, na.rm = TRUE),
+    nr_unburned = sum(burned == 0, na.rm = TRUE),
+    prop_burned = mean(burned, na.rm = TRUE),
+    any_burned = as.numeric(any(burned == 1, na.rm = TRUE)),
+    .groups = "drop")
+
+
+# Fire-event spatial footprint -------------------------------------------------
+df_fire_quad %>%
+  distinct(fire_event, site, pop, timing_known, transition_year) %>%
+  arrange(fire_event, site, pop)
+
+# Quadrat coverage of known-timing fires --------------------------------------
+df_fire_pop <- df_fire_quad %>%
+  distinct(
+    fire_event, site, pop, transition_year, timing_known)
+
+df_fire_quad_coverage <- df_fire_pop %>%
+  filter(timing_known) %>%
+  inner_join(
+    df_demog_june %>%
+      distinct(site, pop, qu, year),
+    by = c(
+      "site", "pop",
+      "transition_year" = "year")) %>%
+  left_join(
+    df_fire_quad %>%
+      select(
+        fire_event, site, pop, qu,
+        prop_burned, any_burned),
+    by = c("fire_event", "site", "pop", "qu")) %>%
+  mutate(fire_scored = !is.na(prop_burned))
+
+df_fire_quad_coverage %>%
+  group_by(fire_event, site, pop) %>%
+  summarise(
+    nr_quads_monitored = n(),
+    nr_quads_scored = sum(fire_scored),
+    prop_quads_scored = mean(fire_scored),
+    .groups = "drop")
+
+df_fire_quad_coverage %>%
+  filter(!fire_scored) %>%
+  count(fire_event, site, pop)
+
+
+# Known fire events ------------------------------------------------------------
+df_fire_pop_year <- df_fire_quad %>%
+  filter(timing_known) %>%
+  distinct(fire_event, site, pop, transition_year)
+
+
+# Ambiguous fire timing --------------------------------------------------------
+# For these fires, the annual census could have occurred either before or after
+# the fire. Both possible annual transitions are therefore treated as unknown.
+
+df_fire_ambiguous <- df_fire_quad %>%
+  filter(!timing_known) %>%
+  distinct(fire_event, site, pop) %>%
+  mutate(fire_year = as.numeric(str_sub(fire_event, 1, 4))) %>%
+  {
+    bind_rows(
+      transmute(
+        ., fire_event, site, pop,
+        candidate_year = fire_year - 1),
+      transmute(
+        ., fire_event, site, pop,
+        candidate_year = fire_year))
+  }
+
+
+# Annual quadrat fire exposure -------------------------------------------------
+df_fire_transition_quad <- df_demog_june %>%
+  distinct(site, pop, qu, year) %>%
+  left_join(
+    df_fire_pop_year,
+    by = c("site", "pop", "year" = "transition_year")) %>%
+  left_join(
+    df_fire_quad %>%
+      filter(timing_known) %>%
+      select(
+        fire_event, site, pop, qu,
+        nr_scored, nr_burned, nr_unburned,
+        prop_burned, any_burned),
+    by = c("fire_event", "site", "pop", "qu")) %>%
+  left_join(
+    df_fire_ambiguous %>%
+      rename(ambiguous_event = fire_event),
+    by = c(
+      "site", "pop",
+      "year" = "candidate_year")) %>%
+  mutate(
+    timing_ambiguous = !is.na(ambiguous_event),
+    fire_event_pop = !is.na(fire_event),
+    
+    fire_prop_quad = case_when(
+      timing_ambiguous ~ NA_real_,
+      !fire_event_pop ~ 0,
+      !is.na(prop_burned) ~ prop_burned,
+      TRUE ~ NA_real_),
+    
+    dist_transition = case_when(
+      timing_ambiguous ~ NA_real_,
+      !fire_event_pop ~ 0,
+      !is.na(any_burned) ~ any_burned,
+      TRUE ~ NA_real_))
+
+
+# Previous annual fire exposure ------------------------------------------------
+df_fire_previous <- df_fire_transition_quad %>%
+  transmute(
+    site, pop, qu,
+    year = year + 1,
+    disturbance_prev = dist_transition,
+    fire_prop_prev = fire_prop_quad)
+
+df_transition <- df_transition %>%
+  left_join(
+    df_fire_transition_quad %>%
+      select(
+        site, pop, qu, year,
+        fire_event, ambiguous_event, timing_ambiguous,
+        dist_transition, fire_prop_quad),
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_fire_previous,
+    by = c("site", "pop", "qu", "year"))
+
+
+# Individual fire exposure -----------------------------------------------------
+df_fire_individual <- df_fire %>%
+  filter(timing_known) %>%
+  select(
+    fire_event, id,
+    burned_ind = burned,
+    fire_severity_ind = fire_severity)
+
+df_transition <- df_transition %>%
+  left_join(
+    df_fire_individual,
+    by = c("fire_event", "id")) %>%
+  mutate(
+    burned_ind = case_when(
+      timing_ambiguous ~ NA_real_,
+      is.na(fire_event) ~ 0,
+      !is.na(burned_ind) ~ burned_ind,
+      TRUE ~ NA_real_))
+
+
+# Previous individual fire exposure -------------------------------------------
+df_fire_ind_previous <- df_transition %>%
+  transmute(
+    id,
+    year = year + 1,
+    burned_ind_prev = burned_ind)
+
+df_transition <- df_transition %>%
+  left_join(
+    df_fire_ind_previous,
+    by = c("id", "year"))
+
+df_fire_transition_quad %>%
+  count(timing_ambiguous, dist_transition)
+
+df_transition %>%
+  filter(!is.na(fire_event)) %>%
+  count(fire_event, burned_ind)
+
+df_fire_transition_quad %>%
+  filter(!timing_ambiguous, fire_event_pop) %>%
+  count(fire_event, is.na(dist_transition))
+
+df_transition %>%
+  filter(!is.na(fire_event)) %>%
+  count(fire_event, burned_ind, useNA = "ifany")
+
+
+# Check that fire joins did not duplicate demographic records ------------------
+df_transition %>%
+  count(id, year) %>%
+  filter(n > 1)
+
+nrow(df_transition)
+
+df_transition %>%
+  distinct(id, year) %>%
+  nrow()
+
+
+# Check that fire joins did not duplicate demographic records ------------------
+df_transition %>%
+  count(id, year) %>%
+  filter(n > 1)
+
+nrow(df_transition)
+
+df_transition %>%
+  distinct(id, year) %>%
+  nrow()
+
+
+# Recruitment correction ------------------------------------------------------
+seedling_survival <- df_transition %>%
+  filter(stage_clean == 1, !is.na(survives)) %>%
+  summarise(seedling_survival = mean(survives)) %>%
+  pull(seedling_survival)
 
 df_recruit_quad <- df_recruit_quad %>%
-  left_join(df_repro_pop, by = c("site", "pop", "year")) %>%
   mutate(
-    nr_recruit = observed_seedling + presumed_2yr,
-    nr_flowering_other = nr_flowering_pop - nr_flowering,
-    nr_scapes_other = nr_scapes_pop - replace_na(nr_scapes, 0))
+    recruits_pess = if_else(
+      recruitment_complete,
+      as.numeric(observed_seedling + presumed_2yr), NA_real_),
+    recruits_opt = if_else(
+      recruitment_complete,
+      observed_seedling + presumed_2yr / seedling_survival,
+      NA_real_))
 
-df_recruit_quad %>%
-  filter(nr_recruit > 0, nr_flowering == 0) %>%
-  count(other_flowering = nr_flowering_other > 0)
-
-df_recruit_quad %>%
-  filter(nr_recruit > 0, nr_flowering_pop == 0) %>%
-  select(
-    site, pop, qu, year, observed_seedling, presumed_2yr,
-    nr_flowering, nr_flowering_pop)
-
-df_repro_pop %>%
-  arrange(site, pop, year) %>%
-  group_by(site, pop) %>%
+df_repro_quad %>%
   summarise(
-    min_quads = min(nr_quads),
-    max_quads = max(nr_quads),
-    .groups = "drop")
+    n_quad_years = n(),
+    n_zero_active = sum(nr_active == 0),
+    n_flowering_unknown = sum(is.na(nr_flowering)),
+    n_scapes_unknown = sum(is.na(nr_scapes)))
+
+df_recruit_quad %>%
+  summarise(
+    n_complete = sum(recruitment_complete),
+    mean_pess = mean(recruits_pess, na.rm = TRUE),
+    mean_opt = mean(recruits_opt, na.rm = TRUE),
+    max_pess = max(recruits_pess, na.rm = TRUE),
+    max_opt = max(recruits_opt, na.rm = TRUE))
+
+
+# Recruitment working rows ----------------------------------------------------
+df_recruit <- df_recruit_quad %>%
+  left_join(
+    df_fire_transition_quad %>%
+      select(
+        site, pop, qu, year, fire_event, ambiguous_event,
+        timing_ambiguous, dist_transition, fire_prop_quad),
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_fire_previous,
+    by = c("site", "pop", "qu", "year")) %>%
+  transmute(
+    row_type = "recruitment",
+    site, pop, qu, year,
+    monitored_t1, monitored_t2,
+    recruitment_complete,
+    observed_seedling, presumed_2yr, nr_recruit,
+    recruits_pess, recruits_opt,
+    nr_active, nr_flowering, nr_scapes, nr_invol,
+    nr_flowering_other, mean_flowering_other,
+    nr_scapes_other, mean_scapes_other,
+    nr_quads, nr_active_pop,
+    nr_flowering_pop, mean_flowering_pop,
+    nr_scapes_pop, mean_scapes_pop,
+    dist_transition, disturbance_prev,
+    fire_prop_quad, fire_prop_prev,
+    timing_ambiguous, fire_event, ambiguous_event)
+
+
+# Individual working rows -----------------------------------------------------
+df_ind <- df_transition %>%
+  transmute(
+    row_type = "individual",
+    site, pop, qu, plant, id, year,
+    state = state_clean,
+    state_t1,
+    stage = stage_clean,
+    stage_t1,
+    survives,
+    enter_dormancy,
+    reactivate,
+    size_t0,
+    size_t1,
+    logsize_t0,
+    logsize_t1,
+    logsize_t0_2,
+    logsize_t0_3,
+    flower,
+    fl_nr,
+    invol,
+    herb,
+    dist_transition,
+    disturbance_prev,
+    fire_prop_quad,
+    fire_prop_prev,
+    burned_ind,
+    burned_ind_prev,
+    fire_severity_ind,
+    timing_ambiguous,
+    fire_event,
+    ambiguous_event)
+
+
+# Working data -----------------------------------------------------------------
+# The final working data contain both individual demographic observations and
+# quadrat-level recruitment observations. Recruitment is kept as separate rows
+# rather than repeated for every individual within a quadrat.
+
+df <- bind_rows(
+  df_ind,
+  df_recruit) %>%
+  mutate(
+    row_type = factor(row_type),
+    year = as.numeric(year),
+    site = factor(site),
+    pop = factor(pop),
+    state = factor(state),
+    state_t1 = factor(state_t1),
+    stage = factor(stage),
+    stage_t1 = factor(stage_t1))
+
+
+# Final working-data checks ----------------------------------------------------
+df %>%
+  count(row_type)
+
+stopifnot(
+  df %>%
+    filter(row_type == "individual") %>%
+    nrow() ==
+    df %>%
+    filter(row_type == "individual") %>%
+    distinct(id, year) %>%
+    nrow(),
+  
+  df %>%
+    filter(row_type == "recruitment") %>%
+    nrow() ==
+    df %>%
+    filter(row_type == "recruitment") %>%
+    distinct(site, pop, qu, year) %>%
+    nrow())
+
+# Check individual vital-rate structure
+df %>%
+  filter(row_type == "individual") %>%
+  count(state, survives)
+
+df %>%
+  filter(
+    row_type == "individual",
+    !is.na(size_t1)) %>%
+  count(state, state_t1)
+
+df %>%
+  filter(
+    row_type == "individual",
+    !is.na(enter_dormancy)) %>%
+  count(state, state_t1, enter_dormancy)
+
+df %>%
+  filter(
+    row_type == "individual",
+    !is.na(reactivate)) %>%
+  count(state, state_t1, reactivate)
+
+# Check recruitment structure
+df %>%
+  filter(row_type == "recruitment") %>%
+  summarise(
+    n = n(),
+    n_complete = sum(recruitment_complete),
+    n_pess = sum(!is.na(recruits_pess)),
+    n_opt = sum(!is.na(recruits_opt)))
+
+# Check ambiguous fire transitions
+df %>%
+  filter(timing_ambiguous) %>%
+  count(row_type, dist_transition, fire_prop_quad)
+
+
+# Save data --------------------------------------------------------------------
+# write.csv(
+#   df, row.names = FALSE,
+#   file.path(
+#     dir_data,
+#     paste0("ab_", v_sp_abb, "_df_workdata_260820.csv")))

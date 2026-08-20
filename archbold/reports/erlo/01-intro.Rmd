@@ -1,0 +1,84 @@
+# Introduction {#intro}
+
+The supplementary material to the *Eriogonum longifolium* demographic dataset
+from Archbold Biological Station.
+
+The GIS and Data Management program at
+[Archbold Biological Station](https://www.archbold-station.org/gis-and-data-mgmt/)
+maintains a comprehensive collection of ecological and environmental data
+gathered through research initiatives and long-term monitoring projects. One
+key platform for accessing these data is the
+[Environmental Data Initiative (EDI)](https://portal.edirepository.org/nis/home.jsp),
+which hosts long-term ecological datasets from Archbold Biological Station.
+
+For our model, we utilized 24 years (1990--2013) of demographic data on scrub
+buckwheat, [*Eriogonum longifolium* var. *gnaphalifolium*](https://portal.edirepository.org/nis/mapbrowse?packageid=edi.226.1),
+a threatened perennial herb endemic to periodically burned xeric uplands in
+central peninsular Florida. The long-term dataset includes observations of
+individual survival, growth, flowering, dormancy, recruitment, and responses to
+prescribed fire, allowing us to incorporate both continuous plant size and
+fire history into an integral projection model (IPM). :contentReference[oaicite:0]{index=0}
+
+These demographic data have previously been used by Satterthwaite, Menges, and
+Quintana-Ascencio (2002) in *Assessing scrub buckwheat population viability in
+relation to fire using multiple modeling techniques*. Their study used
+stage-structured matrix models and population viability analyses to evaluate
+the effects of fire and fire-return intervals on the population dynamics of
+*E. longifolium* var. *gnaphalifolium*. In the present analysis, we revisit the
+long-term demographic record using an IPM framework to describe individual
+demographic rates and their relationship with fire history.
+
+
+## Setup
+
+We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom`, `bbmle`, `gridExtra`, `lme4`
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Packages
+packages <- c('MASS', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 
+              'lme4', 'janitor', 'readxl', 'GGally', 'tidyverse')
+lapply(packages, library, character.only = TRUE)
+
+
+# Specification 
+# Define head-directory
+v_head <- c('archbold')
+# Define species
+v_species <- c('Eriogonum longifolium')
+# Customized delimiter for `read_delim` function, comma is predefined
+custom_delimiter <- c()
+
+
+# Create a unique species abbreviation for file naming
+v_sp_abb <- tolower(
+  gsub(' ', '', paste(
+    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
+
+# Define script prefix
+v_script_prefix <- str_c(v_head)
+
+# Plot subtitle
+v_ggp_suffix <- paste(
+  tools::toTitleCase(v_head), '-', v_species)
+
+
+# Directory 
+dir_wd     <- file.path('C:', 'code', 'RUPDemo_IPMs')
+dir_pub    <- file.path(dir_wd,  paste0(v_head))
+dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
+dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
+dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+dir_func   <- file.path(dir_wd,  'helper_functions')
+
+
+# Functions
+# plot your survival data 'binned' (instead of 'jittered')
+source(file.path(dir_func, 'plot_binned_prop.R'))
+# 
+source(file.path(dir_func, 'line_color_pred_fun.R'))
+# 
+source(file.path(dir_func, 'predictor_fun.R'))
+```
+

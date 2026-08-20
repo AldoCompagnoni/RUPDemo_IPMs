@@ -1,0 +1,1537 @@
+# Data {#data}
+
+## Dataset overview
+
+The [dataset](https://portal.edirepository.org/nis/metadataviewer?packageid=edi.226.1)
+documents long-term demographic monitoring of scrub buckwheat,
+*Eriogonum longifolium* var. *gnaphalifolium*, in central peninsular Florida.
+The working dataset spans 1990--2013 and contains repeated demographic
+observations of individually marked plants together with observations from
+prescribed fires.
+
+*Eriogonum longifolium* var. *gnaphalifolium* is a perennial herb of xeric
+uplands, including sandhill and Florida scrub. Plants consist of a basal rosette
+and may produce one or several flowering scapes. Individuals possess a woody
+taproot and can remain dormant belowground for one or more years before
+reappearing aboveground. Fire is an important component of the species'
+environment and can strongly affect its demographic rates, including growth and
+flowering.
+
+Individual plants were repeatedly monitored for survival and status, life-history
+stage, basal rosette diameter, and flowering. Plants that were not visible were
+not immediately removed from monitoring, allowing later reappearances to be
+identified as periods of dormancy. New plants were also searched for and marked
+during demographic censuses.
+
+For the present analysis, the June-coded demographic census is used to construct
+annual demographic transitions. Additional demographic observations, including
+the September 1998 and December 2001 censuses, are retained where they provide
+information on recruitment and fire responses. Fire observations occur as
+separate event-specific records and include information on whether marked plant
+locations were burned and, for later fires, whether plants were scorched or
+consumed.
+
+The earlier portion of these demographic data was analyzed by
+[Satterthwaite et al. (2002)](https://doi.org/10.1890/1051-0761(2002)012%5B1672:ASBPVI%5D2.0.CO;2),
+who used stage-structured matrix models to investigate the effects of fire on
+population growth and viability. Their life-cycle representation included new,
+small, vegetative, flowering, and dormant plants and explicitly distinguished
+burned, year-after-burn, and unburned demographic transitions.
+
+The data preparation below reconstructs annual demographic histories and derives
+the variables required for the integral projection model, including survival,
+growth, flowering, dormancy and reactivation, recruitment, and current and
+previous fire exposure. Recruitment is reconstructed at the quadrat by
+fecundity-year level and is combined with individual demographic observations in
+the final working dataset using separate row types. This allows all information
+required by the IPM to be retained in a single working-data object without
+duplicating quadrat-level recruitment observations across individual plants.
+
+
+
+## Data import and raw structure
+The raw dataset contains 37,248 records. Of these, 34,146 are demographic
+observations and 3,102 are observations associated with prescribed-fire events.
+Demographic and fire observations are stored as separate records in the original
+data and are therefore separated at the beginning of the data preparation.
+
+Demographic observations span 1990--2013. The main annual census is recorded
+in June, although additional demographic observations occur in September 1998
+and December 2001. These additional censuses are retained because they contain
+useful information on recruitment and post-fire demographic status, but the June
+censuses form the basis of the annual demographic transitions used in the IPM.
+
+Plant numbers are not globally unique across the dataset. We therefore define an
+individual by the combination of site, population, quadrat, and plant number.
+This results in 2,060 unique individual histories.
+
+```{r}
+df_og <- read_csv(
+  file.path(dir_data, 'eriogonum_longifolium_data.csv'),
+  col_types = cols(comment = col_character())) %>%
+  janitor::clean_names()
+
+# Keep the metadata table open until the EDI code definitions are confirmed.
+df_meta <- tibble(
+  var = names(df_og),
+  description = NA_character_)
+
+# The plant number is not a globally unique identifier in this dataset.
+# Use site + population + quadrat + plant as the provisional individual ID.
+df_og <- df_og %>%
+  mutate(
+    year = as.numeric(str_sub(date, 1, 4)),
+    month = as.numeric(str_sub(date, 6, 7)),
+    id = str_c(site, pop, qu, plant, sep = '_'),
+    record_type = case_when(
+      !is.na(s) ~ 'demography',
+      is.na(s) & !is.na(burn) ~ 'burn',
+      TRUE ~ 'other'))
+```
+
+### Initial data structure
+```{r}
+dim(df_og)
+names(df_og)
+skimr::skim(df_og)
+
+df_og %>%
+  count(record_type)
+
+df_og %>%
+  count(year, month)
+
+df_og %>%
+  count(site, pop)
+
+df_og %>%
+  group_by(site, pop) %>%
+  summarise(
+    first_year = min(year, na.rm = TRUE),
+    last_year = max(year, na.rm = TRUE),
+    nr_quads = n_distinct(qu),
+    nr_plants = n_distinct(id), .groups = 'drop')
+```
+
+### Separate demographic and burn records
+```{r}
+# Burn observations are stored as separate rows rather than in the annual
+# demographic record. Keep them separate until the fire codes and timing are
+# confirmed from the metadata.
+df_demog <- df_og %>%
+  filter(record_type == 'demography')
+
+df_burn <- df_og %>%
+  filter(record_type == 'burn')
+
+# Candidate annual census records. June occurs in every year from 1990-2013,
+# but extra demographic censuses also occur in some years and are retained in
+# df_demog for now.
+df_demog_june <- df_demog %>%
+  filter(month == 6)
+```
+
+
+## Sampling inventory
+Sampling effort varied among populations and through time. Six populations at
+Archbold Biological Station were monitored, with most beginning in 1990 and
+population 7 beginning in 1996. A seventh population at Carter Creek was added
+in 2001. The number of monitored quadrats also varied among years in several
+Archbold populations, whereas the Carter Creek population consisted of 44
+quadrats throughout its monitoring period.
+
+Because both the number of quadrats and the duration of monitoring differ among
+populations, subsequent analyses retain the population, quadrat, and year
+identifiers rather than treating all observations as originating from a single
+homogeneous sampling unit.
+```{r}
+fig_sampling <- df_demog_june %>%
+  distinct(site, pop, qu, year) %>%
+  mutate(pop_quad = interaction(pop, qu, sep = '-')) %>%
+  ggplot() +
+  geom_point(aes(x = year, y = pop_quad)) +
+  facet_wrap(~site, scales = 'free_y') +
+  theme_bw() +
+  labs(title = 'Sampling inventory', x = 'Year', y = 'Population-quadrat') +
+  theme(axis.text.y = element_text(size = 5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme(plot.subtitle = element_text(size = 8))
+fig_sampling
+
+# ggsave(file.path(dir_result, '0_sampling_inventory.png'),
+#        plot = fig_sampling, width = 10, height = 7, dpi = 300)
+```
+
+## Exploration
+No duplicate demographic or fire observations were found for the same
+individual and date. Inspection of the original status and stage codes also
+shows that the dataset explicitly distinguishes active plants, dormant plants,
+missing plants, newly observed plants, and individuals associated with
+discontinued monitoring. These distinctions are retained during construction
+of the annual demographic histories because absence from an annual census
+cannot automatically be interpreted as mortality.
+### Exploring identifiers and duplicates
+```{r}
+# Plant tag numbers are reused among quadrats/populations.
+df_og %>%
+  distinct(site, pop, qu, plant) %>%
+  count(plant, name = 'nr_ids') %>%
+  filter(nr_ids > 1) %>%
+  arrange(desc(nr_ids), plant)
+
+# Check for duplicate demographic records within individual and date.
+df_demog %>%
+  group_by(id, date) %>%
+  mutate(n_entries = n()) %>%
+  ungroup() %>%
+  filter(n_entries > 1) %>%
+  arrange(id, date)
+
+# Check for duplicate burn records within individual and date.
+df_burn %>%
+  group_by(id, date) %>%
+  mutate(n_entries = n()) %>%
+  ungroup() %>%
+  filter(n_entries > 1) %>%
+  arrange(id, date)
+```
+
+### Explore coding before building transitions
+```{r}
+# Do not convert these codes into survival, recruitment, dormancy or fire
+# variables until their exact definitions have been confirmed.
+df_demog %>%
+  count(s, stage, sort = TRUE)
+
+df_demog %>%
+  count(stage, sort = TRUE)
+
+df_demog %>%
+  count(s, sort = TRUE)
+
+df_burn %>%
+  count(date, site, pop, burn, sort = TRUE)
+
+df_burn %>%
+  group_by(date, site, pop, qu) %>%
+  summarise(
+    nr_records = n(),
+    nr_burn_codes = n_distinct(burn),
+    burn_codes = paste(sort(unique(burn)), collapse = ', '),
+    .groups = 'drop') %>%
+  arrange(date, site, pop, qu)
+```
+
+## Clean annual demographic history
+Individuals of this species can remain belowground and subsequently reappear.
+Consequently, an observation coded as absent cannot necessarily be interpreted
+as death if the same individual is observed alive again later. We therefore
+back-correct records coded as absent or previously absent to dormant when they
+occur between two years in which the individual is definitely known to be
+alive.
+
+This procedure reclassified 33 annual observations as dormant: 13 originally
+coded as absent and 20 originally coded as previously absent. The correction is
+deliberately conservative and is made only when later aboveground observation
+demonstrates that the individual had not died.
+```{r}
+# Annual demographic records are the June censuses. Plants recorded as absent
+# or previously absent are back-corrected to dormant when they occur between
+# two observations where the individual is known to be alive.
+
+df_alive_range <- df_demog_june %>%
+  filter(s %in% c(1, 3, 5)) %>%
+  group_by(id) %>%
+  summarise(
+    first_alive = min(year),
+    last_alive = max(year), .groups = "drop")
+
+df_annual <- df_demog_june %>%
+  left_join(df_alive_range, by = "id") %>%
+  mutate(
+    dormancy_repair = s %in% c(0, 9) &
+      !is.na(first_alive) & year > first_alive & year < last_alive,
+    s_clean = if_else(dormancy_repair, 8, s),
+    stage_clean = if_else(dormancy_repair, 5, stage),
+    state_clean = case_when(
+      s_clean %in% c(1, 3, 5) ~ "active",
+      s_clean == 8 ~ "dormant",
+      s_clean == 10 ~ "alive_or_dormant",
+      s_clean == 0 ~ "absent",
+      s_clean == 9 ~ "previous_absent",
+      s_clean %in% c(2, 6, 7) ~ "missing",
+      s_clean == 11 ~ "discontinued",
+      TRUE ~ NA_character_))
+
+# Check repaired dormancy records
+df_annual %>%
+  filter(dormancy_repair) %>%
+  count(s, s_clean)
+
+df_dormancy_check <- df_annual %>%
+  filter(any(dormancy_repair), .by = id) %>%
+  select(
+    site, pop, qu, plant, id, year, s, stage, s_clean, stage_clean,
+    state_clean, dia, scape, comment) %>%
+  arrange(id, year)
+
+df_dormancy_check
+```
+
+## Dormancy duration
+Continuous runs of dormant observations were treated as separate dormancy
+spells. An individual can therefore contribute more than one spell if it
+reappeared aboveground and subsequently entered dormancy again.
+```{r}
+# Each continuous dormant period is treated as one independent dormancy spell.
+# Individuals can therefore contribute more than one dormancy period.
+
+df_dormancy_spell <- df_annual %>%
+  group_by(id) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    new_spell = row_number() == 1 |
+      coalesce(state_clean != lag(state_clean), TRUE) |
+      coalesce(year != lag(year) + 1, TRUE),
+    spell = cumsum(new_spell)) %>%
+  group_by(id, spell) %>%
+  summarise(
+    state = first(state_clean),
+    start_year = min(year),
+    end_year = max(year),
+    dormancy_years = n(), .groups = "drop") %>%
+  filter(state == "dormant")
+```
+
+### Dormancy summary
+A total of 409 dormancy spells were identified among 344 individuals. Dormancy
+was generally short: the median duration was one year and the mean duration was
+1.51 years. Nevertheless, occasional substantially longer periods occurred,
+with the longest reconstructed dormant interval lasting 20 years.
+```{r}
+df_dormancy_summary <- df_dormancy_spell %>%
+  summarise(
+    n_spells = n(),
+    n_individuals = n_distinct(id),
+    mean_dormancy = mean(dormancy_years),
+    median_dormancy = median(dormancy_years),
+    sd_dormancy = sd(dormancy_years),
+    min_dormancy = min(dormancy_years),
+    max_dormancy = max(dormancy_years))
+
+df_dormancy_summary
+```
+
+### Dormancy duration distribution
+Most dormant periods were concentrated at short durations. Of the 409 observed
+spells, 313 (76.5%) lasted one year, 370 (90.5%) lasted no more than two years,
+and 388 (94.9%) lasted no more than three years. Longer dormant periods were
+progressively uncommon.
+```{r}
+df_dormancy_distribution <- df_dormancy_spell %>%
+  count(dormancy_years, name = "n_spells") %>%
+  arrange(dormancy_years) %>%
+  mutate(
+    prop = n_spells / sum(n_spells),
+    cum_prop = cumsum(prop),
+    cum_percent = 100 * cum_prop)
+
+df_dormancy_distribution
+```
+
+### Three-year dormancy cutoff
+We therefore use three years as an operational threshold when distinguishing
+short unresolved absences from mortality. This threshold captures 388 of the
+409 observed dormancy spells (94.9%). It should not be interpreted as a
+biological maximum for dormancy; rather, it provides a pragmatic rule for
+classifying otherwise unresolved absences while accommodating nearly 95% of
+the observed dormancy distribution.
+```{r}
+# The 3-year cutoff is an operational assumption, 
+# justified because 388/409 = 94.87% of observed dormancy spells lasted ≤3 years
+
+dormancy_cutoff <- 3
+
+df_dormancy_cutoff <- df_dormancy_spell %>%
+  summarise(
+    cutoff_years = dormancy_cutoff,
+    n_spells = n(),
+    n_within_cutoff = sum(dormancy_years <= dormancy_cutoff),
+    prop_within_cutoff =
+      mean(dormancy_years <= dormancy_cutoff),
+    percent_within_cutoff =
+      100 * mean(dormancy_years <= dormancy_cutoff))
+
+df_dormancy_cutoff
+```
+
+## Annual demographic transitions
+Annual demographic transitions are constructed between consecutive June
+censuses. Transitions are retained only when observations occur in consecutive
+years. Plant size at time \(t\) is defined only for active plants, and growth
+between \(t\) and \(t+1\) is defined only for active plants that remain active
+at the following census.
+```{r}
+df_transition <- df_annual %>%
+  group_by(id) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    year_t1 = lead(year),
+    annual_transition = coalesce(year_t1 == year + 1, FALSE),
+    s_t1 = if_else(annual_transition, lead(s_clean), NA_real_),
+    stage_t1 = if_else(annual_transition, lead(stage_clean), NA_real_),
+    state_t1 = if_else(
+      annual_transition, lead(state_clean), NA_character_),
+    size_t0 = if_else(state_clean == "active", dia, NA_real_),
+    size_t1 = if_else(
+      annual_transition & state_clean == "active" &
+        lead(state_clean) == "active",
+      lead(dia), NA_real_)) %>%
+  ungroup()
+```
+
+### Check annual state transitions
+The annual histories contain 13,804 active-to-active transitions and 406
+active-to-dormant transitions. Dormant individuals subsequently returned
+aboveground in 409 transitions, while 209 transitions represented continued
+dormancy. The remaining transitions include absences, missing observations,
+and discontinued monitoring and therefore require additional treatment before
+they can be interpreted as survival or mortality.
+The annual histories contain 13,804 active-to-active transitions and 406
+active-to-dormant transitions. Dormant individuals subsequently returned
+aboveground in 409 transitions, while 209 transitions represented continued
+dormancy. The remaining transitions include absences, missing observations,
+and discontinued monitoring and therefore require additional treatment before
+they can be interpreted as survival or mortality.
+```{r}
+df_transition %>%
+  filter(annual_transition) %>%
+  count(state_clean, state_t1) |> 
+  print(n=100)
+
+df_transition %>%
+  filter(
+    annual_transition,
+    state_clean == "active",
+    state_t1 != "active") %>%
+  count(year, state_t1) |> 
+  print(n=100)
+```
+
+### Unresolved absence periods
+Periods coded as absent or previously absent were grouped into continuous
+absence spells. Their duration is used together with the three-year dormancy
+threshold to avoid assigning mortality immediately when a previously active
+plant disappears from the census.
+```{r}
+df_absence_spell <- df_annual %>%
+  group_by(id) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    absent_state =
+      state_clean %in% c("absent", "previous_absent"),
+    new_spell = row_number() == 1 |
+      coalesce(absent_state != lag(absent_state), TRUE) |
+      coalesce(year != lag(year) + 1, TRUE),
+    spell = cumsum(new_spell)) %>%
+  group_by(id, spell) %>%
+  summarise(
+    absent_state = first(absent_state),
+    absence_start = min(year),
+    absence_end = max(year),
+    absence_years = n(), .groups = "drop") %>%
+  filter(absent_state)
+
+df_absence_t1 <- df_absence_spell %>%
+  transmute(
+    id,
+    year_t1 = absence_start,
+    absence_years)
+```
+
+### Demographic outcomes
+For individuals beginning a transition either active or dormant, survival is
+considered known only when the subsequent observations allow an unambiguous
+classification. This produced 14,228 known surviving transitions from active
+plants and 873 transitions classified as mortality. An additional 1,191 active
+observations remain unresolved and are retained as missing survival outcomes
+rather than being forced into either category.
+
+All 618 annual transitions originating from plants classified as dormant that
+could be resolved were treated as surviving transitions. This reflects the
+retrospective nature of dormancy classification: a dormant state can generally
+be confirmed only when the individual is subsequently observed again.
+```{r}
+df_transition <- df_transition %>%
+  left_join(df_absence_t1, by = c("id", "year_t1")) %>%
+  mutate(
+    survives = case_when(
+      !annual_transition ~ NA_real_,
+      !state_clean %in% c("active", "dormant") ~ NA_real_,
+      state_t1 %in%
+        c("active", "dormant", "alive_or_dormant") ~ 1,
+      state_t1 %in% c("absent", "previous_absent") &
+        absence_years > dormancy_cutoff ~ 0,
+      state_t1 %in% c("absent", "previous_absent") &
+        absence_years <= dormancy_cutoff ~ NA_real_,
+      TRUE ~ NA_real_))
+
+df_transition %>%
+  filter(state_clean %in% c("active", "dormant")) %>%
+  count(state_clean, survives)
+
+df_transition %>%
+  filter(state_clean %in% c("active", "dormant")) %>%
+  count(state_clean, survives)
+```
+
+### Active and dormant transitions
+Among surviving active plants, 406 entered dormancy and 13,804 remained active.
+Among dormant plants with resolvable subsequent states, 409 returned to an
+active aboveground state and 209 remained dormant. These transitions are kept
+explicitly because dormancy represents a discrete demographic state in addition
+to the continuous size structure of active plants.
+```{r}
+df_transition <- df_transition %>%
+  mutate(
+    enter_dormancy = case_when(
+      state_clean != "active" | survives != 1 ~ NA_real_,
+      state_t1 == "dormant" ~ 1,
+      state_t1 == "active" ~ 0,
+      TRUE ~ NA_real_),
+    
+    reactivate = case_when(
+      state_clean != "dormant" ~ NA_real_,
+      state_t1 == "active" ~ 1,
+      state_t1 == "dormant" ~ 0,
+      TRUE ~ NA_real_))
+
+df_transition %>%
+  count(enter_dormancy)
+
+df_transition %>%
+  count(reactivate)
+```
+
+## Growth and flowering
+For active plants, basal rosette diameter is used as the continuous size
+variable. Flowering is identified directly from the recorded number of scapes:
+plants with one or more scapes are classified as flowering and plants with zero
+scapes as non-flowering. This avoids relying solely on the categorical stage
+variable when direct reproductive observations are available.
+### Check flowering classification
+The categorical stage and scape observations agree almost completely. There
+were 2,048 observations classified as flowering stage with one or more scapes.
+Only one additional active observation had a positive scape count despite an
+ambiguous stage classification. We therefore use the direct scape measurement
+to define flowering status.
+```{r}
+df_annual %>%
+  filter(state_clean == "active") %>%
+  count(stage_clean, scape > 0, is.na(scape))
+
+df_annual %>%
+  filter(
+    state_clean == "active",
+    (stage_clean == 4 & (scape == 0 | is.na(scape))) |
+      (stage_clean != 4 & scape > 0)) %>%
+  select(
+    site, pop, qu, plant, id, year, s_clean, stage_clean, dia, scape) %>%
+  arrange(id, year)
+
+df_transition %>%
+  summarise(
+    n_active_active = sum(
+      state_clean == "active" & state_t1 == "active", na.rm = TRUE),
+    n_growth = sum(
+      state_clean == "active" & state_t1 == "active" &
+        !is.na(size_t0) & !is.na(size_t1), na.rm = TRUE),
+    n_missing_growth = sum(
+      state_clean == "active" & state_t1 == "active" &
+        (is.na(size_t0) | is.na(size_t1)), na.rm = TRUE))
+```
+
+### Construct growth and flowering variables
+Across the annual demographic histories, 13,804 transitions occurred from an
+active plant to an active plant in the following year. Complete diameter
+measurements at both censuses were available for 13,628 of these transitions
+and form the candidate data for the continuous growth model.
+
+Among active observations, 2,049 were classified as flowering and 13,969 as
+non-flowering; 274 active observations lacked sufficient scape information for
+flowering to be classified. Plant diameter is log-transformed for subsequent
+vital-rate modeling, and quadratic and cubic terms are retained to allow
+nonlinear size dependence to be evaluated.
+```{r}
+df_transition <- df_transition %>%
+  mutate(
+    flower = case_when(
+      state_clean != "active" ~ NA_real_,
+      !is.na(scape) & scape > 0 ~ 1,
+      !is.na(scape) & scape == 0 ~ 0,
+      TRUE ~ NA_real_),
+    fl_nr = if_else(state_clean == "active", scape, NA_real_),
+    logsize_t0 = log(size_t0),
+    logsize_t1 = log(size_t1),
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3)
+
+df_transition %>%
+  filter(
+    state_clean == "active",
+    state_t1 == "active",
+    !is.na(size_t0),
+    !is.na(size_t1)) %>%
+  summarise(
+    n = n(),
+    min_t0 = min(size_t0),
+    max_t0 = max(size_t0),
+    min_t1 = min(size_t1),
+    max_t1 = max(size_t1),
+    mean_t0 = mean(size_t0),
+    mean_t1 = mean(size_t1))
+
+df_transition %>%
+  filter(state_clean == "active") %>%
+  count(flower)
+```
+
+## Recruitment structure
+Recruitment requires a different reconstruction from the other vital rates
+because newly encountered plants cannot always be assigned directly to the
+preceding year's reproductive cohort. New seedlings are explicitly coded in
+the field, whereas some newly encountered larger plants may represent seedlings
+that were missed during their first year.
+
+The first observation of each newly recorded individual is therefore identified
+using all demographic censuses, including the additional 1998 and 2001
+censuses. Observations from censuses occurring after June are assigned to the
+following annual recruitment census where appropriate.
+
+A total of 1,268 newly observed plants were identified after excluding
+individuals already present when their quadrat first entered the monitoring
+program. Of these, 110 were explicitly recorded as seedlings and 1,158 were
+recorded as new adults. Baseline individuals are excluded from recruitment
+because their actual year of establishment is unknown.
+```{r}
+df_quad_start <- df_demog_june %>%
+  group_by(site, pop, qu) %>%
+  summarise(first_quad_year = min(year), .groups = "drop")
+
+df_recruit_first <- df_demog %>%
+  filter(s %in% c(3, 5)) %>%
+  arrange(id, year, month) %>%
+  distinct(id, .keep_all = TRUE) %>%
+  mutate(
+    recruit_year = if_else(month > 6, year + 1, year)) %>%
+  left_join(
+    df_quad_start,
+    by = c("site", "pop", "qu")) %>%
+  mutate(
+    baseline = recruit_year == first_quad_year,
+    recruit_type = case_when(
+      s == 5 ~ "seedling",
+      s == 3 ~ "new_adult"))
+
+df_recruit_first %>%
+  count(baseline, recruit_type)
+
+df_recruit_first %>%
+  filter(!baseline) %>%
+  count(recruit_year, recruit_type)
+
+df_recruit_first %>%
+  filter(!baseline) %>%
+  count(month, recruit_type)
+```
+
+### Recruitment size structure
+The field classifications are retained rather than replacing them with a
+diameter-based rule. Almost all seedlings had diameters no greater than 2 cm,
+and almost all new adults were larger than 2 cm, but four observations did not
+follow this pattern. In each of these cases the categorical stage information
+supports the original field classification, so these records are not
+reclassified based on diameter alone.
+```{r}
+df_recruit_first %>%
+  filter(!baseline) %>%
+  mutate(
+    size_class = case_when(
+      is.na(dia) ~ "missing",
+      dia <= 2 ~ "<=2 cm",
+      dia > 2 ~ ">2 cm")) %>%
+  count(recruit_type, size_class)
+
+df_recruit_first %>%
+  filter(!baseline) %>%
+  group_by(recruit_type, month) %>%
+  summarise(
+    n = n(),
+    n_dia_na = sum(is.na(dia)),
+    mean_dia = mean(dia, na.rm = TRUE),
+    median_dia = median(dia, na.rm = TRUE),
+    min_dia = if (all(is.na(dia))) NA_real_ else min(dia, na.rm = TRUE),
+    max_dia = if (all(is.na(dia))) NA_real_ else max(dia, na.rm = TRUE),
+    .groups = "drop")
+```
+
+### Recruitment classification
+Not all newly observed adults are treated as presumed two-year-old recruits.
+Following the logic of Satterthwaite et al. (2002), this category is restricted
+to newly observed adults entering the annual census as small, stage-2 plants.
+Larger newly observed adults cannot be assigned confidently to a particular
+previous reproductive cohort and are therefore excluded from the reconstructed
+fecundity response.
+
+This classification produced 110 observed seedlings, 396 presumed two-year-old
+plants, and 762 other newly observed adults. Observed seedlings are assigned to
+the preceding fecundity year, whereas presumed two-year-old plants are assigned
+two years backward to the reproductive cohort that could have produced them.
+```{r}
+df_recruit_entry <- df_recruit_first %>%
+  filter(!baseline) %>%
+  left_join(
+    df_demog_june %>%
+      select(
+        id, year, s_entry = s, stage_entry = stage,
+        dia_entry = dia),
+    by = c("id", "recruit_year" = "year")) %>%
+  mutate(
+    recruit_class = case_when(
+      recruit_type == "seedling" ~ "observed_seedling",
+      recruit_type == "new_adult" & stage_entry == 2 ~ "presumed_2yr",
+      recruit_type == "new_adult" ~ "new_adult_other"),
+    fecundity_year = case_when(
+      recruit_class == "observed_seedling" ~ recruit_year - 1,
+      recruit_class == "presumed_2yr" ~ recruit_year - 2,
+      TRUE ~ NA_real_))
+
+df_recruit_entry %>%
+  count(recruit_class)
+
+df_recruit_entry %>%
+  filter(!is.na(fecundity_year)) %>%
+  anti_join(
+    df_demog_june %>%
+      distinct(site, pop, qu, year),
+    by = c(
+      "site", "pop", "qu",
+      "fecundity_year" = "year")) %>%
+  count(recruit_class, fecundity_year)
+```
+
+### Recruitment observations usable for fecundity
+Recruitment observations are used only when the corresponding fecundity year
+was itself monitored in the same quadrat. All 110 observed seedlings could be
+assigned to an observed fecundity year. Of the 396 presumed two-year-old
+plants, 382 could be assigned, whereas 14 originated from cohorts predating
+monitoring of the relevant quadrat and were excluded from fecundity estimation.
+```{r}
+df_recruit_entry <- df_recruit_entry %>%
+  left_join(
+    df_demog_june %>%
+      distinct(site, pop, qu, year) %>%
+      mutate(fecundity_observed = TRUE),
+    by = c(
+      "site", "pop", "qu",
+      "fecundity_year" = "year")) %>%
+  mutate(
+    fecundity_usable = case_when(
+      recruit_class == "new_adult_other" ~ FALSE,
+      !is.na(fecundity_year) &
+        replace_na(fecundity_observed, FALSE) ~ TRUE,
+      TRUE ~ FALSE))
+
+df_recruit_entry %>%
+  count(recruit_class, fecundity_usable)
+```
+
+### Quadrat monitoring history
+Recruitment is modeled at the quadrat rather than individual level because the
+parental identity of recruits is unknown. A quadrat-year is considered
+monitored only while demographic monitoring of that quadrat remains active.
+This prevents years following discontinuation of a quadrat from being
+mistakenly interpreted as years with zero recruitment.
+```{r}
+df_quad_monitor <- df_annual %>%
+  group_by(site, pop, qu, year) %>%
+  summarise(
+    monitored = any(state_clean != "discontinued", na.rm = TRUE),
+    .groups = "drop") %>%
+  filter(monitored) %>%
+  select(-monitored)
+```
+
+### Recruitment follow-up availability
+The two reconstructed recruitment components require different amounts of
+follow-up. Directly observed seedlings require monitoring through \(t+1\),
+whereas presumed two-year-old recruits require monitoring through \(t+2\).
+Consequently, an unobserved future cohort is treated as unknown rather than as
+zero recruitment.
+
+The resulting recruitment dataset contains 1,371 monitored quadrat-years.
+Complete two-year follow-up is available for 1,187 of these observations.
+Ninety-two quadrat-years lack the \(t+1\) census and therefore have unknown
+seedling recruitment, while 184 lack the full \(t+2\) follow-up required to
+estimate presumed two-year-old recruitment. These observations are retained
+but coded as missing rather than zero.
+```{r}
+df_recruit_followup <- df_quad_monitor %>%
+  left_join(
+    df_quad_monitor %>%
+      transmute(
+        site, pop, qu,
+        year = year - 1,
+        monitored_t1 = TRUE),
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_quad_monitor %>%
+      transmute(
+        site, pop, qu,
+        year = year - 2,
+        monitored_t2 = TRUE),
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    monitored_t1 = replace_na(monitored_t1, FALSE),
+    monitored_t2 = replace_na(monitored_t2, FALSE))
+```
+
+### Recruitment counts by fecundity year
+```{r}
+df_recruit_count <- df_recruit_entry %>%
+  filter(fecundity_usable) %>%
+  count(
+    site, pop, qu, fecundity_year, recruit_class,
+    name = "nr_recruits") %>%
+  pivot_wider(
+    names_from = recruit_class,
+    values_from = nr_recruits,
+    values_fill = 0)
+```
+
+### Recruitment working structure
+```{r}
+df_recruit_quad <- df_recruit_followup %>%
+  left_join(
+    df_recruit_count,
+    by = c(
+      "site", "pop", "qu",
+      "year" = "fecundity_year")) %>%
+  mutate(
+    observed_seedling = case_when(
+      monitored_t1 ~ replace_na(observed_seedling, 0L),
+      TRUE ~ NA_integer_),
+    presumed_2yr = case_when(
+      monitored_t2 ~ replace_na(presumed_2yr, 0L),
+      TRUE ~ NA_integer_),
+    recruitment_complete = monitored_t1 & monitored_t2,
+    nr_recruit = case_when(
+      recruitment_complete ~ observed_seedling + presumed_2yr,
+      TRUE ~ NA_integer_))
+
+df_recruit_quad %>%
+  count(year, monitored_t1, monitored_t2) %>%
+  print(n = 100)
+
+df_recruit_quad %>%
+  summarise(
+    n_quad_years = n(),
+    n_complete = sum(recruitment_complete),
+    n_incomplete = sum(!recruitment_complete),
+    n_seedling_unknown = sum(is.na(observed_seedling)),
+    n_presumed_unknown = sum(is.na(presumed_2yr)))
+```
+
+### Parental reproductive abundance
+Potential parental reproductive abundance is summarized for each monitored
+quadrat and year. We retain the number of active plants, flowering plants, and
+flowering scapes. Quadrat-years with no active plants are genuine reproductive
+zeros, whereas quadrat-years containing active plants but no usable scape
+observations are treated as unknown.
+
+Of the 1,371 monitored quadrat-years, 32 contained no active plants and 10 had
+insufficient information to determine flowering or scape abundance.
+```{r}
+df_repro_quad <- df_quad_monitor %>%
+  left_join(
+    df_annual %>%
+      filter(state_clean != "discontinued") %>%
+      group_by(site, pop, qu, year) %>%
+      summarise(
+        nr_active = sum(state_clean == "active", na.rm = TRUE),
+        nr_flower_obs = sum(
+          state_clean == "active" & !is.na(scape), na.rm = TRUE),
+        flowering_sum = sum(
+          state_clean == "active" & scape > 0, na.rm = TRUE),
+        scape_sum = sum(
+          if_else(state_clean == "active", scape, NA_real_),
+          na.rm = TRUE),
+        nr_invol_obs = sum(
+          state_clean == "active" & !is.na(invol), na.rm = TRUE),
+        invol_sum = sum(
+          if_else(state_clean == "active", invol, NA_real_),
+          na.rm = TRUE), .groups = "drop") %>%
+      mutate(
+        nr_flowering = case_when(
+          nr_active == 0 ~ 0,
+          nr_flower_obs == 0 ~ NA_real_,
+          TRUE ~ as.numeric(flowering_sum)),
+        nr_scapes = case_when(
+          nr_active == 0 ~ 0,
+          nr_flower_obs == 0 ~ NA_real_,
+          TRUE ~ scape_sum),
+        nr_invol = case_when(
+          nr_active == 0 ~ 0,
+          nr_invol_obs == 0 ~ NA_real_,
+          TRUE ~ invol_sum)) %>%
+      select(
+        site, pop, qu, year, nr_active, nr_flower_obs,
+        nr_flowering, nr_scapes, nr_invol_obs, nr_invol),
+    by = c("site", "pop", "qu", "year"))
+```
+
+### Population-level reproductive abundance
+Recruitment may originate from seed produced outside the focal quadrat.
+Reproductive abundance is therefore also summarized across the other monitored
+quadrats in the same population and across the population as a whole. Both
+local and surrounding reproductive abundance are retained in the working data
+so that their relative support can be evaluated during recruitment-model
+selection rather than imposed during data preparation.
+```{r}
+df_repro_pop <- df_repro_quad %>%
+  group_by(site, pop, year) %>%
+  summarise(
+    nr_quads = n(),
+    nr_active_pop = sum(nr_active),
+    nr_quads_flower_obs = sum(!is.na(nr_flowering)),
+    nr_flowering_pop_obs = sum(nr_flowering, na.rm = TRUE),
+    nr_quads_scape_obs = sum(!is.na(nr_scapes)),
+    nr_scapes_pop_obs = sum(nr_scapes, na.rm = TRUE),
+    .groups = "drop") %>%
+  mutate(
+    nr_flowering_pop = if_else(
+      nr_quads_flower_obs == nr_quads,
+      nr_flowering_pop_obs, NA_real_),
+    nr_scapes_pop = if_else(
+      nr_quads_scape_obs == nr_quads,
+      nr_scapes_pop_obs, NA_real_),
+    mean_flowering_pop = if_else(
+      nr_quads_flower_obs > 0,
+      nr_flowering_pop_obs / nr_quads_flower_obs, NA_real_),
+    mean_scapes_pop = if_else(
+      nr_quads_scape_obs > 0,
+      nr_scapes_pop_obs / nr_quads_scape_obs, NA_real_))
+```
+
+### Add reproductive abundance to recruitment data
+```{r}
+df_recruit_quad <- df_recruit_quad %>%
+  left_join(
+    df_repro_quad,
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_repro_pop,
+    by = c("site", "pop", "year")) %>%
+  mutate(
+    nr_flowering_other =
+      nr_flowering_pop_obs - replace_na(nr_flowering, 0),
+    nr_quads_flower_other =
+      nr_quads_flower_obs - as.integer(!is.na(nr_flowering)),
+    mean_flowering_other = if_else(
+      nr_quads_flower_other > 0,
+      nr_flowering_other / nr_quads_flower_other, NA_real_),
+    nr_scapes_other =
+      nr_scapes_pop_obs - replace_na(nr_scapes, 0),
+    nr_quads_scape_other =
+      nr_quads_scape_obs - as.integer(!is.na(nr_scapes)),
+    mean_scapes_other = if_else(
+      nr_quads_scape_other > 0,
+      nr_scapes_other / nr_quads_scape_other, NA_real_))
+```
+
+### Recruitment without local flowering
+```{r}
+df_recruit_quad %>%
+  mutate(nr_recruit = observed_seedling + presumed_2yr) %>%
+  filter(nr_recruit > 0) %>%
+  count(local_flowering = nr_flowering > 0)
+```
+
+### Reproductive data through time
+```{r}
+df_repro_quad %>%
+  group_by(year) %>%
+  summarise(
+    nr_flowering = sum(nr_flowering),
+    nr_scapes = sum(nr_scapes, na.rm = TRUE),
+    nr_invol_obs = sum(nr_invol_obs),
+    .groups = "drop")
+```
+
+### Recruitment and flowering at population level
+```{r}
+df_recruit_pop <- df_recruit_quad %>%
+  group_by(site, pop, year) %>%
+  summarise(
+    observed_seedling = sum(observed_seedling),
+    presumed_2yr = sum(presumed_2yr),
+    nr_flowering = sum(nr_flowering),
+    nr_scapes = sum(nr_scapes, na.rm = TRUE),
+    .groups = "drop") %>%
+  mutate(nr_recruit = observed_seedling + presumed_2yr)
+
+df_recruit_pop %>%
+  filter(nr_recruit > 0, nr_flowering == 0)
+```
+
+### Recruitment correction
+Because small seedlings can be missed during annual censuses, Satterthwaite et
+al. (2002) considered alternative fertility estimates based on presumed
+two-year-old plants. We retain analogous pessimistic and optimistic recruitment
+measures. The pessimistic estimate counts each presumed two-year-old as one
+recruit, whereas the optimistic estimate adjusts this component by estimated
+first-year seedling survival.
+
+Observed seedling survival in the present data was 0.728, based on 103
+transitions for which survival could be resolved. Among the 1,187 quadrat-years
+with complete recruitment follow-up, mean reconstructed recruitment was 0.411
+recruits per quadrat-year under the pessimistic estimate and 0.531 under the
+survival-corrected optimistic estimate. Maximum values were 22 and 30.2,
+respectively.
+```{r}
+seedling_survival <- df_transition %>%
+  filter(stage_clean == 1, !is.na(survives)) %>%
+  summarise(seedling_survival = mean(survives)) %>%
+  pull(seedling_survival)
+
+df_recruit_quad <- df_recruit_quad %>%
+  mutate(
+    recruits_pess = if_else(
+      recruitment_complete,
+      as.numeric(observed_seedling + presumed_2yr), NA_real_),
+    recruits_opt = if_else(
+      recruitment_complete,
+      observed_seedling + presumed_2yr / seedling_survival,
+      NA_real_))
+
+df_repro_quad %>%
+  summarise(
+    n_quad_years = n(),
+    n_zero_active = sum(nr_active == 0),
+    n_flowering_unknown = sum(is.na(nr_flowering)),
+    n_scapes_unknown = sum(is.na(nr_scapes)))
+
+df_recruit_quad %>%
+  summarise(
+    n_complete = sum(recruitment_complete),
+    mean_pess = mean(recruits_pess, na.rm = TRUE),
+    mean_opt = mean(recruits_opt, na.rm = TRUE),
+    max_pess = max(recruits_pess, na.rm = TRUE),
+    max_opt = max(recruits_opt, na.rm = TRUE))
+```
+
+## Fire-event structure
+The dataset contains observations from nine prescribed-fire events between 1998
+and 2013. Fire exposure varies substantially within events: some fires affected
+all recorded locations in a quadrat, whereas others were spatially patchy.
+Consequently, fire is retained both as a binary quadrat-level exposure and as
+the proportion of scored locations burned within each quadrat.
+```{r}
+df_fire <- df_burn %>%
+  mutate(
+    fire_year = year,
+    fire_month = month,
+    fire_event = date,
+    burned = case_when(
+      burn == 0 ~ 0,
+      burn %in% c(1, 2, 4) ~ 1,
+      TRUE ~ NA_real_),
+    fire_severity = case_when(
+      burn == 0 ~ "unburned",
+      burn == 1 ~ "scorched",
+      burn == 2 ~ "consumed",
+      burn == 4 ~ "burned_unspecified",
+      TRUE ~ NA_character_),
+    transition_year = case_when(
+      fire_event == "1998-05" ~ 1997,
+      fire_event == "1998-07" ~ 1998,
+      fire_event == "2001-08" ~ 2001,
+      fire_event == "2002-10" ~ 2002,
+      fire_event == "2005-04" ~ 2004,
+      fire_event == "2007-12" ~ 2007,
+      TRUE ~ NA_real_),
+    timing_known = !is.na(transition_year))
+
+df_fire %>%
+  count(fire_event, fire_severity)
+
+df_fire %>%
+  group_by(fire_event, site, pop, qu) %>%
+  summarise(
+    nr_scored = n(),
+    nr_burned = sum(burned == 1, na.rm = TRUE),
+    prop_burned = mean(burned, na.rm = TRUE),
+    .groups = "drop") %>%
+  group_by(fire_event) %>%
+  summarise(
+    nr_quads = n(),
+    min_prop = min(prop_burned),
+    mean_prop = mean(prop_burned),
+    max_prop = max(prop_burned),
+    .groups = "drop")
+```
+
+### Fire records relative to demographic observations
+Fire records cannot always be interpreted as direct observations of the
+demographic response of a living individual. In several events, fire records
+exist for plant locations before the corresponding individual first appears in
+the demographic dataset. The fire records are therefore interpreted primarily
+as spatial information on exposure at marked locations rather than requiring
+the associated plant to have been observed alive at the time of the fire.
+```{r}
+df_first_demog <- df_demog %>%
+  group_by(id) %>%
+  summarise(
+    first_demog_date = min(date),
+    .groups = "drop")
+
+df_fire_history_check <- df_fire %>%
+  left_join(df_first_demog, by = "id") %>%
+  mutate(
+    fire_time = as.Date(paste0(fire_event, "-01")),
+    first_demog_time = as.Date(paste0(first_demog_date, "-01")),
+    first_observed_after_fire = first_demog_time > fire_time)
+
+df_fire_history_check %>%
+  count(fire_event, first_observed_after_fire)
+
+df_fire_history_check %>%
+  filter(fire_event == "2001-08") %>%
+  count(first_demog_date)
+```
+
+### Quadrat-level fire exposure
+Fire exposure was aggregated to the quadrat level using both the occurrence of
+any burned records and the proportion of scored records that were burned. This
+preserves information on partial burns rather than assigning an entire
+population or quadrat to a burn category solely because a fire occurred nearby.
+```{r}
+df_fire_quad <- df_fire %>%
+  group_by(fire_event, site, pop, qu) %>%
+  summarise(
+    transition_year = first(transition_year),
+    timing_known = first(timing_known),
+    nr_scored = n(),
+    nr_burned = sum(burned == 1, na.rm = TRUE),
+    nr_unburned = sum(burned == 0, na.rm = TRUE),
+    prop_burned = mean(burned, na.rm = TRUE),
+    any_burned = as.numeric(any(burned == 1, na.rm = TRUE)),
+    .groups = "drop")
+```
+
+### Fire-event spatial footprint
+The extent of burning differed strongly among events. Some events, including
+May 1998 and April 2005, burned all scored locations within affected quadrats,
+whereas others were highly heterogeneous. This variation supports retaining
+quadrat-level fire exposure rather than using only an event- or
+population-level indicator.
+```{r}
+df_fire_quad %>%
+  distinct(fire_event, site, pop, timing_known, transition_year) %>%
+  arrange(fire_event, site, pop)
+```
+
+### Quadrat coverage of known-timing fires
+Fire assessment coverage was complete for the known-timing Archbold events.
+At Carter Creek, however, only 22 of 44 monitored quadrats were scored following
+the 2001 fire and 27 of 44 following the 2007 fire. Unscored quadrats in these
+events are therefore retained as unknown fire exposure rather than being
+classified as unburned.
+```{r}
+df_fire_pop <- df_fire_quad %>%
+  distinct(
+    fire_event, site, pop, transition_year, timing_known)
+
+df_fire_quad_coverage <- df_fire_pop %>%
+  filter(timing_known) %>%
+  inner_join(
+    df_demog_june %>%
+      distinct(site, pop, qu, year),
+    by = c(
+      "site", "pop",
+      "transition_year" = "year")) %>%
+  left_join(
+    df_fire_quad %>%
+      select(
+        fire_event, site, pop, qu,
+        prop_burned, any_burned),
+    by = c("fire_event", "site", "pop", "qu")) %>%
+  mutate(fire_scored = !is.na(prop_burned))
+
+df_fire_quad_coverage %>%
+  group_by(fire_event, site, pop) %>%
+  summarise(
+    nr_quads_monitored = n(),
+    nr_quads_scored = sum(fire_scored),
+    prop_quads_scored = mean(fire_scored),
+    .groups = "drop")
+
+df_fire_quad_coverage %>%
+  filter(!fire_scored) %>%
+  count(fire_event, site, pop)
+```
+
+### Known fire events
+For six fire events, the timing relative to the annual June census can be
+assigned sufficiently clearly to an annual demographic transition. These
+events are linked to the transition beginning in the census year immediately
+preceding the fire when appropriate.
+```{r}
+df_fire_pop_year <- df_fire_quad %>%
+  filter(timing_known) %>%
+  distinct(fire_event, site, pop, transition_year)
+```
+
+### Ambiguous fire timing
+The timing of three later fires cannot be resolved confidently relative to the
+annual census because the available census information does not provide the
+exact within-month ordering required to determine whether the fire preceded or
+followed that year's demographic observation. Rather than imposing an
+unsupported ordering, both potentially affected annual transitions are flagged
+as timing-ambiguous and their fire exposure is set to missing.
+```{r}
+# For these fires, the annual census could have occurred either before or after
+# the fire. Both possible annual transitions are therefore treated as unknown.
+
+df_fire_ambiguous <- df_fire_quad %>%
+  filter(!timing_known) %>%
+  distinct(fire_event, site, pop) %>%
+  mutate(fire_year = as.numeric(str_sub(fire_event, 1, 4))) %>%
+  {
+    bind_rows(
+      transmute(
+        ., fire_event, site, pop,
+        candidate_year = fire_year - 1),
+      transmute(
+        ., fire_event, site, pop,
+        candidate_year = fire_year))
+  }
+```
+
+### Annual quadrat fire exposure
+```{r}
+df_fire_transition_quad <- df_demog_june %>%
+  distinct(site, pop, qu, year) %>%
+  left_join(
+    df_fire_pop_year,
+    by = c("site", "pop", "year" = "transition_year")) %>%
+  left_join(
+    df_fire_quad %>%
+      filter(timing_known) %>%
+      select(
+        fire_event, site, pop, qu,
+        nr_scored, nr_burned, nr_unburned,
+        prop_burned, any_burned),
+    by = c("fire_event", "site", "pop", "qu")) %>%
+  left_join(
+    df_fire_ambiguous %>%
+      rename(ambiguous_event = fire_event),
+    by = c(
+      "site", "pop",
+      "year" = "candidate_year")) %>%
+  mutate(
+    timing_ambiguous = !is.na(ambiguous_event),
+    fire_event_pop = !is.na(fire_event),
+    
+    fire_prop_quad = case_when(
+      timing_ambiguous ~ NA_real_,
+      !fire_event_pop ~ 0,
+      !is.na(prop_burned) ~ prop_burned,
+      TRUE ~ NA_real_),
+    
+    dist_transition = case_when(
+      timing_ambiguous ~ NA_real_,
+      !fire_event_pop ~ 0,
+      !is.na(any_burned) ~ any_burned,
+      TRUE ~ NA_real_))
+```
+
+### Previous annual fire exposure
+In addition to current-transition fire exposure, the working data retain
+whether the quadrat experienced fire during the preceding annual transition.
+This permits demographic responses during the fire interval and responses in
+the subsequent year to be estimated separately.
+```{r}
+df_fire_previous <- df_fire_transition_quad %>%
+  transmute(
+    site, pop, qu,
+    year = year + 1,
+    disturbance_prev = dist_transition,
+    fire_prop_prev = fire_prop_quad)
+
+df_transition <- df_transition %>%
+  left_join(
+    df_fire_transition_quad %>%
+      select(
+        site, pop, qu, year,
+        fire_event, ambiguous_event, timing_ambiguous,
+        dist_transition, fire_prop_quad),
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_fire_previous,
+    by = c("site", "pop", "qu", "year"))
+```
+
+### Individual fire exposure
+Individual-level fire records are retained as supplementary exposure
+information. Their coverage is substantially less complete than the
+quadrat-level data, particularly for several fire events. Quadrat-level fire
+exposure therefore provides the principal consistently available fire
+covariate, while individual burn status can be evaluated where it is observed.
+```{r}
+df_fire_individual <- df_fire %>%
+  filter(timing_known) %>%
+  select(
+    fire_event, id,
+    burned_ind = burned,
+    fire_severity_ind = fire_severity)
+
+df_transition <- df_transition %>%
+  left_join(
+    df_fire_individual,
+    by = c("fire_event", "id")) %>%
+  mutate(
+    burned_ind = case_when(
+      timing_ambiguous ~ NA_real_,
+      is.na(fire_event) ~ 0,
+      !is.na(burned_ind) ~ burned_ind,
+      TRUE ~ NA_real_))
+```
+
+### Previous individual fire exposure
+```{r}
+df_fire_ind_previous <- df_transition %>%
+  transmute(
+    id,
+    year = year + 1,
+    burned_ind_prev = burned_ind)
+
+df_transition <- df_transition %>%
+  left_join(
+    df_fire_ind_previous,
+    by = c("id", "year"))
+
+df_fire_transition_quad %>%
+  count(timing_ambiguous, dist_transition)
+
+df_transition %>%
+  filter(!is.na(fire_event)) %>%
+  count(fire_event, burned_ind)
+
+df_fire_transition_quad %>%
+  filter(!timing_ambiguous, fire_event_pop) %>%
+  count(fire_event, is.na(dist_transition))
+
+```
+
+### Check that fire joins did not duplicate demographic records
+Joining the reconstructed fire histories to the demographic histories did not
+duplicate any individual-year records. The final demographic transition table
+contains 33,369 rows and the same number of unique individual-by-year
+combinations.
+```{r}
+df_transition %>%
+  count(id, year) %>%
+  filter(n > 1)
+
+nrow(df_transition)
+
+df_transition %>%
+  distinct(id, year) %>%
+  nrow()
+```
+
+## Working data
+The final working dataset is designed to contain all information required to
+construct the subsequent IPM while preserving the observational scale at which
+each demographic process was measured. Individual demographic transitions and
+quadrat-level recruitment observations are therefore stored as separate row
+types within a single data object.
+
+### Recruitment working rows
+Recruitment rows represent one monitored quadrat in one fecundity year. They
+contain reconstructed recruitment, local and surrounding reproductive
+abundance, follow-up completeness, and the corresponding fire history. They do
+not represent individual plants.
+```{r}
+df_recruit <- df_recruit_quad %>%
+  left_join(
+    df_fire_transition_quad %>%
+      select(
+        site, pop, qu, year, fire_event, ambiguous_event,
+        timing_ambiguous, dist_transition, fire_prop_quad),
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_fire_previous,
+    by = c("site", "pop", "qu", "year")) %>%
+  transmute(
+    row_type = "recruitment",
+    site, pop, qu, year,
+    monitored_t1, monitored_t2,
+    recruitment_complete,
+    observed_seedling, presumed_2yr, nr_recruit,
+    recruits_pess, recruits_opt,
+    nr_active, nr_flowering, nr_scapes, nr_invol,
+    nr_flowering_other, mean_flowering_other,
+    nr_scapes_other, mean_scapes_other,
+    nr_quads, nr_active_pop,
+    nr_flowering_pop, mean_flowering_pop,
+    nr_scapes_pop, mean_scapes_pop,
+    dist_transition, disturbance_prev,
+    fire_prop_quad, fire_prop_prev,
+    timing_ambiguous, fire_event, ambiguous_event)
+```
+
+### Individual working rows
+Individual rows represent one plant in one annual census year and contain the
+variables required for survival, continuous growth, flowering, dormancy,
+reactivation, and fire-response models.
+```{r}
+df_ind <- df_transition %>%
+  transmute(
+    row_type = "individual",
+    site, pop, qu, plant, id, year,
+    state = state_clean,
+    state_t1,
+    stage = stage_clean,
+    stage_t1,
+    survives,
+    enter_dormancy,
+    reactivate,
+    size_t0,
+    size_t1,
+    logsize_t0,
+    logsize_t1,
+    logsize_t0_2,
+    logsize_t0_3,
+    flower,
+    fl_nr,
+    invol,
+    herb,
+    dist_transition,
+    disturbance_prev,
+    fire_prop_quad,
+    fire_prop_prev,
+    burned_ind,
+    burned_ind_prev,
+    fire_severity_ind,
+    timing_ambiguous,
+    fire_event,
+    ambiguous_event)
+```
+
+### Combine working data
+The two observational scales are combined by stacking, rather than joining,
+the individual and recruitment records. This is important because joining
+quadrat-level recruitment onto individual plants would repeat the same
+recruitment response once for every plant in the quadrat and create
+pseudoreplication. The `row_type` variable therefore identifies whether a row
+contains an individual demographic observation or a quadrat-level recruitment
+observation.
+```{r}
+# The final working data contain both individual demographic observations and
+# quadrat-level recruitment observations. Recruitment is kept as separate rows
+# rather than repeated for every individual within a quadrat.
+
+df <- bind_rows(
+  df_ind,
+  df_recruit) %>%
+  mutate(
+    row_type = factor(row_type),
+    year = as.numeric(year),
+    site = factor(site),
+    pop = factor(pop),
+    state = factor(state),
+    state_t1 = factor(state_t1),
+    stage = factor(stage),
+    stage_t1 = factor(stage_t1))
+```
+
+### Final working-data checks
+Final integrity checks confirm that individual rows remain unique by individual
+and year and that recruitment rows remain unique by site, population, quadrat,
+and year. Continuous growth is restricted to active-to-active transitions,
+dormancy entry occurs only from active plants, and reactivation occurs only
+from dormant plants. Fire exposure for transitions with unresolved fire timing
+also remains explicitly missing.
+
+The resulting working data can therefore be used as the single input dataset
+for the subsequent IPM analyses while retaining the distinct observational
+structure of the individual and recruitment vital rates.
+```{r}
+df %>%
+  count(row_type)
+
+stopifnot(
+  df %>%
+    filter(row_type == "individual") %>%
+    nrow() ==
+    df %>%
+    filter(row_type == "individual") %>%
+    distinct(id, year) %>%
+    nrow(),
+  
+  df %>%
+    filter(row_type == "recruitment") %>%
+    nrow() ==
+    df %>%
+    filter(row_type == "recruitment") %>%
+    distinct(site, pop, qu, year) %>%
+    nrow())
+
+# Check individual vital-rate structure
+df %>%
+  filter(row_type == "individual") %>%
+  count(state, survives)
+
+df %>%
+  filter(
+    row_type == "individual",
+    !is.na(size_t1)) %>%
+  count(state, state_t1)
+
+df %>%
+  filter(
+    row_type == "individual",
+    !is.na(enter_dormancy)) %>%
+  count(state, state_t1, enter_dormancy)
+
+df %>%
+  filter(
+    row_type == "individual",
+    !is.na(reactivate)) %>%
+  count(state, state_t1, reactivate)
+
+# Check recruitment structure
+df %>%
+  filter(row_type == "recruitment") %>%
+  summarise(
+    n = n(),
+    n_complete = sum(recruitment_complete),
+    n_pess = sum(!is.na(recruits_pess)),
+    n_opt = sum(!is.na(recruits_opt)))
+
+# Check ambiguous fire transitions
+df %>%
+  filter(timing_ambiguous) %>%
+  count(row_type, dist_transition, fire_prop_quad)
+```
+
+### Save data
+```{r}
+# write.csv(
+#   df, row.names = FALSE,
+#   file.path(
+#     dir_data,
+#     paste0("ab_", v_sp_abb, "_df_workdata_260820.csv")))
+```

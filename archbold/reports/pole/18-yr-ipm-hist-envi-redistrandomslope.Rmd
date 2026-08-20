@@ -1,122 +1,9 @@
-# IPM year-specific, environmental and historical, with fire 
-# Archbold - Polygala lewtonii
-
-# Author: Niklas Neisse (neisse.n@protonmail.com)
-# Co    : Aspen Workman, Aldo Compagnoni*
-# Email : aldo.compagnoni@idiv.de
-# Web   : https://aldocompagnoni.weebly.com/
-# Date  : 2026.08.14
-
-# Study organism: Polygala lewtonii
-# Citing publication: https://doi.org/10.1071/BT11271
-# Time period: 2001-2024, through 2025
-
-
-################################################################################
-################################################################################
-
-# ATTENTION: This runs over multiple hours
-
-################################################################################
-################################################################################
-
-
-# Setting the stage ------------------------------------------------------------
-# rm(list = ls())
-set.seed(100)
-options(stringsAsFactors = F)
-
-
-# Packages --------------------------------------------------------------------
-source('helper_functions/load_packages.R')
-load_packages(
-  MASS,
-  tidyverse,
-  patchwork,
-  skimr,
-  ipmr,
-  binom,
-  bbmle,
-  janitor,
-  lme4,
-  GGally)
-
-
-# Specification ----------------------------------------------------------------
-v_head <- c('archbold')
-v_species <- c('Polygala lewtonii')
-custom_delimiter <- c()
-v_years_re <- c()
-
-v_sp_abb <- tolower(
-  gsub(' ', '', paste(
-    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
-
-v_script_prefix <- str_c(v_head)
-v_ggp_suffix <- paste(tools::toTitleCase(v_head), '-', v_species)
-
-# Keep the manual model choices from the mean script unless changed here.
-v_mod_set_su   <- c()
-v_mod_set_gr   <- c()
-v_mod_set_fl   <- c()
-v_mod_set_fl_n <- c()
-v_mod_set_re   <- c()
-
-
-# Directory --------------------------------------------------------------------
-dir_pub <- file.path(paste0(v_head))
-dir_R <- file.path(dir_pub, 'R', v_sp_abb)
-dir_data <- file.path(dir_pub, 'data', v_sp_abb)
-dir_result <- file.path(dir_pub, 'results', v_sp_abb)
-
-if (!dir.exists(paste0(dir_pub, '/R'))) {
-  dir.create(paste0(dir_pub, '/R'))}
-if (!dir.exists(paste0(dir_pub, '/data'))) {
-  dir.create(paste0(dir_pub, '/data'))}
-if (!dir.exists(paste0(dir_pub, '/results'))) {
-  dir.create(paste0(dir_pub, '/results'))}
-
-if (!dir.exists(dir_R)) {dir.create(dir_R)}
-if (!dir.exists(dir_data)) {dir.create(dir_data)}
-if (!dir.exists(dir_result)) {dir.create(dir_result)}
-
-
-# Functions --------------------------------------------------------------------
-source('helper_functions/plot_binned_prop.R')
-source('helper_functions/plot_binned_prop_year.R')
-source('helper_functions/line_color_pred_fun.R')
-source('helper_functions/predictor_fun.R')
-
-
-# Data -------------------------------------------------------------------------
-df_og <- read.csv(
-  file.path(dir_data, paste0('ab_', v_sp_abb, '_df_original_260519.csv')))
-
-df_site <- read.csv(
-  file.path(dir_data, paste0('ab_', v_sp_abb, '_df_sitehist_260519.csv')))
-
-df_meta <- data.frame(
-  variable = c(
-    'unique_ID', 'quad', 'patch', 'year', 'month', 'date', 'qsurv',
-    'stg', 'ht', 'mcd', 'st', 'flst'),
-  description = c(
-    'Unique identifier for each individual plant; Numeric',
-    'Name of circular quadrat with radius of 0.25m; Numeric',
-    'Name of an aggregate of several quads; Numeric',
-    'Year data were collected; Numeric',
-    'Month data were collected for March, June, September, and December. April was also used in the first sampling; Numeric',
-    'Combination of year and month; MMYY',
-    'Quarterly survival code. 0 or 1 refer to survival from the previous quarter. If a plant was dropped from monitoring, survival is NA and these plants should NOT be considered dead. 0 = dead; 1 = alive; 2 = missing; 3 = new adult; 5 = seedling',
-    'Stage class from March census. If plant was a seedling during the previous year it is considered a seedling here. 1 = putative seedling; 2 = vegetative; 3 = reproductive adult',
-    'Height from March census in cm; Numeric',
-    'Maximum crown diameter from March census in cm; Numeric',
-    'Total number of stems; Numeric',
-    'Number of flowering stems; Numeric'),
-  stringsAsFactors = FALSE)
+# Yearly historical envi projection model with random disturbance slope in recruit model {#yr-ipm-hist-envi-re_dist_slope}
 
 
 
-# Load workdata ---------------------------------------------------------------
+## Working dataset
+```{r}
 df <- read.csv(
   file.path(
     dir_data,
@@ -129,9 +16,12 @@ df <- read.csv(
   filter(
     !is.na(year),
     !(year %in% v_years_re))
+```
 
 
 
+
+```{r}
 # Controls ---------------------------------------------------------------------
 ctrl_glmer <- glmerControl(
   optimizer = 'bobyqa',
@@ -140,9 +30,12 @@ ctrl_glmer <- glmerControl(
 ctrl_lmer <- lmerControl(
   optimizer = 'bobyqa',
   optCtrl = list(maxfun = 2e5))
+```
 
-
-# Survival data ----------------------------------------------------------------
+## Vital rates
+### Survival
+#### Survival data
+```{r}
 df_su <- df %>%
   filter(
     !is.na(survives),
@@ -160,9 +53,10 @@ df_su <- df %>%
     volume_t0, volume_t1, logvol_t0, logvol_t1,
     logvol_t0_2, logvol_t0_3,
     disturbance, stage)
+```
 
-
-# Survival model ---------------------------------------------------------------
+#### Survival model
+```{r}
 mod_su_0 <- glmer(
   survives ~ disturbance + (1 | year),
   data = df_su, family = binomial, control = ctrl_glmer)
@@ -208,9 +102,10 @@ mod_su_ranef <- coef(mod_su_best)$year
 mod_su_best
 summary(mod_su_best)
 mods_su_dAIC
+```
 
-
-# Survival plots by year -------------------------------------------------------
+#### Survival plots by year
+```{r, fig.width=10, fig.height=12}
 make_su_year_plot <- function(year_i) {
   df_i <- df_su %>% filter(year == year_i)
   
@@ -271,9 +166,12 @@ fig_su_years <- wrap_plots(su_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_su_years
+```
 
 
-# Growth data ------------------------------------------------------------------
+### Growth
+#### Growth data
+```{r}
 df_gr <- df %>%
   filter(
     size_t0 != 0,
@@ -294,22 +192,10 @@ df_gr <- df %>%
     volume_t0, volume_t1, logvol_t0, logvol_t1,
     logvol_t0_2, logvol_t0_3,
     disturbance, stage)
+```
 
-fig_gr_raw <- ggplot(df_gr, aes(logvol_t0, logvol_t1)) +
-  geom_point(alpha = 0.5, pch = 16, size = 0.7) +
-  geom_abline(intercept = 0, slope = 1) +
-  theme_bw() +
-  labs(
-    title = 'Growth',
-    subtitle = v_ggp_suffix,
-    x = expression('log(volume)'[t0]),
-    y = expression('log(volume)'[t1])) +
-  theme(plot.subtitle = element_text(size = 8))
-
-fig_gr_raw
-
-
-# Growth model -----------------------------------------------------------------
+#### Growth model
+```{r}
 mod_gr_0 <- lmer(
   logvol_t1 ~ disturbance + (logvol_t0 | year),
   data = df_gr, REML = FALSE, control = ctrl_lmer)
@@ -357,9 +243,10 @@ mod_gr_ranef <- coef(mod_gr_best)$year
 mod_gr_best
 summary(mod_gr_best)
 mods_gr_dAIC
+```
 
-
-# Growth plots by year ---------------------------------------------------------
+#### Growth plots by year
+```{r, fig.width=10, fig.height=12}
 make_gr_year_plot <- function(year_i) {
   df_i <- df_gr %>% filter(year == year_i)
   x <- seq(min(df_i$logvol_t0, na.rm = TRUE),
@@ -419,18 +306,21 @@ fig_gr_years <- wrap_plots(gr_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_gr_years
+```
 
-
-# Growth variance --------------------------------------------------------------
+#### Growth variance
+```{r}
 mod_gr_x <- fitted(mod_gr_best)
 mod_gr_y <- resid(mod_gr_best)^2
 mod_gr_var <- nls(
   mod_gr_y ~ a * exp(b * mod_gr_x),
   start = list(a = 1, b = 0),
   control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE))
+```
 
-
-# Flower data ------------------------------------------------------------------
+### Flowering probability
+#### Flower data
+```{r}
 # Recruits should theoretically be excluded from flowering probability and flower-number models.
 # That exclusion is not supported by the data, because 35 recruits did flower, 
 # including several fairly large individuals and some stage-3 plants.
@@ -452,9 +342,10 @@ df_fl <- df %>%
     volume_t0, volume_t1, logvol_t0, logvol_t1,
     logvol_t0_2, logvol_t0_3,
     disturbance_prev, stage, recruits)
+```
 
-
-# Flower model -----------------------------------------------------------------
+#### Flower model
+```{r}
 mod_fl_00 <- glmer(
   flower ~ 1 + (1 | year),
   data = df_fl, family = binomial, control = ctrl_glmer)
@@ -503,9 +394,10 @@ mod_fl_ranef <- coef(mod_fl_best)$year
 mod_fl_best
 summary(mod_fl_best)
 mods_fl_dAIC
+```
 
-
-# Flowering plots by year ------------------------------------------------------
+#### Flowering plots by year
+```{r, fig.width=10, fig.height=12}
 make_fl_year_plot <- function(year_i) {
   df_i <- df_fl %>% filter(year == year_i)
   x <- seq(min(df_i$logvol_t0, na.rm = TRUE),
@@ -566,15 +458,18 @@ fig_fl_years <- wrap_plots(fl_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_fl_years
+```
 
-
-# Flower number conditional on flowering data ----------------------------------
+### Number of flowers conditional on flowering
+#### Flower number conditional on flowering data
+```{r}
 df_fl_cond <- df_fl %>%
   filter(flower == 1, !is.na(fl_nr), fl_nr > 0, fl_nr == round(fl_nr)) %>%
   mutate(year = factor(year))
+```
 
-
-# Flower number model ----------------------------------------------------------
+#### Flower number model
+```{r}
 mod_fl_n_0 <- glmer.nb(
   fl_nr ~ disturbance_prev + (1 | year),
   data = df_fl_cond, control = ctrl_glmer)
@@ -609,9 +504,10 @@ mod_fl_n_ranef <- coef(mod_fl_n_best)$year
 mod_fl_n_best
 summary(mod_fl_n_best)
 mods_fl_n_dAIC
+```
 
-
-# Flower number plots by year --------------------------------------------------
+#### Flower number plots by year
+```{r, fig.width=10, fig.height=12}
 make_fl_n_year_plot <- function(year_i) {
   df_i <- df_fl_cond %>% filter(year == year_i)
   x <- seq(min(df_i$logvol_t0, na.rm = TRUE),
@@ -671,9 +567,11 @@ fig_fl_n_years <- wrap_plots(fl_n_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_fl_n_years
+```
 
-
-# Flowering stems to recruits --------------------------------------------------
+### Number of flowers to recruits transition
+#### Flowering stems to recruits data
+```{r}
 # Total flowering stems in quadrat q during year t predict recruits in the
 # same quadrat during year t + 1. Current fire is retained at the quadrat level.
 df_quad_year_sampled <- df %>%
@@ -736,25 +634,10 @@ df_fs2r <- df %>%
     disturbance_t0 = factor(
       disturbance,
       levels = c(0, 1)))
+```
 
-# Keep the old mean-script recruitment plot as a quick check.
-fig_fs2r_raw <- ggplot(
-  df_fs2r,
-  aes(x = fs_t0, y = re_t1, color = disturbance_t0)) +
-  geom_jitter(height = 0.2, width = 0.5, alpha = 0.4) +
-  scale_color_manual(values = c('0' = 'black', '1' = 'red')) +
-  theme_bw() +
-  labs(
-    title = 'Recruits t1 by flowering stems t0',
-    subtitle = v_ggp_suffix,
-    x = 'Total flowering stems in quadrat in year t',
-    y = 'Number of recruits in quadrat in year t + 1',
-    color = 'Fire')
-
-fig_fs2r_raw
-
-
-# Flowering-stem reference by previous-year fire -------------------------------
+#### Flowering-stem reference by previous-year fire
+```{r}
 df_fs2r_previous_fire <- df_fs2r %>%
   left_join(
     df %>%
@@ -777,9 +660,10 @@ df_stem_reference <- df_fs2r_previous_fire %>%
     .groups = 'drop')
 
 df_stem_reference
+```
 
-
-# Flower 2 Recruit model -------------------------------------------------------
+#### Flower 2 Recruit model
+```{r}
 ctrl_re <- glmerControl(
   optimizer = 'bobyqa',
   optCtrl = list(maxfun = 2e5))
@@ -874,9 +758,11 @@ mod_re_best <- mods_re[[mod_re_index_bestfit]]
 mod_re_best
 summary(mod_re_best)
 mods_re_dAIC
+```
 
 
-# Recruitment plots by recruit year -------------------------------------------
+#### Recruitment plots by recruit year
+```{r, fig.width=10, fig.height=12}
 predict_re_safe <- function(model, newdata, re.form = NULL) {
   if (inherits(model, 'glmerMod')) {
     out <- predict(
@@ -993,18 +879,21 @@ fig_re_years <- wrap_plots(re_yrs) +
       plot.subtitle = element_text(size = 9)))
 
 fig_re_years
+```
 
-
-# Recruit size distribution ----------------------------------------------------
+### Recruit size distribution
+```{r}
 df_recr <- df %>%
   filter(recruits == 1, volume_t0 > 0, is.finite(logvol_t0))
 
 rc_sz <- data.frame(
   mean = mean(df_recr$logvol_t0, na.rm = TRUE),
   sd = sd(df_recr$logvol_t0, na.rm = TRUE))
+```
 
-
-# Parameter extraction helpers -------------------------------------------------
+## Parameter extraction
+### Parameter extraction helpers
+```{r}
 empty_coef_df <- function() {
   data.frame(coefficient = character(), value = numeric())
 }
@@ -1153,9 +1042,10 @@ extract_re_ranef_devs <- function(model, group_var, group_label) {
   
   bind_coef_rows(out)
 }
+```
 
-
-# Term maps --------------------------------------------------------------------
+### Term maps
+```{r}
 size_term_map <- list(
   b0 = c('(Intercept)'),
   b1 = c('logvol_t0'),
@@ -1252,9 +1142,10 @@ pars_re_year_t1 <- extract_re_ranef_devs(
 check_duplicate_coefficients(
   pars_re_year_t1, object_name = 'pars_re_year_t1')
 pars_all_re_year_t1 <- coef_df_to_list(pars_re_year_t1)
+```
 
-
-# Disturbance transition probabilities ----------------------------------------
+### Disturbance transition probabilities
+```{r}
 # Current disturbance refers to t -> t + 1 and previous disturbance to
 # t - 1 -> t.
 
@@ -1294,9 +1185,10 @@ df_disturbance_transition <- df_disturbance_regime %>%
   ungroup()
 
 df_disturbance_transition
+```
 
-
-# Site-specific disturbance transition probabilities --------------------------
+### Site-specific disturbance transition probabilities
+```{r}
 df_disturbance_regime_site <- df %>%
   filter(
     !is.na(site),
@@ -1332,7 +1224,7 @@ df_transition_site <- df_disturbance_transition_site %>%
       disturbance == 1 & disturbance_prev == 0 ~ 'p10',
       disturbance == 0 & disturbance_prev == 1 ~ 'p01',
       disturbance == 1 & disturbance_prev == 1 ~ 'p11')) %>%
-  select(site, transition, p_transition) %>%
+  dplyr::select(site, transition, p_transition) %>%
   pivot_wider(names_from = transition, values_from = p_transition)
 
 df_disturbance_transition_site
@@ -1370,9 +1262,10 @@ p_1_given_1 <- get_transition_probability(
 
 
 df_disturbance_transition
+```
 
-
-# IPM helper functions ---------------------------------------------------------
+## IPM helper functions
+```{r}
 inv_logit <- function(x) {
   plogis(x)
 }
@@ -1562,9 +1455,10 @@ fyx <- function(
     disturbance_prev = disturbance_prev)
   outer(Pvec, Rvec) * h
 }
+```
 
-
-# Single-state size-structured kernel ------------------------------------------
+## Single-state size-structured kernel
+```{r}
 kernel <- function(
     pars,
     disturbance = 0,
@@ -1625,9 +1519,10 @@ lambda_ipm <- function(
       disturbance = disturbance,
       disturbance_prev = disturbance_prev)$k_yx)$values[1])
 }
+```
 
-
-# Environmental-history kernel ------------------------------------------------
+## Environmental-history kernel
+```{r}
 kernel_env_hist <- function(
     pars,
     p00 = p_0_given_0,
@@ -1670,9 +1565,10 @@ kernel_env_hist <- function(
     K_01 = K_01,
     K_11 = K_11)
 }
+```
 
-
-# Environmental-history asymptotic lambda -------------------------------------
+#### Environmental-history asymptotic lambda
+```{r}
 lambda_env_hist <- function(
     pars,
     p00 = p_0_given_0,
@@ -1692,18 +1588,20 @@ lambda_env_hist <- function(
       K,
       only.values = TRUE)$values[1])
 }
+```
 
-
-# Mean IPMs --------------------------------------------------------------------
+## Mean IPMs
+```{r}
 lambda_ipm(pars_mean, disturbance = 0, disturbance_prev = 0)
 lambda_ipm(pars_mean, disturbance = 0, disturbance_prev = 1)
 lambda_ipm(pars_mean, disturbance = 1, disturbance_prev = 1)
 lambda_ipm(pars_mean, disturbance = 1, disturbance_prev = 0)
 
 lambda_env_hist(pars_mean)
+```
 
-
-# Year-specific IPMs -----------------------------------------------------------
+## Year-specific IPMs
+```{r}
 lambda_ipm_year <- function(
     year,
     disturbance = 0,
@@ -1721,9 +1619,10 @@ lambda_ipm_year <- function(
     disturbance = disturbance,
     disturbance_prev = disturbance_prev)
 }
+```
 
-
-# Year-specific environmental-history lambda -----------------------------------
+## Year-specific environmental-history lambda
+```{r}
 lambda_env_hist_year <- function(
     year,
     re_year_t1 = NULL) {
@@ -1768,9 +1667,10 @@ lambda_env_hist_year_site <- function(
     p01 = p_site$p01,
     p11 = p_site$p11)
 }
+```
 
-
-# Year-specific disturbance scenarios ------------------------------------------
+### Year-specific disturbance scenarios
+```{r}
 ipm_years <- sort(unique(as.integer(as.character(df_su$year))))
 
 lambda_year <- data.frame(
@@ -1826,15 +1726,17 @@ fig_lambda_year <- lambda_year %>%
     color = 'Disturbance')
 
 fig_lambda_year
+```
 
-
-# Observed and projected population growth ------------------------------------
+## Observed and projected population growth
+```{r}
 # Observed growth is calculated from the same quadrats represented in both
 # consecutive years. Each quadrat is projected with its own current- and
 # previous-year disturbance state.
+```
 
-
-# Quadrat-year disturbance lookup ---------------------------------------------
+### Quadrat-year disturbance lookup
+```{r}
 fire_lookup_quad <- df %>%
   group_by(
     site,
@@ -1848,9 +1750,10 @@ fire_lookup_quad <- df %>%
       disturbance_prev[!is.na(disturbance_prev)],
       default = NA_real_),
     .groups = 'drop')
+```
 
-
-# Quadrat-year abundance -------------------------------------------------------
+### Quadrat-year abundance
+```{r}
 # Counts include sized plants and recruits without a usable size measurement.
 df_counts_quad_year <- df %>%
   filter(
@@ -1870,9 +1773,10 @@ df_counts_quad_year <- df %>%
       na.rm = TRUE),
     n_ipm_state = n_sized + n_unsized_recruits,
     .groups = 'drop')
+```
 
-
-# Matched consecutive quadrat transitions -------------------------------------
+### Matched consecutive quadrat transitions
+```{r}
 df_obs_pgr_quad <- df_counts_quad_year %>%
   arrange(
     site,
@@ -1902,9 +1806,10 @@ df_obs_pgr_quad <- df_counts_quad_year %>%
     !is.na(disturbance_prev_num)) %>%
   mutate(
     obs_pgr = n_t1 / n_t0)
+```
 
-
-# Initial quadrat size distribution -------------------------------------------
+### Initial quadrat size distribution
+```{r}
 make_initial_n_quad <- function(
     year0,
     site_i,
@@ -1966,9 +1871,10 @@ make_initial_n_quad <- function(
   
   n_density
 }
+```
 
-
-# Project one quadrat-year -----------------------------------------------------
+### Project one quadrat-year
+```{r}
 project_one_quad_year <- function(
     yr,
     site_i,
@@ -2032,9 +1938,10 @@ project_one_quad_year <- function(
     proj_lambda = as.numeric(
       n_projected / n_initial))
 }
+```
 
-
-# Project all matched quadrat transitions -------------------------------------
+### Project all matched quadrat transitions
+```{r}
 df_proj_quad <- bind_rows(
   lapply(
     seq_len(nrow(df_obs_pgr_quad)),
@@ -2049,9 +1956,10 @@ df_proj_quad <- bind_rows(
         disturbance_prev_y =
           df_obs_pgr_quad$disturbance_prev_num[i])
     }))
+```
 
-
-# Quadrat-level observed and modeled growth -----------------------------------
+### Quadrat-level observed and modeled growth
+```{r}
 df_compare_quad <- df_obs_pgr_quad %>%
   left_join(
     df_proj_quad,
@@ -2066,9 +1974,10 @@ df_compare_quad <- df_obs_pgr_quad %>%
       state_asym_lambda - obs_pgr,
     error_projected_vs_obs =
       proj_lambda - obs_pgr)
+```
 
-
-# Disturbance-state kernel used for each quadrat-year --------------------------
+### Disturbance-state kernel used for each quadrat-year
+```{r}
 df_compare_quad <- df_compare_quad %>%
   mutate(
     kernel_state = case_when(
@@ -2100,9 +2009,10 @@ lambda_site_year <- df_compare_quad %>%
       lambda_env_hist_year_site))
 
 lambda_site_year
+```
 
-
-# Site-year comparison from matched quadrats ----------------------------------
+### Site-year comparison from matched quadrats
+```{r}
 df_compare_site <- df_compare_quad %>%
   group_by(
     site,
@@ -2150,9 +2060,10 @@ df_compare_site %>%
   print(
     n = 100,
     width = Inf)
+```
 
-
-# Whole-population annual comparison ------------------------------------------
+## Whole-population annual comparison
+```{r}
 # Annual totals contain only quadrats represented in both t and t + 1.
 df_compare <- df_compare_quad %>%
   group_by(year) %>%
@@ -2186,7 +2097,7 @@ df_compare <- df_compare_quad %>%
     .groups = 'drop') %>%
   left_join(
     lambda_year %>%
-      select(
+      dplyr::select(
         year,
         lambda_environmental_history),
     by = 'year') %>%
@@ -2204,7 +2115,7 @@ df_compare <- df_compare_quad %>%
 # Observed vs modeled plot
 
 df_plot <- df_compare %>%
-  select(year, obs_pgr, asym_lambda, proj_lambda, disturbance) %>%
+  dplyr::select(year, obs_pgr, asym_lambda, proj_lambda, disturbance) %>%
   pivot_longer(
     cols = c(asym_lambda, proj_lambda),
     names_to = 'lambda_type',
@@ -2231,9 +2142,10 @@ fig_mod_vs_obs <- ggplot(
   theme_classic()
 
 fig_mod_vs_obs
+```
 
-# Log-transformed observed vs modeled plot
-
+### Log-transformed observed vs modeled plot
+```{r}
 df_plot_log <- df_plot %>%
   filter(obs_pgr > 0, lambda > 0) %>%
   mutate(
@@ -2256,9 +2168,10 @@ fig_mod_vs_obs_log <- ggplot(
   theme_classic()
 
 fig_mod_vs_obs_log
+```
 
-
-# Summary statistics -----------------------------------------------------------
+## Summary statistics
+```{r}
 df_compare_summary <- df_compare %>%
   summarise(
     n_years = n(),
@@ -2314,9 +2227,10 @@ df_compare_summary <- df_compare %>%
 df_compare_summary
 
 df_compare %>% print(n = 100)
+```
 
-
-# Log-scale summary statistics -------------------------------------------------
+### Log-scale summary statistics
+```{r}
 df_compare_log_summary <- df_compare %>%
   filter(
     obs_pgr > 0,
@@ -2341,9 +2255,10 @@ df_compare_log_summary <- df_compare %>%
     values_to = 'value')
 
 df_compare_log_summary
+```
 
-
-# Site-level summary -----------------------------------------------------------
+### Site-level summary
+```{r}
 df_compare_site_summary <- df_compare_site %>%
   filter(
     !is.na(obs_pgr),
@@ -2392,9 +2307,10 @@ df_compare_site_summary %>%
   print(
     n = 100,
     width = Inf)
+```
 
-
-# Yearly lambda comparison diagnostic -----------------------------------------
+### Yearly lambda comparison diagnostic
+```{r}
 df_lambda_year_check <- lambda_year %>%
   mutate(
     min_state_lambda = pmin(
@@ -2410,7 +2326,7 @@ df_lambda_year_check <- lambda_year %>%
     env_hist_minus_undisturbed =
       lambda_environmental_history -
       lambda_undisturbed) %>%
-  select(
+  dplyr::select(
     year,
     lambda_undisturbed,
     lambda_current_fire,
@@ -2426,8 +2342,9 @@ df_lambda_year_check %>%
   print(
     n = 100,
     width = Inf)
+```
 
-
+```{r}
 # # Save key outputs -------------------------------------------------------------
 # # Uncomment if needed.
 # # saveRDS(pars_all_mean,
@@ -2438,3 +2355,4 @@ df_lambda_year_check %>%
 # #         file.path(dir_result, 'pole_year_fire_lambda_compare.rds'))
 # # saveRDS(df_compare_site,
 # #         file.path(dir_result, 'pole_year_fire_lambda_compare_site.rds'))
+```

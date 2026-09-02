@@ -381,6 +381,7 @@ mod_gr_bestfit <- mods_gr[[mod_gr_index_bestfit]]
 mod_gr_bestfit
 summary(mod_gr_bestfit)
 mods_gr_dAICc
+isSingular(mod_gr_bestfit)
 
 
 # Growth plots by year --------------------------------------------------------
@@ -929,6 +930,7 @@ mod_fl_n_bestfit <- mods_fl_n[[mod_fl_n_index_bestfit]]
 mod_fl_n_bestfit
 summary(mod_fl_n_bestfit)
 mods_fl_n_dAICc
+isSingular(mod_fl_n_bestfit)
 
 
 # Scape-number plots by year --------------------------------------------------
@@ -1100,6 +1102,20 @@ mod_re_bestfit <- mods_re[[mod_re_index_bestfit]]
 mod_re_bestfit
 summary(mod_re_bestfit)
 mods_re_dAICc
+
+# Recruitment year-effect diagnostic
+re_year_sd <- if ('year' %in% names(VarCorr(mod_re_bestfit))) {
+  attr(VarCorr(mod_re_bestfit)$year, 'stddev')[1]
+} else {
+  0
+}
+
+re_year_diagnostic <- tibble(
+  model = deparse(formula(mod_re_bestfit)),
+  singular = isSingular(mod_re_bestfit),
+  year_intercept_sd = as.numeric(re_year_sd))
+
+re_year_diagnostic
 
 
 # Recruitment plots by year --------------------------------------------------
@@ -1492,38 +1508,35 @@ recr_sd <- sd(
 
 
 # Recruitment conversion helpers ---------------------------------------------
-# The ERLO data/model describe recruits from total scapes at the site-pop-year
-# level. The IPM uses the same observed scape distribution to obtain a recruits
-# per scape conversion, as in the mean ERLO IPM. For a yearly IPM, the year
-# random effect is included and that year's observed scape distribution is used.
+# The ERLO recruitment model is fitted at the site-pop-year level, while the
+# IPM needs recruits per flowering scape. As in the mean ERLO IPM, conversion
+# is calculated over one common observed scape distribution. For yearly IPMs,
+# only the fitted year effect is changed; the reference scape distribution is
+# held constant. This prevents observed year-specific scape abundance from
+# being introduced a second time through the recruitment conversion.
 get_recr_per_scape <- function(disturbance_i, year_i = NULL) {
+  df_i <- df_sc2re_mod %>%
+    mutate(disturbance = disturbance_i)
+
   if (is.null(year_i)) {
-    df_i <- df_sc2re_mod %>%
-      mutate(disturbance = disturbance_i)
-
-    pred_i <- predict(
-      mod_re_bestfit,
-      newdata = df_i,
-      type = 'response',
-      re.form = NA,
-      allow.new.levels = TRUE)
+    re_form_i <- NA
+  } else if (as.character(year_i) %in% levels(df_sc2re_mod$year)) {
+    df_i <- df_i %>%
+      mutate(
+        year = factor(
+          as.character(year_i),
+          levels = levels(df_sc2re_mod$year)))
+    re_form_i <- NULL
   } else {
-    df_i <- df_sc2re_mod %>%
-      filter(as.character(year) == as.character(year_i)) %>%
-      mutate(disturbance = disturbance_i)
-
-    if (nrow(df_i) == 0 ||
-        sum(df_i$total_scapes, na.rm = TRUE) <= 0) {
-      return(get_recr_per_scape(disturbance_i))
-    }
-
-    pred_i <- predict(
-      mod_re_bestfit,
-      newdata = df_i,
-      type = 'response',
-      re.form = NULL,
-      allow.new.levels = TRUE)
+    re_form_i <- NA
   }
+
+  pred_i <- predict(
+    mod_re_bestfit,
+    newdata = df_i,
+    type = 'response',
+    re.form = re_form_i,
+    allow.new.levels = TRUE)
 
   total_scapes_i <- sum(df_i$total_scapes, na.rm = TRUE)
 

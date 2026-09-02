@@ -25,8 +25,9 @@ options(stringsAsFactors = F)
 
 # Packages ---------------------------------------------------------------------
 # load packages
-source('helper_functions/load_packages.R')
-load_packages(MASS, patchwork, skimr, ipmr, binom, bbmle, janitor, lme4,
+library(MASS, exclude = "select")
+source("helper_functions/load_packages.R")
+load_packages(patchwork, skimr, ipmr, binom, bbmle, janitor, lme4,
               GGally, tidyverse)
 
 
@@ -251,7 +252,7 @@ df_dormancy_check
 # Individuals can therefore contribute more than one dormancy period.
 
 df_dormancy_spell <- df_annual %>%
-  group_by(id) %>%
+  group_by(id) %>%df
   arrange(year, .by_group = TRUE) %>%
   mutate(
     new_spell = row_number() == 1 |
@@ -326,6 +327,10 @@ df_transition <- df_annual %>%
     size_t0 = if_else(state_clean == "active", dia, NA_real_),
     size_t1 = if_else(
       annual_transition & state_clean == "active" &
+        lead(state_clean) == "active",
+      lead(dia), NA_real_),
+    size_reactivate_t1 = if_else(
+      annual_transition & state_clean == "dormant" &
         lead(state_clean) == "active",
       lead(dia), NA_real_)) %>%
   ungroup()
@@ -659,6 +664,33 @@ df_recruit_count <- df_recruit_entry %>%
     values_fill = 0)
 
 
+# Simple recruitment counts ---------------------------------------------------
+# For the simple mean IPM, all newly observed adults are assumed to have been
+# missed recruits from the preceding annual census.
+
+df_recruit_count_simple <- df_recruit_first %>%
+  filter(!baseline) %>%
+  mutate(
+    fecundity_year_simple = case_when(
+      recruit_type == "seedling" ~ recruit_year - 1,
+      recruit_type == "new_adult" ~ recruit_year - 2)) %>%
+  semi_join(
+    df_quad_monitor,
+    by = c(
+      "site", "pop", "qu",
+      "fecundity_year_simple" = "year")) %>%
+  count(
+    site, pop, qu, fecundity_year_simple, recruit_type,
+    name = "nr_recruits") %>%
+  pivot_wider(
+    names_from = recruit_type,
+    values_from = nr_recruits,
+    values_fill = 0) %>%
+  rename(
+    observed_seedling_simple = seedling,
+    new_adult_simple = new_adult)
+
+
 # Recruitment working structure -----------------------------------------------
 df_recruit_quad <- df_recruit_followup %>%
   left_join(
@@ -666,6 +698,11 @@ df_recruit_quad <- df_recruit_followup %>%
     by = c(
       "site", "pop", "qu",
       "year" = "fecundity_year")) %>%
+  left_join(
+    df_recruit_count_simple,
+    by = c(
+      "site", "pop", "qu",
+      "year" = "fecundity_year_simple")) %>%
   mutate(
     observed_seedling = case_when(
       monitored_t1 ~ replace_na(observed_seedling, 0L),
@@ -673,9 +710,19 @@ df_recruit_quad <- df_recruit_followup %>%
     presumed_2yr = case_when(
       monitored_t2 ~ replace_na(presumed_2yr, 0L),
       TRUE ~ NA_integer_),
+    observed_seedling_simple = case_when(
+      monitored_t1 ~ replace_na(observed_seedling_simple, 0L),
+      TRUE ~ NA_integer_),
+    new_adult_simple = case_when(
+      monitored_t2 ~ replace_na(new_adult_simple, 0L),
+      TRUE ~ NA_integer_),
     recruitment_complete = monitored_t1 & monitored_t2,
     nr_recruit = case_when(
       recruitment_complete ~ observed_seedling + presumed_2yr,
+      TRUE ~ NA_integer_),
+    recruits_simple = case_when(
+      recruitment_complete ~
+        observed_seedling_simple + new_adult_simple,
       TRUE ~ NA_integer_))
 
 df_recruit_quad %>%
@@ -1132,6 +1179,7 @@ df_recruit <- df_recruit_quad %>%
     site, pop, qu, year,
     monitored_t1, monitored_t2,
     recruitment_complete,
+    observed_seedling_simple, new_adult_simple, recruits_simple,
     observed_seedling, presumed_2yr, nr_recruit,
     recruits_pess, recruits_opt,
     nr_active, nr_flowering, nr_scapes, nr_invol,
@@ -1145,8 +1193,20 @@ df_recruit <- df_recruit_quad %>%
     timing_ambiguous, fire_event, ambiguous_event)
 
 
+# Individual recruitment identity ---------------------------------------------
+df_recruit_ind <- df_recruit_first %>%
+  filter(!baseline) %>%
+  transmute(
+    id,
+    year = recruit_year,
+    recruit_type)
+
+
 # Individual working rows -----------------------------------------------------
 df_ind <- df_transition %>%
+  left_join(
+    df_recruit_ind,
+    by = c("id", "year")) %>%
   transmute(
     row_type = "individual",
     site, pop, qu, plant, id, year,
@@ -1156,6 +1216,8 @@ df_ind <- df_transition %>%
     stage_t1,
     survives,
     enter_dormancy,
+    recruit_type,
+    size_reactivate_t1,
     reactivate,
     size_t0,
     size_t1,

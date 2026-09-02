@@ -73,9 +73,7 @@ df_erlo_space_site <- df_erlo %>%
     quadrats = n_distinct(pop, qu), .groups = "drop")
 
 df_erlo_sampling <- df_erlo %>%
-  transmute(
-    year = as.integer(str_sub(date, 1, 4)),
-    site, pop, qu) %>%
+  transmute(year = as.integer(year), site, pop, qu) %>%
   filter(!is.na(year), !is.na(site), !is.na(pop), !is.na(qu)) %>%
   distinct() %>%
   arrange(site, pop, qu, year) %>%

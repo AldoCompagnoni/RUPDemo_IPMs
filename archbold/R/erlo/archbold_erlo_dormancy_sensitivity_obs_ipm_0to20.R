@@ -1,0 +1,973 @@
+# Dormancy sensitivity - observed population growth and mean IPM
+# Archbold - Eriogonum longifolium
+#
+# Sensitivity analysis for 0-4 years of unresolved terminal dormancy.
+#
+# The dormancy assumption is applied only where it matters:
+#   1. Observed population growth: terminal annual transitions are removed when
+#      there is not enough follow-up to distinguish death from dormancy.
+#   2. Mean IPM: terminal deaths are censored from the survival model under the
+#      same rule, and the mean IPM is rebuilt for every cutoff.
+#
+# Growth, flowering, scape production, recruitment, dormancy entry and known
+# reactivation observations are not discarded simply because they occur near
+# the end of the study. Their observed values do not depend on deciding whether
+# a disappearing individual died or remained dormant.
+#
+# Cutoff interpretation:
+#   0 = no unresolved dormancy allowance
+#   1 = allow 1 terminal year of unresolved dormancy
+#   2 = allow 2 terminal years of unresolved dormancy
+#   3 = current/default assumption
+#   4 = allow 4 terminal years of unresolved dormancy
+
+
+# Setting the stage ------------------------------------------------------------
+set.seed(100)
+options(stringsAsFactors = FALSE)
+
+
+# Packages ---------------------------------------------------------------------
+source('helper_functions/load_packages.R')
+load_packages(MASS, tidyverse, patchwork, bbmle)
+
+
+# Specification ----------------------------------------------------------------
+v_head <- c('archbold')
+v_species <- c('Eriogonum longifolium')
+
+v_sp_abb <- tolower(
+  gsub(' ', '', paste(
+    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
+
+v_ggp_suffix <- paste(
+  tools::toTitleCase(v_head), '-', v_species)
+
+# Same model-selection settings as the mean IPM.
+v_mod_set_su <- c(2)
+v_mod_set_gr <- c()
+v_mod_set_do <- c()
+v_mod_set_fl <- c()
+v_mod_set_fl_n <- c()
+
+dormancy_cutoffs <- 0:20
+reference_cutoff <- 3
+
+
+# Directory --------------------------------------------------------------------
+dir_pub <- file.path(paste0(v_head))
+dir_data <- file.path(dir_pub, 'data', v_sp_abb)
+dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+
+
+# Raw data ---------------------------------------------------------------------
+df_og <- read_csv(
+  file.path(dir_data, "eriogonum_longifolium_data.csv"),
+  col_types = cols(comment = col_character())) %>%
+  janitor::clean_names() %>%
+  mutate(
+    year = as.numeric(str_sub(date, 1, 4)),
+    month = as.numeric(str_sub(date, 6, 7)),
+    id = str_c(site, pop, qu, plant, sep = "_"),
+    record_type = case_when(
+      !is.na(s) ~ "demography",
+      is.na(s) & !is.na(burn) ~ "burn",
+      TRUE ~ "other"))
+
+df_demog <- df_og %>%
+  filter(record_type == "demography")
+
+df_demog_june <- df_demog %>%
+  filter(month == 6)
+
+
+# Clean annual demographic history --------------------------------------------
+# Absences bracketed by known living observations are confirmed dormancy.
+# These remain dormant under every sensitivity scenario.
+
+df_alive_range <- df_demog_june %>%
+  filter(s %in% c(1, 3, 5)) %>%
+  group_by(id) %>%
+  summarise(
+    first_alive = min(year),
+    last_alive = max(year), .groups = "drop")
+
+df_annual <- df_demog_june %>%
+  left_join(df_alive_range, by = "id") %>%
+  mutate(
+    dormancy_repair = s %in% c(0, 9) &
+      !is.na(first_alive) & year > first_alive & year < last_alive,
+    s_clean = if_else(dormancy_repair, 8, s),
+    stage_clean = if_else(dormancy_repair, 5, stage),
+    state_clean = case_when(
+      s_clean %in% c(1, 3, 5) ~ "active",
+      s_clean == 8 ~ "dormant",
+      s_clean == 10 ~ "alive_or_dormant",
+      s_clean == 0 ~ "absent",
+      s_clean == 9 ~ "previous_absent",
+      s_clean %in% c(2, 6, 7) ~ "missing",
+      s_clean == 11 ~ "discontinued",
+      TRUE ~ NA_character_))
+
+
+# Unresolved absence spells ----------------------------------------------------
+df_absence_spell <- df_annual %>%
+  group_by(id) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    absent_state = state_clean %in% c("absent", "previous_absent"),
+    new_spell = row_number() == 1 |
+      coalesce(absent_state != lag(absent_state), TRUE) |
+      coalesce(year != lag(year) + 1, TRUE),
+    spell = cumsum(new_spell)) %>%
+  group_by(id, spell) %>%
+  summarise(
+    absent_state = first(absent_state),
+    absence_start = min(year),
+    absence_end = max(year),
+    absence_years = n(), .groups = "drop") %>%
+  filter(absent_state)
+
+df_absence_t1 <- df_absence_spell %>%
+  transmute(
+    id,
+    year_t1 = absence_start,
+    absence_years)
+
+
+# Base annual transitions ------------------------------------------------------
+df_transition_base <- df_annual %>%
+  group_by(id) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    year_t1 = lead(year),
+    annual_transition = coalesce(year_t1 == year + 1, FALSE),
+    stage_t1 = if_else(
+      annual_transition, lead(stage_clean), NA_real_),
+    state_t1 = if_else(
+      annual_transition, lead(state_clean), NA_character_),
+    size_t0 = if_else(state_clean == "active", dia, NA_real_),
+    size_t1 = if_else(
+      annual_transition & state_clean == "active" &
+        lead(state_clean) == "active",
+      lead(dia), NA_real_),
+    size_reactivate_t1 = if_else(
+      annual_transition & state_clean == "dormant" &
+        lead(state_clean) == "active",
+      lead(dia), NA_real_)) %>%
+  ungroup() %>%
+  left_join(df_absence_t1, by = c("id", "year_t1"))
+
+
+# Recruitment structure --------------------------------------------------------
+df_quad_start <- df_demog_june %>%
+  group_by(site, pop, qu) %>%
+  summarise(first_quad_year = min(year), .groups = "drop")
+
+df_recruit_first <- df_demog %>%
+  filter(s %in% c(3, 5)) %>%
+  arrange(id, year, month) %>%
+  distinct(id, .keep_all = TRUE) %>%
+  mutate(
+    recruit_year = if_else(month > 6, year + 1, year)) %>%
+  left_join(df_quad_start, by = c("site", "pop", "qu")) %>%
+  mutate(
+    baseline = recruit_year == first_quad_year,
+    recruit_type = case_when(
+      s == 5 ~ "seedling",
+      s == 3 ~ "new_adult"))
+
+df_quad_monitor <- df_annual %>%
+  group_by(site, pop, qu, year) %>%
+  summarise(
+    monitored = any(state_clean != "discontinued", na.rm = TRUE),
+    .groups = "drop") %>%
+  filter(monitored) %>%
+  select(-monitored)
+
+df_recruit_followup <- df_quad_monitor %>%
+  left_join(
+    df_quad_monitor %>%
+      transmute(
+        site, pop, qu, year = year - 1,
+        monitored_t1 = TRUE),
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_quad_monitor %>%
+      transmute(
+        site, pop, qu, year = year - 2,
+        monitored_t2 = TRUE),
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    monitored_t1 = replace_na(monitored_t1, FALSE),
+    monitored_t2 = replace_na(monitored_t2, FALSE))
+
+df_recruit_count_simple <- df_recruit_first %>%
+  filter(!baseline) %>%
+  mutate(
+    fecundity_year_simple = case_when(
+      recruit_type == "seedling" ~ recruit_year - 1,
+      recruit_type == "new_adult" ~ recruit_year - 2)) %>%
+  semi_join(
+    df_quad_monitor,
+    by = c(
+      "site", "pop", "qu",
+      "fecundity_year_simple" = "year")) %>%
+  count(
+    site, pop, qu, fecundity_year_simple, recruit_type,
+    name = "nr_recruits") %>%
+  pivot_wider(
+    names_from = recruit_type,
+    values_from = nr_recruits,
+    values_fill = 0) %>%
+  rename(
+    observed_seedling_simple = seedling,
+    new_adult_simple = new_adult)
+
+df_repro_quad <- df_quad_monitor %>%
+  left_join(
+    df_annual %>%
+      filter(state_clean != "discontinued") %>%
+      group_by(site, pop, qu, year) %>%
+      summarise(
+        nr_active = sum(state_clean == "active", na.rm = TRUE),
+        nr_flower_obs = sum(
+          state_clean == "active" & !is.na(scape), na.rm = TRUE),
+        scape_sum = sum(
+          if_else(state_clean == "active", scape, NA_real_),
+          na.rm = TRUE), .groups = "drop") %>%
+      mutate(
+        nr_scapes = case_when(
+          nr_active == 0 ~ 0,
+          nr_flower_obs == 0 ~ NA_real_,
+          TRUE ~ scape_sum)) %>%
+      select(site, pop, qu, year, nr_active, nr_scapes),
+    by = c("site", "pop", "qu", "year"))
+
+df_recruit_quad <- df_recruit_followup %>%
+  left_join(
+    df_recruit_count_simple,
+    by = c(
+      "site", "pop", "qu",
+      "year" = "fecundity_year_simple")) %>%
+  left_join(
+    df_repro_quad,
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    observed_seedling_simple = case_when(
+      monitored_t1 ~ replace_na(observed_seedling_simple, 0L),
+      TRUE ~ NA_integer_),
+    new_adult_simple = case_when(
+      monitored_t2 ~ replace_na(new_adult_simple, 0L),
+      TRUE ~ NA_integer_),
+    recruitment_complete = monitored_t1 & monitored_t2,
+    recruits_simple = case_when(
+      recruitment_complete ~
+        observed_seedling_simple + new_adult_simple,
+      TRUE ~ NA_integer_))
+
+df_recruit <- df_recruit_quad %>%
+  transmute(
+    row_type = "recruitment",
+    site, pop, qu, year,
+    recruitment_complete,
+    recruits_simple,
+    nr_scapes)
+
+df_recruit_ind <- df_recruit_first %>%
+  filter(!baseline) %>%
+  transmute(
+    id,
+    year = recruit_year,
+    recruit_type)
+
+
+# Scenario-specific workdata ---------------------------------------------------
+make_scenario_data <- function(dormancy_cutoff) {
+  
+  df_transition <- df_transition_base %>%
+    mutate(
+      survives = case_when(
+        !annual_transition ~ NA_real_,
+        !state_clean %in% c("active", "dormant") ~ NA_real_,
+        state_t1 %in%
+          c("active", "dormant", "alive_or_dormant") ~ 1,
+        state_t1 %in% c("absent", "previous_absent") &
+          absence_years > dormancy_cutoff ~ 0,
+        state_t1 %in% c("absent", "previous_absent") &
+          absence_years <= dormancy_cutoff ~ NA_real_,
+        TRUE ~ NA_real_),
+      
+      enter_dormancy = case_when(
+        state_clean != "active" | survives != 1 ~ NA_real_,
+        state_t1 == "dormant" ~ 1,
+        state_t1 == "active" ~ 0,
+        TRUE ~ NA_real_),
+      
+      reactivate = case_when(
+        state_clean != "dormant" ~ NA_real_,
+        state_t1 == "active" ~ 1,
+        state_t1 == "dormant" ~ 0,
+        TRUE ~ NA_real_),
+      
+      flower = case_when(
+        state_clean != "active" ~ NA_real_,
+        !is.na(scape) & scape > 0 ~ 1,
+        !is.na(scape) & scape == 0 ~ 0,
+        TRUE ~ NA_real_),
+      
+      fl_nr = if_else(
+        state_clean == "active", scape, NA_real_),
+      logsize_t0 = log(size_t0),
+      logsize_t1 = log(size_t1),
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3)
+  
+  df_ind <- df_transition %>%
+    left_join(df_recruit_ind, by = c("id", "year")) %>%
+    transmute(
+      row_type = "individual",
+      site, pop, qu, id, year,
+      state = state_clean,
+      state_t1,
+      stage = stage_clean,
+      stage_t1,
+      survives,
+      enter_dormancy,
+      recruit_type,
+      size_reactivate_t1,
+      reactivate,
+      size_t0,
+      size_t1,
+      logsize_t0,
+      logsize_t1,
+      logsize_t0_2,
+      logsize_t0_3,
+      flower,
+      fl_nr)
+  
+  bind_rows(df_ind, df_recruit) %>%
+    mutate(
+      row_type = as.character(row_type),
+      year = as.numeric(year))
+}
+
+
+# Model helpers ----------------------------------------------------------------
+poly_formulas <- function(response) {
+  list(
+    as.formula(paste(response, '~ 1')),
+    as.formula(paste(response, '~ logsize_t0')),
+    as.formula(paste(
+      response, '~ logsize_t0 + logsize_t0_2')),
+    as.formula(paste(
+      response,
+      '~ logsize_t0 + logsize_t0_2 + logsize_t0_3')))
+}
+
+get_daicc <- function(mods) {
+  aicc <- sapply(mods, function(mod) {
+    k <- attr(logLik(mod), "df")
+    n <- nobs(mod)
+    AIC(mod) + 2 * k * (k + 1) / (n - k - 1)
+  })
+  
+  aicc - min(aicc)
+}
+
+pick_model <- function(mods, manual = c()) {
+  d_aicc <- get_daicc(mods)
+  index <- if (length(manual) == 0) {
+    which.min(d_aicc)
+  } else {
+    manual[1] + 1
+  }
+
+  list(
+    model = mods[[index]],
+    index = index - 1,
+    d_aicc = d_aicc)
+}
+
+fit_poly_glm <- function(data, response, manual = c()) {
+  forms <- poly_formulas(response)
+  mods <- lapply(
+    forms,
+    function(form) glm(form, data = data, family = 'binomial'))
+  pick_model(mods, manual)
+}
+
+fit_poly_lm <- function(data, response, manual = c()) {
+  forms <- poly_formulas(response)
+  mods <- lapply(forms, function(form) lm(form, data = data))
+  pick_model(mods, manual)
+}
+
+fit_poly_nb <- function(data, response, manual = c()) {
+  forms <- poly_formulas(response)
+  mods <- lapply(forms, function(form) MASS::glm.nb(form, data = data))
+  pick_model(mods, manual)
+}
+
+get_coef <- function(model, term) {
+  values <- coef(model)
+  if (term %in% names(values)) {
+    unname(values[[term]])
+  } else {
+    NULL
+  }
+}
+
+
+# IPM functions ----------------------------------------------------------------
+inv_logit <- function(x) {
+  exp(x) / (1 + exp(x))
+}
+
+sx <- function(x, pars, num_pars = pars$mod_su_index) {
+  val <- pars$surv_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('surv_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  inv_logit(val)
+}
+
+grow_mu <- function(x, pars, num_pars = pars$mod_gr_index) {
+  val <- pars$grow_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('grow_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  val
+}
+
+grow_sd <- function(mu, pars) {
+  sqrt(pars$a * exp(pars$b * mu))
+}
+
+gxy <- function(x, y, pars) {
+  mu <- grow_mu(x, pars)
+  dnorm(y, mean = mu, sd = grow_sd(mu, pars))
+}
+
+dorm_x <- function(x, pars, num_pars = pars$mod_do_index) {
+  val <- pars$dorm_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('dorm_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  inv_logit(val)
+}
+
+fl_x <- function(x, pars, num_pars = pars$mod_fl_index) {
+  val <- pars$fl_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('fl_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  inv_logit(val)
+}
+
+fl_n_x <- function(x, pars, num_pars = pars$mod_fl_n_index) {
+  val <- pars$fln_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('fln_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  exp(val)
+}
+
+re_y_dist <- function(y, pars) {
+  norm <- pnorm(
+    pars$U, mean = pars$recr_sz, sd = pars$recr_sd) -
+    pnorm(
+      pars$L, mean = pars$recr_sz, sd = pars$recr_sd)
+
+  dnorm(
+    y, mean = pars$recr_sz, sd = pars$recr_sd) / norm
+}
+
+react_y_dist <- function(y, pars) {
+  norm <- pnorm(
+    pars$U, mean = pars$react_sz, sd = pars$react_sd) -
+    pnorm(
+      pars$L, mean = pars$react_sz, sd = pars$react_sd)
+
+  dnorm(
+    y, mean = pars$react_sz, sd = pars$react_sd) / norm
+}
+
+fyx <- function(y, x, pars) {
+  fl_x(x, pars) *
+    fl_n_x(x, pars) *
+    pars$fecu_b0 *
+    re_y_dist(y, pars)
+}
+
+kernel <- function(pars) {
+  n <- pars$mat_siz
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+
+  b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
+
+  Smat <- sx(y, pars)
+  Dmat <- dorm_x(y, pars)
+
+  Gmat <- matrix(0, n, n)
+  Gmat[] <- t(outer(y, y, gxy, pars)) * h
+
+  for (i in seq_len(n)) {
+    if (i <= n / 2) {
+      Gmat[1, i] <- Gmat[1, i] + 1 - sum(Gmat[, i])
+    } else {
+      Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])
+    }
+  }
+
+  Tmat <- sweep(
+    Gmat, 2, Smat * (1 - Dmat), '*')
+
+  Dorm_row <- matrix(
+    Smat * Dmat, nrow = 1)
+
+  React_vec <- react_y_dist(y, pars) * h
+  React_vec <- React_vec / sum(React_vec)
+
+  React_col <- matrix(
+    pars$p_reactivate * React_vec, ncol = 1)
+
+  Dorm_stasis <- 1 - pars$p_reactivate
+
+  Fmat <- outer(
+    y, y,
+    Vectorize(function(y, x) {
+      fyx(y, x, pars)
+    })) * h
+
+  K <- rbind(
+    cbind(Tmat + Fmat, React_col),
+    cbind(Dorm_row, Dorm_stasis))
+
+  K
+}
+
+lambda_ipm <- function(pars) {
+  Re(eigen(
+    kernel(pars), only.values = TRUE)$values[1])
+}
+
+
+# Reference data for scenario-independent population counts -------------------
+df_reference <- make_scenario_data(reference_cutoff)
+
+df_ind_reference <- df_reference %>%
+  filter(row_type == "individual")
+
+max_ind_year <- max(df_annual$year, na.rm = TRUE)
+
+
+# Observed population counts ---------------------------------------------------
+df_counts_alive <- df_ind_reference %>%
+  filter(state %in% c("active", "dormant", "alive_or_dormant")) %>%
+  count(site, pop, qu, year, name = "n_alive")
+
+df_newadult_backfill <- df_ind_reference %>%
+  filter(recruit_type == "new_adult") %>%
+  transmute(site, pop, qu, year = year - 1) %>%
+  count(site, pop, qu, year, name = "n_newadult_backfill")
+
+df_counts_quad <- df_reference %>%
+  filter(row_type == "recruitment") %>%
+  distinct(site, pop, qu, year) %>%
+  left_join(
+    df_counts_alive,
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_newadult_backfill,
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    n_alive = replace_na(n_alive, 0L),
+    n_newadult_backfill = replace_na(n_newadult_backfill, 0L),
+    n = n_alive + n_newadult_backfill) %>%
+  group_by(site, pop, qu) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    year_t1 = lead(year),
+    n_t1 = lead(n),
+    annual_transition = year_t1 == year + 1) %>%
+  ungroup() %>%
+  filter(annual_transition)
+
+
+# One sensitivity scenario -----------------------------------------------------
+run_dormancy_scenario <- function(dormancy_cutoff) {
+  
+  df_i <- make_scenario_data(dormancy_cutoff)
+  
+  df_ind_i <- df_i %>%
+    filter(row_type == "individual")
+  
+  df_re_i <- df_i %>%
+    filter(
+      row_type == "recruitment",
+      recruitment_complete,
+      !is.na(recruits_simple))
+  
+  
+  # Survival -------------------------------------------------------------------
+  df_su_i <- df_ind_i %>%
+    filter(
+      state == "active",
+      !is.na(survives),
+      size_t0 > 0,
+      is.finite(logsize_t0))
+  
+  fit_su_i <- fit_poly_glm(
+    df_su_i, "survives", v_mod_set_su)
+  
+  mod_su_i <- fit_su_i$model
+  
+  
+  # Growth ---------------------------------------------------------------------
+  df_gr_i <- df_ind_i %>%
+    filter(
+      state == "active",
+      state_t1 == "active",
+      size_t0 > 0,
+      size_t1 > 0,
+      is.finite(logsize_t0),
+      is.finite(logsize_t1))
+  
+  fit_gr_i <- fit_poly_lm(
+    df_gr_i, "logsize_t1", v_mod_set_gr)
+  
+  mod_gr_i <- fit_gr_i$model
+  
+  mod_gr_x_i <- fitted(mod_gr_i)
+  mod_gr_y_i <- resid(mod_gr_i)^2
+  
+  mod_gr_var_i <- nls(
+    mod_gr_y_i ~ a * exp(b * mod_gr_x_i),
+    start = list(a = 1, b = 0),
+    control = nls.control(
+      maxiter = 1000, tol = 1e-6, warnOnly = TRUE))
+  
+  
+  # Dormancy entry -------------------------------------------------------------
+  df_do_i <- df_ind_i %>%
+    filter(
+      !is.na(enter_dormancy),
+      size_t0 > 0,
+      is.finite(logsize_t0))
+  
+  fit_do_i <- fit_poly_glm(
+    df_do_i, "enter_dormancy", v_mod_set_do)
+  
+  mod_do_i <- fit_do_i$model
+  
+  
+  # Reactivation ---------------------------------------------------------------
+  df_ra_i <- df_ind_i %>%
+    filter(!is.na(reactivate))
+  
+  mod_ra_i <- glm(
+    reactivate ~ 1,
+    data = df_ra_i, family = "binomial")
+  
+  p_reactivate_i <- predict(
+    mod_ra_i,
+    newdata = data.frame(x = 1),
+    type = "response")[1]
+  
+  df_ra_size_i <- df_ind_i %>%
+    filter(
+      reactivate == 1,
+      size_reactivate_t1 > 0) %>%
+    mutate(
+      logsize_reactivate = log(size_reactivate_t1))
+  
+  react_sz_i <- mean(
+    df_ra_size_i$logsize_reactivate, na.rm = TRUE)
+  
+  react_sd_i <- sd(
+    df_ra_size_i$logsize_reactivate, na.rm = TRUE)
+  
+  
+  # Flowering ------------------------------------------------------------------
+  df_fl_i <- df_ind_i %>%
+    filter(
+      state == "active",
+      !is.na(flower),
+      size_t0 > 0,
+      is.finite(logsize_t0))
+  
+  fit_fl_i <- fit_poly_glm(
+    df_fl_i, "flower", v_mod_set_fl)
+  
+  mod_fl_i <- fit_fl_i$model
+  
+  
+  # Flower number --------------------------------------------------------------
+  df_fl_cond_i <- df_fl_i %>%
+    filter(
+      flower == 1,
+      !is.na(fl_nr),
+      fl_nr > 0,
+      fl_nr %% 1 == 0)
+  
+  fit_fln_i <- fit_poly_nb(
+    df_fl_cond_i, "fl_nr", v_mod_set_fl_n)
+  
+  mod_fln_i <- fit_fln_i$model
+  
+  
+  # Recruitment ----------------------------------------------------------------
+  df_sc2re_i <- df_re_i %>%
+    filter(
+      !is.na(nr_scapes),
+      !is.na(recruits_simple)) %>%
+    group_by(site, pop, year) %>%
+    summarise(
+      total_scapes = sum(nr_scapes),
+      recruit_count = sum(recruits_simple), .groups = "drop")
+  
+  mods_re_i <- list(
+    MASS::glm.nb(recruit_count ~ 1, data = df_sc2re_i),
+    MASS::glm.nb(recruit_count ~ total_scapes, data = df_sc2re_i),
+    MASS::glm.nb(
+      recruit_count ~ log1p(total_scapes), data = df_sc2re_i))
+  
+  mod_re_i <- mods_re_i[[which.min(get_daicc(mods_re_i))]]
+  
+  df_sc2re_i <- df_sc2re_i %>%
+    mutate(
+      recruits_pred = predict(
+        mod_re_i, type = "response"))
+  
+  recr_per_scape_i <- sum(df_sc2re_i$recruits_pred) /
+    sum(df_sc2re_i$total_scapes)
+  
+  
+  # Recruit size ---------------------------------------------------------------
+  df_re_size_i <- df_ind_i %>%
+    filter(
+      recruit_type == "seedling",
+      size_t0 > 0,
+      is.finite(logsize_t0))
+  
+  recr_sz_i <- mean(
+    df_re_size_i$logsize_t0, na.rm = TRUE)
+  
+  recr_sd_i <- sd(
+    df_re_size_i$logsize_t0, na.rm = TRUE)
+  
+  
+  # IPM parameters -------------------------------------------------------------
+  pars_i <- Filter(function(x) length(x) > 0, list(
+    surv_b0 = get_coef(mod_su_i, "(Intercept)"),
+    surv_b1 = get_coef(mod_su_i, "logsize_t0"),
+    surv_b2 = get_coef(mod_su_i, "logsize_t0_2"),
+    surv_b3 = get_coef(mod_su_i, "logsize_t0_3"),
+    
+    grow_b0 = get_coef(mod_gr_i, "(Intercept)"),
+    grow_b1 = get_coef(mod_gr_i, "logsize_t0"),
+    grow_b2 = get_coef(mod_gr_i, "logsize_t0_2"),
+    grow_b3 = get_coef(mod_gr_i, "logsize_t0_3"),
+    a = unname(coef(mod_gr_var_i)[["a"]]),
+    b = unname(coef(mod_gr_var_i)[["b"]]),
+    
+    dorm_b0 = get_coef(mod_do_i, "(Intercept)"),
+    dorm_b1 = get_coef(mod_do_i, "logsize_t0"),
+    dorm_b2 = get_coef(mod_do_i, "logsize_t0_2"),
+    dorm_b3 = get_coef(mod_do_i, "logsize_t0_3"),
+    
+    fl_b0 = get_coef(mod_fl_i, "(Intercept)"),
+    fl_b1 = get_coef(mod_fl_i, "logsize_t0"),
+    fl_b2 = get_coef(mod_fl_i, "logsize_t0_2"),
+    fl_b3 = get_coef(mod_fl_i, "logsize_t0_3"),
+    
+    fln_b0 = get_coef(mod_fln_i, "(Intercept)"),
+    fln_b1 = get_coef(mod_fln_i, "logsize_t0"),
+    fln_b2 = get_coef(mod_fln_i, "logsize_t0_2"),
+    fln_b3 = get_coef(mod_fln_i, "logsize_t0_3"),
+    
+    fecu_b0 = recr_per_scape_i,
+    recr_sz = recr_sz_i,
+    recr_sd = recr_sd_i,
+    react_sz = react_sz_i,
+    react_sd = react_sd_i,
+    p_reactivate = p_reactivate_i,
+    
+    L = min(df_gr_i$logsize_t0),
+    U = max(df_gr_i$logsize_t0),
+    mat_siz = 200,
+    
+    mod_su_index = fit_su_i$index,
+    mod_gr_index = fit_gr_i$index,
+    mod_do_index = fit_do_i$index,
+    mod_fl_index = fit_fl_i$index,
+    mod_fl_n_index = fit_fln_i$index))
+  
+  lambda_ipm_i <- lambda_ipm(pars_i)
+  
+  
+  # Observed population growth -------------------------------------------------
+  last_complete_transition <- max_ind_year - dormancy_cutoff - 1
+  
+  df_counts_year_i <- df_counts_quad %>%
+    filter(year <= last_complete_transition) %>%
+    group_by(year) %>%
+    summarise(
+      n_quads = n(),
+      n_t0 = sum(n),
+      n_t1 = sum(n_t1), .groups = "drop") %>%
+    filter(n_t0 > 0) %>%
+    mutate(lambda_obs = n_t1 / n_t0)
+  
+  lambda_obs_arithmetic <- mean(
+    df_counts_year_i$lambda_obs, na.rm = TRUE)
+  
+  lambda_obs_geometric <- exp(mean(
+    log(df_counts_year_i$lambda_obs), na.rm = TRUE))
+  
+  
+  # Scenario summary -----------------------------------------------------------
+  n_absence_dead <- df_ind_i %>%
+    filter(
+      state == "active",
+      state_t1 %in% c("absent", "previous_absent"),
+      survives == 0) %>%
+    nrow()
+  
+  n_absence_unresolved <- df_ind_i %>%
+    filter(
+      state == "active",
+      state_t1 %in% c("absent", "previous_absent"),
+      is.na(survives)) %>%
+    nrow()
+  
+  tibble(
+    dormancy_cutoff = dormancy_cutoff,
+    last_complete_transition = last_complete_transition,
+    n_observed_transitions = nrow(df_counts_year_i),
+    n_absence_dead = n_absence_dead,
+    n_absence_unresolved = n_absence_unresolved,
+    n_survival = nrow(df_su_i),
+    n_survival_dead = sum(df_su_i$survives == 0),
+    n_survival_alive = sum(df_su_i$survives == 1),
+    survival_model_degree = fit_su_i$index,
+    lambda_ipm = lambda_ipm_i,
+    lambda_obs_arithmetic = lambda_obs_arithmetic,
+    lambda_obs_geometric = lambda_obs_geometric)
+}
+
+
+# Run 0-4 years ----------------------------------------------------------------
+df_sensitivity <- map_dfr(
+  dormancy_cutoffs, run_dormancy_scenario)
+
+
+# Summary relative to the current 3-year assumption ----------------------------
+ref <- df_sensitivity %>%
+  filter(dormancy_cutoff == reference_cutoff) %>%
+  transmute(
+    ref_ipm = lambda_ipm,
+    ref_obs_arithmetic = lambda_obs_arithmetic,
+    ref_obs_geometric = lambda_obs_geometric)
+
+df_sensitivity_summary <- df_sensitivity %>%
+  crossing(ref) %>%
+  mutate(
+    delta_ipm = lambda_ipm - ref_ipm,
+    delta_obs_arithmetic =
+      lambda_obs_arithmetic - ref_obs_arithmetic,
+    delta_obs_geometric =
+      lambda_obs_geometric - ref_obs_geometric,
+    pct_delta_ipm = 100 * delta_ipm / ref_ipm,
+    pct_delta_obs_arithmetic =
+      100 * delta_obs_arithmetic / ref_obs_arithmetic,
+    pct_delta_obs_geometric =
+      100 * delta_obs_geometric / ref_obs_geometric) %>%
+  select(-starts_with('ref_'))
+
+print(df_sensitivity_summary, n = Inf)
+
+
+# Final sensitivity plot -------------------------------------------------------
+df_sensitivity_plot <- df_sensitivity_summary %>%
+  select(
+    dormancy_cutoff,
+    `Mean IPM` = lambda_ipm,
+    `Observed arithmetic` = lambda_obs_arithmetic,
+    `Observed geometric` = lambda_obs_geometric) %>%
+  pivot_longer(
+    -dormancy_cutoff,
+    names_to = 'estimate',
+    values_to = 'lambda')
+
+fig_dormancy_sensitivity <- ggplot(
+  df_sensitivity_plot,
+  aes(
+    x = dormancy_cutoff,
+    y = lambda,
+    linetype = estimate,
+    shape = estimate)) +
+  geom_hline(yintercept = 1, linetype = 'dashed') +
+  geom_vline(
+    xintercept = reference_cutoff,
+    linetype = 'dotted') +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2.4) +
+  scale_x_continuous(breaks = dormancy_cutoffs) +
+  theme_bw() +
+  labs(
+    title = 'Sensitivity to terminal dormancy assumption',
+    subtitle = v_ggp_suffix,
+    x = 'Maximum unresolved dormancy (years)',
+    y = expression(lambda),
+    linetype = NULL,
+    shape = NULL)
+
+fig_dormancy_sensitivity
+
+
+# Optional saves ---------------------------------------------------------------
+# write.csv(
+#   df_sensitivity_summary,
+#   file.path(
+#     dir_result,
+#     paste0('ab_', v_sp_abb,
+#            '_dormancy_sensitivity_obs_ipm_0to4.csv')),
+#   row.names = FALSE)
+#
+# ggsave(
+#   file.path(
+#     dir_result,
+#     paste0('ab_', v_sp_abb,
+#            '_dormancy_sensitivity_obs_ipm_0to4.png')),
+#   plot = fig_dormancy_sensitivity,
+#   width = 8, height = 5, dpi = 300)

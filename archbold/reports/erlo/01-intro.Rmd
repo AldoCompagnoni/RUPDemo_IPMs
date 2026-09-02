@@ -1,5 +1,39 @@
 # Introduction {#intro}
 
+```{r species-image, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="*Eriogonum longifolium var. gnaphalifolium. Image from Wikipedia.*"}
+
+wiki_page <- "Eriogonum longifolium var. gnaphalifolium"
+
+wiki_api <- paste0(
+  "https://en.wikipedia.org/w/api.php?",
+  "action=query&format=json&prop=pageimages&",
+  "piprop=thumbnail&pithumbsize=1400&titles=",
+  URLencode(wiki_page, reserved = TRUE))
+
+wiki_data <- jsonlite::fromJSON(
+  wiki_api,
+  simplifyVector = FALSE)
+
+img_url <- wiki_data$query$pages[[1]]$thumbnail$source
+
+dir.create("images", showWarnings = FALSE)
+
+img_ext <- tools::file_ext(
+  sub("\\?.*$", "", img_url))
+
+img_file <- file.path(
+  "images",
+  paste0("eriogonum_wikipedia.", img_ext))
+
+download.file(
+  img_url,
+  destfile = img_file,
+  mode = "wb",
+  quiet = TRUE)
+
+knitr::include_graphics(img_file)
+```
+
 The supplementary material to the *Eriogonum longifolium* demographic dataset
 from Archbold Biological Station.
 

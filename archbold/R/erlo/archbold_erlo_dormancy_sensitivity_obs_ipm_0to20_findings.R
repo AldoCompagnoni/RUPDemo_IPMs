@@ -29,7 +29,7 @@ options(stringsAsFactors = FALSE)
 
 # Packages ---------------------------------------------------------------------
 source('helper_functions/load_packages.R')
-load_packages(MASS, tidyverse, patchwork, bbmle)
+load_packages(MASS, tidyverse, patchwork, bbmle, lme4)
 
 
 # Specification ----------------------------------------------------------------
@@ -971,3 +971,641 @@ fig_dormancy_sensitivity
 #            '_dormancy_sensitivity_obs_ipm_0to4.png')),
 #   plot = fig_dormancy_sensitivity,
 #   width = 8, height = 5, dpi = 300)
+
+
+# ------------------------------------------------------------------------------
+# Size-data diagnostics and main findings --------------------------------------
+# Diagnostic only. No diameter observation is corrected, replaced or removed.
+# The purpose is to identify and summarize the unusual size observations that
+# matter most for the growth model.
+
+
+# Low active non-seedling measurements -----------------------------------------
+df_annual <- df_annual %>%
+  mutate(
+    flag_low_nonseedling =
+      state_clean == "active" &
+      stage_clean != 1 &
+      !is.na(dia) &
+      dia < 1)
+
+df_low_summary <- df_annual %>%
+  count(flag_low_nonseedling)
+
+print(df_low_summary, n = Inf)
+
+
+df_low_nonseedling <- df_annual %>%
+  filter(flag_low_nonseedling) %>%
+  select(
+    site, pop, qu, plant, id, year,
+    s, stage, stage_clean,
+    dia, scape, invol, nb, nr, herb, burn, comment) %>%
+  arrange(year, site, pop, qu, plant)
+
+print(df_low_nonseedling, n = Inf, width = Inf)
+
+
+# Diameter heaping and measurement precision ----------------------------------
+df_heaping_summary <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia > 0) %>%
+  summarise(
+    n = n(),
+    exact_integer = sum(dia %% 1 == 0),
+    prop_integer = mean(dia %% 1 == 0),
+    exact_half = sum((dia * 2) %% 1 == 0),
+    prop_half = mean((dia * 2) %% 1 == 0))
+
+print(df_heaping_summary)
+
+
+df_heap_year <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia > 0) %>%
+  group_by(year) %>%
+  summarise(
+    n = n(),
+    prop_integer = mean(dia %% 1 == 0),
+    prop_half = mean((dia * 2) %% 1 == 0),
+    n_unique = n_distinct(dia),
+    .groups = "drop")
+
+print(df_heap_year, n = Inf)
+
+
+fig_heaping_year <- df_heap_year %>%
+  select(
+    year,
+    `Exact integer` = prop_integer,
+    `Multiple of 0.5` = prop_half) %>%
+  pivot_longer(
+    -year,
+    names_to = "precision",
+    values_to = "proportion") %>%
+  ggplot(
+    aes(
+      x = year,
+      y = proportion,
+      linetype = precision,
+      shape = precision)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  theme_bw() +
+  labs(
+    title = "Diameter measurement precision through time",
+    subtitle = v_ggp_suffix,
+    x = "Year",
+    y = "Proportion of active diameter records",
+    linetype = NULL,
+    shape = NULL)
+
+fig_heaping_year
+
+
+# Three-year size valleys -------------------------------------------------------
+# A positive valley_depth means that the focal year's diameter is below both
+# neighboring years on the log scale. Larger values indicate a deeper valley.
+
+df_three_year <- df_annual %>%
+  arrange(id, year) %>%
+  group_by(id) %>%
+  mutate(
+    year_prev = lag(year),
+    year_next = lead(year),
+    state_prev = lag(state_clean),
+    state_next = lead(state_clean),
+    dia_prev = lag(dia),
+    dia_next = lead(dia),
+    stage_prev = lag(stage_clean),
+    stage_next = lead(stage_clean),
+    scape_prev = lag(scape),
+    scape_next = lead(scape),
+    herb_prev = lag(herb),
+    herb_next = lead(herb),
+    comment_prev = lag(comment),
+    comment_next = lead(comment)) %>%
+  ungroup() %>%
+  filter(
+    year_prev == year - 1,
+    year_next == year + 1,
+    state_prev == "active",
+    state_clean == "active",
+    state_next == "active",
+    dia_prev > 0,
+    dia > 0,
+    dia_next > 0) %>%
+  mutate(
+    logdia_prev = log(dia_prev),
+    logdia = log(dia),
+    logdia_next = log(dia_next),
+    valley_depth =
+      pmin(logdia_prev, logdia_next) - logdia,
+    local_valley =
+      dia < dia_prev & dia < dia_next,
+    below_log0 = logdia < 0,
+    below0_between_above0 =
+      dia < 1 & dia_prev >= 1 & dia_next >= 1) %>%
+  left_join(
+    df_heap_year %>%
+      select(
+        year,
+        year_prop_integer = prop_integer,
+        year_prop_half = prop_half),
+    by = "year")
+
+
+# Strict big-small-big observations -------------------------------------------
+df_suspicious <- df_three_year %>%
+  filter(below0_between_above0) %>%
+  arrange(desc(valley_depth))
+
+print(
+  df_suspicious %>%
+    select(
+      site, pop, qu, plant, id, year,
+      stage_prev, stage_clean, stage_next,
+      scape_prev, scape, scape_next,
+      herb_prev, herb, herb_next,
+      dia_prev, dia, dia_next,
+      valley_depth,
+      comment_prev, comment, comment_next),
+  n = Inf,
+  width = Inf)
+
+
+# Strongest valleys in the complete three-year dataset ------------------------
+df_top_valleys <- df_three_year %>%
+  filter(local_valley) %>%
+  arrange(desc(valley_depth)) %>%
+  select(
+    site, pop, qu, plant, id, year,
+    stage_prev, stage_clean, stage_next,
+    scape_prev, scape, scape_next,
+    herb,
+    dia_prev, dia, dia_next,
+    valley_depth) %>%
+  slice_head(n = 20)
+
+print(df_top_valleys, n = Inf, width = Inf)
+
+
+# Raw variables for the strict suspicious observations ------------------------
+df_suspicious_full <- df_annual %>%
+  inner_join(
+    df_suspicious %>%
+      select(id, year, valley_depth),
+    by = c("id", "year")) %>%
+  arrange(desc(valley_depth))
+
+print(df_suspicious_full, n = Inf, width = Inf)
+
+
+# Original records in the year before, during and after each suspicious event --
+df_suspicious_year <- df_suspicious %>%
+  select(id, focal_year = year, valley_depth)
+
+
+df_suspicious_raw <- df_og %>%
+  inner_join(
+    df_suspicious_year,
+    by = "id") %>%
+  filter(
+    year >= focal_year - 1,
+    year <= focal_year + 1) %>%
+  arrange(id, focal_year, year, month)
+
+print(df_suspicious_raw, n = Inf, width = Inf)
+
+
+# Plot the seven strict big-small-big histories --------------------------------
+df_suspicious_long <- df_suspicious %>%
+  select(id, year, dia_prev, dia, dia_next) %>%
+  pivot_longer(
+    cols = c(dia_prev, dia, dia_next),
+    names_to = "position",
+    values_to = "diameter") %>%
+  mutate(
+    census_year = case_when(
+      position == "dia_prev" ~ year - 1,
+      position == "dia" ~ year,
+      position == "dia_next" ~ year + 1))
+
+fig_suspicious_trajectories <- ggplot(
+  df_suspicious_long,
+  aes(
+    x = census_year,
+    y = diameter,
+    group = id)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2.2) +
+  facet_wrap(~ id, scales = "free_y") +
+  theme_bw() +
+  labs(
+    title = "Flagged big-small-big diameter histories",
+    subtitle = v_ggp_suffix,
+    x = "Year",
+    y = "Diameter")
+
+fig_suspicious_trajectories
+
+
+# Broad association screen for valley depth -----------------------------------
+# This is descriptive only. It is not used to infer causation.
+# Herbivory is handled separately below because the codes should not be treated
+# as a continuous severity scale without explicit justification.
+
+v_valley_cor <- intersect(
+  c(
+    "scape",
+    "invol",
+    "nb",
+    "nr",
+    "year_prop_integer",
+    "year_prop_half"),
+  names(df_three_year))
+
+
+df_valley_cor <- map_dfr(
+  v_valley_cor,
+  function(v) {
+    x <- df_three_year[[v]]
+    y <- df_three_year$valley_depth
+
+    keep <- is.finite(x) & is.finite(y)
+
+    if (sum(keep) < 10 ||
+        n_distinct(x[keep]) < 2) {
+      return(tibble(
+        variable = v,
+        n = sum(keep),
+        rho = NA_real_))
+    }
+
+    tibble(
+      variable = v,
+      n = sum(keep),
+      rho = cor(
+        x[keep],
+        y[keep],
+        method = "spearman"))
+  })
+
+print(
+  df_valley_cor %>%
+    arrange(desc(abs(rho))),
+  n = Inf)
+
+
+# Stage sequences containing strict suspicious valleys -------------------------
+df_stage_valleys <- df_three_year %>%
+  mutate(suspicious = below0_between_above0) %>%
+  group_by(
+    stage_prev,
+    stage_clean,
+    stage_next) %>%
+  summarise(
+    n = n(),
+    n_suspicious = sum(suspicious),
+    prop_suspicious = mean(suspicious),
+    median_valley = median(valley_depth),
+    max_valley = max(valley_depth),
+    .groups = "drop") %>%
+  filter(n_suspicious > 0) %>%
+  arrange(desc(n_suspicious), desc(max_valley))
+
+print(df_stage_valleys, n = Inf)
+
+
+# Herbivory --------------------------------------------------------------------
+# herb == 1 is recorded herbivory. Codes 2 and 3 are retained and displayed,
+# but are not assumed here to represent increasing severity.
+
+df_herb_codes <- df_three_year %>%
+  count(herb, .drop = FALSE)
+
+print(df_herb_codes, n = Inf)
+
+
+df_herb_test <- df_three_year %>%
+  filter(herb %in% c(0, 1)) %>%
+  mutate(
+    shrink_in = log(dia) - log(dia_prev),
+    rebound_out = log(dia_next) - log(dia))
+
+
+df_herb_summary <- df_herb_test %>%
+  group_by(herb) %>%
+  summarise(
+    n = n(),
+    median_dia_prev = median(dia_prev),
+    median_dia = median(dia),
+    median_dia_next = median(dia_next),
+    mean_shrink_in = mean(shrink_in),
+    median_shrink_in = median(shrink_in),
+    mean_rebound_out = mean(rebound_out),
+    median_rebound_out = median(rebound_out),
+    mean_valley_depth = mean(valley_depth),
+    median_valley_depth = median(valley_depth),
+    prop_local_valley = mean(local_valley),
+    .groups = "drop")
+
+print(df_herb_summary, width = Inf)
+
+
+mod_herb_shrink <- lme4::lmer(
+  log(dia) ~ log(dia_prev) + herb +
+    (1 | year) +
+    (1 | id),
+  data = df_herb_test)
+
+mod_herb_rebound <- lme4::lmer(
+  log(dia_next) ~ log(dia) + herb +
+    (1 | year) +
+    (1 | id),
+  data = df_herb_test)
+
+summary(mod_herb_shrink)
+summary(mod_herb_rebound)
+
+
+# Suspicious observations with herbivory information ---------------------------
+df_suspicious_herb <- df_suspicious %>%
+  select(
+    site, pop, qu, plant, id, year,
+    dia_prev, dia, dia_next,
+    stage_clean,
+    scape,
+    invol,
+    nb,
+    nr,
+    herb,
+    valley_depth)
+
+print(df_suspicious_herb, n = Inf, width = Inf)
+
+
+# Compact summary of the main findings ----------------------------------------
+herb_shrink_coef <- unname(lme4::fixef(mod_herb_shrink)[["herb"]])
+herb_rebound_coef <- unname(lme4::fixef(mod_herb_rebound)[["herb"]])
+
+
+df_main_findings <- tibble(
+  finding = c(
+    "Positive active diameter observations",
+    "Exact integer diameter observations",
+    "Exact half-centimeter diameter observations",
+    "Flagged active non-seedling diameters below 1",
+    "Strict >=1 -> <1 -> >=1 three-year valleys",
+    "Strict valleys with herbivory recorded as 1",
+    "Strict valleys with herbivory missing",
+    "Herb effect in shrinkage mixed model",
+    "Herb effect in rebound mixed model"),
+  value = c(
+    df_heaping_summary$n,
+    df_heaping_summary$prop_integer,
+    df_heaping_summary$prop_half,
+    sum(df_annual$flag_low_nonseedling, na.rm = TRUE),
+    nrow(df_suspicious),
+    sum(df_suspicious$herb == 1, na.rm = TRUE),
+    sum(is.na(df_suspicious$herb)),
+    herb_shrink_coef,
+    herb_rebound_coef))
+
+print(df_main_findings, n = Inf)
+
+
+# Key interpretation -----------------------------------------------------------
+# 1. Diameter heaping is substantial, but strongly changes through time and is
+#    therefore best treated as a measurement-resolution feature rather than a
+#    unique problem at diameter = 1.
+# 2. The main growth-data concern is the small set of active non-seedling
+#    observations below 1, especially the strict big-small-big histories.
+# 3. These observations are flagged only; no value is corrected or discarded.
+# 4. The strongest strict valley includes herb == 1 in the focal year, providing
+#    a biologically relevant observation for that individual. However, herbivory
+#    is missing for most strict valleys and the 0-vs-1 mixed models do not show a
+#    strong general herbivory effect on shrinkage or rebound.
+# 5. The flagged observations should therefore remain identifiable for later
+#    sensitivity analysis of the growth model rather than being automatically
+#    altered.
+
+
+
+
+# Flowering and unusually small individuals ------------------------------------
+# Investigation summary:
+#
+# - Flowering at very small size is rare.
+# - Only 1 flowering observation occurs below 1 cm.
+# - Only 9 flowering observations occur below 3 cm.
+# - Flowering in general is NOT associated with a temporary reduction in
+#   diameter. Flowering plants are, on average, slightly larger than expected
+#   from their surrounding-year sizes.
+# - However, several of the strongest flowering-year size valleys are extremely
+#   unusual, including:
+#
+#     1_7_8_538: 24.0 -> 0.5 -> 19.9, 3 scapes, herbivory recorded
+#     1_5_4_912: 24.0 -> 1.0 -> 23.0, 1 scape, no herbivory recorded
+#     1_4_1_947: 16.8 -> 2.0 -> 13.5, 1 scape
+#     1_5_1_80:  12.0 -> 2.0 -> 13.0, 1 scape
+#
+# These observations are retained unchanged and flagged for reference.
+
+
+# Three-year flowering context -------------------------------------------------
+df_fl_valley <- df_annual %>%
+  arrange(id, year) %>%
+  group_by(id) %>%
+  mutate(
+    year_prev = lag(year),
+    year_next = lead(year),
+    dia_prev = lag(dia),
+    dia_next = lead(dia),
+    stage_prev = lag(stage_clean),
+    stage_next = lead(stage_clean),
+    scape_prev = lag(scape),
+    scape_next = lead(scape)) %>%
+  ungroup() %>%
+  filter(
+    year_prev == year - 1,
+    year_next == year + 1,
+    state_clean == "active",
+    dia > 0,
+    dia_prev > 0,
+    dia_next > 0,
+    !is.na(scape)) %>%
+  mutate(
+    flower = scape > 0,
+    log_change_in = log(dia / dia_prev),
+    log_change_out = log(dia_next / dia),
+    expected_dia = sqrt(dia_prev * dia_next),
+    deviation_middle = log(dia / expected_dia),
+    local_valley = dia < dia_prev & dia < dia_next)
+
+
+# Main flowering-size summary --------------------------------------------------
+df_flowering_size_summary <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia > 0,
+    !is.na(scape),
+    scape > 0) %>%
+  summarise(
+    n_flowering = n(),
+    n_flowering_lt1 = sum(dia < 1),
+    n_flowering_lt3 = sum(dia < 3),
+    n_flowering_le5 = sum(dia <= 5),
+    min_flowering_dia = min(dia))
+
+df_flowering_size_summary
+
+
+# Flowering vs non-flowering size valleys --------------------------------------
+df_flowering_valley_summary <- df_fl_valley %>%
+  group_by(flower) %>%
+  summarise(
+    n = n(),
+    median_dia_prev = median(dia_prev),
+    median_dia = median(dia),
+    median_dia_next = median(dia_next),
+    mean_change_in = mean(log_change_in),
+    median_change_in = median(log_change_in),
+    mean_change_out = mean(log_change_out),
+    median_change_out = median(log_change_out),
+    mean_deviation_middle = mean(deviation_middle),
+    median_deviation_middle = median(deviation_middle),
+    prop_local_valley = mean(local_valley),
+    .groups = "drop")
+
+df_flowering_valley_summary
+
+
+# Models confirming the general flowering pattern -----------------------------
+mod_fl_dia <- lmer(
+  log(dia) ~ log(dia_prev) + flower +
+    (1 | year) +
+    (1 | id),
+  data = df_fl_valley)
+
+summary(mod_fl_dia)
+
+# Individual variance for this response is effectively zero, so year alone is
+# sufficient for the middle-year deviation model.
+mod_fl_valley <- lmer(
+  deviation_middle ~ flower +
+    (1 | year),
+  data = df_fl_valley)
+
+summary(mod_fl_valley)
+
+
+# Small flowering observations -------------------------------------------------
+df_small_flowering <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia < 3,
+    !is.na(scape),
+    scape > 0) %>%
+  arrange(dia, year) %>%
+  select(
+    site, pop, qu, plant, id, year,
+    stage_clean,
+    dia, scape,
+    invol, nb, nr, herb,
+    comment)
+
+df_small_flowering %>%
+  print(n = Inf, width = Inf)
+
+
+# Strongest flowering-year size valleys ----------------------------------------
+df_flowering_extreme <- df_fl_valley %>%
+  filter(flower) %>%
+  arrange(deviation_middle) %>%
+  select(
+    site, pop, qu, plant, id, year,
+    stage_prev, stage_clean, stage_next,
+    scape_prev, scape, scape_next,
+    dia_prev, dia, dia_next,
+    expected_dia,
+    deviation_middle,
+    herb, invol, nb, nr)
+
+df_flowering_extreme %>%
+  slice_head(n = 20) %>%
+  print(n = Inf, width = Inf)
+
+
+# Flags in annual data ----------------------------------------------------------
+# These flags identify observations for sensitivity checks only.
+# No diameter values are altered.
+
+df_annual <- df_annual %>%
+  mutate(
+    flag_small_flowering =
+      state_clean == "active" &
+      !is.na(dia) &
+      dia < 3 &
+      !is.na(scape) &
+      scape > 0,
+    
+    flag_flowering_below1 =
+      state_clean == "active" &
+      !is.na(dia) &
+      dia < 1 &
+      !is.na(scape) &
+      scape > 0)
+
+
+# Flag the four most extreme flowering-year valleys ----------------------------
+# These are selected by their observed rank rather than by changing or assuming
+# anything about the recorded measurements.
+
+ids_extreme_flowering <- df_flowering_extreme %>%
+  slice_head(n = 4) %>%
+  select(id, year) %>%
+  mutate(flag_extreme_flowering_valley = TRUE)
+
+df_annual <- df_annual %>%
+  left_join(
+    ids_extreme_flowering,
+    by = c("id", "year")) %>%
+  mutate(
+    flag_extreme_flowering_valley =
+      replace_na(flag_extreme_flowering_valley, FALSE))
+
+
+# Final flag counts -------------------------------------------------------------
+df_annual %>%
+  summarise(
+    n_small_flowering = sum(flag_small_flowering),
+    n_flowering_below1 = sum(flag_flowering_below1),
+    n_extreme_flowering_valley =
+      sum(flag_extreme_flowering_valley))
+
+
+# Final flagged observations ---------------------------------------------------
+df_annual %>%
+  filter(
+    flag_small_flowering |
+      flag_extreme_flowering_valley) %>%
+  arrange(
+    desc(flag_extreme_flowering_valley),
+    dia) %>%
+  select(
+    site, pop, qu, plant, id, year,
+    stage_clean,
+    dia, scape,
+    invol, nb, nr, herb,
+    flag_small_flowering,
+    flag_flowering_below1,
+    flag_extreme_flowering_valley,
+    comment) %>%
+  print(n = Inf, width = Inf)

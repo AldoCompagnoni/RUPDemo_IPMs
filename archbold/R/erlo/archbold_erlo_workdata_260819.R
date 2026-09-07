@@ -252,7 +252,7 @@ df_dormancy_check
 # Individuals can therefore contribute more than one dormancy period.
 
 df_dormancy_spell <- df_annual %>%
-  group_by(id) %>%df
+  group_by(id) %>%
   arrange(year, .by_group = TRUE) %>%
   mutate(
     new_spell = row_number() == 1 |

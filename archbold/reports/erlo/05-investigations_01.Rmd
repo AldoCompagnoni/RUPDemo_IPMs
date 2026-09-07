@@ -1,0 +1,3099 @@
+# Investigations 01 {#invest01}
+
+## Presumed second-year recruits
+
+Recruitment is not always observed at the seedling stage. Individuals first
+recorded with `s = 5` are explicitly identified as seedlings, whereas individuals
+first appearing with `s = 3` enter the demographic record as new adults. In the
+recruitment reconstruction, these new adults are interpreted as recruits that
+were not detected during their seedling year and are therefore assigned to an
+earlier recruitment cohort.
+
+The clearest cases supporting this interpretation are new adults that enter as
+stage 2. These individuals are treated here as *presumed second-year recruits*.
+Before using this interpretation in the IPM, we examined whether their sizes at
+entry are consistent with the sizes actually reached by known seedlings one
+year after their observed seedling census.
+
+The purpose of this analysis is diagnostic only. No recruit classifications or
+recorded sizes are changed.
+
+
+```{r presumed-recruits-run, include=FALSE}
+# Raw demographic data --------------------------------------------------------
+df_recruit_og <- read_csv(
+  file.path(
+    dir_data,
+    "eriogonum_longifolium_data.csv"),
+  col_types = cols(
+    comment = col_character())) %>%
+  janitor::clean_names() %>%
+  mutate(
+    year = as.numeric(
+      str_sub(date, 1, 4)),
+    month = as.numeric(
+      str_sub(date, 6, 7)),
+    id = str_c(
+      site, pop, qu, plant,
+      sep = "_"),
+    record_type = case_when(
+      !is.na(s) ~ "demography",
+      is.na(s) & !is.na(burn) ~ "burn",
+      TRUE ~ "other"))
+
+
+df_recruit_demog <- df_recruit_og %>%
+  filter(
+    record_type == "demography")
+
+
+df_recruit_june <- df_recruit_demog %>%
+  filter(
+    month == 6)
+
+
+# First year in which each quadrat was monitored -------------------------------
+df_recruit_quad_start <- df_recruit_june %>%
+  group_by(
+    site, pop, qu) %>%
+  summarise(
+    first_quad_year = min(year),
+    .groups = "drop")
+
+
+# First recruitment record for each individual --------------------------------
+df_recruit_first_diag <- df_recruit_demog %>%
+  filter(
+    s %in% c(3, 5)) %>%
+  arrange(
+    id, year, month) %>%
+  distinct(
+    id,
+    .keep_all = TRUE) %>%
+  mutate(
+    recruit_year = if_else(
+      month > 6,
+      year + 1,
+      year)) %>%
+  left_join(
+    df_recruit_quad_start,
+    by = c(
+      "site",
+      "pop",
+      "qu")) %>%
+  mutate(
+    baseline =
+      recruit_year ==
+      first_quad_year,
+    recruit_type = case_when(
+      s == 5 ~ "seedling",
+      s == 3 ~ "new_adult"),
+    recruit_class = case_when(
+      s == 5 ~
+        "observed_seedling",
+      s == 3 & stage == 2 ~
+        "presumed_2yr",
+      s == 3 ~
+        "new_adult_other")) %>%
+  filter(
+    !baseline)
+
+
+# Annual active-to-active transitions -----------------------------------------
+df_recruit_transition <- df_recruit_june %>%
+  group_by(id) %>%
+  arrange(
+    year,
+    .by_group = TRUE) %>%
+  mutate(
+    year_t1 = lead(year),
+    s_t1 = lead(s),
+    dia_t1 = lead(dia),
+    annual_transition =
+      year_t1 == year + 1,
+    active_t0 =
+      s %in% c(1, 3, 5),
+    active_t1 =
+      s_t1 %in% c(1, 3, 5),
+    size_t0 = if_else(
+      active_t0,
+      dia,
+      NA_real_),
+    size_t1 = if_else(
+      annual_transition &
+        active_t0 &
+        active_t1,
+      dia_t1,
+      NA_real_)) %>%
+  ungroup()
+
+
+# Recruit entries linked to annual size histories -----------------------------
+df_recruit_entry_diag <- df_recruit_first_diag %>%
+  transmute(
+    site,
+    pop,
+    qu,
+    plant,
+    id,
+    recruit_year,
+    recruit_type,
+    recruit_class,
+    stage_entry = stage,
+    raw_entry_dia = dia) %>%
+  left_join(
+    df_recruit_transition %>%
+      dplyr::select(
+        id,
+        year,
+        size_t0,
+        size_t1),
+    by = c(
+      "id",
+      "recruit_year" = "year"))
+
+
+# Recruit-class counts ---------------------------------------------------------
+df_recruit_class_summary <- df_recruit_entry_diag %>%
+  count(
+    recruit_class,
+    name = "n") %>%
+  mutate(
+    Recruit_class = recode(
+      recruit_class,
+      observed_seedling =
+        "Observed seedlings",
+      presumed_2yr =
+        "Presumed second-year recruits",
+      new_adult_other =
+        "Other new-adult entries")) %>%
+  dplyr::select(
+    Recruit_class,
+    N = n)
+
+
+# Empirical second-year sizes --------------------------------------------------
+# Known seedlings:
+# size at t + 1 after an observed seedling census.
+#
+# Presumed second-year recruits:
+# size at first annual census as a stage-2 new adult.
+
+df_year2_size <- bind_rows(
+  df_recruit_entry_diag %>%
+    filter(
+      recruit_class ==
+        "observed_seedling",
+      size_t1 > 0) %>%
+    transmute(
+      id,
+      source =
+        "Observed seedlings at t + 1",
+      year2_size = size_t1),
+
+  df_recruit_entry_diag %>%
+    filter(
+      recruit_class ==
+        "presumed_2yr",
+      size_t0 > 0) %>%
+    transmute(
+      id,
+      source =
+        "Presumed second-year recruits",
+      year2_size = size_t0)) %>%
+  mutate(
+    log_year2_size =
+      log(year2_size))
+
+
+# Size-distribution summary ---------------------------------------------------
+df_year2_size_summary <- df_year2_size %>%
+  group_by(source) %>%
+  summarise(
+    n = n(),
+    mean = mean(year2_size),
+    median = median(year2_size),
+    sd = sd(year2_size),
+    q25 = quantile(
+      year2_size, 0.25),
+    q75 = quantile(
+      year2_size, 0.75),
+    min = min(year2_size),
+    max = max(year2_size),
+    .groups = "drop")
+
+
+# Size comparison figure ------------------------------------------------------
+fig_year2_recruit_size <- ggplot(
+  df_year2_size,
+  aes(
+    x = source,
+    y = log_year2_size)) +
+  geom_boxplot(
+    outlier.shape = NA,
+    width = 0.5) +
+  geom_jitter(
+    width = 0.12,
+    alpha = 0.20,
+    size = 1) +
+  theme_bw() +
+  labs(
+    x = NULL,
+    y = "Log diameter") +
+  theme(
+    axis.text.x =
+      element_text(
+        angle = 15,
+        hjust = 1))
+
+
+# Growth after presumed second-year entry -------------------------------------
+df_presumed_growth <- df_recruit_entry_diag %>%
+  filter(
+    recruit_class ==
+      "presumed_2yr",
+    size_t0 > 0,
+    size_t1 > 0) %>%
+  mutate(
+    logsize_t0 = log(size_t0),
+    logsize_t1 = log(size_t1))
+
+
+df_growth_background <- df_recruit_transition %>%
+  filter(
+    annual_transition,
+    active_t0,
+    active_t1,
+    size_t0 > 0,
+    size_t1 > 0) %>%
+  mutate(
+    logsize_t0 = log(size_t0),
+    logsize_t1 = log(size_t1))
+
+
+fig_presumed_growth <- ggplot(
+  df_growth_background,
+  aes(
+    x = logsize_t0,
+    y = logsize_t1)) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed") +
+  geom_point(
+    alpha = 0.10,
+    size = 0.9) +
+  geom_point(
+    data = df_presumed_growth,
+    shape = 21,
+    size = 2.5,
+    stroke = 0.8) +
+  theme_bw() +
+  labs(
+    x = expression(log(Diameter[t])),
+    y = expression(log(Diameter[t+1])))
+
+
+# Compact numbers for text ----------------------------------------------------
+n_presumed_2yr <- df_recruit_entry_diag %>%
+  filter(
+    recruit_class ==
+      "presumed_2yr") %>%
+  nrow()
+
+
+n_presumed_growth <- nrow(
+  df_presumed_growth)
+
+
+n_presumed_lt1 <- df_recruit_entry_diag %>%
+  filter(
+    recruit_class ==
+      "presumed_2yr",
+    size_t0 > 0,
+    size_t0 < 1) %>%
+  nrow()
+```
+
+
+The first-record classifications are summarized below. Baseline individuals
+already present when a quadrat entered monitoring are excluded because their
+recruitment timing cannot be inferred from their first database record.
+
+```{r presumed-recruit-counts, echo=FALSE}
+df_recruit_class_summary %>%
+  knitr::kable()
+```
+
+
+### Are presumed second-year recruits plausible second-year plants?
+
+For observed seedlings with a subsequent active annual census, the size at the
+following census provides an empirical distribution of second-year plant sizes.
+This distribution can be compared directly with the entry sizes of stage-2 new
+adults interpreted as presumed second-year recruits.
+
+```{r presumed-recruit-size-table, echo=FALSE}
+df_year2_size_summary %>%
+  mutate(
+    across(
+      c(
+        mean,
+        median,
+        sd,
+        q25,
+        q75,
+        min,
+        max),
+      ~ round(.x, 2))) %>%
+  rename(
+    Group = source,
+    N = n,
+    Mean = mean,
+    Median = median,
+    SD = sd,
+    `25%` = q25,
+    `75%` = q75,
+    Minimum = min,
+    Maximum = max) %>%
+  knitr::kable()
+```
+
+
+```{r presumed-recruit-size-figure, echo=FALSE, fig.width=7, fig.height=5}
+fig_year2_recruit_size
+```
+
+
+The size distributions provide no indication that the stage-2 new adults form
+an artificial group of exceptionally small observations. Instead, their entry
+sizes overlap the size range reached by individuals that were directly observed
+as seedlings in the preceding year. This supports the interpretation of these
+stage-2 new adults as plausible second-year recruits, while recognizing that
+their actual seedling census was not observed.
+
+
+### Subsequent growth
+
+There were `r n_presumed_2yr` presumed second-year recruit entries. Of these,
+`r n_presumed_growth` had a positive active size measurement in the following
+annual census and could therefore be compared with the complete annual growth
+dataset.
+
+```{r presumed-recruit-growth-figure, echo=FALSE, fig.width=7, fig.height=6}
+fig_presumed_growth
+```
+
+
+The highlighted observations show the growth transitions beginning at presumed
+second-year recruit entry. Their subsequent growth falls within the broader
+annual growth distribution rather than forming a clearly separate growth
+process.
+
+Only `r n_presumed_lt1` presumed second-year recruits entered the annual data
+below 1 cm. Thus, the later issue of extremely small non-seedling measurements
+is not primarily generated by the reconstruction of presumed second-year
+recruits.
+
+Overall, the available size and growth information is consistent with retaining
+stage-2 new adults as presumed second-year recruits. The assumption nevertheless
+remains inferential because their seedling stage was not directly observed.
+A separate sensitivity analysis can therefore test how recruitment and
+population growth change when these reconstructed recruits are included or
+excluded.
+
+
+
+## Dormancy and uncertainty in terminal survival
+
+Dormancy is an important component of the life history of *Eriogonum
+longifolium*. Individuals may remain belowground for one or more annual censuses
+before reappearing aboveground. Consequently, the disappearance of an
+individual from a census cannot automatically be interpreted as mortality.
+
+During construction of the working data, absences occurring between two known
+living observations were retrospectively classified as dormancy. These cases
+are unambiguous because subsequent reappearance demonstrates that the individual
+had remained alive. In total, 409 reconstructed dormancy spells were identified
+among 344 individuals. Most were short: 76.5% lasted one year, 90.5% no more
+than two years, and 94.9% no more than three years. Nevertheless, substantially
+longer dormant periods occurred, including a maximum reconstructed interval of
+20 years.
+
+The main uncertainty therefore concerns individuals disappearing near the end
+of the study. Unlike earlier absences, these records cannot be resolved
+retrospectively because there are insufficient subsequent censuses to determine
+whether an individual died or remained dormant. In the working data, three
+years was adopted as the default operational cutoff. An absence of up to three
+years at the end of the record is treated as unresolved rather than as mortality.
+The three-year threshold captures 388 of the 409 observed dormancy spells
+(94.9%) and is therefore intended as a pragmatic classification rule rather than
+as a biological maximum duration of dormancy.
+
+### Sensitivity to the dormancy cutoff
+
+Because the treatment of terminal absences directly affects estimated survival
+and the years for which observed population growth can be considered complete,
+we evaluated the sensitivity of the results to this assumption. The maximum
+allowable period of unresolved dormancy was varied from 0 to 20 years, with
+three years retained as the reference scenario.
+
+For each cutoff, active individuals followed by an unresolved absence spell
+longer than the specified cutoff were classified as dead, whereas shorter
+terminal absences remained unresolved. The survival model was then refitted and
+the mean IPM rebuilt. Independently, observed annual population growth was
+recalculated after excluding terminal transitions for which the selected
+dormancy allowance prevented mortality from being resolved. Confirmed dormancy
+and reactivation observations, as well as observed growth, flowering and
+recruitment data, were retained throughout the analysis.
+
+
+```{r}
+# Sensitivity specification ----------------------------------------------------
+v_mod_set_su <- c()
+v_mod_set_gr <- c()
+v_mod_set_do <- c()
+v_mod_set_fl <- c()
+v_mod_set_fl_n <- c()
+
+dormancy_cutoffs <- 0:20
+reference_cutoff <- 3
+
+v_ggp_suffix <- "Archbold - Eriogonum longifolium"
+```
+
+
+```{r dormancy-sensitivity-run, include=FALSE}
+# Raw data ---------------------------------------------------------------------
+df_og <- read_csv(
+  file.path(dir_data, "eriogonum_longifolium_data.csv"),
+  col_types = cols(comment = col_character())) %>%
+  janitor::clean_names() %>%
+  mutate(
+    year = as.numeric(str_sub(date, 1, 4)),
+    month = as.numeric(str_sub(date, 6, 7)),
+    id = str_c(site, pop, qu, plant, sep = "_"),
+    record_type = case_when(
+      !is.na(s) ~ "demography",
+      is.na(s) & !is.na(burn) ~ "burn",
+      TRUE ~ "other"))
+
+df_demog <- df_og %>%
+  filter(record_type == "demography")
+
+df_demog_june <- df_demog %>%
+  filter(month == 6)
+
+
+# Clean annual demographic history --------------------------------------------
+# Absences bracketed by known living observations are confirmed dormancy.
+# These remain dormant under every sensitivity scenario.
+
+df_alive_range <- df_demog_june %>%
+  filter(s %in% c(1, 3, 5)) %>%
+  group_by(id) %>%
+  summarise(
+    first_alive = min(year),
+    last_alive = max(year), .groups = "drop")
+
+df_annual <- df_demog_june %>%
+  left_join(df_alive_range, by = "id") %>%
+  mutate(
+    dormancy_repair = s %in% c(0, 9) &
+      !is.na(first_alive) & year > first_alive & year < last_alive,
+    s_clean = if_else(dormancy_repair, 8, s),
+    stage_clean = if_else(dormancy_repair, 5, stage),
+    state_clean = case_when(
+      s_clean %in% c(1, 3, 5) ~ "active",
+      s_clean == 8 ~ "dormant",
+      s_clean == 10 ~ "alive_or_dormant",
+      s_clean == 0 ~ "absent",
+      s_clean == 9 ~ "previous_absent",
+      s_clean %in% c(2, 6, 7) ~ "missing",
+      s_clean == 11 ~ "discontinued",
+      TRUE ~ NA_character_))
+
+
+# Unresolved absence spells ----------------------------------------------------
+df_absence_spell <- df_annual %>%
+  group_by(id) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    absent_state = state_clean %in% c("absent", "previous_absent"),
+    new_spell = row_number() == 1 |
+      coalesce(absent_state != lag(absent_state), TRUE) |
+      coalesce(year != lag(year) + 1, TRUE),
+    spell = cumsum(new_spell)) %>%
+  group_by(id, spell) %>%
+  summarise(
+    absent_state = first(absent_state),
+    absence_start = min(year),
+    absence_end = max(year),
+    absence_years = n(), .groups = "drop") %>%
+  filter(absent_state)
+
+df_absence_t1 <- df_absence_spell %>%
+  transmute(
+    id,
+    year_t1 = absence_start,
+    absence_years)
+
+
+# Base annual transitions ------------------------------------------------------
+df_transition_base <- df_annual %>%
+  group_by(id) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    year_t1 = lead(year),
+    annual_transition = coalesce(year_t1 == year + 1, FALSE),
+    stage_t1 = if_else(
+      annual_transition, lead(stage_clean), NA_real_),
+    state_t1 = if_else(
+      annual_transition, lead(state_clean), NA_character_),
+    size_t0 = if_else(state_clean == "active", dia, NA_real_),
+    size_t1 = if_else(
+      annual_transition & state_clean == "active" &
+        lead(state_clean) == "active",
+      lead(dia), NA_real_),
+    size_reactivate_t1 = if_else(
+      annual_transition & state_clean == "dormant" &
+        lead(state_clean) == "active",
+      lead(dia), NA_real_)) %>%
+  ungroup() %>%
+  left_join(df_absence_t1, by = c("id", "year_t1"))
+
+
+# Recruitment structure --------------------------------------------------------
+df_quad_start <- df_demog_june %>%
+  group_by(site, pop, qu) %>%
+  summarise(first_quad_year = min(year), .groups = "drop")
+
+df_recruit_first <- df_demog %>%
+  filter(s %in% c(3, 5)) %>%
+  arrange(id, year, month) %>%
+  distinct(id, .keep_all = TRUE) %>%
+  mutate(
+    recruit_year = if_else(month > 6, year + 1, year)) %>%
+  left_join(df_quad_start, by = c("site", "pop", "qu")) %>%
+  mutate(
+    baseline = recruit_year == first_quad_year,
+    recruit_type = case_when(
+      s == 5 ~ "seedling",
+      s == 3 ~ "new_adult"))
+
+df_quad_monitor <- df_annual %>%
+  group_by(site, pop, qu, year) %>%
+  summarise(
+    monitored = any(state_clean != "discontinued", na.rm = TRUE),
+    .groups = "drop") %>%
+  filter(monitored) %>%
+  select(-monitored)
+
+df_recruit_followup <- df_quad_monitor %>%
+  left_join(
+    df_quad_monitor %>%
+      transmute(
+        site, pop, qu, year = year - 1,
+        monitored_t1 = TRUE),
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_quad_monitor %>%
+      transmute(
+        site, pop, qu, year = year - 2,
+        monitored_t2 = TRUE),
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    monitored_t1 = replace_na(monitored_t1, FALSE),
+    monitored_t2 = replace_na(monitored_t2, FALSE))
+
+df_recruit_count_simple <- df_recruit_first %>%
+  filter(!baseline) %>%
+  mutate(
+    fecundity_year_simple = case_when(
+      recruit_type == "seedling" ~ recruit_year - 1,
+      recruit_type == "new_adult" ~ recruit_year - 2)) %>%
+  semi_join(
+    df_quad_monitor,
+    by = c(
+      "site", "pop", "qu",
+      "fecundity_year_simple" = "year")) %>%
+  count(
+    site, pop, qu, fecundity_year_simple, recruit_type,
+    name = "nr_recruits") %>%
+  pivot_wider(
+    names_from = recruit_type,
+    values_from = nr_recruits,
+    values_fill = 0) %>%
+  rename(
+    observed_seedling_simple = seedling,
+    new_adult_simple = new_adult)
+
+df_repro_quad <- df_quad_monitor %>%
+  left_join(
+    df_annual %>%
+      filter(state_clean != "discontinued") %>%
+      group_by(site, pop, qu, year) %>%
+      summarise(
+        nr_active = sum(state_clean == "active", na.rm = TRUE),
+        nr_flower_obs = sum(
+          state_clean == "active" & !is.na(scape), na.rm = TRUE),
+        scape_sum = sum(
+          if_else(state_clean == "active", scape, NA_real_),
+          na.rm = TRUE), .groups = "drop") %>%
+      mutate(
+        nr_scapes = case_when(
+          nr_active == 0 ~ 0,
+          nr_flower_obs == 0 ~ NA_real_,
+          TRUE ~ scape_sum)) %>%
+      select(site, pop, qu, year, nr_active, nr_scapes),
+    by = c("site", "pop", "qu", "year"))
+
+df_recruit_quad <- df_recruit_followup %>%
+  left_join(
+    df_recruit_count_simple,
+    by = c(
+      "site", "pop", "qu",
+      "year" = "fecundity_year_simple")) %>%
+  left_join(
+    df_repro_quad,
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    observed_seedling_simple = case_when(
+      monitored_t1 ~ replace_na(observed_seedling_simple, 0L),
+      TRUE ~ NA_integer_),
+    new_adult_simple = case_when(
+      monitored_t2 ~ replace_na(new_adult_simple, 0L),
+      TRUE ~ NA_integer_),
+    recruitment_complete = monitored_t1 & monitored_t2,
+    recruits_simple = case_when(
+      recruitment_complete ~
+        observed_seedling_simple + new_adult_simple,
+      TRUE ~ NA_integer_))
+
+df_recruit <- df_recruit_quad %>%
+  transmute(
+    row_type = "recruitment",
+    site, pop, qu, year,
+    recruitment_complete,
+    recruits_simple,
+    nr_scapes)
+
+df_recruit_ind <- df_recruit_first %>%
+  filter(!baseline) %>%
+  transmute(
+    id,
+    year = recruit_year,
+    recruit_type)
+
+
+# Scenario-specific workdata ---------------------------------------------------
+make_scenario_data <- function(dormancy_cutoff) {
+  
+  df_transition <- df_transition_base %>%
+    mutate(
+      survives = case_when(
+        !annual_transition ~ NA_real_,
+        !state_clean %in% c("active", "dormant") ~ NA_real_,
+        state_t1 %in%
+          c("active", "dormant", "alive_or_dormant") ~ 1,
+        state_t1 %in% c("absent", "previous_absent") &
+          absence_years > dormancy_cutoff ~ 0,
+        state_t1 %in% c("absent", "previous_absent") &
+          absence_years <= dormancy_cutoff ~ NA_real_,
+        TRUE ~ NA_real_),
+      
+      enter_dormancy = case_when(
+        state_clean != "active" | survives != 1 ~ NA_real_,
+        state_t1 == "dormant" ~ 1,
+        state_t1 == "active" ~ 0,
+        TRUE ~ NA_real_),
+      
+      reactivate = case_when(
+        state_clean != "dormant" ~ NA_real_,
+        state_t1 == "active" ~ 1,
+        state_t1 == "dormant" ~ 0,
+        TRUE ~ NA_real_),
+      
+      flower = case_when(
+        state_clean != "active" ~ NA_real_,
+        !is.na(scape) & scape > 0 ~ 1,
+        !is.na(scape) & scape == 0 ~ 0,
+        TRUE ~ NA_real_),
+      
+      fl_nr = if_else(
+        state_clean == "active", scape, NA_real_),
+      logsize_t0 = log(size_t0),
+      logsize_t1 = log(size_t1),
+      logsize_t0_2 = logsize_t0^2,
+      logsize_t0_3 = logsize_t0^3)
+  
+  df_ind <- df_transition %>%
+    left_join(df_recruit_ind, by = c("id", "year")) %>%
+    transmute(
+      row_type = "individual",
+      site, pop, qu, id, year,
+      state = state_clean,
+      state_t1,
+      stage = stage_clean,
+      stage_t1,
+      survives,
+      enter_dormancy,
+      recruit_type,
+      size_reactivate_t1,
+      reactivate,
+      size_t0,
+      size_t1,
+      logsize_t0,
+      logsize_t1,
+      logsize_t0_2,
+      logsize_t0_3,
+      flower,
+      fl_nr)
+  
+  bind_rows(df_ind, df_recruit) %>%
+    mutate(
+      row_type = as.character(row_type),
+      year = as.numeric(year))
+}
+
+
+# Model helpers ----------------------------------------------------------------
+poly_formulas <- function(response) {
+  list(
+    as.formula(paste(response, '~ 1')),
+    as.formula(paste(response, '~ logsize_t0')),
+    as.formula(paste(
+      response, '~ logsize_t0 + logsize_t0_2')),
+    as.formula(paste(
+      response,
+      '~ logsize_t0 + logsize_t0_2 + logsize_t0_3')))
+}
+
+get_daicc <- function(mods) {
+  aicc <- sapply(mods, function(mod) {
+    k <- attr(logLik(mod), "df")
+    n <- nobs(mod)
+    AIC(mod) + 2 * k * (k + 1) / (n - k - 1)
+  })
+  
+  aicc - min(aicc)
+}
+
+pick_model <- function(mods, manual = c()) {
+  d_aicc <- get_daicc(mods)
+  index <- if (length(manual) == 0) {
+    which.min(d_aicc)
+  } else {
+    manual[1] + 1
+  }
+
+  list(
+    model = mods[[index]],
+    index = index - 1,
+    d_aicc = d_aicc)
+}
+
+fit_poly_glm <- function(data, response, manual = c()) {
+  forms <- poly_formulas(response)
+  mods <- lapply(
+    forms,
+    function(form) glm(form, data = data, family = 'binomial'))
+  pick_model(mods, manual)
+}
+
+fit_poly_lm <- function(data, response, manual = c()) {
+  forms <- poly_formulas(response)
+  mods <- lapply(forms, function(form) lm(form, data = data))
+  pick_model(mods, manual)
+}
+
+fit_poly_nb <- function(data, response, manual = c()) {
+  forms <- poly_formulas(response)
+  mods <- lapply(forms, function(form) MASS::glm.nb(form, data = data))
+  pick_model(mods, manual)
+}
+
+get_coef <- function(model, term) {
+  values <- coef(model)
+  if (term %in% names(values)) {
+    unname(values[[term]])
+  } else {
+    NULL
+  }
+}
+
+
+# IPM functions ----------------------------------------------------------------
+inv_logit <- function(x) {
+  exp(x) / (1 + exp(x))
+}
+
+sx <- function(x, pars, num_pars = pars$mod_su_index) {
+  val <- pars$surv_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('surv_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  inv_logit(val)
+}
+
+grow_mu <- function(x, pars, num_pars = pars$mod_gr_index) {
+  val <- pars$grow_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('grow_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  val
+}
+
+grow_sd <- function(mu, pars) {
+  sqrt(pars$a * exp(pars$b * mu))
+}
+
+gxy <- function(x, y, pars) {
+  mu <- grow_mu(x, pars)
+  dnorm(y, mean = mu, sd = grow_sd(mu, pars))
+}
+
+dorm_x <- function(x, pars, num_pars = pars$mod_do_index) {
+  val <- pars$dorm_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('dorm_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  inv_logit(val)
+}
+
+fl_x <- function(x, pars, num_pars = pars$mod_fl_index) {
+  val <- pars$fl_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('fl_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  inv_logit(val)
+}
+
+fl_n_x <- function(x, pars, num_pars = pars$mod_fl_n_index) {
+  val <- pars$fln_b0
+
+  for (i in seq_len(num_pars)) {
+    param <- paste0('fln_b', i)
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+
+  exp(val)
+}
+
+re_y_dist <- function(y, pars) {
+  norm <- pnorm(
+    pars$U, mean = pars$recr_sz, sd = pars$recr_sd) -
+    pnorm(
+      pars$L, mean = pars$recr_sz, sd = pars$recr_sd)
+
+  dnorm(
+    y, mean = pars$recr_sz, sd = pars$recr_sd) / norm
+}
+
+react_y_dist <- function(y, pars) {
+  norm <- pnorm(
+    pars$U, mean = pars$react_sz, sd = pars$react_sd) -
+    pnorm(
+      pars$L, mean = pars$react_sz, sd = pars$react_sd)
+
+  dnorm(
+    y, mean = pars$react_sz, sd = pars$react_sd) / norm
+}
+
+fyx <- function(y, x, pars) {
+  fl_x(x, pars) *
+    fl_n_x(x, pars) *
+    pars$fecu_b0 *
+    re_y_dist(y, pars)
+}
+
+kernel <- function(pars) {
+  n <- pars$mat_siz
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+
+  b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
+
+  Smat <- sx(y, pars)
+  Dmat <- dorm_x(y, pars)
+
+  Gmat <- matrix(0, n, n)
+  Gmat[] <- t(outer(y, y, gxy, pars)) * h
+
+  for (i in seq_len(n)) {
+    if (i <= n / 2) {
+      Gmat[1, i] <- Gmat[1, i] + 1 - sum(Gmat[, i])
+    } else {
+      Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])
+    }
+  }
+
+  Tmat <- sweep(
+    Gmat, 2, Smat * (1 - Dmat), '*')
+
+  Dorm_row <- matrix(
+    Smat * Dmat, nrow = 1)
+
+  React_vec <- react_y_dist(y, pars) * h
+  React_vec <- React_vec / sum(React_vec)
+
+  React_col <- matrix(
+    pars$p_reactivate * React_vec, ncol = 1)
+
+  Dorm_stasis <- 1 - pars$p_reactivate
+
+  Fmat <- outer(
+    y, y,
+    Vectorize(function(y, x) {
+      fyx(y, x, pars)
+    })) * h
+
+  K <- rbind(
+    cbind(Tmat + Fmat, React_col),
+    cbind(Dorm_row, Dorm_stasis))
+
+  K
+}
+
+lambda_ipm <- function(pars) {
+  Re(eigen(
+    kernel(pars), only.values = TRUE)$values[1])
+}
+
+
+# Reference data for scenario-independent population counts -------------------
+df_reference <- make_scenario_data(reference_cutoff)
+
+df_ind_reference <- df_reference %>%
+  filter(row_type == "individual")
+
+max_ind_year <- max(df_annual$year, na.rm = TRUE)
+
+
+# Observed population counts ---------------------------------------------------
+df_counts_alive <- df_ind_reference %>%
+  filter(state %in% c("active", "dormant", "alive_or_dormant")) %>%
+  count(site, pop, qu, year, name = "n_alive")
+
+df_newadult_backfill <- df_ind_reference %>%
+  filter(recruit_type == "new_adult") %>%
+  transmute(site, pop, qu, year = year - 1) %>%
+  count(site, pop, qu, year, name = "n_newadult_backfill")
+
+df_counts_quad <- df_reference %>%
+  filter(row_type == "recruitment") %>%
+  distinct(site, pop, qu, year) %>%
+  left_join(
+    df_counts_alive,
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_newadult_backfill,
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    n_alive = replace_na(n_alive, 0L),
+    n_newadult_backfill = replace_na(n_newadult_backfill, 0L),
+    n = n_alive + n_newadult_backfill) %>%
+  group_by(site, pop, qu) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    year_t1 = lead(year),
+    n_t1 = lead(n),
+    annual_transition = year_t1 == year + 1) %>%
+  ungroup() %>%
+  filter(annual_transition)
+
+
+# One sensitivity scenario -----------------------------------------------------
+run_dormancy_scenario <- function(dormancy_cutoff) {
+  
+  df_i <- make_scenario_data(dormancy_cutoff)
+  
+  df_ind_i <- df_i %>%
+    filter(row_type == "individual")
+  
+  df_re_i <- df_i %>%
+    filter(
+      row_type == "recruitment",
+      recruitment_complete,
+      !is.na(recruits_simple))
+  
+  
+  # Survival -------------------------------------------------------------------
+  df_su_i <- df_ind_i %>%
+    filter(
+      state == "active",
+      !is.na(survives),
+      size_t0 > 0,
+      is.finite(logsize_t0))
+  
+  fit_su_i <- fit_poly_glm(
+    df_su_i, "survives", v_mod_set_su)
+  
+  mod_su_i <- fit_su_i$model
+  
+  
+  # Growth ---------------------------------------------------------------------
+  df_gr_i <- df_ind_i %>%
+    filter(
+      state == "active",
+      state_t1 == "active",
+      size_t0 > 0,
+      size_t1 > 0,
+      is.finite(logsize_t0),
+      is.finite(logsize_t1))
+  
+  fit_gr_i <- fit_poly_lm(
+    df_gr_i, "logsize_t1", v_mod_set_gr)
+  
+  mod_gr_i <- fit_gr_i$model
+  
+  mod_gr_x_i <- fitted(mod_gr_i)
+  mod_gr_y_i <- resid(mod_gr_i)^2
+  
+  mod_gr_var_i <- nls(
+    mod_gr_y_i ~ a * exp(b * mod_gr_x_i),
+    start = list(a = 1, b = 0),
+    control = nls.control(
+      maxiter = 1000, tol = 1e-6, warnOnly = TRUE))
+  
+  
+  # Dormancy entry -------------------------------------------------------------
+  df_do_i <- df_ind_i %>%
+    filter(
+      !is.na(enter_dormancy),
+      size_t0 > 0,
+      is.finite(logsize_t0))
+  
+  fit_do_i <- fit_poly_glm(
+    df_do_i, "enter_dormancy", v_mod_set_do)
+  
+  mod_do_i <- fit_do_i$model
+  
+  
+  # Reactivation ---------------------------------------------------------------
+  df_ra_i <- df_ind_i %>%
+    filter(!is.na(reactivate))
+  
+  mod_ra_i <- glm(
+    reactivate ~ 1,
+    data = df_ra_i, family = "binomial")
+  
+  p_reactivate_i <- predict(
+    mod_ra_i,
+    newdata = data.frame(x = 1),
+    type = "response")[1]
+  
+  df_ra_size_i <- df_ind_i %>%
+    filter(
+      reactivate == 1,
+      size_reactivate_t1 > 0) %>%
+    mutate(
+      logsize_reactivate = log(size_reactivate_t1))
+  
+  react_sz_i <- mean(
+    df_ra_size_i$logsize_reactivate, na.rm = TRUE)
+  
+  react_sd_i <- sd(
+    df_ra_size_i$logsize_reactivate, na.rm = TRUE)
+  
+  
+  # Flowering ------------------------------------------------------------------
+  df_fl_i <- df_ind_i %>%
+    filter(
+      state == "active",
+      !is.na(flower),
+      size_t0 > 0,
+      is.finite(logsize_t0))
+  
+  fit_fl_i <- fit_poly_glm(
+    df_fl_i, "flower", v_mod_set_fl)
+  
+  mod_fl_i <- fit_fl_i$model
+  
+  
+  # Flower number --------------------------------------------------------------
+  df_fl_cond_i <- df_fl_i %>%
+    filter(
+      flower == 1,
+      !is.na(fl_nr),
+      fl_nr > 0,
+      fl_nr %% 1 == 0)
+  
+  fit_fln_i <- fit_poly_nb(
+    df_fl_cond_i, "fl_nr", v_mod_set_fl_n)
+  
+  mod_fln_i <- fit_fln_i$model
+  
+  
+  # Recruitment ----------------------------------------------------------------
+  df_sc2re_i <- df_re_i %>%
+    filter(
+      !is.na(nr_scapes),
+      !is.na(recruits_simple)) %>%
+    group_by(site, pop, year) %>%
+    summarise(
+      total_scapes = sum(nr_scapes),
+      recruit_count = sum(recruits_simple), .groups = "drop")
+  
+  mods_re_i <- list(
+    MASS::glm.nb(recruit_count ~ 1, data = df_sc2re_i),
+    MASS::glm.nb(recruit_count ~ total_scapes, data = df_sc2re_i),
+    MASS::glm.nb(
+      recruit_count ~ log1p(total_scapes), data = df_sc2re_i))
+  
+  mod_re_i <- mods_re_i[[which.min(get_daicc(mods_re_i))]]
+  
+  df_sc2re_i <- df_sc2re_i %>%
+    mutate(
+      recruits_pred = predict(
+        mod_re_i, type = "response"))
+  
+  recr_per_scape_i <- sum(df_sc2re_i$recruits_pred) /
+    sum(df_sc2re_i$total_scapes)
+  
+  
+  # Recruit size ---------------------------------------------------------------
+  df_re_size_i <- df_ind_i %>%
+    filter(
+      recruit_type == "seedling",
+      size_t0 > 0,
+      is.finite(logsize_t0))
+  
+  recr_sz_i <- mean(
+    df_re_size_i$logsize_t0, na.rm = TRUE)
+  
+  recr_sd_i <- sd(
+    df_re_size_i$logsize_t0, na.rm = TRUE)
+  
+  
+  # IPM parameters -------------------------------------------------------------
+  pars_i <- Filter(function(x) length(x) > 0, list(
+    surv_b0 = get_coef(mod_su_i, "(Intercept)"),
+    surv_b1 = get_coef(mod_su_i, "logsize_t0"),
+    surv_b2 = get_coef(mod_su_i, "logsize_t0_2"),
+    surv_b3 = get_coef(mod_su_i, "logsize_t0_3"),
+    
+    grow_b0 = get_coef(mod_gr_i, "(Intercept)"),
+    grow_b1 = get_coef(mod_gr_i, "logsize_t0"),
+    grow_b2 = get_coef(mod_gr_i, "logsize_t0_2"),
+    grow_b3 = get_coef(mod_gr_i, "logsize_t0_3"),
+    a = unname(coef(mod_gr_var_i)[["a"]]),
+    b = unname(coef(mod_gr_var_i)[["b"]]),
+    
+    dorm_b0 = get_coef(mod_do_i, "(Intercept)"),
+    dorm_b1 = get_coef(mod_do_i, "logsize_t0"),
+    dorm_b2 = get_coef(mod_do_i, "logsize_t0_2"),
+    dorm_b3 = get_coef(mod_do_i, "logsize_t0_3"),
+    
+    fl_b0 = get_coef(mod_fl_i, "(Intercept)"),
+    fl_b1 = get_coef(mod_fl_i, "logsize_t0"),
+    fl_b2 = get_coef(mod_fl_i, "logsize_t0_2"),
+    fl_b3 = get_coef(mod_fl_i, "logsize_t0_3"),
+    
+    fln_b0 = get_coef(mod_fln_i, "(Intercept)"),
+    fln_b1 = get_coef(mod_fln_i, "logsize_t0"),
+    fln_b2 = get_coef(mod_fln_i, "logsize_t0_2"),
+    fln_b3 = get_coef(mod_fln_i, "logsize_t0_3"),
+    
+    fecu_b0 = recr_per_scape_i,
+    recr_sz = recr_sz_i,
+    recr_sd = recr_sd_i,
+    react_sz = react_sz_i,
+    react_sd = react_sd_i,
+    p_reactivate = p_reactivate_i,
+    
+    L = min(df_gr_i$logsize_t0),
+    U = max(df_gr_i$logsize_t0),
+    mat_siz = 200,
+    
+    mod_su_index = fit_su_i$index,
+    mod_gr_index = fit_gr_i$index,
+    mod_do_index = fit_do_i$index,
+    mod_fl_index = fit_fl_i$index,
+    mod_fl_n_index = fit_fln_i$index))
+  
+  lambda_ipm_i <- lambda_ipm(pars_i)
+  
+  
+  # Observed population growth -------------------------------------------------
+  last_complete_transition <- max_ind_year - dormancy_cutoff - 1
+  
+  df_counts_year_i <- df_counts_quad %>%
+    filter(year <= last_complete_transition) %>%
+    group_by(year) %>%
+    summarise(
+      n_quads = n(),
+      n_t0 = sum(n),
+      n_t1 = sum(n_t1), .groups = "drop") %>%
+    filter(n_t0 > 0) %>%
+    mutate(lambda_obs = n_t1 / n_t0)
+  
+  lambda_obs_arithmetic <- mean(
+    df_counts_year_i$lambda_obs, na.rm = TRUE)
+  
+  lambda_obs_geometric <- exp(mean(
+    log(df_counts_year_i$lambda_obs), na.rm = TRUE))
+  
+  
+  # Scenario summary -----------------------------------------------------------
+  n_absence_dead <- df_ind_i %>%
+    filter(
+      state == "active",
+      state_t1 %in% c("absent", "previous_absent"),
+      survives == 0) %>%
+    nrow()
+  
+  n_absence_unresolved <- df_ind_i %>%
+    filter(
+      state == "active",
+      state_t1 %in% c("absent", "previous_absent"),
+      is.na(survives)) %>%
+    nrow()
+  
+  tibble(
+    dormancy_cutoff = dormancy_cutoff,
+    last_complete_transition = last_complete_transition,
+    n_observed_transitions = nrow(df_counts_year_i),
+    n_absence_dead = n_absence_dead,
+    n_absence_unresolved = n_absence_unresolved,
+    n_survival = nrow(df_su_i),
+    n_survival_dead = sum(df_su_i$survives == 0),
+    n_survival_alive = sum(df_su_i$survives == 1),
+    survival_model_degree = fit_su_i$index,
+    lambda_ipm = lambda_ipm_i,
+    lambda_obs_arithmetic = lambda_obs_arithmetic,
+    lambda_obs_geometric = lambda_obs_geometric)
+}
+
+
+# Run 0-20 years ----------------------------------------------------------------
+df_sensitivity <- map_dfr(
+  dormancy_cutoffs, run_dormancy_scenario)
+
+
+# Summary relative to the current 3-year assumption ----------------------------
+ref <- df_sensitivity %>%
+  filter(dormancy_cutoff == reference_cutoff) %>%
+  transmute(
+    ref_ipm = lambda_ipm,
+    ref_obs_arithmetic = lambda_obs_arithmetic,
+    ref_obs_geometric = lambda_obs_geometric)
+
+df_sensitivity_summary <- df_sensitivity %>%
+  crossing(ref) %>%
+  mutate(
+    delta_ipm = lambda_ipm - ref_ipm,
+    delta_obs_arithmetic =
+      lambda_obs_arithmetic - ref_obs_arithmetic,
+    delta_obs_geometric =
+      lambda_obs_geometric - ref_obs_geometric,
+    pct_delta_ipm = 100 * delta_ipm / ref_ipm,
+    pct_delta_obs_arithmetic =
+      100 * delta_obs_arithmetic / ref_obs_arithmetic,
+    pct_delta_obs_geometric =
+      100 * delta_obs_geometric / ref_obs_geometric) %>%
+  select(-starts_with("ref_"))
+
+
+# Final sensitivity plot -------------------------------------------------------
+df_sensitivity_plot <- df_sensitivity_summary %>%
+  select(
+    dormancy_cutoff,
+    `Mean IPM` = lambda_ipm,
+    `Observed arithmetic` = lambda_obs_arithmetic,
+    `Observed geometric` = lambda_obs_geometric) %>%
+  pivot_longer(
+    -dormancy_cutoff,
+    names_to = "estimate",
+    values_to = "lambda")
+
+fig_dormancy_sensitivity <- ggplot(
+  df_sensitivity_plot,
+  aes(
+    x = dormancy_cutoff,
+    y = lambda,
+    linetype = estimate,
+    shape = estimate)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_vline(
+    xintercept = reference_cutoff,
+    linetype = "dotted") +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2.4) +
+  scale_x_continuous(breaks = dormancy_cutoffs) +
+  theme_bw() +
+  labs(
+    title = "Sensitivity to terminal dormancy assumption",
+    subtitle = v_ggp_suffix,
+    x = "Maximum unresolved dormancy (years)",
+    y = expression(lambda),
+    linetype = NULL,
+    shape = NULL)
+```
+
+The effect of the assumption on the number of classified deaths and unresolved
+terminal absences, together with the resulting estimates of population growth,
+is summarized below.
+
+```{r dormancy-sensitivity-table, echo=FALSE}
+df_sensitivity %>%
+  select(
+    dormancy_cutoff,
+    n_absence_dead,
+    n_absence_unresolved,
+    n_survival_dead,
+    lambda_ipm,
+    lambda_obs_arithmetic,
+    lambda_obs_geometric) %>%
+  rename(
+    `Dormancy cutoff (years)` = dormancy_cutoff,
+    `Absences classified as dead` = n_absence_dead,
+    `Unresolved absences` = n_absence_unresolved,
+    `Deaths in survival model` = n_survival_dead,
+    `Mean IPM lambda` = lambda_ipm,
+    `Observed arithmetic lambda` = lambda_obs_arithmetic,
+    `Observed geometric lambda` = lambda_obs_geometric) %>%
+  knitr::kable(digits = 3)
+```
+
+The three-year reference assumption is indicated by the vertical dotted line.
+The horizontal dashed line marks $\lambda = 1$, separating projected population
+decline from population growth.
+
+```{r dormancy-sensitivity-figure, echo=FALSE, fig.width=8, fig.height=5}
+fig_dormancy_sensitivity
+```
+
+
+## Small individuals and extreme size reversals
+
+Inspection of the diameter data identified a small number of unusually small
+measurements among established plants. Small diameters are not inherently
+problematic because genuine seedlings and young plants occur at these sizes.
+The relevant concern is therefore restricted to active non-seedlings, especially
+individuals showing an abrupt one-year reduction to a very small diameter
+followed by a return to substantially larger size.
+
+No diameter observations were corrected or removed. The following analyses are
+used only to identify unusual observations and assess whether they can be
+explained by other information in the demographic records.
+
+
+```{r small-individuals-growth-plot, echo=FALSE, fig.width=7, fig.height=6}
+# Annual growth transitions ----------------------------------------------------
+df_growth_plot <- df_annual %>%
+  arrange(id, year) %>%
+  group_by(id) %>%
+  mutate(
+    year_t1 = lead(year),
+    state_t1 = lead(state_clean),
+    stage_t1 = lead(stage_clean),
+    dia_t1 = lead(dia)) %>%
+  ungroup() %>%
+  filter(
+    year_t1 == year + 1,
+    state_clean == "active",
+    state_t1 == "active",
+    dia > 0,
+    dia_t1 > 0) %>%
+  mutate(
+    logdia_t0 = log(dia),
+    logdia_t1 = log(dia_t1),
+    flagged_small =
+      (stage_clean != 1 & dia < 1) |
+      (stage_t1 != 1 & dia_t1 < 1))
+
+
+fig_small_growth <- ggplot(
+  df_growth_plot,
+  aes(
+    x = logdia_t0,
+    y = logdia_t1)) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed") +
+  geom_point(
+    alpha = 0.25,
+    size = 1.2) +
+  geom_point(
+    data = df_growth_plot %>%
+      filter(flagged_small),
+    shape = 21,
+    size = 3,
+    stroke = 1) +
+  geom_vline(
+    xintercept = 0,
+    linetype = "dotted") +
+  geom_hline(
+    yintercept = 0,
+    linetype = "dotted") +
+  theme_bw() +
+  labs(
+    x = expression(log(Diameter[t])),
+    y = expression(log(Diameter[t+1])))
+
+fig_small_growth
+```
+
+
+```{r small-individuals-run, include=FALSE}
+# Active non-seedlings below 1 cm ----------------------------------------------
+df_annual <- df_annual %>%
+  mutate(
+    flag_low_nonseedling =
+      state_clean == "active" &
+      !is.na(stage_clean) &
+      stage_clean != 1 &
+      !is.na(dia) &
+      dia < 1)
+
+
+df_low_nonseedling <- df_annual %>%
+  filter(flag_low_nonseedling) %>%
+  dplyr::select(
+    site, pop, qu, plant, id, year,
+    stage_clean,
+    dia, scape, invol, nb, nr, herb,
+    comment) %>%
+  arrange(year, site, pop, qu, plant)
+
+
+# Three-year active histories --------------------------------------------------
+df_three_year <- df_annual %>%
+  arrange(id, year) %>%
+  group_by(id) %>%
+  mutate(
+    year_prev = lag(year),
+    year_next = lead(year),
+    state_prev = lag(state_clean),
+    state_next = lead(state_clean),
+    dia_prev = lag(dia),
+    dia_next = lead(dia),
+    stage_prev = lag(stage_clean),
+    stage_next = lead(stage_clean),
+    scape_prev = lag(scape),
+    scape_next = lead(scape),
+    herb_prev = lag(herb),
+    herb_next = lead(herb)) %>%
+  ungroup() %>%
+  filter(
+    year_prev == year - 1,
+    year_next == year + 1,
+    state_prev == "active",
+    state_clean == "active",
+    state_next == "active",
+    dia_prev > 0,
+    dia > 0,
+    dia_next > 0) %>%
+  mutate(
+    logdia_prev = log(dia_prev),
+    logdia = log(dia),
+    logdia_next = log(dia_next),
+    valley_depth =
+      pmin(logdia_prev, logdia_next) - logdia,
+    local_valley =
+      dia < dia_prev &
+      dia < dia_next,
+    strict_small_valley =
+      dia < 1 &
+      dia_prev >= 1 &
+      dia_next >= 1)
+
+
+# Strict large-small-large observations ---------------------------------------
+df_suspicious <- df_three_year %>%
+  filter(strict_small_valley) %>%
+  arrange(desc(valley_depth))
+
+
+df_suspicious_table <- df_suspicious %>%
+  transmute(
+    ID = id,
+    Year = year,
+    `Previous stage` = stage_prev,
+    `Focal stage` = stage_clean,
+    `Next stage` = stage_next,
+    `Previous diameter` = dia_prev,
+    `Focal diameter` = dia,
+    `Next diameter` = dia_next,
+    Scapes = scape,
+    Herbivory = herb,
+    `Valley depth` = valley_depth)
+
+
+# Trajectories -----------------------------------------------------------------
+df_suspicious_long <- df_suspicious %>%
+  dplyr::select(
+    id, year,
+    dia_prev, dia, dia_next) %>%
+  pivot_longer(
+    cols = c(dia_prev, dia, dia_next),
+    names_to = "position",
+    values_to = "diameter") %>%
+  mutate(
+    census_year = case_when(
+      position == "dia_prev" ~ year - 1,
+      position == "dia" ~ year,
+      position == "dia_next" ~ year + 1))
+
+
+fig_suspicious_trajectories <- ggplot(
+  df_suspicious_long,
+  aes(
+    x = census_year,
+    y = diameter,
+    group = id)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2.2) +
+  facet_wrap(~ id, scales = "free_y") +
+  theme_bw() +
+  labs(
+    x = "Year",
+    y = "Diameter")
+
+
+# Flowering at small size ------------------------------------------------------
+df_small_flowering <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia < 3,
+    !is.na(scape),
+    scape > 0) %>%
+  dplyr::select(
+    id, year,
+    stage_clean,
+    dia, scape,
+    herb) %>%
+  arrange(dia)
+
+
+# Flowering and three-year size deviations ------------------------------------
+df_fl_valley <- df_three_year %>%
+  filter(!is.na(scape)) %>%
+  mutate(
+    flower = scape > 0,
+    expected_dia =
+      sqrt(dia_prev * dia_next),
+    deviation_middle =
+      log(dia / expected_dia))
+
+
+df_flowering_valley_summary <- df_fl_valley %>%
+  group_by(flower) %>%
+  summarise(
+    n = n(),
+    mean_deviation = mean(deviation_middle),
+    median_deviation = median(deviation_middle),
+    prop_local_valley = mean(local_valley),
+    .groups = "drop")
+
+
+# Herbivory check --------------------------------------------------------------
+df_herb_test <- df_three_year %>%
+  filter(herb %in% c(0, 1))
+
+
+mod_herb_shrink <- lme4::lmer(
+  log(dia) ~ log(dia_prev) + herb +
+    (1 | year) +
+    (1 | id),
+  data = df_herb_test)
+
+
+mod_herb_rebound <- lme4::lmer(
+  log(dia_next) ~ log(dia) + herb +
+    (1 | year) +
+    (1 | id),
+  data = df_herb_test)
+
+
+herb_shrink_coef <-
+  unname(lme4::fixef(mod_herb_shrink)[["herb"]])
+
+herb_rebound_coef <-
+  unname(lme4::fixef(mod_herb_rebound)[["herb"]])
+
+
+# Summary ----------------------------------------------------------------------
+df_small_summary <- tibble(
+  Diagnostic = c(
+    "Active non-seedling observations below 1 cm",
+    "Strict >=1 -> <1 -> >=1 size reversals",
+    "Flowering observations below 1 cm",
+    "Flowering observations below 3 cm"),
+  N = c(
+    sum(df_annual$flag_low_nonseedling, na.rm = TRUE),
+    nrow(df_suspicious),
+    sum(
+      df_annual$state_clean == "active" &
+        !is.na(df_annual$dia) &
+        df_annual$dia < 1 &
+        !is.na(df_annual$scape) &
+        df_annual$scape > 0,
+      na.rm = TRUE),
+    nrow(df_small_flowering)))
+```
+
+
+There were only a small number of active non-seedling observations at extremely
+small sizes. The most informative cases are those in which an established plant
+was at least 1 cm in the preceding year, fell below 1 cm in the focal census,
+and returned to at least 1 cm in the following year.
+
+```{r small-individuals-summary, echo=FALSE}
+df_small_summary %>%
+  knitr::kable()
+```
+
+
+Seven observations met this strict definition. Their complete three-year size
+sequences are shown below.
+
+```{r small-individuals-table, echo=FALSE}
+df_suspicious_table %>%
+  mutate(
+    across(
+      c(
+        `Previous diameter`,
+        `Focal diameter`,
+        `Next diameter`,
+        `Valley depth`),
+      ~ round(.x, 2))) %>%
+  knitr::kable()
+```
+
+
+```{r small-individuals-figure, echo=FALSE, fig.width=9, fig.height=7}
+fig_suspicious_trajectories
+```
+
+
+The strongest reversals were substantially more extreme than ordinary annual
+size variation. For example, the most pronounced sequence was 24.0, 0.5 and
+19.9 cm in consecutive years. The focal observation was nevertheless recorded
+as an active and flowering plant, with three scapes and recorded herbivory.
+Other extreme reversals occurred without the same associated information, and
+no common explanatory variable was identified across all seven observations.
+
+## Flowering at very small size
+
+Flowering at very small recorded diameter was itself rare.
+
+```{r flowering-number-size-plot, echo=FALSE, fig.width=7, fig.height=5.5}
+# Number of flowers against size -----------------------------------------------
+df_flowering_plot <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia > 0,
+    !is.na(scape)) %>%
+  mutate(
+    logdia = log(dia),
+    small_flowering = scape > 0 & dia < 3)
+
+fig_flowering_number_size <- ggplot(
+  df_flowering_plot,
+  aes(
+    x = logdia,
+    y = scape)) +
+  geom_jitter(
+    height = 0.15,
+    width = 0,
+    alpha = 0.18,
+    size = 1) +
+  geom_smooth(
+    method = "glm",
+    method.args = list(family = "poisson"),
+    se = TRUE,
+    linewidth = 1) +
+  geom_point(
+    data = df_flowering_plot %>%
+      filter(small_flowering),
+    shape = 21,
+    size = 3,
+    stroke = 1) +
+  geom_vline(
+    xintercept = 0,
+    linetype = "dotted") +
+  theme_bw() +
+  labs(
+    x = "Log diameter",
+    y = "Number of scapes")
+
+fig_flowering_number_size
+```
+
+
+```{r small-flowering-table, echo=FALSE}
+df_small_flowering %>%
+  rename(
+    ID = id,
+    Year = year,
+    Stage = stage_clean,
+    Diameter = dia,
+    Scapes = scape,
+    Herbivory = herb) %>%
+  knitr::kable()
+```
+
+
+The 0.5-cm observation was the only flowering record below 1 cm. However,
+flowering itself does not appear to produce a general temporary reduction in
+diameter. Across complete three-year histories, flowering observations had a
+slightly positive rather than negative mean deviation from the size expected
+from the preceding and following censuses.
+
+```{r flowering-valley-summary, echo=FALSE}
+df_flowering_valley_summary %>%
+  mutate(
+    Flowering = if_else(flower, "Yes", "No"),
+    mean_deviation = round(mean_deviation, 3),
+    median_deviation = round(median_deviation, 3),
+    prop_local_valley = round(prop_local_valley, 3)) %>%
+  dplyr::select(
+    Flowering,
+    N = n,
+    `Mean log deviation` = mean_deviation,
+    `Median log deviation` = median_deviation,
+    `Proportion local valleys` = prop_local_valley) %>%
+  knitr::kable()
+```
+
+
+Recorded herbivory may therefore provide a biologically relevant explanation
+for the single most extreme observation, but it does not provide a general
+explanation for the unusual size reversals. In the available observations with
+herbivory coded as either absent or present, its estimated effects on size
+reduction (`r round(herb_shrink_coef, 3)`) and subsequent recovery
+(`r round(herb_rebound_coef, 3)`) were both small.
+
+The unusual diameter records are therefore retained unchanged. Their primary
+importance is that they represent a small set of potentially influential
+observations that can later be examined explicitly in sensitivity analyses of
+the growth model.
+
+
+
+## Diameter measurement precision and heaping
+
+A separate feature of the diameter data is the high frequency of exact integer
+and half-unit measurements. This is distinct from the issue of unusually small
+individuals. Here the question is whether particular numerical values indicate
+isolated suspicious records or instead reflect the precision with which
+diameter was recorded during different parts of the study.
+
+```{r growth-heaping-plot, echo=FALSE, fig.width=7, fig.height=6}
+# Growth plot with heaped diameter observations highlighted --------------------
+df_growth_heap <- df_annual %>%
+  arrange(id, year) %>%
+  group_by(id) %>%
+  mutate(
+    year_t1 = lead(year),
+    state_t1 = lead(state_clean),
+    dia_t1 = lead(dia)) %>%
+  ungroup() %>%
+  filter(
+    year_t1 == year + 1,
+    state_clean == "active",
+    state_t1 == "active",
+    dia > 0,
+    dia_t1 > 0) %>%
+  mutate(
+    logdia_t0 = log(dia),
+    logdia_t1 = log(dia_t1),
+
+    integer_t0 = dia %% 1 == 0,
+    integer_t1 = dia_t1 %% 1 == 0,
+
+    half_t0 = (dia * 2) %% 1 == 0 & !integer_t0,
+    half_t1 = (dia_t1 * 2) %% 1 == 0 & !integer_t1,
+
+    heap_class = case_when(
+      integer_t0 | integer_t1 ~ "Exact integer",
+      half_t0 | half_t1 ~ "Half-unit only",
+      TRUE ~ "Other"))
+
+
+fig_growth_heaping <- ggplot(
+  df_growth_heap,
+  aes(
+    x = logdia_t0,
+    y = logdia_t1)) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed") +
+  geom_point(
+    data = df_growth_heap %>%
+      filter(heap_class == "Other"),
+    alpha = 0.18,
+    size = 1) +
+  geom_point(
+    data = df_growth_heap %>%
+      filter(heap_class != "Other"),
+    aes(color = heap_class),
+    size = 1.5,
+    alpha = 0.5) +
+  theme_bw() +
+  labs(
+    x = expression(log(Diameter[t])),
+    y = expression(log(Diameter[t+1])),
+    shape = "Heaping")
+
+fig_growth_heaping
+```
+
+
+```{r diameter-heaping-run, include=FALSE}
+# Overall heaping --------------------------------------------------------------
+df_heaping_summary <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia > 0) %>%
+  summarise(
+    n = n(),
+    exact_integer = sum(dia %% 1 == 0),
+    prop_integer = mean(dia %% 1 == 0),
+    exact_half = sum((dia * 2) %% 1 == 0),
+    prop_half = mean((dia * 2) %% 1 == 0))
+
+
+# Heaping through time ---------------------------------------------------------
+df_heap_year <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia > 0) %>%
+  group_by(year) %>%
+  summarise(
+    n = n(),
+    prop_integer = mean(dia %% 1 == 0),
+    prop_half = mean((dia * 2) %% 1 == 0),
+    n_unique = n_distinct(dia),
+    .groups = "drop")
+
+
+# Display summary --------------------------------------------------------------
+df_heaping_display <- tibble(
+  Diagnostic = c(
+    "Positive active diameter observations",
+    "Exact integer observations",
+    "Multiples of 0.5, including integers"),
+  N = c(
+    df_heaping_summary$n,
+    df_heaping_summary$exact_integer,
+    df_heaping_summary$exact_half),
+  Proportion = c(
+    1,
+    df_heaping_summary$prop_integer,
+    df_heaping_summary$prop_half))
+
+
+# Figure -----------------------------------------------------------------------
+fig_heaping_year <- df_heap_year %>%
+  dplyr::select(
+    year,
+    `Exact integer` = prop_integer,
+    `Multiple of 0.5` = prop_half) %>%
+  pivot_longer(
+    -year,
+    names_to = "precision",
+    values_to = "proportion") %>%
+  ggplot(
+    aes(
+      x = year,
+      y = proportion,
+      linetype = precision,
+      shape = precision)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  theme_bw() +
+  labs(
+    x = "Year",
+    y = "Proportion of active diameter records",
+    linetype = NULL,
+    shape = NULL)
+```
+
+
+Across all positive active diameter observations, exact integer and half-unit
+values were common.
+
+```{r diameter-heaping-summary, echo=FALSE}
+df_heaping_display %>%
+  mutate(
+    Proportion = round(Proportion, 3)) %>%
+  knitr::kable()
+```
+
+
+However, this heaping was strongly structured through time.
+
+```{r diameter-heaping-figure, echo=FALSE, fig.width=8, fig.height=5}
+fig_heaping_year
+```
+
+
+In the earliest censuses almost all recorded diameters were integers. Integer
+recording remained dominant through much of the 1990s, whereas from 2000 onward
+the proportion of integer observations declined sharply and measurements at
+finer decimal resolution became common. The same temporal pattern is evident
+for measurements falling exactly on half-unit values.
+
+This indicates that integer and half-unit values are primarily a feature of
+changing measurement or recording resolution rather than a set of isolated
+suspicious observations. In particular, there is no basis for treating values
+such as exactly 1 or 2 cm as erroneous solely because they are integers.
+Consequently, these observations are retained unchanged. The temporal change in
+measurement precision should instead be kept in mind when interpreting the
+growth data and its residual variation.
+
+
+
+### Sensitivity of the growth model
+
+The unusually small diameter observations may have disproportionate influence
+on the growth model because a single extreme measurement contributes both a
+large apparent shrinkage into the observation and a large apparent increase
+from it in the following year. We therefore refitted the growth model under
+three scenarios:
+
+1. all observations retained;
+2. transitions involving one of the seven strict
+   `>= 1 -> < 1 -> >= 1 cm` reversals removed; and
+3. transitions involving any active non-seedling diameter below 1 cm removed.
+
+For a flagged diameter observation, both the transition entering and the
+transition leaving that observation were excluded. No recorded diameter was
+modified.
+
+
+```{r growth-sensitivity-run, include=FALSE}
+# Flag strict focal observations ----------------------------------------------
+df_strict_key <- df_suspicious %>%
+  dplyr::select(id, year) %>%
+  distinct() %>%
+  mutate(flag_strict_focal = TRUE)
+
+
+# Growth data with endpoint flags ---------------------------------------------
+df_growth_sensitivity <- df_annual %>%
+  left_join(
+    df_strict_key,
+    by = c("id", "year")) %>%
+  mutate(
+    flag_strict_focal =
+      replace_na(flag_strict_focal, FALSE)) %>%
+  arrange(id, year) %>%
+  group_by(id) %>%
+  mutate(
+    year_t1 = lead(year),
+    state_t1 = lead(state_clean),
+    dia_t1 = lead(dia),
+
+    flag_low_t0 = flag_low_nonseedling,
+    flag_low_t1 = lead(flag_low_nonseedling),
+
+    flag_strict_t0 = flag_strict_focal,
+    flag_strict_t1 = lead(flag_strict_focal)) %>%
+  ungroup() %>%
+  filter(
+    year_t1 == year + 1,
+    state_clean == "active",
+    state_t1 == "active",
+    dia > 0,
+    dia_t1 > 0) %>%
+  mutate(
+    logsize_t0 = log(dia),
+    logsize_t1 = log(dia_t1),
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3,
+
+    touches_strict =
+      flag_strict_t0 |
+      replace_na(flag_strict_t1, FALSE),
+
+    touches_low_nonseedling =
+      flag_low_t0 |
+      replace_na(flag_low_t1, FALSE))
+
+
+# Sensitivity datasets --------------------------------------------------------
+growth_data_list <- list(
+  `All observations` =
+    df_growth_sensitivity,
+
+  `Exclude strict reversals` =
+    df_growth_sensitivity %>%
+    filter(!touches_strict),
+
+  `Exclude all <1 cm non-seedlings` =
+    df_growth_sensitivity %>%
+    filter(!touches_low_nonseedling))
+
+
+# Same growth candidate models as the IPM -------------------------------------
+growth_formulas <- list(
+  logsize_t1 ~ 1,
+  logsize_t1 ~ logsize_t0,
+  logsize_t1 ~ logsize_t0 + logsize_t0_2,
+  logsize_t1 ~
+    logsize_t0 + logsize_t0_2 + logsize_t0_3)
+
+
+fit_growth_scenario <- function(data, scenario) {
+
+  mods <- lapply(
+    growth_formulas,
+    function(form) {
+      lm(
+        form,
+        data = data)
+    })
+
+  aicc <- sapply(
+    mods,
+    function(mod) {
+      k <- attr(logLik(mod), "df")
+      n <- nobs(mod)
+
+      AIC(mod) +
+        2 * k * (k + 1) /
+        (n - k - 1)
+    })
+
+  best_index <- which.min(aicc)
+  mod <- mods[[best_index]]
+
+  mod_gr_x <- fitted(mod)
+  mod_gr_y <- resid(mod)^2
+
+  mod_var <- nls(
+    mod_gr_y ~ a * exp(b * mod_gr_x),
+    start = list(
+      a = 1,
+      b = 0),
+    control = nls.control(
+      maxiter = 1000,
+      tol = 1e-6,
+      warnOnly = TRUE))
+
+  list(
+    scenario = scenario,
+    data = data,
+    model = mod,
+    var_model = mod_var,
+    degree = best_index - 1,
+    aicc = aicc)
+}
+
+
+growth_fits <- imap(
+  growth_data_list,
+  ~ fit_growth_scenario(
+    .x,
+    .y))
+
+
+# Model summary ---------------------------------------------------------------
+get_growth_coef <- function(mod, term) {
+
+  value <- coef(mod)[term]
+
+  if (length(value) == 0) {
+    return(NA_real_)
+  }
+
+  unname(value)
+}
+
+
+df_growth_sensitivity_summary <- map_dfr(
+  growth_fits,
+  function(x) {
+
+    tibble(
+      Scenario = x$scenario,
+      N = nrow(x$data),
+      `Excluded transitions` =
+        nrow(df_growth_sensitivity) -
+        nrow(x$data),
+      `Selected degree` = x$degree,
+      Intercept =
+        get_growth_coef(
+          x$model,
+          "(Intercept)"),
+      Linear =
+        get_growth_coef(
+          x$model,
+          "logsize_t0"),
+      Quadratic =
+        get_growth_coef(
+          x$model,
+          "logsize_t0_2"),
+      Cubic =
+        get_growth_coef(
+          x$model,
+          "logsize_t0_3"),
+      RMSE =
+        sqrt(mean(resid(x$model)^2)),
+      `Variance a` =
+        unname(
+          coef(x$var_model)[["a"]]),
+      `Variance b` =
+        unname(
+          coef(x$var_model)[["b"]]))
+  })
+
+
+# Predicted growth curves -----------------------------------------------------
+growth_grid <- tibble(
+  logsize_t0 = seq(
+    min(
+      df_growth_sensitivity$logsize_t0),
+    max(
+      df_growth_sensitivity$logsize_t0),
+    length.out = 300)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3)
+
+
+df_growth_predictions <- map_dfr(
+  growth_fits,
+  function(x) {
+
+    growth_grid %>%
+      mutate(
+        Scenario = x$scenario,
+        pred_logsize_t1 =
+          predict(
+            x$model,
+            newdata = growth_grid))
+  })
+
+
+# Difference from the complete-data model -------------------------------------
+df_growth_pred_wide <- df_growth_predictions %>%
+  dplyr::select(
+    Scenario,
+    logsize_t0,
+    pred_logsize_t1) %>%
+  pivot_wider(
+    names_from = Scenario,
+    values_from = pred_logsize_t1)
+
+
+df_growth_sensitivity_difference <-
+  df_growth_pred_wide %>%
+  summarise(
+    `Strict reversals: max absolute difference` =
+      max(
+        abs(
+          `Exclude strict reversals` -
+            `All observations`)),
+    `<1 cm non-seedlings: max absolute difference` =
+      max(
+        abs(
+          `Exclude all <1 cm non-seedlings` -
+            `All observations`))) %>%
+  pivot_longer(
+    everything(),
+    names_to = "Comparison",
+    values_to = "Max_difference")
+
+
+# Growth sensitivity figure ---------------------------------------------------
+fig_growth_sensitivity <- ggplot() +
+  geom_point(
+    data = df_growth_sensitivity,
+    aes(
+      x = logsize_t0,
+      y = logsize_t1),
+    alpha = 0.08,
+    size = 0.8) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed") +
+  geom_line(
+    data = df_growth_predictions,
+    aes(
+      x = logsize_t0,
+      y = pred_logsize_t1,
+      linetype = Scenario),
+    linewidth = 1) +
+  theme_bw() +
+  labs(
+    x = expression(log(Diameter[t])),
+    y = expression(log(Diameter[t+1])),
+    linetype = NULL)
+```
+
+
+The sensitivity analysis changes only which observations are used to estimate
+growth; all other demographic data remain unchanged.
+
+```{r growth-sensitivity-table, echo=FALSE}
+df_growth_sensitivity_summary %>%
+  mutate(
+    across(
+      c(
+        Intercept,
+        Linear,
+        Quadratic,
+        Cubic,
+        RMSE,
+        `Variance a`,
+        `Variance b`),
+      ~ round(.x, 4))) %>%
+  knitr::kable()
+```
+
+
+```{r growth-sensitivity-figure, echo=FALSE, fig.width=7, fig.height=6}
+fig_growth_sensitivity
+```
+
+
+In addition to changes in individual model coefficients, the fitted curves were
+compared directly over the complete observed size range. The maximum absolute
+difference in predicted log diameter after removing transitions involving the
+seven strict reversals was
+`r round(df_growth_sensitivity_difference$Max_difference[1], 4)`,
+whereas removing transitions involving any of the active non-seedling
+observations below 1 cm produced a maximum difference of
+`r round(df_growth_sensitivity_difference$Max_difference[2], 4)` log-diameter
+units.
+
+Because the extreme observations can also affect the estimated spread of the
+growth distribution, the table reports the parameters of the same
+size-dependent residual-variance model used in the IPM. Thus, the sensitivity
+analysis evaluates both the fitted mean growth relationship and the variance
+around it rather than considering only changes in the regression line.
+
+
+
+
+### Sensitivity to the treatment of new adults
+
+The reconstruction of recruitment assumes that individuals first recorded as
+new adults represent recruits that were missed during their seedling census.
+The current analysis assigns these individuals to the recruitment cohort two
+years before their first adult census. Although the size analysis supports this
+interpretation particularly for stage-2 new adults, recruitment timing remains
+inferred rather than observed.
+
+We therefore compared five alternative treatments of new adults. All
+non-recruit vital rates and the 3-year dormancy assumption were held constant,
+so differences among scenarios isolate the effect of the recruitment
+reconstruction.
+
+
+```{r recruit-sensitivity-run, include=FALSE}
+# Recruit classes --------------------------------------------------------------
+df_recruit_first_sens <- df_recruit_first %>%
+  mutate(
+    recruit_class = case_when(
+      recruit_type == "seedling" ~
+        "observed_seedling",
+      recruit_type == "new_adult" &
+        stage == 2 ~
+        "presumed_2yr",
+      recruit_type == "new_adult" ~
+        "new_adult_other"))
+
+
+# Scenario names ---------------------------------------------------------------
+recruit_scenarios <- c(
+  "Current: all new adults = year-2 recruits",
+  "Stage-2 only = year-2 recruits",
+  "New adults enter only as adults",
+  "All new adults = year-1 recruits",
+  "Stage-2 only = year-1 recruits")
+
+
+# Fixed reference demographic data --------------------------------------------
+# Recruitment treatment does not alter survival, growth, dormancy, flowering
+# or reactivation. These components are therefore fitted once at the reference
+# 3-year dormancy cutoff.
+
+df_recruit_reference <- make_scenario_data(
+  reference_cutoff)
+
+df_ind_recruit_reference <- df_recruit_reference %>%
+  filter(
+    row_type == "individual")
+
+
+# Survival ---------------------------------------------------------------------
+df_su_rs <- df_ind_recruit_reference %>%
+  filter(
+    state == "active",
+    !is.na(survives),
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+fit_su_rs <- fit_poly_glm(
+  df_su_rs,
+  "survives",
+  v_mod_set_su)
+
+mod_su_rs <- fit_su_rs$model
+
+
+# Growth -----------------------------------------------------------------------
+df_gr_rs <- df_ind_recruit_reference %>%
+  filter(
+    state == "active",
+    state_t1 == "active",
+    size_t0 > 0,
+    size_t1 > 0,
+    is.finite(logsize_t0),
+    is.finite(logsize_t1))
+
+fit_gr_rs <- fit_poly_lm(
+  df_gr_rs,
+  "logsize_t1",
+  v_mod_set_gr)
+
+mod_gr_rs <- fit_gr_rs$model
+
+mod_gr_x_rs <- fitted(
+  mod_gr_rs)
+
+mod_gr_y_rs <- resid(
+  mod_gr_rs)^2
+
+mod_gr_var_rs <- nls(
+  mod_gr_y_rs ~ a * exp(b * mod_gr_x_rs),
+  start = list(
+    a = 1,
+    b = 0),
+  control = nls.control(
+    maxiter = 1000,
+    tol = 1e-6,
+    warnOnly = TRUE))
+
+
+# Dormancy entry ---------------------------------------------------------------
+df_do_rs <- df_ind_recruit_reference %>%
+  filter(
+    !is.na(enter_dormancy),
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+fit_do_rs <- fit_poly_glm(
+  df_do_rs,
+  "enter_dormancy",
+  v_mod_set_do)
+
+mod_do_rs <- fit_do_rs$model
+
+
+# Reactivation -----------------------------------------------------------------
+df_ra_rs <- df_ind_recruit_reference %>%
+  filter(
+    !is.na(reactivate))
+
+mod_ra_rs <- glm(
+  reactivate ~ 1,
+  data = df_ra_rs,
+  family = "binomial")
+
+p_reactivate_rs <- predict(
+  mod_ra_rs,
+  newdata = data.frame(x = 1),
+  type = "response")[1]
+
+
+df_ra_size_rs <- df_ind_recruit_reference %>%
+  filter(
+    reactivate == 1,
+    size_reactivate_t1 > 0) %>%
+  mutate(
+    logsize_reactivate =
+      log(size_reactivate_t1))
+
+react_sz_rs <- mean(
+  df_ra_size_rs$logsize_reactivate,
+  na.rm = TRUE)
+
+react_sd_rs <- sd(
+  df_ra_size_rs$logsize_reactivate,
+  na.rm = TRUE)
+
+
+# Flowering --------------------------------------------------------------------
+df_fl_rs <- df_ind_recruit_reference %>%
+  filter(
+    state == "active",
+    !is.na(flower),
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+fit_fl_rs <- fit_poly_glm(
+  df_fl_rs,
+  "flower",
+  v_mod_set_fl)
+
+mod_fl_rs <- fit_fl_rs$model
+
+
+# Number of scapes -------------------------------------------------------------
+df_fln_rs <- df_fl_rs %>%
+  filter(
+    flower == 1,
+    !is.na(fl_nr),
+    fl_nr > 0,
+    fl_nr %% 1 == 0)
+
+fit_fln_rs <- fit_poly_nb(
+  df_fln_rs,
+  "fl_nr",
+  v_mod_set_fl_n)
+
+mod_fln_rs <- fit_fln_rs$model
+
+
+# Recruit size distribution ----------------------------------------------------
+# This remains based on directly observed seedlings in every scenario.
+
+df_re_size_rs <- df_ind_recruit_reference %>%
+  filter(
+    recruit_type == "seedling",
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+recr_sz_rs <- mean(
+  df_re_size_rs$logsize_t0,
+  na.rm = TRUE)
+
+recr_sd_rs <- sd(
+  df_re_size_rs$logsize_t0,
+  na.rm = TRUE)
+
+
+# Base IPM parameters ----------------------------------------------------------
+pars_recruit_base <- Filter(
+  function(x) length(x) > 0,
+  list(
+    surv_b0 =
+      get_coef(
+        mod_su_rs,
+        "(Intercept)"),
+    surv_b1 =
+      get_coef(
+        mod_su_rs,
+        "logsize_t0"),
+    surv_b2 =
+      get_coef(
+        mod_su_rs,
+        "logsize_t0_2"),
+    surv_b3 =
+      get_coef(
+        mod_su_rs,
+        "logsize_t0_3"),
+
+    grow_b0 =
+      get_coef(
+        mod_gr_rs,
+        "(Intercept)"),
+    grow_b1 =
+      get_coef(
+        mod_gr_rs,
+        "logsize_t0"),
+    grow_b2 =
+      get_coef(
+        mod_gr_rs,
+        "logsize_t0_2"),
+    grow_b3 =
+      get_coef(
+        mod_gr_rs,
+        "logsize_t0_3"),
+    a =
+      unname(
+        coef(
+          mod_gr_var_rs)[["a"]]),
+    b =
+      unname(
+        coef(
+          mod_gr_var_rs)[["b"]]),
+
+    dorm_b0 =
+      get_coef(
+        mod_do_rs,
+        "(Intercept)"),
+    dorm_b1 =
+      get_coef(
+        mod_do_rs,
+        "logsize_t0"),
+    dorm_b2 =
+      get_coef(
+        mod_do_rs,
+        "logsize_t0_2"),
+    dorm_b3 =
+      get_coef(
+        mod_do_rs,
+        "logsize_t0_3"),
+
+    fl_b0 =
+      get_coef(
+        mod_fl_rs,
+        "(Intercept)"),
+    fl_b1 =
+      get_coef(
+        mod_fl_rs,
+        "logsize_t0"),
+    fl_b2 =
+      get_coef(
+        mod_fl_rs,
+        "logsize_t0_2"),
+    fl_b3 =
+      get_coef(
+        mod_fl_rs,
+        "logsize_t0_3"),
+
+    fln_b0 =
+      get_coef(
+        mod_fln_rs,
+        "(Intercept)"),
+    fln_b1 =
+      get_coef(
+        mod_fln_rs,
+        "logsize_t0"),
+    fln_b2 =
+      get_coef(
+        mod_fln_rs,
+        "logsize_t0_2"),
+    fln_b3 =
+      get_coef(
+        mod_fln_rs,
+        "logsize_t0_3"),
+
+    recr_sz = recr_sz_rs,
+    recr_sd = recr_sd_rs,
+    react_sz = react_sz_rs,
+    react_sd = react_sd_rs,
+    p_reactivate = p_reactivate_rs,
+
+    L =
+      min(
+        df_gr_rs$logsize_t0),
+    U =
+      max(
+        df_gr_rs$logsize_t0),
+    mat_siz = 200,
+
+    mod_su_index =
+      fit_su_rs$index,
+    mod_gr_index =
+      fit_gr_rs$index,
+    mod_do_index =
+      fit_do_rs$index,
+    mod_fl_index =
+      fit_fl_rs$index,
+    mod_fl_n_index =
+      fit_fln_rs$index))
+
+
+# Reference population counts -------------------------------------------------
+df_counts_alive_rs <- df_ind_recruit_reference %>%
+  filter(
+    state %in%
+      c(
+        "active",
+        "dormant",
+        "alive_or_dormant")) %>%
+  count(
+    site, pop, qu, year,
+    name = "n_alive")
+
+
+last_complete_transition_rs <-
+  max_ind_year -
+  reference_cutoff -
+  1
+
+
+# One recruitment-treatment scenario -----------------------------------------
+run_recruit_scenario <- function(scenario) {
+
+  # Assign each observed entry to a recruitment cohort, or leave it as an
+  # observed adult only.
+  df_events_i <- df_recruit_first_sens %>%
+    filter(
+      !baseline) %>%
+    mutate(
+      fecundity_year = case_when(
+
+        recruit_class ==
+          "observed_seedling" ~
+          recruit_year - 1,
+
+        scenario ==
+          "Current: all new adults = year-2 recruits" &
+          recruit_type ==
+          "new_adult" ~
+          recruit_year - 2,
+
+        scenario ==
+          "Stage-2 only = year-2 recruits" &
+          recruit_class ==
+          "presumed_2yr" ~
+          recruit_year - 2,
+
+        scenario ==
+          "All new adults = year-1 recruits" &
+          recruit_type ==
+          "new_adult" ~
+          recruit_year - 1,
+
+        scenario ==
+          "Stage-2 only = year-1 recruits" &
+          recruit_class ==
+          "presumed_2yr" ~
+          recruit_year - 1,
+
+        TRUE ~ NA_real_),
+
+      backfill_previous_year = case_when(
+
+        scenario ==
+          "Current: all new adults = year-2 recruits" &
+          recruit_type ==
+          "new_adult" ~
+          TRUE,
+
+        scenario ==
+          "Stage-2 only = year-2 recruits" &
+          recruit_class ==
+          "presumed_2yr" ~
+          TRUE,
+
+        TRUE ~ FALSE))
+
+
+  # Scenarios using year-2 reconstruction require monitoring through t + 2.
+  requires_t2 <- scenario %in% c(
+    "Current: all new adults = year-2 recruits",
+    "Stage-2 only = year-2 recruits")
+
+
+  # Count reconstructed recruits by fecundity year ----------------------------
+  df_recruit_count_i <- df_events_i %>%
+    filter(
+      !is.na(fecundity_year)) %>%
+    count(
+      site,
+      pop,
+      qu,
+      fecundity_year,
+      name = "recruits")
+
+
+  # Construct complete quadrat-year recruitment data --------------------------
+  df_recruit_quad_i <- df_recruit_followup %>%
+    mutate(
+      recruitment_complete =
+        monitored_t1 &
+        if_else(
+          requires_t2,
+          monitored_t2,
+          TRUE)) %>%
+    filter(
+      recruitment_complete) %>%
+    left_join(
+      df_recruit_count_i,
+      by = c(
+        "site",
+        "pop",
+        "qu",
+        "year" =
+          "fecundity_year")) %>%
+    left_join(
+      df_repro_quad %>%
+        dplyr::select(
+          site,
+          pop,
+          qu,
+          year,
+          nr_scapes),
+      by = c(
+        "site",
+        "pop",
+        "qu",
+        "year")) %>%
+    mutate(
+      recruits =
+        replace_na(
+          recruits,
+          0L))
+
+
+  # Recruitment model ---------------------------------------------------------
+  df_sc2re_i <- df_recruit_quad_i %>%
+    filter(
+      !is.na(nr_scapes)) %>%
+    group_by(
+      site,
+      pop,
+      year) %>%
+    summarise(
+      total_scapes =
+        sum(nr_scapes),
+      recruit_count =
+        sum(recruits),
+      .groups = "drop")
+
+
+  mods_re_i <- list(
+    MASS::glm.nb(
+      recruit_count ~ 1,
+      data = df_sc2re_i),
+
+    MASS::glm.nb(
+      recruit_count ~ total_scapes,
+      data = df_sc2re_i),
+
+    MASS::glm.nb(
+      recruit_count ~
+        log1p(total_scapes),
+      data = df_sc2re_i))
+
+
+  re_daicc_i <- get_daicc(
+    mods_re_i)
+
+  re_model_index_i <-
+    which.min(
+      re_daicc_i)
+
+  mod_re_i <-
+    mods_re_i[[
+      re_model_index_i]]
+
+
+  df_sc2re_i <- df_sc2re_i %>%
+    mutate(
+      recruits_pred =
+        predict(
+          mod_re_i,
+          type = "response"))
+
+
+  recr_per_scape_i <-
+    sum(
+      df_sc2re_i$recruits_pred) /
+    sum(
+      df_sc2re_i$total_scapes)
+
+
+  # IPM lambda ----------------------------------------------------------------
+  pars_i <-
+    pars_recruit_base
+
+  pars_i$fecu_b0 <-
+    recr_per_scape_i
+
+  lambda_ipm_i <-
+    lambda_ipm(
+      pars_i)
+
+
+  # Scenario-specific observed population counts ------------------------------
+  # Backfilling is used only when a new adult is assumed to have already been
+  # present, but unobserved, in the preceding annual census.
+
+  df_backfill_i <- df_events_i %>%
+    filter(
+      backfill_previous_year) %>%
+    transmute(
+      site,
+      pop,
+      qu,
+      year =
+        recruit_year - 1) %>%
+    count(
+      site,
+      pop,
+      qu,
+      year,
+      name =
+        "n_backfill")
+
+
+  df_counts_quad_i <- df_quad_monitor %>%
+    left_join(
+      df_counts_alive_rs,
+      by = c(
+        "site",
+        "pop",
+        "qu",
+        "year")) %>%
+    left_join(
+      df_backfill_i,
+      by = c(
+        "site",
+        "pop",
+        "qu",
+        "year")) %>%
+    mutate(
+      n_alive =
+        replace_na(
+          n_alive,
+          0L),
+      n_backfill =
+        replace_na(
+          n_backfill,
+          0L),
+      n =
+        n_alive +
+        n_backfill) %>%
+    group_by(
+      site,
+      pop,
+      qu) %>%
+    arrange(
+      year,
+      .by_group = TRUE) %>%
+    mutate(
+      year_t1 =
+        lead(year),
+      n_t1 =
+        lead(n),
+      annual_transition =
+        year_t1 ==
+        year + 1) %>%
+    ungroup() %>%
+    filter(
+      annual_transition,
+      year <=
+        last_complete_transition_rs)
+
+
+  df_counts_year_i <- df_counts_quad_i %>%
+    group_by(year) %>%
+    summarise(
+      n_t0 =
+        sum(n),
+      n_t1 =
+        sum(n_t1),
+      .groups = "drop") %>%
+    filter(
+      n_t0 > 0) %>%
+    mutate(
+      lambda_obs =
+        n_t1 / n_t0)
+
+
+  lambda_obs_arithmetic_i <-
+    mean(
+      df_counts_year_i$lambda_obs,
+      na.rm = TRUE)
+
+  lambda_obs_geometric_i <-
+    exp(
+      mean(
+        log(
+          df_counts_year_i$lambda_obs),
+        na.rm = TRUE))
+
+
+  # Scenario summary ----------------------------------------------------------
+  tibble(
+    Scenario = scenario,
+
+    `Recruit events used` =
+      sum(
+        !is.na(
+          df_events_i$fecundity_year)),
+
+    `Presumed 2yr used` =
+      sum(
+        df_events_i$recruit_class ==
+          "presumed_2yr" &
+          !is.na(
+            df_events_i$fecundity_year)),
+
+    `Other new adults used` =
+      sum(
+        df_events_i$recruit_class ==
+          "new_adult_other" &
+          !is.na(
+            df_events_i$fecundity_year)),
+
+    `Recruitment model` =
+      re_model_index_i - 1,
+
+    `Recruits per scape` =
+      recr_per_scape_i,
+
+    lambda_ipm =
+      lambda_ipm_i,
+
+    lambda_obs_arithmetic =
+      lambda_obs_arithmetic_i,
+
+    lambda_obs_geometric =
+      lambda_obs_geometric_i)
+}
+
+
+# Run sensitivity --------------------------------------------------------------
+df_recruit_sensitivity <- map_dfr(
+  recruit_scenarios,
+  run_recruit_scenario)
+
+
+# Difference from current reconstruction --------------------------------------
+ref_recruit <- df_recruit_sensitivity %>%
+  filter(
+    Scenario ==
+      recruit_scenarios[1]) %>%
+  transmute(
+    ref_recr =
+      `Recruits per scape`,
+    ref_ipm =
+      lambda_ipm,
+    ref_obs_arithmetic =
+      lambda_obs_arithmetic,
+    ref_obs_geometric =
+      lambda_obs_geometric)
+
+
+df_recruit_sensitivity <- df_recruit_sensitivity %>%
+  crossing(
+    ref_recruit) %>%
+  mutate(
+    delta_recruits_per_scape =
+      `Recruits per scape` -
+      ref_recr,
+
+    delta_ipm =
+      lambda_ipm -
+      ref_ipm,
+
+    delta_obs_arithmetic =
+      lambda_obs_arithmetic -
+      ref_obs_arithmetic,
+
+    delta_obs_geometric =
+      lambda_obs_geometric -
+      ref_obs_geometric) %>%
+  dplyr::select(
+    -starts_with("ref_"))
+
+
+# Figure -----------------------------------------------------------------------
+df_recruit_sensitivity_plot <- df_recruit_sensitivity %>%
+  dplyr::select(
+    Scenario,
+    `Mean IPM` =
+      lambda_ipm,
+    `Observed arithmetic` =
+      lambda_obs_arithmetic,
+    `Observed geometric` =
+      lambda_obs_geometric) %>%
+  pivot_longer(
+    -Scenario,
+    names_to = "Estimate",
+    values_to = "lambda") %>%
+  mutate(
+    Scenario = factor(
+      Scenario,
+      levels =
+        recruit_scenarios))
+
+
+fig_recruit_sensitivity <- ggplot(
+  df_recruit_sensitivity_plot,
+  aes(
+    x = Scenario,
+    y = lambda,
+    shape = Estimate)) +
+  geom_hline(
+    yintercept = 1,
+    linetype = "dashed") +
+  geom_point(
+    size = 2.8,
+    position =
+      position_dodge(
+        width = 0.4)) +
+  theme_bw() +
+  labs(
+    x = NULL,
+    y = expression(lambda),
+    shape = NULL) +
+  theme(
+    axis.text.x =
+      element_text(
+        angle = 25,
+        hjust = 1))
+```
+
+
+The scenarios differ only in how first-record new adults contribute to
+recruitment and whether their inferred presence is backfilled into the preceding
+population census. Observed seedlings are treated identically in every
+scenario, and all directly observed new adults remain in the demographic data.
+
+
+```{r recruit-sensitivity-table, echo=FALSE}
+df_recruit_sensitivity %>%
+  mutate(
+    across(
+      c(
+        `Recruits per scape`,
+        lambda_ipm,
+        lambda_obs_arithmetic,
+        lambda_obs_geometric,
+        delta_recruits_per_scape,
+        delta_ipm,
+        delta_obs_arithmetic,
+        delta_obs_geometric),
+      ~ round(.x, 4))) %>%
+  knitr::kable()
+```
+
+
+```{r recruit-sensitivity-figure, echo=FALSE, fig.width=9, fig.height=5.5}
+fig_recruit_sensitivity
+```
+
+
+The comparison separates two uncertainties. Contrasting the current
+reconstruction with the stage-2-only scenario tests whether the inference should
+be restricted to the new adults whose stage and size are most consistent with
+second-year recruits. The "new adults enter only as adults" scenario provides
+the conservative alternative in which no new adult is used to infer recruitment
+before its first observation. Finally, the year-1 scenarios test whether the
+results depend specifically on assigning new adults to a two-year rather than a
+one-year recruitment lag.

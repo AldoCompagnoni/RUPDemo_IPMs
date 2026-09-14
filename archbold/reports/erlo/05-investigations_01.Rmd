@@ -151,8 +151,134 @@ df_recruit_entry_diag <- df_recruit_first_diag %>%
     by = c(
       "id",
       "recruit_year" = "year"))
+```
 
 
+```{r recruit-size-distributions, echo=FALSE, fig.width=8, fig.height=5.5}
+# Size distributions of recruit groups and established individuals ------------
+
+# IDs and entry years belonging to recruit groups
+df_recruit_groups <- df_recruit_entry_diag %>%
+  filter(
+    recruit_class %in%
+      c(
+        "observed_seedling",
+        "presumed_2yr")) %>%
+  transmute(
+    id,
+    year = recruit_year,
+    size_group = case_when(
+      recruit_class == "observed_seedling" ~
+        "Observed seedlings",
+      recruit_class == "presumed_2yr" ~
+        "Presumed second-year recruits"))
+
+
+# Established active observations ---------------------------------------------
+# Remove the focal entry observations belonging to the two recruit groups.
+df_established_size <- df_annual %>%
+  filter(
+    state_clean == "active",
+    !is.na(dia),
+    dia > 0) %>%
+  anti_join(
+    df_recruit_groups %>%
+      dplyr::select(
+        id,
+        year),
+    by = c(
+      "id",
+      "year")) %>%
+  transmute(
+    id,
+    year,
+    dia,
+    logdia = log(dia),
+    size_group =
+      "Other active individuals")
+
+
+# Recruit entry sizes ----------------------------------------------------------
+df_recruit_size_groups <- df_recruit_entry_diag %>%
+  filter(
+    recruit_class %in%
+      c(
+        "observed_seedling",
+        "presumed_2yr"),
+    size_t0 > 0) %>%
+  transmute(
+    id,
+    year = recruit_year,
+    dia = size_t0,
+    logdia = log(size_t0),
+    size_group = case_when(
+      recruit_class ==
+        "observed_seedling" ~
+        "Observed seedlings",
+      recruit_class ==
+        "presumed_2yr" ~
+        "Presumed second-year recruits"))
+
+
+# Combine ----------------------------------------------------------------------
+df_size_groups <- bind_rows(
+  df_recruit_size_groups,
+  df_established_size) %>%
+  mutate(
+    size_group = factor(
+      size_group,
+      levels = c(
+        "Observed seedlings",
+        "Presumed second-year recruits",
+        "Other active individuals")))
+
+
+# Plot -------------------------------------------------------------------------
+fig_recruit_size_distributions <- ggplot(
+  df_size_groups,
+  aes(
+    x = logdia,
+    linetype = size_group)) +
+  geom_density(
+    linewidth = 1,
+    adjust = 1) +
+  theme_bw() +
+  labs(
+    x = "Log diameter",
+    y = "Density",
+    linetype = NULL)
+
+fig_recruit_size_distributions
+```
+
+
+```{r recruit-size-boxplot, echo=FALSE, fig.width=8, fig.height=5.5}
+fig_recruit_size_boxplot <- ggplot(
+  df_size_groups,
+  aes(
+    x = size_group,
+    y = logdia)) +
+  geom_boxplot(
+    outlier.shape = NA,
+    width = 0.6) +
+  geom_jitter(
+    width = 0.12,
+    alpha = 0.15,
+    size = 0.8) +
+  theme_bw() +
+  labs(
+    x = NULL,
+    y = "Log diameter") +
+  theme(
+    axis.text.x = element_text(
+      angle = 15,
+      hjust = 1))
+
+fig_recruit_size_boxplot
+```
+
+
+```{r}
 # Recruit-class counts ---------------------------------------------------------
 df_recruit_class_summary <- df_recruit_entry_diag %>%
   count(
@@ -2724,10 +2850,7 @@ run_recruit_scenario <- function(scenario) {
     mutate(
       recruitment_complete =
         monitored_t1 &
-        if_else(
-          requires_t2,
-          monitored_t2,
-          TRUE)) %>%
+        (!requires_t2 | monitored_t2)) %>%
     filter(
       recruitment_complete) %>%
     left_join(

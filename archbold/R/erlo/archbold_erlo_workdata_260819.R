@@ -294,11 +294,11 @@ df_dormancy_distribution <- df_dormancy_spell %>%
 df_dormancy_distribution
 
 
-# Three-year dormancy cutoff ---------------------------------------------------
-# The 3-year cutoff is an operational assumption, 
-# justified because 388/409 = 94.87% of observed dormancy spells lasted ≤3 years
+# Four-year dormancy cutoff ----------------------------------------------------
+# The 4-year cutoff is an operational assumption
+# justified because 397/409 = 97.1% of observed dormancy spells lasted ≤4 years
 
-dormancy_cutoff <- 3
+dormancy_cutoff <- 4
 
 df_dormancy_cutoff <- df_dormancy_spell %>%
   summarise(
@@ -494,12 +494,11 @@ df_recruit_first <- df_demog %>%
   distinct(id, .keep_all = TRUE) %>%
   mutate(
     recruit_year = if_else(month > 6, year + 1, year)) %>%
-  left_join(
-    df_quad_start,
-    by = c("site", "pop", "qu")) %>%
+  left_join(df_quad_start, by = c("site", "pop", "qu")) %>%
   mutate(
     baseline = recruit_year == first_quad_year,
     recruit_type = case_when(
+      s == 5 & dia > 2 ~ "new_adult",
       s == 5 ~ "seedling",
       s == 3 ~ "new_adult"))
 
@@ -580,7 +579,7 @@ df_recruit_entry <- df_recruit_first %>%
   mutate(
     recruit_class = case_when(
       recruit_type == "seedling" ~ "observed_seedling",
-      recruit_type == "new_adult" & stage_entry == 2 ~ "presumed_2yr",
+      recruit_type == "new_adult" & dia > 2 ~ "presumed_2yr",
       recruit_type == "new_adult" ~ "new_adult_other"),
     fecundity_year = case_when(
       recruit_class == "observed_seedling" ~ recruit_year - 1,
@@ -1319,7 +1318,7 @@ df %>%
   count(row_type, dist_transition, fire_prop_quad)
 
 
-# Save data --------------------------------------------------------------------
+# # Save data --------------------------------------------------------------------
 # write.csv(
 #   df, row.names = FALSE,
 #   file.path(

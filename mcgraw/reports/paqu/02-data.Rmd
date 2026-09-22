@@ -1,0 +1,44 @@
+# Data {#data}
+
+
+```{r ipm-variable-table, echo=FALSE, message=FALSE, warning=FALSE}
+
+df_ipm_variables <- meta_data %>%
+  mutate(
+    ipm_role = case_when(
+      variable %in% c("population", "year", "id", "cluster") ~
+        "Structure",
+      variable %in% c(
+        "obs_la", "inf_la", "obs_leaf_num", "inf_leaf_num",
+        "lflt_tot", "stalk_ht") ~
+        "Size / growth",
+      variable %in% c(
+        "lll1", "wll1", "lll2", "wll2",
+        "lll3", "wll3", "lll4", "wll4") ~
+        "Raw size measurement",
+      variable == "persistence" ~
+        "Survival / dormancy / recruitment",
+      variable == "f_buds" ~
+        "Flowering",
+      variable %in% c(
+        "seeds", "red_frts", "grn_frts", "tot_frts") ~
+        "Fecundity",
+      variable %in% c(
+        "browse", "browse_prcnt", "browse_time",
+        "harvest", "harv_time", "insect", "thrips",
+        "fungal", "fungal_cat", "age") ~
+        "Potential covariate",
+      variable %in% c("loc", "lflt_arr") ~
+        "Not core IPM",
+      TRUE ~ "Unclassified"))
+
+df_ipm_variables %>%
+  select(
+    Variable = variable,
+    `IPM role` = ipm_role,
+    `Missing (%)` = pct_missing,
+    `Unique values` = n_unique,
+    Definition = definition) %>%
+  knitr::kable(
+    caption = "Classification of variables according to their potential role in the integral population model.",
+    align = c("l", "l", "r", "r", "l"))

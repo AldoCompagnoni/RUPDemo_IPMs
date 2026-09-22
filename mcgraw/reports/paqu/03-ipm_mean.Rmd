@@ -1,0 +1,1579 @@
+# Mean IPM {#ipm_mean}
+
+## Introduction
+
+This analysis develops a mean integral projection model (IPM) for
+*Eriogonum longifolium* var. *gnaphalifolium* using the long-term demographic
+data from Archbold Biological Station and Carter Creek. The purpose of this
+first IPM is to provide a relatively simple description of the principal
+demographic processes and their consequences for long-term population growth.
+Vital rates are therefore pooled across years, populations, and disturbance
+histories rather than allowing demographic relationships to vary through time
+or among sites. The resulting kernel represents the demographic conditions
+averaged across the observations contained in the dataset and should not be
+interpreted specifically as an unburned or post-fire kernel.
+
+The population is represented by two demographic states. Above-ground plants
+are described continuously by log-transformed basal rosette diameter, whereas
+dormant plants form one additional discrete state. With 200 continuous size
+classes, the complete projection kernel therefore contains 201 states. This
+structure retains the principal advantage of an IPM, namely continuous
+size-dependent demographic rates, while explicitly accommodating prolonged
+below-ground dormancy, which is an important feature of the life history of
+*E. longifolium* var. *gnaphalifolium*.
+
+The mean kernel can be written conceptually as
+
+$$
+\mathbf{K} =
+\begin{pmatrix}
+\mathbf{T} + \mathbf{F} & \mathbf{R} \\
+\mathbf{D}              & P_{DD}
+\end{pmatrix},
+$$
+
+where $\mathbf{T}$ describes survival and growth of active plants,
+$\mathbf{F}$ describes recruitment from active plants, $\mathbf{D}$ describes
+entry into dormancy, $\mathbf{R}$ describes reactivation into the continuous
+active-size distribution, and $P_{DD}$ is the probability that a dormant plant
+remains dormant.
+
+### Survival, growth, and entry into dormancy
+
+Survival is modeled for plants that are active at census $t$. Candidate
+binomial models contain an intercept and linear, quadratic, or cubic functions
+of log basal diameter, with model complexity selected using AICc. Survival
+includes plants that remain active as well as plants that subsequently enter
+dormancy. Consequently, dormancy is not treated as mortality.
+
+Growth is estimated only from transitions in which a plant is active at both
+$t$ and $t+1$. Log diameter at $t+1$ is modeled as an intercept, linear,
+quadratic, or cubic function of log diameter at $t$, again with model
+complexity selected by AICc. Growth variance is heteroscedastic. Squared
+residuals from the selected growth model are modeled as an exponential
+function of the fitted growth mean, so that the standard deviation used in the
+growth kernel varies with expected size at $t+1$.
+
+Entry into dormancy is estimated separately for active plants known to have
+survived the annual transition. A binomial model describes the conditional
+probability that a surviving active individual enters dormancy as a function
+of its size. This conditional formulation is important for the construction of
+the kernel. For an active plant of size $x$, the probability of remaining in
+the continuous active state is
+
+$$
+S(x)[1-D(x)],
+$$
+
+where $S(x)$ is survival and $D(x)$ is the probability of entering dormancy
+conditional on survival. The probability of moving from the active state into
+the dormant state is correspondingly
+
+$$
+S(x)D(x).
+$$
+
+Thus, survival is first allocated between active and dormant destinations
+rather than dormancy being modeled as an additional loss from the population.
+
+### Dormancy and reactivation
+
+Dormant plants have no observable above-ground size, so their subsequent
+reactivation cannot be modeled as a function of current size. Reactivation is
+therefore represented by an intercept-only binomial model that estimates one
+mean annual probability of returning to the active state. Plants that
+reactivate are distributed across the continuous size axis according to the
+observed log-diameter distribution of plants when they reappear above ground.
+
+No independent mortality probability is estimated for the dormant state in
+this first mean IPM. A dormant individual therefore either reactivates with
+probability $p_R$ or remains dormant with probability $1-p_R$. The dormant
+column of the kernel consequently sums to one. This is a simplifying
+assumption arising from the difficulty of distinguishing mortality during
+dormancy from continued unobserved dormancy in the census data.
+
+### Flowering and flowering-scape production
+
+Reproduction is divided into two sequential vital rates. First, the
+probability that an active individual flowers is modeled with a binomial
+regression as a function of log diameter. Second, among flowering individuals,
+the number of flowering scapes is modeled using a negative-binomial
+regression. Intercept-only, linear, quadratic, and cubic size relationships
+are considered for both components where appropriate and selected using AICc.
+
+The expected number of flowering scapes produced by an active individual of
+size $x$ is therefore
+
+$$
+P_F(x)N_F(x),
+$$
+
+where $P_F(x)$ is its probability of flowering and $N_F(x)$ is its expected
+number of scapes conditional on flowering. This decomposition avoids treating
+the large number of non-flowering individuals as structural zeros in the
+scape-number model.
+
+### Recruitment
+
+Recruitment requires additional assumptions because newly observed plants
+cannot always be assigned unambiguously to a particular reproductive event.
+Observed seedlings are treated directly as recruits. In addition, for this
+simple mean IPM, all post-baseline individuals first observed as new adults
+are assumed to have been seedlings that were missed during the preceding
+census. These individuals are therefore back-assigned to the preceding
+recruitment cohort. This follows the general rationale used previously for
+presumed two-year-old plants in this species, but represents a deliberately
+inclusive recruitment assumption.
+
+Recruitment abundance is related to flowering-scape abundance at the
+population-year level using a negative-binomial model. The selected model
+allows expected recruitment to increase sublinearly with the number of
+contemporaneous flowering scapes,
+
+$$
+\log E(R) =
+\beta_0 +
+\beta_1\log(1 + N_{\mathrm{scape}}).
+$$
+
+The non-zero intercept allows recruitment to occur even when no flowering
+scapes are recorded in the current census. It should therefore be interpreted
+as recruitment not explained by contemporaneous observed flowering, which may
+include reproductive carry-over, incomplete observation of reproductive
+output, dispersal, or other unmeasured processes.
+
+This population-level recruitment relationship cannot be inserted directly
+into a conventional linear individual-based IPM because it contains both an
+intercept and a nonlinear dependence on total population-level scape
+abundance. For the mean IPM, the fitted recruitment relationship is therefore
+collapsed to a single overall fitted recruit-to-scape conversion. This scalar
+is used only to construct the linear fertility kernel and represents an
+average conversion over the demographic conditions observed in the dataset.
+
+The size distribution of recruits is estimated separately using individuals
+actually observed as seedlings. New adults contribute to reconstructed
+recruit abundance but do not determine the recruit-size distribution. All
+recruits entering the IPM are consequently distributed across the continuous
+size axis according to the observed log-diameter distribution of true
+seedlings.
+
+### Fertility and construction of the complete kernel
+
+For an active individual of size $x$, the fertility contribution to recruits
+of size $y$ is
+
+$$
+F(y,x) =
+P_F(x)
+N_F(x)
+c_R
+f_R(y),
+$$
+
+where $c_R$ is the mean fitted recruitment conversion and $f_R(y)$ is the
+recruit-size distribution. Fertility is not multiplied by survival because
+reproduction during the census interval can contribute recruits at $t+1$
+independently of whether the parent subsequently survives to that census.
+
+The active-to-active transition kernel is
+
+$$
+T(y,x) =
+S(x)
+[1-D(x)]
+G(y,x),
+$$
+
+where $G(y,x)$ is the size-transition distribution. Growth probabilities that
+fall beyond the lower or upper integration limits are returned to the nearest
+boundary size class to avoid loss of probability mass through eviction.
+Recruit and reactivation size distributions are similarly normalized over the
+modeled size interval.
+
+The complete kernel therefore combines continuous active-plant dynamics with
+one discrete dormant state. Active individuals may remain active, enter
+dormancy, or contribute new recruits; dormant individuals may reactivate into
+the continuous size distribution or remain dormant.
+
+Because all vital-rate relationships are pooled across years, the resulting
+kernel is a single time-invariant mean kernel. Its dominant eigenvalue is the
+asymptotic population growth rate associated with these mean demographic
+conditions. The current model gives an asymptotic growth rate of approximately
+
+$$
+\lambda = 0.990,
+$$
+
+indicating a slowly declining population under the demographic conditions
+represented by the mean IPM. This is close to the reconstructed realized
+long-term population trajectory, for which the geometric mean annual growth
+rate is approximately $0.998$. The two quantities are not expected to be
+identical: the first is the asymptotic growth rate of a population subjected
+repeatedly to one mean kernel, whereas the second reflects the sequence of
+annual population changes actually observed.
+
+
+
+## Specifications
+### Vital model leaverage
+```{r}
+v_mod_set_su   <- c()
+v_mod_set_gr   <- c()
+v_mod_set_do   <- c()
+v_mod_set_fl   <- c()
+v_mod_set_fl_n <- c()
+```
+
+## Data
+```{r}
+df <- read.csv(
+  file.path(
+    dir_data,
+    paste0("ab_", v_sp_abb, "_df_workdata_260820.csv"))) %>%
+  mutate(
+    year = as.numeric(year),
+    row_type = as.character(row_type))
+
+df_ind <- df %>%
+  filter(row_type == "individual")
+
+df_re <- df %>%
+  filter(
+    row_type == "recruitment",
+    recruitment_complete,
+    !is.na(recruits_simple))
+```
+
+## Vital rates
+### Survival
+#### Data
+```{r}
+df_su <- df %>%
+  filter(
+    state == "active",
+    !is.na(survives),
+    size_t0 > 0,
+    is.finite(logsize_t0)) %>%
+  dplyr::select(
+    id, year, size_t0, survives,
+    logsize_t0, logsize_t0_2, logsize_t0_3)
+```
+
+#### Model
+```{r}
+mod_su_0 <- glm(
+  survives ~ 1,
+  data = df_su, family = "binomial")
+
+mod_su_1 <- glm(
+  survives ~ logsize_t0,
+  data = df_su, family = "binomial")
+
+mod_su_2 <- glm(
+  survives ~ logsize_t0 + logsize_t0_2,
+  data = df_su, family = "binomial")
+
+mod_su_3 <- glm(
+  survives ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_su, family = "binomial")
+
+mods_su <- list(
+  mod_su_0, mod_su_1, mod_su_2, mod_su_3)
+
+mods_su_dAICc <- AICctab(
+  mods_su, weights = TRUE, sort = FALSE)$dAICc
+
+mods_su_sorted <- order(mods_su_dAICc)
+
+if (length(v_mod_set_su) == 0) {
+  mod_su_index_bestfit <- mods_su_sorted[1]
+  v_mod_su_index <- mod_su_index_bestfit - 1
+} else {
+  mod_su_index_bestfit <- v_mod_set_su + 1
+  v_mod_su_index <- v_mod_set_su
+}
+
+mod_su_bestfit <- mods_su[[mod_su_index_bestfit]]
+
+mod_su_bestfit
+mods_su_dAICc
+```
+
+#### Plot
+```{r}
+df_su_newdata <- df_su %>%
+  summarise(
+    x = list(seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)),
+    .groups = "drop") %>%
+  unnest(x) %>%
+  mutate(
+    logsize_t0 = x,
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    predicted = predict(
+      mod_su_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_su_line <- ggplot(
+  df_su,
+  aes(x = logsize_t0, y = survives)) +
+  geom_jitter(
+    height = 0.05, width = 0,
+    alpha = 0.3) +
+  geom_line(
+    data = df_su_newdata,
+    aes(y = predicted),
+    linewidth = 1) +
+  labs(
+    title = "Survival probability by size",
+    subtitle = v_ggp_suffix,
+    x = expression("log(diameter)"[t0]),
+    y = "Probability of survival") +
+  theme_bw()
+
+
+df_su_bindata <- plot_binned_prop(
+  df_su, 10, logsize_t0, survives)
+
+df_su_pred <- df_su %>%
+  reframe(
+    logsize_t0 = seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    survives = predict(
+      mod_su_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_su_bin <- ggplot() +
+  geom_point(
+    data = df_su_bindata,
+    aes(x = logsize_t0, y = survives)) +
+  geom_errorbar(
+    data = df_su_bindata,
+    aes(
+      x = logsize_t0,
+      ymin = lwr,
+      ymax = upr),
+    width = 0.1) +
+  geom_line(
+    data = df_su_pred,
+    aes(x = logsize_t0, y = survives),
+    linewidth = 1.2) +
+  labs(
+    x = expression("log(diameter)"[t0]),
+    y = "") +
+  theme_bw() +
+  ylim(0, 1)
+
+fig_su <- fig_su_line + fig_su_bin + plot_layout()
+fig_su
+```
+
+### Growth 
+#### Data
+```{r}
+df_gr <- df %>%
+  filter(
+    state == "active",
+    state_t1 == "active",
+    size_t0 > 0,
+    size_t1 > 0,
+    is.finite(logsize_t0),
+    is.finite(logsize_t1)) %>%
+  dplyr::select(
+    id, year, size_t0, size_t1,
+    logsize_t0, logsize_t1,
+    logsize_t0_2, logsize_t0_3)
+```
+
+#### Model
+```{r}
+mod_gr_0 <- lm(
+  logsize_t1 ~ 1,
+  data = df_gr)
+
+mod_gr_1 <- lm(
+  logsize_t1 ~ logsize_t0,
+  data = df_gr)
+
+mod_gr_2 <- lm(
+  logsize_t1 ~ logsize_t0 + logsize_t0_2,
+  data = df_gr)
+
+mod_gr_3 <- lm(
+  logsize_t1 ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_gr)
+
+mods_gr <- list(
+  mod_gr_0, mod_gr_1, mod_gr_2, mod_gr_3)
+
+mods_gr_dAICc <- AICctab(
+  mods_gr, weights = TRUE, sort = FALSE)$dAICc
+
+mods_gr_sorted <- order(mods_gr_dAICc)
+
+if (length(v_mod_set_gr) == 0) {
+  mod_gr_index_bestfit <- mods_gr_sorted[1]
+  v_mod_gr_index <- mod_gr_index_bestfit - 1
+} else {
+  mod_gr_index_bestfit <- v_mod_set_gr + 1
+  v_mod_gr_index <- v_mod_set_gr
+}
+
+mod_gr_bestfit <- mods_gr[[mod_gr_index_bestfit]]
+
+mod_gr_bestfit
+mods_gr_dAICc
+```
+
+#### Plot
+```{r}
+df_gr_newdata <- tibble(
+  logsize_t0 = seq(
+    min(df_gr$logsize_t0),
+    max(df_gr$logsize_t0),
+    length.out = 100)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3)
+
+df_gr_newdata <- cbind(
+  df_gr_newdata,
+  as.data.frame(
+    predict(
+      mod_gr_bestfit,
+      newdata = df_gr_newdata,
+      interval = "confidence")))
+
+fig_gr <- ggplot(
+  df_gr,
+  aes(x = logsize_t0, y = logsize_t1)) +
+  geom_point(alpha = 0.4) +
+  geom_line(
+    data = df_gr_newdata,
+    aes(y = fit),
+    linewidth = 1) +
+  geom_ribbon(
+    data = df_gr_newdata,
+    aes(y = fit, ymin = lwr, ymax = upr),
+    alpha = 0.2) +
+  geom_abline(intercept = 0, slope = 1) +
+  labs(
+    title = "Growth prediction",
+    subtitle = v_ggp_suffix,
+    x = expression("log(diameter)"[t0]),
+    y = expression("log(diameter)"[t1])) +
+  theme_bw()
+
+fig_gr
+```
+
+#### Growth variance
+```{r}
+# Fitted values from growth model
+mod_gr_x   <- fitted(mod_gr_bestfit)  
+# Squared residuals
+mod_gr_y   <- resid(mod_gr_bestfit)^2  
+# Non-linear model for variance
+mod_gr_var <- nls(
+  mod_gr_y ~ a * exp(b * mod_gr_x), start = list(a = 1, b = 0),
+  control = nls.control(maxiter = 1000, tol = 1e-6, warnOnly = TRUE)) 
+```
+
+### Dormancy entry
+#### Data
+```{r}
+df_do <- df %>%
+  filter(
+    !is.na(enter_dormancy),
+    size_t0 > 0,
+    is.finite(logsize_t0)) %>%
+  dplyr::select(
+    id, year, size_t0, enter_dormancy,
+    logsize_t0, logsize_t0_2, logsize_t0_3)
+```
+
+#### Model
+```{r}
+mod_do_0 <- glm(
+  enter_dormancy ~ 1,
+  data = df_do, family = "binomial")
+
+mod_do_1 <- glm(
+  enter_dormancy ~ logsize_t0,
+  data = df_do, family = "binomial")
+
+mod_do_2 <- glm(
+  enter_dormancy ~ logsize_t0 + logsize_t0_2,
+  data = df_do, family = "binomial")
+
+mod_do_3 <- glm(
+  enter_dormancy ~
+    logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_do, family = "binomial")
+
+mods_do <- list(
+  mod_do_0, mod_do_1, mod_do_2, mod_do_3)
+
+mods_do_dAICc <- AICctab(
+  mods_do, weights = TRUE, sort = FALSE)$dAICc
+
+mods_do_sorted <- order(mods_do_dAICc)
+
+if (length(v_mod_set_do) == 0) {
+  mod_do_index_bestfit <- mods_do_sorted[1]
+  v_mod_do_index <- mod_do_index_bestfit - 1
+} else {
+  mod_do_index_bestfit <- v_mod_set_do + 1
+  v_mod_do_index <- v_mod_set_do
+}
+
+mod_do_bestfit <- mods_do[[mod_do_index_bestfit]]
+
+mod_do_bestfit
+mods_do_dAICc
+```
+
+#### Plot
+```{r}
+df_do_newdata <- df_do %>%
+  summarise(
+    x = list(seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)),
+    .groups = "drop") %>%
+  unnest(x) %>%
+  mutate(
+    logsize_t0 = x,
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    predicted = predict(
+      mod_do_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_do_line <- ggplot(
+  df_do,
+  aes(x = logsize_t0, y = enter_dormancy)) +
+  geom_jitter(
+    height = 0.05, width = 0,
+    alpha = 0.3) +
+  geom_line(
+    data = df_do_newdata,
+    aes(y = predicted),
+    linewidth = 1) +
+  labs(
+    title = "Dormancy probability by size",
+    subtitle = v_ggp_suffix,
+    x = expression("log(diameter)"[t0]),
+    y = "Probability of entering dormancy") +
+  theme_bw()
+
+
+df_do_bindata <- plot_binned_prop(
+  df_do, 10, logsize_t0, enter_dormancy)
+
+df_do_pred <- df_do %>%
+  reframe(
+    logsize_t0 = seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    enter_dormancy = predict(
+      mod_do_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_do_bin <- ggplot() +
+  geom_point(
+    data = df_do_bindata,
+    aes(x = logsize_t0, y = enter_dormancy)) +
+  geom_errorbar(
+    data = df_do_bindata,
+    aes(
+      x = logsize_t0,
+      ymin = lwr,
+      ymax = upr),
+    width = 0.1) +
+  geom_line(
+    data = df_do_pred,
+    aes(x = logsize_t0, y = enter_dormancy),
+    linewidth = 1.2) +
+  labs(
+    x = expression("log(diameter)"[t0]),
+    y = "") +
+  theme_bw() +
+  ylim(0, 1)
+
+fig_do <- fig_do_line + fig_do_bin + plot_layout()
+fig_do
+```
+
+### Dormancy reactivation - Mean and variance
+```{r}
+df_ra <- df %>%
+  filter(!is.na(reactivate))
+
+mod_ra <- glm(
+  reactivate ~ 1,
+  data = df_ra, family = "binomial")
+
+p_reactivate <- predict(
+  mod_ra,
+  newdata = data.frame(x = 1),
+  type = "response")[1]
+
+p_reactivate
+
+df_ra_size <- df %>%
+  filter(
+    reactivate == 1,
+    size_reactivate_t1 > 0) %>%
+  mutate(
+    logsize_reactivate =
+      log(size_reactivate_t1))
+
+react_sz <- mean(
+  df_ra_size$logsize_reactivate,
+  na.rm = TRUE)
+
+react_sd <- sd(
+  df_ra_size$logsize_reactivate,
+  na.rm = TRUE)
+```
+
+
+### Flowering probability
+#### Data
+```{r}
+df_fl <- df %>%
+  filter(
+    state == "active",
+    !is.na(flower),
+    size_t0 > 0,
+    is.finite(logsize_t0))
+```
+
+#### Model
+```{r}
+mod_fl_0 <- glm(
+  flower ~ 1,
+  data = df_fl, family = "binomial")
+
+mod_fl_1 <- glm(
+  flower ~ logsize_t0,
+  data = df_fl, family = "binomial")
+
+mod_fl_2 <- glm(
+  flower ~ logsize_t0 + logsize_t0_2,
+  data = df_fl, family = "binomial")
+
+mod_fl_3 <- glm(
+  flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_fl, family = "binomial")
+
+mods_fl <- list(
+  mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
+
+mods_fl_dAICc <- AICctab(
+  mods_fl, weights = TRUE, sort = FALSE)$dAICc
+
+mods_fl_sorted <- order(mods_fl_dAICc)
+
+if (length(v_mod_set_fl) == 0) {
+  mod_fl_index_bestfit <- mods_fl_sorted[1]
+  v_mod_fl_index <- mod_fl_index_bestfit - 1
+} else {
+  mod_fl_index_bestfit <- v_mod_set_fl + 1
+  v_mod_fl_index <- v_mod_set_fl
+}
+
+mod_fl_bestfit <- mods_fl[[mod_fl_index_bestfit]]
+
+mod_fl_bestfit
+mods_fl_dAICc
+```
+
+#### Plot
+```{r}
+df_fl_newdata <- df_fl %>%
+  summarise(
+    x = list(seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)),
+    .groups = "drop") %>%
+  unnest(x) %>%
+  mutate(
+    logsize_t0 = x,
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    predicted = predict(
+      mod_fl_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_fl_line <- ggplot(
+  df_fl,
+  aes(x = logsize_t0, y = flower)) +
+  geom_jitter(
+    height = 0.05, width = 0,
+    alpha = 0.3) +
+  geom_line(
+    data = df_fl_newdata,
+    aes(y = predicted),
+    linewidth = 1) +
+  labs(
+    title = "Flowering probability by size",
+    subtitle = v_ggp_suffix,
+    x = expression("log(diameter)"[t0]),
+    y = "Probability of flowering") +
+  theme_bw()
+
+
+df_fl_bindata <- plot_binned_prop(
+  df_fl, 10, logsize_t0, flower)
+
+df_fl_pred <- df_fl %>%
+  reframe(
+    logsize_t0 = seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    flower = predict(
+      mod_fl_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_fl_bin <- ggplot() +
+  geom_point(
+    data = df_fl_bindata,
+    aes(x = logsize_t0, y = flower)) +
+  geom_errorbar(
+    data = df_fl_bindata,
+    aes(
+      x = logsize_t0,
+      ymin = lwr,
+      ymax = upr),
+    width = 0.1) +
+  geom_line(
+    data = df_fl_pred,
+    aes(x = logsize_t0, y = flower),
+    linewidth = 1.2) +
+  labs(
+    x = expression("log(diameter)"[t0]),
+    y = "") +
+  theme_bw() +
+  ylim(0, 1)
+
+fig_fl <- fig_fl_line + fig_fl_bin + plot_layout()
+fig_fl
+```
+
+### Number of scapes conditional on flowering
+#### Data
+```{r}
+df_fl_cond <- df_fl %>%
+  filter(
+    flower == 1,
+    !is.na(fl_nr),
+    fl_nr > 0,
+    fl_nr %% 1 == 0)
+```
+
+#### Models
+```{r}
+mod_fl_n_0 <- glm.nb(
+  fl_nr ~ 1,
+  data = df_fl_cond)
+
+mod_fl_n_1 <- glm.nb(
+  fl_nr ~ logsize_t0,
+  data = df_fl_cond)
+
+mod_fl_n_2 <- glm.nb(
+  fl_nr ~ logsize_t0 + logsize_t0_2,
+  data = df_fl_cond)
+
+mod_fl_n_3 <- glm.nb(
+  fl_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_fl_cond)
+
+mods_fl_n <- list(
+  mod_fl_n_0, mod_fl_n_1, mod_fl_n_2, mod_fl_n_3)
+
+mods_fl_n_dAICc <- AICctab(
+  mods_fl_n, weights = TRUE, sort = FALSE)$dAICc
+
+mods_fl_n_sorted <- order(mods_fl_n_dAICc)
+
+if (length(v_mod_set_fl_n) == 0) {
+  mod_fl_n_index_bestfit <- mods_fl_n_sorted[1]
+  v_mod_fl_n_index <- mod_fl_n_index_bestfit - 1
+} else {
+  mod_fl_n_index_bestfit <- v_mod_set_fl_n + 1
+  v_mod_fl_n_index <- v_mod_set_fl_n
+}
+
+mod_fl_n_bestfit <- mods_fl_n[[mod_fl_n_index_bestfit]]
+
+mod_fl_n_bestfit
+mods_fl_n_dAICc
+```
+
+#### Plots
+```{r}
+# Predictions for flower number
+# Create prediction grid
+df_fl_n_pred <- expand.grid(
+  logsize_t0 = seq(
+    min(df_fl_cond$logsize_t0),
+    max(df_fl_cond$logsize_t0),
+    length.out = 100))
+
+df_fl_n_pred <- df_fl_n_pred %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3)
+
+# Predict
+df_fl_n_pred$fl_nr <- predict(
+  mod_fl_n_bestfit,
+  newdata = df_fl_n_pred,
+  type = "response")
+
+
+# Binned observed data
+df_fl_n_binned <- df_fl_cond %>%
+  mutate(bin = cut(logsize_t0, breaks = 10)) %>%
+  group_by(bin) %>%
+  summarise(
+    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+    fl_nr = mean(fl_nr, na.rm = TRUE),
+    se = sd(fl_nr, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop") %>%
+  mutate(
+    lwr = fl_nr - 1.96 * se,
+    upr = fl_nr + 1.96 * se)
+
+
+# Flower number plots
+# Plot 1: Raw jitter + prediction
+fig_fl_n_line <- ggplot() +
+  geom_jitter(
+    data = df_fl_cond,
+    aes(x = logsize_t0, y = fl_nr),
+    alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(
+    data = df_fl_n_pred,
+    aes(x = logsize_t0, y = fl_nr),
+    linewidth = 0.9) +
+  theme_bw() +
+  labs(
+    title = NULL,
+    x = expression("log(diameter)"[t0]),
+    y = "Number of flowering scapes")
+
+
+# Plot 2: Binned + prediction
+fig_fl_n_bin <- ggplot() +
+  geom_point(
+    data = df_fl_n_binned,
+    aes(x = logsize_t0, y = fl_nr)) +
+  geom_errorbar(
+    data = df_fl_n_binned,
+    aes(x = logsize_t0, ymin = lwr, ymax = upr),
+    width = 0.2) +
+  geom_line(
+    data = df_fl_n_pred,
+    aes(x = logsize_t0, y = fl_nr),
+    linewidth = 0.9) +
+  theme_bw() +
+  labs(
+    title = NULL,
+    x = expression("log(diameter)"[t0]),
+    y = "Number of flowering scapes")
+
+
+# Combine
+fig_fl_n <- fig_fl_n_line + fig_fl_n_bin +
+  plot_annotation(
+    title = "Flower number",
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 10, face = "italic")))
+
+fig_fl_n
+```
+
+### Recruitment
+#### Data
+```{r}
+df_sc2re <- df_re %>%
+  filter(
+    !is.na(nr_scapes),
+    !is.na(recruits_simple)) %>%
+  group_by(site, pop, year) %>%
+  summarise(
+    total_scapes = sum(nr_scapes),
+    recruit_count = sum(recruits_simple),
+    .groups = "drop")
+
+df_sc2re_mod <- df_sc2re %>%
+  filter(
+    !is.na(total_scapes),
+    !is.na(recruit_count))
+```
+
+#### Model
+```{r}
+# Recruitment can occur without current flowering, consistent with recruitment
+# from previously accumulated seed.
+
+mod_re_0 <- glm.nb(
+  recruit_count ~ 1,
+  data = df_sc2re_mod)
+
+mod_re_sc <- glm.nb(
+  recruit_count ~ total_scapes,
+  data = df_sc2re_mod)
+
+mod_re_logsc <- glm.nb(
+  recruit_count ~ log1p(total_scapes),
+  data = df_sc2re_mod)
+
+mods_re <- list(
+  mod_re_0,
+  mod_re_sc,
+  mod_re_logsc)
+
+mods_re_dAICc <- AICctab(
+  mods_re,
+  weights = TRUE,
+  sort = FALSE)$dAICc
+
+mods_re_sorted <- order(mods_re_dAICc)
+mod_re_bestfit <- mods_re[[mods_re_sorted[1]]]
+
+mods_re_dAICc
+summary(mod_re_bestfit)
+```
+
+#### Mean recruitment conversion for the IPM
+```{r}
+# The recruitment model includes baseline recruitment, which can represent
+# recruitment from the seedbank. For the linear mean IPM, collapse the fitted
+# recruitment relationship to one mean recruits-per-scape conversion.
+
+df_sc2re_mod <- df_sc2re_mod %>%
+  mutate(
+    recruits_pred = predict(
+      mod_re_bestfit,
+      type = "response"))
+
+recr_per_scape <- sum(df_sc2re_mod$recruits_pred) /
+  sum(df_sc2re_mod$total_scapes)
+
+recr_per_scape
+```
+
+#### Plot
+```{r}
+df_sc2re_pred <- data.frame(
+  total_scapes = seq(
+    min(df_sc2re_mod$total_scapes),
+    max(df_sc2re_mod$total_scapes),
+    length.out = 100))
+
+mod_sc2re_preds <- predict(
+  mod_re_bestfit,
+  newdata = df_sc2re_pred,
+  type = "link",
+  se.fit = TRUE)
+
+df_sc2re_pred <- df_sc2re_pred %>%
+  mutate(
+    fit = exp(mod_sc2re_preds$fit),
+    lower = exp(
+      mod_sc2re_preds$fit -
+        1.96 * mod_sc2re_preds$se.fit),
+    upper = exp(
+      mod_sc2re_preds$fit +
+        1.96 * mod_sc2re_preds$se.fit))
+
+fig_sc2re <- ggplot(
+  df_sc2re_mod,
+  aes(x = total_scapes, y = recruit_count)) +
+  geom_jitter(
+    height = 0.2, width = 0.5,
+    alpha = 0.4) +
+  geom_ribbon(
+    data = df_sc2re_pred,
+    aes(
+      x = total_scapes,
+      ymin = lower,
+      ymax = upper),
+    inherit.aes = FALSE,
+    alpha = 0.2) +
+  geom_line(
+    data = df_sc2re_pred,
+    aes(x = total_scapes, y = fit),
+    inherit.aes = FALSE,
+    linewidth = 1.2) +
+  labs(
+    title = "Recruits t1 by flowering scapes t0",
+    subtitle = v_ggp_suffix,
+    x = expression("Total flowering scapes "[t0]),
+    y = expression("Number of recruits "[t1])) +
+  theme_bw()
+
+fig_sc2re
+```
+
+### Recruit size and variance
+```{r}
+df_re_size <- df_ind %>%
+  filter(
+    recruit_type == "seedling",
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+recr_sz <- mean(
+  df_re_size$logsize_t0,
+  na.rm = TRUE)
+
+recr_sd <- sd(
+  df_re_size$logsize_t0,
+  na.rm = TRUE)
+```
+
+## Extracting parameter estimates
+```{r}
+# Survival
+coef_su <- data.frame(
+  coefficient = names(coef(mod_su_bestfit)),
+  value = coef(mod_su_bestfit)) %>%
+  mutate(
+    coefficient = as.character(coefficient),
+    coefficient = replace(
+      coefficient, grepl("Intercept", coefficient), "b0"))
+
+# Growth
+coef_gr_fe <- data.frame(
+  coefficient = names(coef(mod_gr_bestfit)),
+  value = coef(mod_gr_bestfit))
+
+coef_gr_var <- data.frame(
+  coefficient = names(coef(mod_gr_var)),
+  value = coef(mod_gr_var))
+
+coef_gr <- bind_rows(coef_gr_fe, coef_gr_var) %>%
+  mutate(
+    coefficient = as.character(coefficient),
+    coefficient = replace(
+      coefficient, grepl("Intercept", coefficient), "b0"))
+
+# Dormancy entry
+coef_do <- data.frame(
+  coefficient = names(coef(mod_do_bestfit)),
+  value = coef(mod_do_bestfit)) %>%
+  mutate(
+    coefficient = as.character(coefficient),
+    coefficient = replace(
+      coefficient, grepl("Intercept", coefficient), "b0"))
+
+# Flowering probability
+coef_fl <- data.frame(
+  coefficient = names(coef(mod_fl_bestfit)),
+  value = coef(mod_fl_bestfit)) %>%
+  mutate(
+    coefficient = as.character(coefficient),
+    coefficient = replace(
+      coefficient, grepl("Intercept", coefficient), "b0"))
+
+# Scape number conditional on flowering
+coef_fln <- data.frame(
+  coefficient = names(coef(mod_fl_n_bestfit)),
+  value = coef(mod_fl_n_bestfit)) %>%
+  mutate(
+    coefficient = as.character(coefficient),
+    coefficient = replace(
+      coefficient, grepl("Intercept", coefficient), "b0"))
+
+extr_value <- function(x, field) {
+  subset(x, coefficient == field)$value
+}
+```
+
+### Constants
+```{r}
+coef_misc <- data.frame(
+  coefficient = c(
+    "recr_sz",
+    "recr_sd",
+    "react_sz",
+    "react_sd",
+    "p_reactivate",
+    "fecu_b0",
+    "max_siz",
+    "min_siz"),
+  value = c(
+    recr_sz,
+    recr_sd,
+    react_sz,
+    react_sd,
+    p_reactivate,
+    recr_per_scape,
+    max(df_gr$logsize_t0),
+    min(df_gr$logsize_t0)))
+```
+
+### Parameter list
+```{r}
+pars <- Filter(function(x) length(x) > 0, list(
+  prefix = v_script_prefix,
+  species = v_species,
+  
+  surv_b0 = extr_value(coef_su, "b0"),
+  surv_b1 = extr_value(coef_su, "logsize_t0"),
+  surv_b2 = extr_value(coef_su, "logsize_t0_2"),
+  surv_b3 = extr_value(coef_su, "logsize_t0_3"),
+  
+  grow_b0 = extr_value(coef_gr, "b0"),
+  grow_b1 = extr_value(coef_gr, "logsize_t0"),
+  grow_b2 = extr_value(coef_gr, "logsize_t0_2"),
+  grow_b3 = extr_value(coef_gr, "logsize_t0_3"),
+  a = extr_value(coef_gr, "a"),
+  b = extr_value(coef_gr, "b"),
+  
+  dorm_b0 = extr_value(coef_do, "b0"),
+  dorm_b1 = extr_value(coef_do, "logsize_t0"),
+  dorm_b2 = extr_value(coef_do, "logsize_t0_2"),
+  dorm_b3 = extr_value(coef_do, "logsize_t0_3"),
+  
+  fl_b0 = extr_value(coef_fl, "b0"),
+  fl_b1 = extr_value(coef_fl, "logsize_t0"),
+  fl_b2 = extr_value(coef_fl, "logsize_t0_2"),
+  fl_b3 = extr_value(coef_fl, "logsize_t0_3"),
+  
+  fln_b0 = extr_value(coef_fln, "b0"),
+  fln_b1 = extr_value(coef_fln, "logsize_t0"),
+  fln_b2 = extr_value(coef_fln, "logsize_t0_2"),
+  fln_b3 = extr_value(coef_fln, "logsize_t0_3"),
+  
+  fecu_b0 = extr_value(coef_misc, "fecu_b0"),
+  recr_sz = extr_value(coef_misc, "recr_sz"),
+  recr_sd = extr_value(coef_misc, "recr_sd"),
+  react_sz = extr_value(coef_misc, "react_sz"),
+  react_sd = extr_value(coef_misc, "react_sd"),
+  p_reactivate = extr_value(coef_misc, "p_reactivate"),
+  
+  L = extr_value(coef_misc, "min_siz"),
+  U = extr_value(coef_misc, "max_siz"),
+  mat_siz = 200,
+  
+  mod_su_index = v_mod_su_index,
+  mod_gr_index = v_mod_gr_index,
+  mod_do_index = v_mod_do_index,
+  mod_fl_index = v_mod_fl_index,
+  mod_fl_n_index = v_mod_fl_n_index))
+```
+
+
+## Building IPM - Functions
+```{r}
+inv_logit <- function(x) {
+  exp(x) / (1 + exp(x))
+}
+
+
+# Survival ---------------------------------------------------------------------
+sx <- function(x, pars, num_pars = pars$mod_su_index) {
+  val <- pars$surv_b0
+  
+  for (i in seq_len(num_pars)) {
+    param <- paste0("surv_b", i)
+    
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  
+  inv_logit(val)
+}
+
+
+# Growth -----------------------------------------------------------------------
+grow_mu <- function(x, pars, num_pars = pars$mod_gr_index) {
+  val <- pars$grow_b0
+  
+  for (i in seq_len(num_pars)) {
+    param <- paste0("grow_b", i)
+    
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  
+  val
+}
+
+
+# Growth variation -------------------------------------------------------------
+grow_sd <- function(mu, pars) {
+  sqrt(pars$a * exp(pars$b * mu))
+}
+
+
+# Growth transition ------------------------------------------------------------
+gxy <- function(x, y, pars) {
+  mu <- grow_mu(x, pars)
+  
+  dnorm(
+    y,
+    mean = mu,
+    sd = grow_sd(mu, pars))
+}
+
+
+# Dormancy entry ---------------------------------------------------------------
+dorm_x <- function(x, pars, num_pars = pars$mod_do_index) {
+  val <- pars$dorm_b0
+  
+  for (i in seq_len(num_pars)) {
+    param <- paste0("dorm_b", i)
+    
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  
+  inv_logit(val)
+}
+
+
+# Flowering probability --------------------------------------------------------
+fl_x <- function(x, pars, num_pars = pars$mod_fl_index) {
+  val <- pars$fl_b0
+  
+  for (i in seq_len(num_pars)) {
+    param <- paste0("fl_b", i)
+    
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  
+  inv_logit(val)
+}
+
+
+# Scape number conditional on flowering ---------------------------------------
+fl_n_x <- function(x, pars, num_pars = pars$mod_fl_n_index) {
+  val <- pars$fln_b0
+  
+  for (i in seq_len(num_pars)) {
+    param <- paste0("fln_b", i)
+    
+    if (!is.null(pars[[param]])) {
+      val <- val + pars[[param]] * x^i
+    }
+  }
+  
+  exp(val)
+}
+
+
+# Recruitment size distribution ------------------------------------------------
+re_y_dist <- function(y, pars) {
+  norm <- pnorm(
+    pars$U, mean = pars$recr_sz, sd = pars$recr_sd) -
+    pnorm(
+      pars$L, mean = pars$recr_sz, sd = pars$recr_sd)
+  
+  dnorm(
+    y,
+    mean = pars$recr_sz,
+    sd = pars$recr_sd) / norm
+}
+
+
+# Reactivation size distribution -----------------------------------------------
+react_y_dist <- function(y, pars) {
+  norm <- pnorm(
+    pars$U, mean = pars$react_sz, sd = pars$react_sd) -
+    pnorm(
+      pars$L, mean = pars$react_sz, sd = pars$react_sd)
+  
+  dnorm(
+    y,
+    mean = pars$react_sz,
+    sd = pars$react_sd) / norm
+}
+
+
+# F-kernel ---------------------------------------------------------------------
+fyx <- function(y, x, pars) {
+  fl_x(x, pars) *
+    fl_n_x(x, pars) *
+    pars$fecu_b0 *
+    re_y_dist(y, pars)
+}
+```
+
+## Kernel
+```{r}
+kernel <- function(pars) {
+  
+  # Continuous active-size classes
+  n <- pars$mat_siz
+  L <- pars$L
+  U <- pars$U
+  h <- (U - L) / n
+  
+  b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
+  
+  # Active survival and dormancy
+  Smat <- sx(y, pars)
+  Dmat <- dorm_x(y, pars)
+  
+  # Growth matrix
+  Gmat <- matrix(0, n, n)
+  Gmat[] <- t(outer(y, y, gxy, pars)) * h
+  
+  # Correct growth eviction
+  for (i in seq_len(n)) {
+    if (i <= n / 2) {
+      Gmat[1, i] <- Gmat[1, i] + 1 - sum(Gmat[, i])
+    } else {
+      Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])
+    }
+  }
+  
+  # Active -> active
+  Tmat <- sweep(
+    Gmat,
+    2,
+    Smat * (1 - Dmat),
+    "*")
+  
+  # Active -> dormant
+  Dorm_row <- matrix(
+    Smat * Dmat,
+    nrow = 1)
+  
+  # Dormant -> active
+  React_vec <- react_y_dist(y, pars) * h
+  React_vec <- React_vec / sum(React_vec)
+  
+  React_col <- matrix(
+    pars$p_reactivate * React_vec,
+    ncol = 1)
+  
+  # Dormant -> dormant
+  Dorm_stasis <- 1 - pars$p_reactivate
+  
+  # Fertility from active individuals
+  Fmat <- outer(
+    y, y,
+    Vectorize(function(y, x) {
+      fyx(y, x, pars)
+    })) * h
+  
+  # Full 201 x 201 kernel
+  K <- rbind(
+    cbind(Tmat + Fmat, React_col),
+    cbind(Dorm_row, Dorm_stasis))
+  
+  return(list(
+    k_yx = K,
+    Fmat = Fmat,
+    Tmat = Tmat,
+    Gmat = Gmat,
+    Dorm_row = Dorm_row,
+    React_col = React_col,
+    Smat = Smat,
+    Dmat = Dmat,
+    meshpts = y,
+    h = h))
+}
+```
+
+## Mean population growth rate
+```{r}
+lambda_ipm <- function(pars) {
+  Re(eigen(
+    kernel(pars)$k_yx,
+    only.values = TRUE)$values[1])
+}
+
+lam_mean <- lambda_ipm(pars)
+lam_mean
+```
+
+## Kernel checks
+```{r}
+K_mean <- kernel(pars)
+
+dim(K_mean$k_yx)
+
+range(K_mean$Smat)
+range(K_mean$Dmat)
+
+range(colSums(K_mean$Gmat))
+sum(K_mean$React_col)
+1 - pars$p_reactivate
+
+range(K_mean$k_yx)
+any(!is.finite(K_mean$k_yx))
+
+lam_mean
+```
+
+## Stable population structure
+```{r}
+eig_mean <- eigen(K_mean$k_yx)
+
+stable_dist <- Re(eig_mean$vectors[, 1])
+
+if (sum(stable_dist) < 0) {
+  stable_dist <- -stable_dist
+}
+
+stable_dist <- stable_dist / sum(stable_dist)
+
+stable_active <- stable_dist[seq_len(pars$mat_siz)]
+stable_dormant <- stable_dist[pars$mat_siz + 1]
+
+df_stable <- tibble(
+  logsize = K_mean$meshpts,
+  size = exp(logsize),
+  stable = stable_active,
+  stable_density = stable_active / K_mean$h)
+
+df_stable_summary <- tibble(
+  state = c("Active", "Dormant"),
+  proportion = c(
+    sum(stable_active),
+    stable_dormant))
+
+df_stable_summary
+```
+
+## Stable size distribution
+```{r}
+fig_stable <- ggplot(
+  df_stable,
+  aes(x = size, y = stable_density)) +
+  geom_line(linewidth = 1) +
+  theme_bw() +
+  labs(
+    title = "Stable active size distribution",
+    subtitle = v_ggp_suffix,
+    x = "Rosette diameter (cm)",
+    y = "Stable density")
+
+fig_stable
+```
+
+## Observed population growth
+```{r}
+# Count known living individuals. New adults are additionally counted one year
+# earlier, matching the simplified recruitment assumption used in this IPM.
+
+df_counts_alive <- df_ind %>%
+  filter(state %in% c("active", "dormant", "alive_or_dormant")) %>%
+  count(site, pop, qu, year, name = "n_alive")
+
+df_newadult_backfill <- df_ind %>%
+  filter(recruit_type == "new_adult") %>%
+  transmute(site, pop, qu, year = year - 1) %>%
+  count(site, pop, qu, year, name = "n_newadult_backfill")
+
+# Use recruitment rows as the monitored quadrat-year inventory
+df_counts_quad <- df %>%
+  filter(row_type == "recruitment") %>%
+  distinct(site, pop, qu, year) %>%
+  left_join(
+    df_counts_alive,
+    by = c("site", "pop", "qu", "year")) %>%
+  left_join(
+    df_newadult_backfill,
+    by = c("site", "pop", "qu", "year")) %>%
+  mutate(
+    n_alive = replace_na(n_alive, 0L),
+    n_newadult_backfill = replace_na(n_newadult_backfill, 0L),
+    n = n_alive + n_newadult_backfill) %>%
+  group_by(site, pop, qu) %>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(
+    year_t1 = lead(year),
+    n_t1 = lead(n),
+    annual_transition = year_t1 == year + 1) %>%
+  ungroup() %>%
+  filter(annual_transition)
+
+# The final three transitions cannot fully resolve terminal dormancy
+dormancy_cutoff <- 3
+last_complete_transition <- max(df_ind$year, na.rm = TRUE) -
+  dormancy_cutoff - 1
+
+df_counts_year <- df_counts_quad %>%
+  filter(year <= last_complete_transition) %>%
+  group_by(year) %>%
+  summarise(
+    n_quads = n(),
+    n_t0 = sum(n),
+    n_t1 = sum(n_t1), .groups = "drop") %>%
+  mutate(lambda_obs = n_t1 / n_t0)
+
+df_counts_year
+
+# Mean observed population growth
+lam_obs_y <- df_counts_year$lambda_obs
+
+lam_obs_mean <- mean(lam_obs_y, na.rm = TRUE)
+lam_obs_geo <- exp(mean(log(lam_obs_y), na.rm = TRUE))
+
+lam_obs_mean
+lam_obs_geo
+```
+
+## Modeled versus observed population growth
+```{r}
+df_lambda_mean <- tibble(
+  estimate = c(
+    "IPM asymptotic",
+    "Observed arithmetic",
+    "Observed geometric"),
+  lambda = c(
+    lam_mean,
+    lam_obs_mean,
+    lam_obs_geo))
+
+df_lambda_mean
+```

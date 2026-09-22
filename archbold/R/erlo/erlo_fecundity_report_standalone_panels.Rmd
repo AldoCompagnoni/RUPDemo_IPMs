@@ -1,0 +1,1492 @@
+---
+title: "Fecundity process investigation"
+author: "Niklas Neisse"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    code_folding: hide
+---
+
+# Introduction
+
+This report documents the fecundity process as it is currently implemented for
+*Eriogonum longifolium*. It is intended as an exploratory description of the
+current data structure and fitted fecundity components.
+
+The report focuses on:
+
+1. flowering probability,
+2. number of scapes conditional on flowering,
+3. the scapes-to-recruits transition,
+4. recruit size distribution, and
+5. how these components are combined in the IPM fecundity process.
+
+Only the currently selected models are fitted here. No model selection is
+repeated in this report.
+
+
+# Setup
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center')
+
+library(MASS)
+library(tidyverse)
+library(lme4)
+
+set.seed(100)
+options(stringsAsFactors = FALSE)
+
+v_head <- 'archbold'
+v_species <- 'Eriogonum longifolium'
+v_years_re <- c()
+
+v_sp_abb <- tolower(
+  gsub(
+    ' ',
+    '',
+    paste(
+      substr(
+        unlist(strsplit(v_species, ' ')),
+        1, 2),
+      collapse = '')))
+
+v_ggp_suffix <- paste(
+  tools::toTitleCase(v_head),
+  '-',
+  v_species)
+
+dir_data <- file.path(
+  'C:', 'code', 'RUPDemo_IPMs',
+  v_head,
+  'data',
+  v_sp_abb)
+
+data_file <- file.path(
+  dir_data,
+  paste0(
+    'ab_',
+    v_sp_abb,
+    '_df_workdata_260820.csv'))
+
+if (!file.exists(data_file)) {
+  stop(
+    'Data file not found: ',
+    data_file,
+    '\nKnit this report from the project root or update data_file.')
+}
+
+ctrl_glmer <- glmerControl(
+  optimizer = 'bobyqa',
+  optCtrl = list(
+    maxfun = 2e5))
+
+ctrl_re <- glmerControl(
+  optimizer = 'bobyqa',
+  optCtrl = list(
+    maxfun = 2e5))
+```
+
+
+# Data
+
+The same working-data file and basic data preparation used in the current IPM
+analysis are used here.
+
+```{r data}
+disturbance_case_levels <- c(
+  'Undisturbed',
+  'Current-year fire',
+  'Previous-year fire',
+  'Fire in both years')
+
+df <- read.csv(
+  data_file) %>%
+  mutate(
+    disturbance = as.numeric(
+      dist_transition),
+    disturbance_prev = as.numeric(
+      disturbance_prev),
+    year = as.integer(year),
+    row_type = as.character(
+      row_type),
+    disturbance_case = factor(
+      paste0(
+        disturbance,
+        disturbance_prev),
+      levels = c(
+        '00', '10', '01', '11'),
+      labels = disturbance_case_levels)) %>%
+  filter(
+    !is.na(year),
+    !(year %in% v_years_re))
+
+df_ind <- df %>%
+  filter(
+    row_type == 'individual')
+
+df_re_all <- df %>%
+  filter(
+    row_type == 'recruitment')
+
+df_re <- df_re_all %>%
+  filter(
+    recruitment_complete,
+    !is.na(recruits_simple))
+```
+
+
+# Fecundity as currently implemented
+
+The current fecundity process has three fitted demographic components followed
+by a recruit-size distribution:
+
+- flowering probability is modeled at the individual-year level;
+- scape number is modeled at the individual-year level conditional on flowering;
+- scapes and recruits are summed to the site-population-year level for the
+  scapes-to-recruits model;
+- the fitted recruitment relationship is converted back to recruits per scape
+  before entering the individual-level IPM fecundity calculation;
+- recruits are distributed across recruit size using the observed seedling-size
+  distribution.
+
+Previous-year fire is used in flowering and scape production. Current-year fire
+is used in the scapes-to-recruits component.
+
+
+# Flowering probability
+
+## Flowering data
+
+```{r flowering-data}
+df_fl <- df %>%
+  filter(
+    state == 'active',
+    !is.na(flower),
+    size_t0 > 0,
+    is.finite(logsize_t0),
+    is.finite(logsize_t0_2),
+    is.finite(logsize_t0_3),
+    !is.na(disturbance_prev)) %>%
+  mutate(
+    year = factor(year),
+    disturbance_prev = as.numeric(
+      disturbance_prev))
+```
+
+
+## Selected flowering model
+
+The currently selected flowering model contains cubic size dependence,
+previous-year fire, and a year random intercept.
+
+```{r flowering-model}
+mod_fl_bestfit <- glmer(
+  flower ~
+    logsize_t0 +
+    logsize_t0_2 +
+    logsize_t0_3 +
+    disturbance_prev +
+    (1 | year),
+  data = df_fl,
+  family = binomial,
+  control = ctrl_glmer)
+
+formula(mod_fl_bestfit)
+summary(mod_fl_bestfit)
+```
+
+
+## Flowering data coverage
+
+The first table shows individual-year records. The second removes repeated
+individuals within a quadrat-year and therefore shows the disturbance coverage
+at the quadrat-year level.
+
+```{r flowering-coverage}
+df_fl %>%
+  count(
+    disturbance_prev,
+    name = 'n_individual_years') %>%
+  as_tibble() %>%
+  print(n = Inf)
+
+df_fl %>%
+  distinct(
+    site,
+    pop,
+    qu,
+    year,
+    disturbance_prev) %>%
+  count(
+    disturbance_prev,
+    name = 'n_quadrat_years') %>%
+  as_tibble() %>%
+  print(n = Inf)
+```
+
+
+## Mean flowering relationship
+
+The mean relationship uses fixed effects only. The year random effect is
+excluded with `re.form = NA`.
+
+```{r flowering-mean, fig.width=7, fig.height=5}
+df_fl_mean_pred <- tidyr::expand_grid(
+  logsize_t0 = seq(
+    min(
+      df_fl$logsize_t0,
+      na.rm = TRUE),
+    max(
+      df_fl$logsize_t0,
+      na.rm = TRUE),
+    length.out = 100),
+  disturbance_prev = c(0, 1)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3,
+    year = factor(
+      levels(df_fl$year)[1],
+      levels = levels(df_fl$year)))
+
+df_fl_mean_pred <- df_fl_mean_pred %>%
+  mutate(
+    flower = predict(
+      mod_fl_bestfit,
+      newdata = df_fl_mean_pred,
+      type = 'response',
+      re.form = NA,
+      allow.new.levels = TRUE))
+
+df_fl_mean_binned <- df_fl %>%
+  mutate(
+    bin = cut(
+      logsize_t0,
+      breaks = 10)) %>%
+  group_by(
+    bin,
+    disturbance_prev) %>%
+  summarise(
+    logsize_t0 = mean(
+      logsize_t0,
+      na.rm = TRUE),
+    flower = mean(
+      flower,
+      na.rm = TRUE),
+    n = n(),
+    .groups = 'drop') %>%
+  filter(
+    !is.na(logsize_t0),
+    n > 0)
+
+fig_fl_mean <- ggplot() +
+  geom_point(
+    data = df_fl_mean_binned,
+    aes(
+      logsize_t0,
+      flower,
+      color = factor(
+        disturbance_prev))) +
+  geom_line(
+    data = df_fl_mean_pred,
+    aes(
+      logsize_t0,
+      flower,
+      color = factor(
+        disturbance_prev),
+      linetype = factor(
+        disturbance_prev)),
+    linewidth = 1) +
+  scale_color_manual(
+    values = c(
+      '0' = 'black',
+      '1' = 'red'),
+    labels = c(
+      '0' = 'No previous fire',
+      '1' = 'Previous-year fire'),
+    name = 'Fire') +
+  scale_linetype_manual(
+    values = c(
+      '0' = 'solid',
+      '1' = 'dashed'),
+    labels = c(
+      '0' = 'No previous fire',
+      '1' = 'Previous-year fire'),
+    name = 'Fire') +
+  labs(
+    title = 'Mean flowering probability',
+    subtitle = 'Fixed effects only - no year effect',
+    x = expression(
+      'log(diameter)'[t0]),
+    y = 'Flowering probability') +
+  coord_cartesian(
+    ylim = c(0, 1)) +
+  theme_bw()
+
+fig_fl_mean
+```
+
+
+## Flowering relationships by year
+
+The same model is shown for all years in one panel. The corresponding year
+random effect is included with `re.form = NULL`.
+
+```{r flowering-years, fig.width=11, fig.height=10}
+df_fl_year_pred <- map_dfr(
+  levels(df_fl$year),
+  function(year_i) {
+    df_i <- df_fl %>%
+      filter(year == year_i)
+
+    x <- seq(
+      min(df_i$logsize_t0, na.rm = TRUE),
+      max(df_i$logsize_t0, na.rm = TRUE),
+      length.out = 100)
+
+    pred_i <- tidyr::expand_grid(
+  logsize_t0 = x,
+  disturbance_prev = c(0, 1)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3,
+    year = factor(
+      year_i,
+      levels = levels(df_fl$year)))
+
+pred_i %>%
+  mutate(
+    flower = predict(
+      mod_fl_bestfit,
+      newdata = pred_i,
+      type = 'response',
+      re.form = NULL,
+      allow.new.levels = TRUE))
+  })
+
+df_fl_year_obs <- df_fl %>%
+  group_by(year, disturbance_prev) %>%
+  mutate(
+    bin = cut(
+      logsize_t0,
+      breaks = 8)) %>%
+  group_by(
+    year,
+    disturbance_prev,
+    bin) %>%
+  summarise(
+    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+    flower = mean(flower, na.rm = TRUE),
+    n = n(),
+    .groups = 'drop') %>%
+  filter(
+    !is.na(logsize_t0),
+    n > 0)
+
+fig_fl_year <- ggplot() +
+  geom_point(
+    data = df_fl_year_obs,
+    aes(
+      logsize_t0,
+      flower,
+      color = factor(disturbance_prev)),
+    size = 1.2) +
+  geom_line(
+    data = df_fl_year_pred,
+    aes(
+      logsize_t0,
+      flower,
+      color = factor(disturbance_prev),
+      linetype = factor(disturbance_prev)),
+    linewidth = 0.7) +
+  facet_wrap(
+    ~ year,
+    ncol = 5) +
+  scale_color_manual(
+    values = c(
+      '0' = 'black',
+      '1' = 'red'),
+    labels = c(
+      '0' = 'No previous fire',
+      '1' = 'Previous-year fire'),
+    name = 'Fire') +
+  scale_linetype_manual(
+    values = c(
+      '0' = 'solid',
+      '1' = 'dashed'),
+    labels = c(
+      '0' = 'No previous fire',
+      '1' = 'Previous-year fire'),
+    name = 'Fire') +
+  coord_cartesian(
+    ylim = c(0, 1)) +
+  labs(
+    title = 'Flowering probability by year',
+    x = expression('log(diameter)'[t0]),
+    y = 'Flowering probability') +
+  theme_bw() +
+  theme(
+    legend.position = 'bottom')
+
+fig_fl_year
+```
+
+# Number of scapes conditional on flowering
+
+## Scape-number data
+
+```{r scape-data}
+df_fl_cond <- df_fl %>%
+  filter(
+    flower == 1,
+    !is.na(fl_nr),
+    fl_nr > 0,
+    fl_nr == round(fl_nr),
+    !is.na(disturbance_prev)) %>%
+  mutate(
+    year = factor(year))
+```
+
+
+## Selected scape-number model
+
+The currently selected model contains cubic size dependence, previous-year
+fire, and a year random intercept.
+
+```{r scape-model}
+mod_fl_n_bestfit <- glmer.nb(
+  fl_nr ~
+    logsize_t0 +
+    logsize_t0_2 +
+    logsize_t0_3 +
+    disturbance_prev +
+    (1 | year),
+  data = df_fl_cond,
+  control = ctrl_glmer)
+
+formula(mod_fl_n_bestfit)
+summary(mod_fl_n_bestfit)
+```
+
+
+## Scape-number data coverage
+
+```{r scape-coverage}
+df_fl_cond %>%
+  count(
+    disturbance_prev,
+    name = 'n_flowering_individual_years') %>%
+  as_tibble() %>%
+  print(n = Inf)
+
+df_fl_cond %>%
+  distinct(
+    site,
+    pop,
+    qu,
+    year,
+    disturbance_prev) %>%
+  count(
+    disturbance_prev,
+    name = 'n_quadrat_years') %>%
+  as_tibble() %>%
+  print(n = Inf)
+```
+
+
+## Mean scape-number relationship
+
+The mean relationship uses fixed effects only.
+
+```{r scape-mean, fig.width=7, fig.height=5}
+df_fl_n_mean_pred <- tidyr::expand_grid(
+  logsize_t0 = seq(
+    min(
+      df_fl_cond$logsize_t0,
+      na.rm = TRUE),
+    max(
+      df_fl_cond$logsize_t0,
+      na.rm = TRUE),
+    length.out = 100),
+  disturbance_prev = c(0, 1)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3,
+    year = factor(
+      levels(df_fl_cond$year)[1],
+      levels = levels(
+        df_fl_cond$year)))
+
+df_fl_n_mean_pred <- df_fl_n_mean_pred %>%
+  mutate(
+    fl_nr = predict(
+      mod_fl_n_bestfit,
+      newdata = df_fl_n_mean_pred,
+      type = 'response',
+      re.form = NA,
+      allow.new.levels = TRUE))
+
+df_fl_n_mean_binned <- df_fl_cond %>%
+  mutate(
+    bin = cut(
+      logsize_t0,
+      breaks = 10)) %>%
+  group_by(
+    bin,
+    disturbance_prev) %>%
+  summarise(
+    logsize_t0 = mean(
+      logsize_t0,
+      na.rm = TRUE),
+    fl_nr = mean(
+      fl_nr,
+      na.rm = TRUE),
+    n = n(),
+    .groups = 'drop') %>%
+  filter(
+    !is.na(logsize_t0),
+    n > 0)
+
+fig_fl_n_mean <- ggplot() +
+  geom_point(
+    data = df_fl_n_mean_binned,
+    aes(
+      logsize_t0,
+      fl_nr,
+      color = factor(
+        disturbance_prev))) +
+  geom_line(
+    data = df_fl_n_mean_pred,
+    aes(
+      logsize_t0,
+      fl_nr,
+      color = factor(
+        disturbance_prev),
+      linetype = factor(
+        disturbance_prev)),
+    linewidth = 1) +
+  scale_color_manual(
+    values = c(
+      '0' = 'black',
+      '1' = 'red'),
+    labels = c(
+      '0' = 'No previous fire',
+      '1' = 'Previous-year fire'),
+    name = 'Fire') +
+  scale_linetype_manual(
+    values = c(
+      '0' = 'solid',
+      '1' = 'dashed'),
+    labels = c(
+      '0' = 'No previous fire',
+      '1' = 'Previous-year fire'),
+    name = 'Fire') +
+  labs(
+    title = 'Mean scape number conditional on flowering',
+    subtitle = 'Fixed effects only - no year effect',
+    x = expression(
+      'log(diameter)'[t0]),
+    y = 'Number of flowering scapes') +
+  theme_bw()
+
+fig_fl_n_mean
+```
+
+
+## Scape-number relationships by year
+
+The selected scape-number model is shown for all years in one panel. The
+corresponding year random effect is included.
+
+```{r scape-years, fig.width=11, fig.height=10}
+df_fl_n_year_pred <- map_dfr(
+  levels(df_fl_cond$year),
+  function(year_i) {
+    df_i <- df_fl_cond %>%
+      filter(year == year_i)
+
+    x <- seq(
+      min(df_i$logsize_t0, na.rm = TRUE),
+      max(df_i$logsize_t0, na.rm = TRUE),
+      length.out = 100)
+
+    pred_i <- tidyr::expand_grid(
+  logsize_t0 = x,
+  disturbance_prev = c(0, 1)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3,
+    year = factor(
+      year_i,
+      levels = levels(df_fl_cond$year)))
+
+pred_i %>%
+  mutate(
+    fl_nr = predict(
+      mod_fl_n_bestfit,
+      newdata = pred_i,
+      type = 'response',
+      re.form = NULL,
+      allow.new.levels = TRUE))
+  })
+
+df_fl_n_year_obs <- df_fl_cond %>%
+  group_by(year, disturbance_prev) %>%
+  mutate(
+    bin = cut(
+      logsize_t0,
+      breaks = 8)) %>%
+  group_by(
+    year,
+    disturbance_prev,
+    bin) %>%
+  summarise(
+    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+    fl_nr = mean(fl_nr, na.rm = TRUE),
+    n = n(),
+    .groups = 'drop') %>%
+  filter(
+    !is.na(logsize_t0),
+    n > 0)
+
+fig_fl_n_year <- ggplot() +
+  geom_point(
+    data = df_fl_n_year_obs,
+    aes(
+      logsize_t0,
+      fl_nr,
+      color = factor(disturbance_prev)),
+    size = 1.2) +
+  geom_line(
+    data = df_fl_n_year_pred,
+    aes(
+      logsize_t0,
+      fl_nr,
+      color = factor(disturbance_prev),
+      linetype = factor(disturbance_prev)),
+    linewidth = 0.7) +
+  facet_wrap(
+    ~ year,
+    ncol = 5,
+    scales = 'free_y') +
+  scale_color_manual(
+    values = c(
+      '0' = 'black',
+      '1' = 'red'),
+    labels = c(
+      '0' = 'No previous fire',
+      '1' = 'Previous-year fire'),
+    name = 'Fire') +
+  scale_linetype_manual(
+    values = c(
+      '0' = 'solid',
+      '1' = 'dashed'),
+    labels = c(
+      '0' = 'No previous fire',
+      '1' = 'Previous-year fire'),
+    name = 'Fire') +
+  labs(
+    title = 'Scape number conditional on flowering by year',
+    x = expression('log(diameter)'[t0]),
+    y = 'Number of flowering scapes') +
+  theme_bw() +
+  theme(
+    legend.position = 'bottom')
+
+fig_fl_n_year
+```
+
+# Scape bookkeeping
+
+The recruitment rows contain `nr_scapes`, while individual plant records contain
+`fl_nr`. The following check compares both quantities after individual scape
+counts are summed to the quadrat-year level.
+
+```{r scape-bookkeeping}
+df_scapes_ind_quad <- df_ind %>%
+  filter(
+    !is.na(fl_nr)) %>%
+  group_by(
+    site,
+    pop,
+    qu,
+    year) %>%
+  summarise(
+    n_individual_records = n(),
+    scapes_from_individuals = sum(
+      fl_nr,
+      na.rm = TRUE),
+    .groups = 'drop')
+
+df_scapes_re_quad <- df_re %>%
+  filter(
+    !is.na(nr_scapes)) %>%
+  group_by(
+    site,
+    pop,
+    qu,
+    year) %>%
+  summarise(
+    scapes_from_recruitment = sum(
+      nr_scapes,
+      na.rm = TRUE),
+    recruits = sum(
+      recruits_simple,
+      na.rm = TRUE),
+    .groups = 'drop')
+
+df_scape_compare <- full_join(
+  df_scapes_ind_quad,
+  df_scapes_re_quad,
+  by = c(
+    'site',
+    'pop',
+    'qu',
+    'year')) %>%
+  mutate(
+    difference =
+      scapes_from_recruitment -
+      scapes_from_individuals)
+
+df_scape_compare %>%
+  summarise(
+    n_quadrat_years = n(),
+    n_both_available = sum(
+      !is.na(
+        scapes_from_individuals) &
+        !is.na(
+          scapes_from_recruitment)),
+    mean_individual_scapes = mean(
+      scapes_from_individuals,
+      na.rm = TRUE),
+    mean_recruitment_scapes = mean(
+      scapes_from_recruitment,
+      na.rm = TRUE),
+    mean_difference = mean(
+      difference,
+      na.rm = TRUE),
+    max_abs_difference = max(
+      abs(difference),
+      na.rm = TRUE),
+    correlation = cor(
+      scapes_from_individuals,
+      scapes_from_recruitment,
+      use = 'complete.obs')) %>%
+  as_tibble() %>%
+  print(n = Inf)
+```
+
+
+# Scapes to recruits
+
+## Recruitment data and aggregation
+
+The current scapes-to-recruits model is fitted after aggregation to
+site-population-year. Scapes and recruits are summed over recruitment quadrats.
+
+A site-population-year is classified as disturbed when at least one contributing
+quadrat has `disturbance == 1`. This is the current aggregation used in the IPM.
+
+```{r recruitment-data}
+df_sc2re <- df_re %>%
+  filter(
+    !is.na(nr_scapes),
+    !is.na(recruits_simple)) %>%
+  group_by(
+    site,
+    pop,
+    year) %>%
+  summarise(
+    total_scapes = sum(
+      nr_scapes),
+    recruit_count = sum(
+      recruits_simple),
+    disturbance = case_when(
+      any(
+        disturbance == 1,
+        na.rm = TRUE) ~ 1,
+      any(
+        is.na(disturbance)) ~ NA_real_,
+      TRUE ~ 0),
+    disturbance_prev = case_when(
+      any(
+        disturbance_prev == 1,
+        na.rm = TRUE) ~ 1,
+      any(
+        is.na(disturbance_prev)) ~ NA_real_,
+      TRUE ~ 0),
+    .groups = 'drop')
+
+df_sc2re_mod <- df_sc2re %>%
+  filter(
+    !is.na(total_scapes),
+    !is.na(recruit_count),
+    !is.na(disturbance),
+    !(year %in% v_years_re)) %>%
+  mutate(
+    year = factor(year),
+    disturbance = as.numeric(
+      disturbance),
+    disturbance_prev = as.numeric(
+      disturbance_prev))
+```
+
+
+## Selected scapes-to-recruits model
+
+The currently selected recruitment model uses log-transformed scape number,
+current-year disturbance, their interaction, and a year random intercept.
+
+```{r recruitment-model}
+mod_re_bestfit <- glmer.nb(
+  recruit_count ~
+    log1p(total_scapes) *
+    disturbance +
+    (1 | year),
+  data = df_sc2re_mod,
+  control = ctrl_re)
+
+formula(mod_re_bestfit)
+summary(mod_re_bestfit)
+
+re_year_sd <- if (
+    'year' %in%
+      names(
+        VarCorr(
+          mod_re_bestfit))) {
+  attr(
+    VarCorr(
+      mod_re_bestfit)$year,
+    'stddev')[1]
+} else {
+  0
+}
+
+tibble(
+  singular = isSingular(
+    mod_re_bestfit),
+  year_intercept_sd = as.numeric(
+    re_year_sd)) %>%
+  print(n = Inf)
+```
+
+
+## Recruitment disturbance coverage
+
+```{r recruitment-coverage}
+df_re %>%
+  count(
+    disturbance,
+    name = 'n_recruitment_quadrat_years') %>%
+  as_tibble() %>%
+  print(n = Inf)
+
+df_sc2re_mod %>%
+  count(
+    disturbance,
+    name = 'n_site_pop_years') %>%
+  as_tibble() %>%
+  print(n = Inf)
+```
+
+The first table describes recruitment disturbance information at the
+quadrat-year level. The second shows how many observations remain after
+aggregation to site-population-year.
+
+
+## Mean scapes-to-recruits relationship
+
+The mean relationship uses fixed effects only.
+
+```{r recruitment-mean, fig.width=7, fig.height=5}
+df_sc2re_mean_pred <- tidyr::expand_grid(
+  total_scapes = seq(
+    0,
+    max(
+      df_sc2re_mod$total_scapes,
+      na.rm = TRUE),
+    length.out = 100),
+  disturbance = c(0, 1)) %>%
+  mutate(
+    year = factor(
+      levels(
+        df_sc2re_mod$year)[1],
+      levels = levels(
+        df_sc2re_mod$year)))
+
+df_sc2re_mean_pred <- df_sc2re_mean_pred %>%
+  mutate(
+    recruit_count = predict(
+      mod_re_bestfit,
+      newdata = df_sc2re_mean_pred,
+      type = 'response',
+      re.form = NA,
+      allow.new.levels = TRUE))
+
+fig_sc2re_mean <- ggplot(
+  df_sc2re_mod,
+  aes(
+    total_scapes,
+    recruit_count,
+    color = factor(
+      disturbance))) +
+  geom_jitter(
+    height = 0.2,
+    width = 0.5,
+    alpha = 0.4) +
+  geom_line(
+    data = df_sc2re_mean_pred,
+    aes(
+      total_scapes,
+      recruit_count,
+      color = factor(
+        disturbance),
+      linetype = factor(
+        disturbance)),
+    linewidth = 1.2) +
+  scale_color_manual(
+    values = c(
+      '0' = 'black',
+      '1' = 'red'),
+    labels = c(
+      '0' = 'No current fire',
+      '1' = 'Current-year fire'),
+    name = 'Fire') +
+  scale_linetype_manual(
+    values = c(
+      '0' = 'solid',
+      '1' = 'dashed'),
+    labels = c(
+      '0' = 'No current fire',
+      '1' = 'Current-year fire'),
+    name = 'Fire') +
+  labs(
+    title = 'Mean scapes-to-recruits relationship',
+    subtitle = 'Fixed effects only - no year effect',
+    x = expression(
+      'Total flowering scapes '[t0]),
+    y = expression(
+      'Number of recruits '[t1])) +
+  theme_bw()
+
+fig_sc2re_mean
+```
+
+
+## Scapes-to-recruits relationships by year
+
+The selected recruitment model is shown for all years in one panel. The
+corresponding year random effect is included.
+
+```{r recruitment-years, fig.width=11, fig.height=10}
+df_re_year_pred <- map_dfr(
+  levels(df_sc2re_mod$year),
+  function(year_i) {
+    df_i <- df_sc2re_mod %>%
+      filter(year == year_i)
+
+    x <- seq(
+      0,
+      max(df_i$total_scapes, na.rm = TRUE),
+      length.out = 100)
+
+    pred_i <- tidyr::expand_grid(
+  total_scapes = x,
+  disturbance = c(0, 1)) %>%
+  mutate(
+    year = factor(
+      year_i,
+      levels = levels(df_sc2re_mod$year)))
+
+pred_i %>%
+  mutate(
+    recruit_count = predict(
+      mod_re_bestfit,
+      newdata = pred_i,
+      type = 'response',
+      re.form = NULL,
+      allow.new.levels = TRUE))
+  })
+
+fig_re_year <- ggplot(
+  df_sc2re_mod,
+  aes(
+    total_scapes,
+    recruit_count,
+    color = factor(disturbance))) +
+  geom_point(
+    alpha = 0.75,
+    size = 1.3) +
+  geom_line(
+    data = df_re_year_pred,
+    aes(
+      total_scapes,
+      recruit_count,
+      color = factor(disturbance),
+      linetype = factor(disturbance)),
+    linewidth = 0.7) +
+  facet_wrap(
+    ~ year,
+    ncol = 5,
+    scales = 'free') +
+  scale_color_manual(
+    values = c(
+      '0' = 'black',
+      '1' = 'red'),
+    labels = c(
+      '0' = 'No current fire',
+      '1' = 'Current-year fire'),
+    name = 'Fire') +
+  scale_linetype_manual(
+    values = c(
+      '0' = 'solid',
+      '1' = 'dashed'),
+    labels = c(
+      '0' = 'No current fire',
+      '1' = 'Current-year fire'),
+    name = 'Fire') +
+  labs(
+    title = 'Scapes-to-recruits relationship by year',
+    x = expression('Total flowering scapes '[t0]),
+    y = expression('Number of recruits '[t1])) +
+  theme_bw() +
+  theme(
+    legend.position = 'bottom')
+
+fig_re_year
+```
+
+# Recruitment aggregation checks
+
+## Mixed-fire site-population-years
+
+The following table identifies site-population-years in which both disturbed
+and undisturbed quadrats contribute before aggregation.
+
+```{r mixed-fire}
+df_f2r_fire_trace <- df_re %>%
+  filter(
+    !is.na(nr_scapes),
+    !is.na(recruits_simple)) %>%
+  group_by(
+    site,
+    pop,
+    year) %>%
+  summarise(
+    n_rows = n(),
+    n_quadrats = n_distinct(qu),
+    n_fire_0 = sum(
+      disturbance == 0,
+      na.rm = TRUE),
+    n_fire_1 = sum(
+      disturbance == 1,
+      na.rm = TRUE),
+    n_fire_na = sum(
+      is.na(disturbance)),
+    mixed_fire =
+      n_fire_0 > 0 &
+      n_fire_1 > 0,
+    proportion_fire = if_else(
+      n_fire_0 + n_fire_1 > 0,
+      n_fire_1 /
+        (n_fire_0 + n_fire_1),
+      NA_real_),
+    disturbance_used = case_when(
+      any(
+        disturbance == 1,
+        na.rm = TRUE) ~ 1,
+      any(
+        is.na(disturbance)) ~ NA_real_,
+      TRUE ~ 0),
+    total_scapes = sum(
+      nr_scapes,
+      na.rm = TRUE),
+    recruit_count = sum(
+      recruits_simple,
+      na.rm = TRUE),
+    .groups = 'drop')
+
+df_f2r_fire_trace %>%
+  summarise(
+    n_site_pop_years = n(),
+    n_mixed_fire = sum(
+      mixed_fire,
+      na.rm = TRUE),
+    p_mixed_fire = mean(
+      mixed_fire,
+      na.rm = TRUE),
+    mean_prop_fire_when_disturbed = mean(
+      proportion_fire[
+        disturbance_used == 1],
+      na.rm = TRUE),
+    min_prop_fire_when_disturbed = min(
+      proportion_fire[
+        disturbance_used == 1],
+      na.rm = TRUE),
+    max_prop_fire_when_disturbed = max(
+      proportion_fire[
+        disturbance_used == 1],
+      na.rm = TRUE)) %>%
+  as_tibble() %>%
+  print(n = Inf)
+
+df_f2r_fire_trace %>%
+  filter(
+    mixed_fire) %>%
+  as_tibble() %>%
+  print(n = Inf)
+```
+
+
+## Quadrat-level scapes and recruits
+
+This is an empirical check of the data before site-population-year aggregation.
+It does not replace the current fitted model.
+
+```{r quadrat-f2r}
+df_f2r_quad <- df_re %>%
+  filter(
+    !is.na(nr_scapes),
+    !is.na(recruits_simple)) %>%
+  transmute(
+    site,
+    pop,
+    qu,
+    year,
+    disturbance,
+    disturbance_prev,
+    scapes = nr_scapes,
+    recruits = recruits_simple)
+
+f2r_quad_summary <- df_f2r_quad %>%
+  summarise(
+    n_quadrat_years = n(),
+    n_zero_scapes = sum(
+      scapes == 0),
+    p_zero_scapes = mean(
+      scapes == 0),
+    n_positive_recruits = sum(
+      recruits > 0),
+    p_positive_recruits = mean(
+      recruits > 0),
+    n_zero_scapes_positive_recruits = sum(
+      scapes == 0 &
+        recruits > 0),
+    p_zero_scapes_positive_recruits = mean(
+      scapes == 0 &
+        recruits > 0))
+
+f2r_quad_summary %>%
+  as_tibble() %>%
+  print(n = Inf)
+
+df_f2r_quad %>%
+  filter(
+    !is.na(disturbance)) %>%
+  group_by(
+    disturbance) %>%
+  summarise(
+    n_quadrat_years = n(),
+    total_scapes = sum(
+      scapes,
+      na.rm = TRUE),
+    total_recruits = sum(
+      recruits,
+      na.rm = TRUE),
+    recruits_per_scape =
+      total_recruits /
+      total_scapes,
+    mean_recruits = mean(
+      recruits,
+      na.rm = TRUE),
+    median_recruits = median(
+      recruits,
+      na.rm = TRUE),
+    p_zero_scapes = mean(
+      scapes == 0),
+    p_zero_scapes_positive_recruits = mean(
+      scapes == 0 &
+        recruits > 0),
+    .groups = 'drop') %>%
+  as_tibble() %>%
+  print(n = Inf)
+```
+
+
+## Quadrat-level empirical scapes-to-recruits plot
+
+```{r quadrat-f2r-plot, fig.width=7, fig.height=5}
+fig_f2r_quad <- ggplot(
+  df_f2r_quad %>%
+    filter(
+      !is.na(disturbance)),
+  aes(
+    x = scapes,
+    y = recruits,
+    color = factor(
+      disturbance))) +
+  geom_point(
+    alpha = 0.45) +
+  scale_color_manual(
+    values = c(
+      '0' = 'black',
+      '1' = 'red'),
+    labels = c(
+      '0' = 'No current fire',
+      '1' = 'Current-year fire'),
+    name = 'Fire') +
+  theme_bw() +
+  labs(
+    title = 'Quadrat-level scapes to recruits',
+    x = 'Number of scapes',
+    y = 'Number of recruits')
+
+fig_f2r_quad
+```
+
+
+# Conversion back to individual fecundity
+
+The recruitment model is fitted at site-population-year level. The IPM,
+however, requires expected recruitment from an individual plant.
+
+The current implementation therefore predicts recruitment across the common
+observed distribution of site-population-year scape totals and divides the sum
+of predicted recruits by the total number of observed scapes. This produces one
+mean recruits-per-scape conversion for each current-fire state.
+
+```{r recruit-conversion}
+get_recr_per_scape <- function(
+    disturbance_i,
+    year_i = NULL) {
+
+  df_i <- df_sc2re_mod %>%
+    mutate(
+      disturbance =
+        disturbance_i)
+
+  if (is.null(year_i)) {
+    re_form_i <- NA
+  } else if (
+      as.character(year_i) %in%
+        levels(df_sc2re_mod$year)) {
+
+    df_i <- df_i %>%
+      mutate(
+        year = factor(
+          as.character(year_i),
+          levels = levels(
+            df_sc2re_mod$year)))
+
+    re_form_i <- NULL
+  } else {
+    re_form_i <- NA
+  }
+
+  pred_i <- predict(
+    mod_re_bestfit,
+    newdata = df_i,
+    type = 'response',
+    re.form = re_form_i,
+    allow.new.levels = TRUE)
+
+  total_scapes_i <- sum(
+    df_i$total_scapes,
+    na.rm = TRUE)
+
+  if (
+      !is.finite(
+        total_scapes_i) ||
+      total_scapes_i <= 0) {
+    return(0)
+  }
+
+  sum(
+    pred_i,
+    na.rm = TRUE) /
+    total_scapes_i
+}
+
+recr_per_scape_0 <-
+  get_recr_per_scape(0)
+
+recr_per_scape_1 <-
+  get_recr_per_scape(1)
+
+tibble(
+  disturbance = c(
+    'No current fire',
+    'Current-year fire'),
+  recruits_per_scape = c(
+    recr_per_scape_0,
+    recr_per_scape_1)) %>%
+  print(n = Inf)
+```
+
+For an individual of size \(x\), this conversion is combined with flowering
+probability and expected scape number:
+
+\[
+E(R \mid x) =
+P(\mathrm{flower}\mid x)
+\times
+E(\mathrm{scapes}\mid \mathrm{flower},x)
+\times
+E(\mathrm{recruits\ per\ scape}).
+\]
+
+Thus, the site-population-year recruitment model is brought back to the
+individual fecundity calculation through the recruits-per-scape term.
+
+
+# Recruit size distribution
+
+Recruit size is taken from individual records classified as seedlings.
+
+```{r recruit-size-data}
+df_re_size <- df_ind %>%
+  filter(
+    recruit_type == 'seedling',
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+recr_sz <- mean(
+  df_re_size$logsize_t0,
+  na.rm = TRUE)
+
+recr_sd <- sd(
+  df_re_size$logsize_t0,
+  na.rm = TRUE)
+
+recr_min <- min(
+  df_re_size$logsize_t0,
+  na.rm = TRUE)
+
+recr_max <- max(
+  df_re_size$logsize_t0,
+  na.rm = TRUE)
+
+normal_mass_observed_range <-
+  pnorm(
+    recr_max,
+    mean = recr_sz,
+    sd = recr_sd) -
+  pnorm(
+    recr_min,
+    mean = recr_sz,
+    sd = recr_sd)
+
+tibble(
+  n_seedlings = nrow(
+    df_re_size),
+  mean_logsize = recr_sz,
+  sd_logsize = recr_sd,
+  minimum_logsize = recr_min,
+  maximum_logsize = recr_max,
+  fitted_normal_mass_inside_observed_range =
+    normal_mass_observed_range) %>%
+  print(n = Inf)
+```
+
+
+## Observed recruit-size distribution
+
+The histogram shows the observed seedling-size distribution. The line is the
+normal distribution defined by the observed mean and standard deviation, which
+is the distributional form used for recruits in the IPM.
+
+```{r recruit-size-plot, fig.width=7, fig.height=5}
+df_re_size_density <- tibble(
+  logsize_t0 = seq(
+    recr_min,
+    recr_max,
+    length.out = 300)) %>%
+  mutate(
+    density = dnorm(
+      logsize_t0,
+      mean = recr_sz,
+      sd = recr_sd))
+
+fig_re_size <- ggplot(
+  df_re_size,
+  aes(
+    logsize_t0)) +
+  geom_histogram(
+    aes(
+      y = after_stat(
+        density)),
+    bins = 25,
+    fill = 'grey80',
+    color = 'black') +
+  geom_line(
+    data = df_re_size_density,
+    aes(
+      logsize_t0,
+      density),
+    linewidth = 1) +
+  theme_bw() +
+  labs(
+    title = 'Recruit size distribution',
+    subtitle = 'Observed seedlings and fitted normal distribution',
+    x = expression(
+      'log(diameter)'),
+    y = 'Density')
+
+fig_re_size
+```
+
+
+# Fecundity bookkeeping summary
+
+The current fecundity process can therefore be summarized as follows.
+
+```{r fecundity-summary}
+fecundity_bookkeeping <- tibble(
+  component = c(
+    'Flowering probability',
+    'Scapes conditional on flowering',
+    'Scapes to recruits',
+    'Recruit size'),
+  fitted_or_estimated_level = c(
+    'Individual-year',
+    'Individual-year',
+    'Site-population-year',
+    'Individual seedlings'),
+  disturbance = c(
+    'Previous-year fire',
+    'Previous-year fire',
+    'Current-year fire',
+    'None'),
+  IPM_quantity = c(
+    'Probability of flowering',
+    'Expected scapes conditional on flowering',
+    'Recruits per scape',
+    'Recruit size density'))
+
+fecundity_bookkeeping %>%
+  print(n = Inf)
+```
+
+The fecundity contribution of an individual of size \(x\) to recruits of size
+\(y\) is represented by:
+
+\[
+F(y,x) =
+P(\mathrm{flower}\mid x)
+\times
+E(\mathrm{scapes}\mid \mathrm{flower},x)
+\times
+E(\mathrm{recruits\ per\ scape})
+\times
+f_{\mathrm{recruit\ size}}(y).
+\]
+
+This section describes the current implementation only. The preceding tables
+and figures document the observational levels, disturbance coverage, fitted
+mean relationships, yearly relationships, recruitment aggregation, and recruit
+size distribution used in that implementation.

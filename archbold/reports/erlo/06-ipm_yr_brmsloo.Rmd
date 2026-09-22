@@ -3,6 +3,9 @@
 
 ## Setup
 ```{r}
+v_brm_suffix <-  "shrink01_rebound5"
+v_years_re <- c()
+
 v_mod_set_su   <- c()
 v_mod_set_gr   <- c()
 v_mod_set_do   <- c()
@@ -70,7 +73,7 @@ ctrl_re <- glmerControl(
 ```
 
 ## Vital rates
-### Survival 
+### Survival
 #### Data
 ```{r}
 df_su <- df %>%
@@ -90,7 +93,7 @@ df_su <- df %>%
     logsize_t0, logsize_t0_2, logsize_t0_3)
 ```
 
-#### model
+#### Model
 ```{r}
 mod_su_00 <- glmer(
   survives ~ 1 + (1 | year),
@@ -171,7 +174,7 @@ mods_su_brms <- map(
     file = file.path(
       dir_result,
       paste0(
-        "brm_su_", names(mods_su)[.x],
+        "brm_su_", names(mods_su)[.x], "_", v_brm_suffix,
         "_4c_2000i_1000w")),
     file_refit = "on_change",
     refresh = 0))
@@ -193,7 +196,7 @@ map(
   pareto_k_table)
 
 # LOO model selection
-mod_su_name_bestfit <- rownames(mods_su_loo_compare)[1]
+mod_su_name_bestfit <- mods_su_loo_compare$model[1]
 
 mod_su_index_bestfit <- match(
   mod_su_name_bestfit,
@@ -214,11 +217,11 @@ mods_su_loo_compare
 make_su_year_plot <- function(year_i) {
   df_i <- df_su %>%
     filter(year == year_i)
-
+  
   x <- seq(
     min(df_i$logsize_t0, na.rm = TRUE),
     max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
-
+  
   pred_i <- tidyr::expand_grid(
     logsize_t0 = x,
     disturbance = c(0, 1)) %>%
@@ -226,13 +229,13 @@ make_su_year_plot <- function(year_i) {
       logsize_t0_2 = logsize_t0^2,
       logsize_t0_3 = logsize_t0^3,
       year = factor(year_i, levels = levels(df_su$year)))
-
+  
   pred_i <- pred_i %>%
     mutate(
       survives = predict(
         mod_su_bestfit, newdata = pred_i, type = 'response',
         re.form = NULL, allow.new.levels = TRUE))
-
+  
   pts_i <- df_i %>%
     mutate(bin = cut(logsize_t0, breaks = 8)) %>%
     group_by(bin, disturbance) %>%
@@ -241,7 +244,7 @@ make_su_year_plot <- function(year_i) {
       survives = mean(survives, na.rm = TRUE),
       n = n(), .groups = 'drop') %>%
     filter(!is.na(logsize_t0), n > 0)
-
+  
   ggplot() +
     geom_point(
       data = pts_i,
@@ -283,7 +286,6 @@ fig_su_years
 ```
 
 ### Growth
-#### Data
 ```{r}
 df_gr <- df %>%
   filter(
@@ -390,7 +392,7 @@ mods_gr_brms <- map(
     file = file.path(
       dir_result,
       paste0(
-        "brm_gr_", names(mods_gr)[.x],
+        "brm_gr_", names(mods_gr)[.x], "_", v_brm_suffix,
         "_4c_2000i_1000w")),
     file_refit = "on_change",
     refresh = 0))
@@ -413,7 +415,7 @@ map(
 
 
 # LOO model selection
-mod_gr_name_bestfit <- rownames(mods_gr_loo_compare)[1]
+mod_gr_name_bestfit <- mods_gr_loo_compare$model[1]
 
 mod_gr_index_bestfit <- match(
   mod_gr_name_bestfit,
@@ -438,11 +440,11 @@ summary(mods_gr_brms$gr_3)
 make_gr_year_plot <- function(year_i) {
   df_i <- df_gr %>%
     filter(year == year_i)
-
+  
   x <- seq(
     min(df_i$logsize_t0, na.rm = TRUE),
     max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
-
+  
   pred_i <- tidyr::expand_grid(
     logsize_t0 = x,
     disturbance = c(0, 1)) %>%
@@ -450,13 +452,13 @@ make_gr_year_plot <- function(year_i) {
       logsize_t0_2 = logsize_t0^2,
       logsize_t0_3 = logsize_t0^3,
       year = factor(year_i, levels = levels(df_gr$year)))
-
+  
   pred_i <- pred_i %>%
     mutate(
       logsize_t1 = predict(
         mod_gr_bestfit, newdata = pred_i, re.form = NULL,
         allow.new.levels = TRUE))
-
+  
   pts_i <- df_i %>%
     mutate(bin = cut(logsize_t0, breaks = 8)) %>%
     group_by(bin, disturbance) %>%
@@ -465,7 +467,7 @@ make_gr_year_plot <- function(year_i) {
       logsize_t1 = mean(logsize_t1, na.rm = TRUE),
       n = n(), .groups = 'drop') %>%
     filter(!is.na(logsize_t0), n > 0)
-
+  
   ggplot() +
     geom_point(
       data = pts_i,
@@ -620,7 +622,7 @@ mods_do_brms <- map(
     file = file.path(
       dir_result,
       paste0(
-        "brm_do_", names(mods_do)[.x],
+        "brm_do_", names(mods_do)[.x], "_", v_brm_suffix,
         "_4c_2000i_1000w")),
     file_refit = "on_change",
     refresh = 0))
@@ -643,7 +645,7 @@ map(
 
 
 # LOO model selection
-mod_do_name_bestfit <- rownames(mods_do_loo_compare)[1]
+mod_do_name_bestfit <- mods_do_loo_compare$model[1]
 
 mod_do_index_bestfit <- match(
   mod_do_name_bestfit,
@@ -664,11 +666,11 @@ mods_do_loo_compare
 make_do_year_plot <- function(year_i) {
   df_i <- df_do %>%
     filter(year == year_i)
-
+  
   x <- seq(
     min(df_i$logsize_t0, na.rm = TRUE),
     max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
-
+  
   pred_i <- tidyr::expand_grid(
     logsize_t0 = x,
     disturbance = c(0, 1)) %>%
@@ -676,13 +678,13 @@ make_do_year_plot <- function(year_i) {
       logsize_t0_2 = logsize_t0^2,
       logsize_t0_3 = logsize_t0^3,
       year = factor(year_i, levels = levels(df_do$year)))
-
+  
   pred_i <- pred_i %>%
     mutate(
       enter_dormancy = predict(
         mod_do_bestfit, newdata = pred_i, type = 'response',
         re.form = NULL, allow.new.levels = TRUE))
-
+  
   pts_i <- df_i %>%
     mutate(bin = cut(logsize_t0, breaks = 8)) %>%
     group_by(bin, disturbance) %>%
@@ -691,7 +693,7 @@ make_do_year_plot <- function(year_i) {
       enter_dormancy = mean(enter_dormancy, na.rm = TRUE),
       n = n(), .groups = 'drop') %>%
     filter(!is.na(logsize_t0), n > 0)
-
+  
   ggplot() +
     geom_point(
       data = pts_i,
@@ -732,7 +734,7 @@ fig_do_years <- wrap_plots(do_yrs, guides = 'collect') +
 fig_do_years
 ```
 
-### Reactivation 
+### Reactivation
 #### Data
 ```{r}
 df_ra <- df %>%
@@ -778,7 +780,7 @@ mods_ra_brms <- imap(
     file = file.path(
       dir_result,
       paste0(
-        "brm_ra_", .y,
+        "brm_ra_", .y, "_", v_brm_suffix,
         "_4c_2000i_1000w")),
     file_refit = "on_change",
     refresh = 0))
@@ -799,7 +801,7 @@ map(
 
 
 # LOO model selection
-mod_ra_name_bestfit <- rownames(mods_ra_loo_compare)[1]
+mod_ra_name_bestfit <- mods_ra_loo_compare$model[1]
 
 mod_ra_index_bestfit <- match(
   mod_ra_name_bestfit,
@@ -818,23 +820,23 @@ mods_ra_loo_compare
 make_ra_year_plot <- function(year_i) {
   df_i <- df_ra %>%
     filter(year == year_i)
-
+  
   pred_i <- tibble(
     disturbance = c(0, 1),
     year = factor(year_i, levels = levels(df_ra$year)))
-
+  
   pred_i <- pred_i %>%
     mutate(
       reactivate = predict(
         mod_ra_bestfit, newdata = pred_i, type = 'response',
         re.form = NULL, allow.new.levels = TRUE))
-
+  
   pts_i <- df_i %>%
     group_by(disturbance) %>%
     summarise(
       reactivate = mean(reactivate, na.rm = TRUE),
       n = n(), .groups = 'drop')
-
+  
   ggplot() +
     geom_point(
       data = pts_i,
@@ -888,7 +890,7 @@ react_sd <- sd(
   na.rm = TRUE)
 ```
 
-### Flowering probability
+### Flower probability
 #### Data
 ```{r}
 df_fl <- df %>%
@@ -989,7 +991,7 @@ mods_fl_brms <- map(
     file = file.path(
       dir_result,
       paste0(
-        "brm_fl_", names(mods_fl)[.x],
+        "brm_fl_", names(mods_fl)[.x], "_", v_brm_suffix,
         "_4c_2000i_1000w")),
     file_refit = "on_change",
     refresh = 0))
@@ -1010,7 +1012,7 @@ if (length(mods_fl_loo) > 1) {
     mods_fl_loo,
     pareto_k_table)
   
-  mod_fl_name_bestfit <- rownames(mods_fl_loo_compare)[1]
+  mod_fl_name_bestfit <- mods_fl_loo_compare$model[1]
 } else {
   mods_fl_loo_compare <- NULL
   
@@ -1040,11 +1042,11 @@ mods_fl_loo_compare
 make_fl_year_plot <- function(year_i) {
   df_i <- df_fl %>%
     filter(year == year_i)
-
+  
   x <- seq(
     min(df_i$logsize_t0, na.rm = TRUE),
     max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
-
+  
   pred_i <- tidyr::expand_grid(
     logsize_t0 = x,
     disturbance_prev = c(0, 1)) %>%
@@ -1052,13 +1054,13 @@ make_fl_year_plot <- function(year_i) {
       logsize_t0_2 = logsize_t0^2,
       logsize_t0_3 = logsize_t0^3,
       year = factor(year_i, levels = levels(df_fl$year)))
-
+  
   pred_i <- pred_i %>%
     mutate(
       flower = predict(
         mod_fl_bestfit, newdata = pred_i, type = 'response',
         re.form = NULL, allow.new.levels = TRUE))
-
+  
   pts_i <- df_i %>%
     mutate(bin = cut(logsize_t0, breaks = 8)) %>%
     group_by(bin, disturbance_prev) %>%
@@ -1067,7 +1069,7 @@ make_fl_year_plot <- function(year_i) {
       flower = mean(flower, na.rm = TRUE),
       n = n(), .groups = 'drop') %>%
     filter(!is.na(logsize_t0), n > 0)
-
+  
   ggplot() +
     geom_point(
       data = pts_i,
@@ -1108,7 +1110,7 @@ fig_fl_years <- wrap_plots(fl_yrs, guides = 'collect') +
 fig_fl_years
 ```
 
-### Number of scapes conditional on flowering 
+### Number of scapes conditional on flowering
 #### Data
 ```{r}
 df_fl_cond <- df_fl %>%
@@ -1205,7 +1207,7 @@ mods_fl_n_brms <- map(
     file = file.path(
       dir_result,
       paste0(
-        "brm_fl_n_", names(mods_fl_n)[.x],
+        "brm_fl_n_", names(mods_fl_n)[.x], "_", v_brm_suffix,
         "_4c_2000i_1000w")),
     file_refit = "on_change",
     refresh = 0))
@@ -1226,7 +1228,7 @@ if (length(mods_fl_n_loo) > 1) {
     mods_fl_n_loo,
     pareto_k_table)
   
-  mod_fl_n_name_bestfit <- rownames(mods_fl_n_loo_compare)[1]
+  mod_fl_n_name_bestfit <- mods_fl_n_loo_compare$model[1]
 } else {
   mods_fl_n_loo_compare <- NULL
   
@@ -1259,11 +1261,11 @@ isSingular(mod_fl_n_bestfit)
 make_fl_n_year_plot <- function(year_i) {
   df_i <- df_fl_cond %>%
     filter(year == year_i)
-
+  
   x <- seq(
     min(df_i$logsize_t0, na.rm = TRUE),
     max(df_i$logsize_t0, na.rm = TRUE), length.out = 100)
-
+  
   pred_i <- tidyr::expand_grid(
     logsize_t0 = x,
     disturbance_prev = c(0, 1)) %>%
@@ -1271,13 +1273,13 @@ make_fl_n_year_plot <- function(year_i) {
       logsize_t0_2 = logsize_t0^2,
       logsize_t0_3 = logsize_t0^3,
       year = factor(year_i, levels = levels(df_fl_cond$year)))
-
+  
   pred_i <- pred_i %>%
     mutate(
       fl_nr = predict(
         mod_fl_n_bestfit, newdata = pred_i, type = 'response',
         re.form = NULL, allow.new.levels = TRUE))
-
+  
   pts_i <- df_i %>%
     mutate(bin = cut(logsize_t0, breaks = 8)) %>%
     group_by(bin, disturbance_prev) %>%
@@ -1286,7 +1288,7 @@ make_fl_n_year_plot <- function(year_i) {
       fl_nr = mean(fl_nr, na.rm = TRUE),
       n = n(), .groups = 'drop') %>%
     filter(!is.na(logsize_t0), n > 0)
-
+  
   ggplot() +
     geom_point(
       data = pts_i,
@@ -1447,7 +1449,7 @@ mods_re_brms <- map(
     file = file.path(
       dir_result,
       paste0(
-        "brm_re_", names(mods_re)[.x],
+        "brm_re_", names(mods_re)[.x], "_", v_brm_suffix,
         "_4c_2000i_1000w")),
     file_refit = "on_change",
     refresh = 0))
@@ -1468,7 +1470,7 @@ if (length(mods_re_loo) > 1) {
     mods_re_loo,
     pareto_k_table)
   
-  mod_re_name_bestfit <- rownames(mods_re_loo_compare)[1]
+  mod_re_name_bestfit <- mods_re_loo_compare$model[1]
 } else {
   mods_re_loo_compare <- NULL
   
@@ -1514,24 +1516,24 @@ re_year_diagnostic
 make_re_year_plot <- function(year_i) {
   df_i <- df_sc2re_mod %>%
     filter(year == year_i)
-
+  
   x <- seq(
     0,
     max(df_i$total_scapes, na.rm = TRUE),
     length.out = 100)
-
+  
   pred_i <- tidyr::expand_grid(
     total_scapes = x,
     disturbance = c(0, 1)) %>%
     mutate(
       year = factor(year_i, levels = levels(df_sc2re_mod$year)))
-
+  
   pred_i <- pred_i %>%
     mutate(
       recruit_count = predict(
         mod_re_bestfit, newdata = pred_i, type = 'response',
         re.form = NULL, allow.new.levels = TRUE))
-
+  
   ggplot() +
     geom_point(
       data = df_i,
@@ -1588,9 +1590,10 @@ recr_sd <- sd(
   na.rm = TRUE)
 ```
 
-## Parameter extraction functions
-### Recruitment conversion helpers
+## Parameter extraction
+### Helper functions
 ```{r}
+# Recruitment conversion helpers ---------------------------------------------
 # The ERLO recruitment model is fitted at the site-pop-year level, while the
 # IPM needs recruits per flowering scape. As in the mean ERLO IPM, conversion
 # is calculated over one common observed scape distribution. For yearly IPMs,
@@ -1600,7 +1603,7 @@ recr_sd <- sd(
 get_recr_per_scape <- function(disturbance_i, year_i = NULL) {
   df_i <- df_sc2re_mod %>%
     mutate(disturbance = disturbance_i)
-
+  
   if (is.null(year_i)) {
     re_form_i <- NA
   } else if (as.character(year_i) %in% levels(df_sc2re_mod$year)) {
@@ -1613,20 +1616,20 @@ get_recr_per_scape <- function(disturbance_i, year_i = NULL) {
   } else {
     re_form_i <- NA
   }
-
+  
   pred_i <- predict(
     mod_re_bestfit,
     newdata = df_i,
     type = 'response',
     re.form = re_form_i,
     allow.new.levels = TRUE)
-
+  
   total_scapes_i <- sum(df_i$total_scapes, na.rm = TRUE)
-
+  
   if (!is.finite(total_scapes_i) || total_scapes_i <= 0) {
     return(0)
   }
-
+  
   sum(pred_i, na.rm = TRUE) / total_scapes_i
 }
 
@@ -1635,10 +1638,9 @@ recr_per_scape_1 <- get_recr_per_scape(1)
 
 recr_per_scape_0
 recr_per_scape_1
-```
 
-### Parameter extraction helpers
-```{r}
+
+# Parameter extraction helpers -----------------------------------------------
 get_fixef_safe <- function(model) {
   if (inherits(model, 'merMod')) {
     fixef(model)
@@ -1649,24 +1651,24 @@ get_fixef_safe <- function(model) {
 
 get_year_coef <- function(model, year_i = NULL, group_var = 'year') {
   fixed <- get_fixef_safe(model)
-
+  
   if (is.null(year_i) || !inherits(model, 'merMod')) {
     return(fixed)
   }
-
+  
   coef_list <- coef(model)
-
+  
   if (!(group_var %in% names(coef_list))) {
     return(fixed)
   }
-
+  
   coef_matrix <- coef_list[[group_var]]
   year_i <- as.character(year_i)
-
+  
   if (!(year_i %in% rownames(coef_matrix))) {
     return(fixed)
   }
-
+  
   out <- unlist(coef_matrix[year_i, , drop = TRUE])
   names(out) <- colnames(coef_matrix)
   out
@@ -1704,20 +1706,20 @@ make_ipm_pars <- function(year_i = NULL) {
   ra_cf <- get_year_coef(mod_ra_bestfit, year_i)
   fl_cf <- get_year_coef(mod_fl_bestfit, year_i)
   fln_cf <- get_year_coef(mod_fl_n_bestfit, year_i)
-
+  
   recr_0_i <- get_recr_per_scape(0, year_i)
   recr_1_i <- get_recr_per_scape(1, year_i)
-
+  
   list(
     prefix = v_script_prefix,
     species = v_species,
-
+    
     surv_b0 = get_coef(su_cf, '(Intercept)'),
     surv_b1 = get_coef(su_cf, 'logsize_t0'),
     surv_b2 = get_coef(su_cf, 'logsize_t0_2'),
     surv_b3 = get_coef(su_cf, 'logsize_t0_3'),
     surv_bd = get_coef(su_cf, 'disturbance'),
-
+    
     grow_b0 = get_coef(gr_cf, '(Intercept)'),
     grow_b1 = get_coef(gr_cf, 'logsize_t0'),
     grow_b2 = get_coef(gr_cf, 'logsize_t0_2'),
@@ -1725,39 +1727,39 @@ make_ipm_pars <- function(year_i = NULL) {
     grow_bd = get_coef(gr_cf, 'disturbance'),
     a = as.numeric(gr_var_coef['a']),
     b = as.numeric(gr_var_coef['b']),
-
+    
     dorm_b0 = get_coef(do_cf, '(Intercept)'),
     dorm_b1 = get_coef(do_cf, 'logsize_t0'),
     dorm_b2 = get_coef(do_cf, 'logsize_t0_2'),
     dorm_b3 = get_coef(do_cf, 'logsize_t0_3'),
     dorm_bd = get_coef(do_cf, 'disturbance'),
-
+    
     react_b0 = get_coef(ra_cf, '(Intercept)'),
     react_bd = get_coef(ra_cf, 'disturbance'),
-
+    
     fl_b0 = get_coef(fl_cf, '(Intercept)'),
     fl_b1 = get_coef(fl_cf, 'logsize_t0'),
     fl_b2 = get_coef(fl_cf, 'logsize_t0_2'),
     fl_b3 = get_coef(fl_cf, 'logsize_t0_3'),
     fl_bd = get_coef(fl_cf, 'disturbance_prev'),
-
+    
     fln_b0 = get_coef(fln_cf, '(Intercept)'),
     fln_b1 = get_coef(fln_cf, 'logsize_t0'),
     fln_b2 = get_coef(fln_cf, 'logsize_t0_2'),
     fln_b3 = get_coef(fln_cf, 'logsize_t0_3'),
     fln_bd = get_coef(fln_cf, 'disturbance_prev'),
-
+    
     recr_0 = recr_0_i,
     recr_1 = recr_1_i,
     recr_sz = recr_sz,
     recr_sd = recr_sd,
     react_sz = react_sz,
     react_sd = react_sd,
-
+    
     L = mesh_limits[1],
     U = mesh_limits[2],
     mat_siz = 200,
-
+    
     mod_su_index = v_mod_su_index,
     mod_gr_index = v_mod_gr_index,
     mod_do_index = v_mod_do_index,
@@ -1862,7 +1864,7 @@ df_transition_site %>%
 get_transition_probability <- function(
     disturbance_i,
     disturbance_prev_i) {
-
+  
   df_disturbance_transition %>%
     filter(
       disturbance == disturbance_i,
@@ -1874,10 +1876,9 @@ p_0_given_0 <- get_transition_probability(0, 0)
 p_1_given_0 <- get_transition_probability(1, 0)
 p_0_given_1 <- get_transition_probability(0, 1)
 p_1_given_1 <- get_transition_probability(1, 1)
-```
 
-### Previous-disturbance probabilities
-```{r}
+
+# Previous-disturbance probabilities -----------------------------------------
 df_previous_disturbance <- df_disturbance_regime %>%
   group_by(disturbance_prev) %>%
   summarise(
@@ -1897,6 +1898,7 @@ p_prev_1 <- df_previous_disturbance %>%
   filter(disturbance_prev == 1) %>%
   pull(p_previous)
 ```
+
 
 ## IPM helper functions
 ```{r}
@@ -1937,7 +1939,7 @@ gxy <- function(x, y, pars, disturbance = 0) {
   mu <- grow_mu(
     x, pars,
     disturbance = disturbance)
-
+  
   dnorm(
     y,
     mean = mu,
@@ -2002,7 +2004,7 @@ re_y_dist <- function(y, pars, h = NULL) {
     y,
     mean = pars$recr_sz,
     sd = pars$recr_sd)
-
+  
   if (!is.null(h)) {
     dens <- dens / sum(dens * h)
   } else {
@@ -2012,7 +2014,7 @@ re_y_dist <- function(y, pars, h = NULL) {
         pars$L, mean = pars$recr_sz, sd = pars$recr_sd)
     dens <- dens / norm
   }
-
+  
   dens
 }
 
@@ -2023,7 +2025,7 @@ react_y_dist <- function(y, pars, h = NULL) {
     y,
     mean = pars$react_sz,
     sd = pars$react_sd)
-
+  
   if (!is.null(h)) {
     dens <- dens / sum(dens * h)
   } else {
@@ -2033,17 +2035,18 @@ react_y_dist <- function(y, pars, h = NULL) {
         pars$L, mean = pars$react_sz, sd = pars$react_sd)
     dens <- dens / norm
   }
-
+  
   dens
 }
+```
 
-
-# F-kernel --------------------------------------------------------------------
+## F-kernel
+```{r}
 fyx <- function(
     y, x, pars,
     disturbance = 0,
     disturbance_prev = 0) {
-
+  
   fl_x(
     x, pars,
     disturbance_prev = disturbance_prev) *
@@ -2055,35 +2058,34 @@ fyx <- function(
       disturbance = disturbance) *
     re_y_dist(y, pars)
 }
-```
 
-## Kernel
-```{r}
+
+# Kernel ----------------------------------------------------------------------
 kernel <- function(
     pars,
     disturbance = 0,
     disturbance_prev = 0) {
-
+  
   n <- pars$mat_siz
   L <- pars$L
   U <- pars$U
   h <- (U - L) / n
-
+  
   b <- L + c(0:n) * h
   y <- 0.5 * (b[1:n] + b[2:(n + 1)])
-
+  
   # Active survival and dormancy
   Smat <- sx(
     y, pars,
     disturbance = disturbance)
-
+  
   Dmat <- dorm_x(
     y, pars,
     disturbance = disturbance)
-
+  
   # Growth
   Gmat <- matrix(0, n, n)
-
+  
   Gmat[] <- t(outer(
     y, y,
     Vectorize(function(x, y) {
@@ -2091,7 +2093,7 @@ kernel <- function(
         x, y, pars,
         disturbance = disturbance)
     }))) * h
-
+  
   # Correct growth eviction
   for (i in seq_len(n)) {
     if (i <= n / 2) {
@@ -2100,37 +2102,37 @@ kernel <- function(
       Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])
     }
   }
-
+  
   # Active -> active
   Tmat <- sweep(
     Gmat,
     2,
     Smat * (1 - Dmat),
     '*')
-
+  
   # Active -> dormant
   Dorm_row <- matrix(
     Smat * Dmat,
     nrow = 1)
-
+  
   # Dormant -> active
   React_vec <- react_y_dist(
     y, pars,
     h = h) * h
-
+  
   React_vec <- React_vec / sum(React_vec)
-
+  
   p_react <- react_p(
     pars,
     disturbance = disturbance)
-
+  
   React_col <- matrix(
     p_react * React_vec,
     ncol = 1)
-
+  
   # Dormant -> dormant
   Dorm_stasis <- 1 - p_react
-
+  
   # Fertility
   Fmat <- outer(
     y, y,
@@ -2140,12 +2142,12 @@ kernel <- function(
         disturbance = disturbance,
         disturbance_prev = disturbance_prev)
     })) * h
-
+  
   # Full 201 x 201 demographic kernel
   K <- rbind(
     cbind(Tmat + Fmat, React_col),
     cbind(Dorm_row, Dorm_stasis))
-
+  
   list(
     k_yx = K,
     Fmat = Fmat,
@@ -2161,15 +2163,14 @@ kernel <- function(
     L = L,
     U = U)
 }
-```
 
-### Population growth rate
-```{r}
+
+# Population growth rate ------------------------------------------------------
 lambda_ipm <- function(
     pars,
     disturbance = 0,
     disturbance_prev = 0) {
-
+  
   Re(eigen(
     kernel(
       pars,
@@ -2177,37 +2178,36 @@ lambda_ipm <- function(
       disturbance_prev = disturbance_prev)$k_yx,
     only.values = TRUE)$values[1])
 }
-```
 
-### Environmental-history kernel
-```{r}
+
+# Environmental-history kernel -----------------------------------------------
 kernel_env_hist <- function(
     pars,
     p00 = p_0_given_0,
     p10 = p_1_given_0,
     p01 = p_0_given_1,
     p11 = p_1_given_1) {
-
+  
   K_00 <- kernel(
     pars = pars,
     disturbance = 0,
     disturbance_prev = 0)$k_yx
-
+  
   K_10 <- kernel(
     pars = pars,
     disturbance = 1,
     disturbance_prev = 0)$k_yx
-
+  
   K_01 <- kernel(
     pars = pars,
     disturbance = 0,
     disturbance_prev = 1)$k_yx
-
+  
   K_11 <- kernel(
     pars = pars,
     disturbance = 1,
     disturbance_prev = 1)$k_yx
-
+  
   K_env <- rbind(
     cbind(
       p00 * K_00,
@@ -2215,7 +2215,7 @@ kernel_env_hist <- function(
     cbind(
       p10 * K_10,
       p11 * K_11))
-
+  
   list(
     K_env = K_env,
     K_00 = K_00,
@@ -2223,10 +2223,9 @@ kernel_env_hist <- function(
     K_01 = K_01,
     K_11 = K_11)
 }
-```
 
-## Environmental-history asymptotic lambda
-```{r}
+
+# Environmental-history asymptotic lambda ------------------------------------
 lambda_env_hist <- function(
     pars,
     p00 = p_0_given_0,

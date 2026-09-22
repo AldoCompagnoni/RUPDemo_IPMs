@@ -44,7 +44,7 @@ v_ggp_suffix <- paste(
   tools::toTitleCase(v_head), '-', v_species)
 
 # Same model-selection settings as the mean IPM.
-v_mod_set_su <- c(2)
+v_mod_set_su <- c()
 v_mod_set_gr <- c()
 v_mod_set_do <- c()
 v_mod_set_fl <- c()

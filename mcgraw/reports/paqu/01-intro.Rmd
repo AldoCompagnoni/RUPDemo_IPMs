@@ -1,0 +1,90 @@
+# Introduction {#intro}
+
+```{r species-image, echo=FALSE, message=FALSE, warning=FALSE, fig.cap="*Panax quinquefolius*. Image from Wikipedia."}
+
+wiki_page <- "American ginseng"
+
+wiki_api <- paste0(
+  "https://en.wikipedia.org/w/api.php?",
+  "action=query&format=json&prop=pageimages&",
+  "piprop=thumbnail&pithumbsize=1400&titles=",
+  URLencode(wiki_page, reserved = TRUE))
+
+wiki_data <- jsonlite::fromJSON(
+  wiki_api,
+  simplifyVector = FALSE)
+
+img_url <- wiki_data$query$pages[[1]]$thumbnail$source
+
+dir.create("images", showWarnings = FALSE)
+
+img_ext <- tools::file_ext(sub("\\?.*$", "", img_url))
+img_file <- file.path("images", paste0("ginseng_wikipedia.", img_ext))
+
+download.file(
+  img_url,
+  destfile = img_file,
+  mode = "wb",
+  quiet = TRUE)
+
+knitr::include_graphics(img_file)
+```
+
+The dataset contains long-term demographic census data for wild American ginseng (*Panax quinquefolius* L.) populations collected between 1998 and 2016. Formal demographic monitoring began in West Virginia in 1998 and expanded to 30 natural populations by 2004. These populations were distributed across seven U.S. states: Indiana, Kentucky, Maryland, New York, Pennsylvania, Virginia, and West Virginia. Populations represented a range of land-use histories and eastern deciduous forest communities, providing a broad spatial and temporal dataset for studying ginseng demography and population viability. The main demographic table contains 210,384 plant-year records and 36 variables.
+
+Each population was censused twice per year. The spring census, generally conducted from late May through June, was designed to capture population status when the greatest number of individuals were visible aboveground. During this census, individual plants were assessed for presence, leaf number, leaflet arrangement, stalk height, leaflet dimensions, reproductive status, browsing, disease, insect damage, and other plant conditions. Leaflet measurements were subsequently used to estimate total leaf area, which the authors considered the most useful continuous measure of plant size. The second census, generally conducted during the first three weeks of August, focused primarily on reproduction. Seed production was estimated from fruits on individual plants, while additional observations were made on browsing, disease, insect damage, harvest, senescence, and other changes occurring during the growing season.
+
+Individual plants were followed repeatedly through time. Plants were marked using numbered aluminum nails placed belowground to avoid attracting attention to ginseng populations, which are subject to harvesting. Each individual was assigned an identification number within its population, while additional cluster maps, phototrails, and detailed location descriptions were used to relocate plants between censuses. Newly detected seedlings and previously missed plants were added to the census, and identifiers of dead plants were not reused. The resulting longitudinal structure allows individual survival, growth, reproduction, recruitment, browsing, harvest, and other demographic processes to be followed across years.
+
+An important feature of the dataset is the distinction between observed and inferred plant states. For example, observed leaf number and leaf area describe plants that could be measured directly, whereas inferred leaf number and inferred leaf area were used when plants were known or assumed to be alive but their aboveground structures could not be measured. The `persistence` variable provides further information on individual status, including newly emerged seedlings, plants missing during spring or fall censuses, and individuals classified as dead. Because death in this perennial species was inferred from prolonged absence, reliable retrospective assignment of mortality was only possible through approximately 2014. The metadata explicitly caution that some individuals recorded as missing in 2015 and 2016 could subsequently have been classified as dead, which must be considered when using the final years for demographic analyses.
+
+Overall, the dataset was developed specifically to support demographic analyses of American ginseng. Its combination of repeated individual-level observations, detailed plant size measurements, reproductive output, recruitment, mortality, browsing, harvest, and persistence information makes it suitable for analyses of vital rates, population growth, and long-term population viability.
+
+
+
+## Setup
+
+We use the following packages: `tidyverse`, `patchwork`, `skimr`, `ipmr`, `binom`, `bbmle`, `gridExtra`, `lme4`
+
+```{r setup, message=FALSE, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Packages
+packages <- c('MASS', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 
+              'lme4', 'janitor', 'readxl', 'GGally', 'tidyverse', 'brms', 'loo')
+lapply(packages, library, character.only = TRUE)
+
+
+# Specification 
+v_brm_suffix <- ""
+v_head <- c('mcgraw')
+v_species <- c('Panax quinquefolius')
+custom_delimiter <- c()
+v_years_re <- c()
+
+v_sp_abb <- tolower(
+  gsub(' ', '', paste(
+    substr(unlist(strsplit(v_species, ' ')), 1, 2), collapse = '')))
+
+v_script_prefix <- str_c(v_head)
+v_ggp_suffix <- paste(tools::toTitleCase(v_head), '-', v_species)
+
+
+# Directory 
+dir_wd     <- file.path('C:', 'code', 'RUPDemo_IPMs')
+dir_pub    <- file.path(dir_wd,  paste0(v_head))
+dir_R      <- file.path(dir_pub, 'R',       v_sp_abb)
+dir_data   <- file.path(dir_pub, 'data',    v_sp_abb)
+dir_result <- file.path(dir_pub, 'results', v_sp_abb)
+dir_func   <- file.path(dir_wd,  'helper_functions')
+
+
+# Functions
+# plot your survival data 'binned' (instead of 'jittered')
+source(file.path(dir_func, 'plot_binned_prop.R'))
+# 
+source(file.path(dir_func, 'line_color_pred_fun.R'))
+# 
+source(file.path(dir_func, 'predictor_fun.R'))
+```
+

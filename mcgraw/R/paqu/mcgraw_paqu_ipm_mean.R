@@ -1,4 +1,4 @@
-# IPM mean; zero = most basic
+# IPM mean; dormancy
 # McGraw 2017 - Panax quinquefolius
 
 # Author: Niklas Neisse (neisse.n@protonmail.com)
@@ -59,6 +59,7 @@ v_ggp_suffix <- paste(tools::toTitleCase(v_head), '-', v_species)
 # Values 0:3 restrict survival/growth to the corresponding polynomial degree.
 v_mod_set_su <- c()
 v_mod_set_gr <- c()
+v_mod_set_do <- c()
 
 
 # Directory -------------------------------------------------------------------
@@ -93,22 +94,12 @@ df <- read.csv(
     paste0(v_head, '_', v_sp_abb, '_df_workdata.csv'))) %>% 
   filter(state == v_states)
 
-required_cols <- c(
-  'state', 'population', 'id', 'year', 'year_t1', 'size_t0', 'size_t1',
-  'logsize_t0', 'logsize_t1', 'logsize_t0_2', 'logsize_t0_3', 'survives',
-  'recruit', 'consecutive', 'reliable_survival', 'persistence_t0')
-
-missing_cols <- setdiff(required_cols, names(df))
-if (length(missing_cols) > 0) {
-  stop(paste(
-    'Missing columns in working data:',
-    paste(missing_cols, collapse = ', ')))}
-
 
 # Survival --------------------------------------------------------------------
 df_su <- df %>%
   filter(
-    reliable_survival,
+    reliable_demography,
+    dormant_t0 == 0,
     !is.na(survives),
     size_t0 > 0,
     is.finite(logsize_t0)) %>%
@@ -219,7 +210,10 @@ fig_su
 # Growth data -----------------------------------------------------------------
 df_gr <- df %>%
   filter(
-    consecutive,
+    reliable_demography,
+    survives == 1,
+    dormant_t0 == 0,
+    dormant_t1 == 0,
     size_t0 > 0,
     size_t1 > 0,
     is.finite(logsize_t0),
@@ -380,22 +374,458 @@ df_re_size <- df %>%
     is.finite(logsize_t0))
 
 
-# Recruitment plot ------------------------------------------------------------
-fig_re <- ggplot(
-  df_re,
-  aes(x = n_parents, y = nr_recruits)) +
-  geom_point(alpha = 0.6) +
-  geom_point(
-    aes(y = pred_recruits),
-    shape = 1) +
+# Dormancy entry data ----------------------------------------------------------
+
+df_do <- df %>%
+  filter(
+    reliable_demography,
+    dormant_t0 == 0,
+    survives == 1,
+    !is.na(dormant_t1),
+    size_t0 > 0,
+    is.finite(logsize_t0)) %>%
+  mutate(enter_dormancy = dormant_t1) %>%
+  dplyr::select(
+    id, year, size_t0, enter_dormancy,
+    logsize_t0, logsize_t0_2, logsize_t0_3)
+
+df_do %>%
+  count(enter_dormancy)
+
+
+# Dormancy entry model ---------------------------------------------------------
+mod_do_0 <- glm(
+  enter_dormancy ~ 1,
+  data = df_do, family = "binomial")
+
+mod_do_1 <- glm(
+  enter_dormancy ~ logsize_t0,
+  data = df_do, family = "binomial")
+
+mod_do_2 <- glm(
+  enter_dormancy ~ logsize_t0 + logsize_t0_2,
+  data = df_do, family = "binomial")
+
+mod_do_3 <- glm(
+  enter_dormancy ~
+    logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_do, family = "binomial")
+
+mods_do <- list(
+  mod_do_0, mod_do_1, mod_do_2, mod_do_3)
+
+mods_do_dAICc <- AICctab(
+  mods_do, weights = TRUE, sort = FALSE)$dAICc
+
+mods_do_sorted <- order(mods_do_dAICc)
+
+if (length(v_mod_set_do) == 0) {
+  mod_do_index_bestfit <- mods_do_sorted[1]
+  v_mod_do_index <- mod_do_index_bestfit - 1
+} else {
+  mod_do_index_bestfit <- v_mod_set_do + 1
+  v_mod_do_index <- v_mod_set_do
+}
+
+mod_do_bestfit <- mods_do[[mod_do_index_bestfit]]
+
+mod_do_bestfit
+mods_do_dAICc
+
+# Dormancy entry plot ----------------------------------------------------------
+df_do_newdata <- df_do %>%
+  summarise(
+    x = list(seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)),
+    .groups = "drop") %>%
+  unnest(x) %>%
+  mutate(
+    logsize_t0 = x,
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    predicted = predict(
+      mod_do_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_do_line <- ggplot(
+  df_do,
+  aes(x = logsize_t0, y = enter_dormancy)) +
+  geom_jitter(
+    height = 0.05, width = 0,
+    alpha = 0.3) +
+  geom_line(
+    data = df_do_newdata,
+    aes(y = predicted),
+    linewidth = 1) +
   labs(
-    title = 'Mean recruitment - Observed vs Predicted recruits',
+    title = "Dormancy probability by size",
     subtitle = v_ggp_suffix,
-    x = expression('Established individuals'[t0]),
-    y = expression('New seedlings'[t1])) +
+    x = expression("log(diameter)"[t0]),
+    y = "Probability of entering dormancy") +
   theme_bw()
 
-fig_re
+
+df_do_bindata <- plot_binned_prop(
+  df_do, 10, logsize_t0, enter_dormancy)
+
+df_do_pred <- df_do %>%
+  reframe(
+    logsize_t0 = seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    enter_dormancy = predict(
+      mod_do_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_do_bin <- ggplot() +
+  geom_point(
+    data = df_do_bindata,
+    aes(x = logsize_t0, y = enter_dormancy)) +
+  geom_errorbar(
+    data = df_do_bindata,
+    aes(
+      x = logsize_t0,
+      ymin = lwr,
+      ymax = upr),
+    width = 0.1) +
+  geom_line(
+    data = df_do_pred,
+    aes(x = logsize_t0, y = enter_dormancy),
+    linewidth = 1.2) +
+  labs(
+    x = expression("log(diameter)"[t0]),
+    y = "") +
+  theme_bw() +
+  ylim(0, 1)
+
+fig_do <- fig_do_line + fig_do_bin + plot_layout()
+fig_do
+
+
+# Dormant survival and reactivation  ------------------------------------------
+
+df_ra <- df %>%
+  filter(
+    reliable_demography,
+    dormant_t0 == 1,
+    !is.na(survives))
+
+mod_dorm_su <- glm(
+  survives ~ 1,
+  data = df_ra,
+  family = "binomial")
+
+p_dorm_survival <- predict(
+  mod_dorm_su,
+  newdata = data.frame(x = 1),
+  type = "response")[1]
+
+
+df_ra <- df_ra %>%
+  filter(
+    survives == 1,
+    !is.na(dormant_t1)) %>%
+  mutate(
+    reactivate = as.integer(dormant_t1 == 0))
+
+mod_ra <- glm(
+  reactivate ~ 1,
+  data = df_ra,
+  family = "binomial")
+
+p_reactivate <- predict(
+  mod_ra,
+  newdata = data.frame(x = 1),
+  type = "response")[1]
+
+
+df_ra_size <- df %>%
+  filter(
+    reliable_demography,
+    dormant_t0 == 1,
+    survives == 1,
+    dormant_t1 == 0,
+    size_t1 > 0) %>%
+  mutate(
+    logsize_reactivate = log(size_t1))
+
+react_sz <- mean(
+  df_ra_size$logsize_reactivate,
+  na.rm = TRUE)
+
+react_sd <- sd(
+  df_ra_size$logsize_reactivate,
+  na.rm = TRUE)
+
+
+# Flower data ------------------------------------------------------------------
+df_fl <- df %>%
+  filter(
+    state == "active",
+    !is.na(flower),
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+
+# Flower model -----------------------------------------------------------------
+mod_fl_0 <- glm(
+  flower ~ 1,
+  data = df_fl, family = "binomial")
+
+mod_fl_1 <- glm(
+  flower ~ logsize_t0,
+  data = df_fl, family = "binomial")
+
+mod_fl_2 <- glm(
+  flower ~ logsize_t0 + logsize_t0_2,
+  data = df_fl, family = "binomial")
+
+mod_fl_3 <- glm(
+  flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_fl, family = "binomial")
+
+mods_fl <- list(
+  mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
+
+mods_fl_dAICc <- AICctab(
+  mods_fl, weights = TRUE, sort = FALSE)$dAICc
+
+mods_fl_sorted <- order(mods_fl_dAICc)
+
+if (length(v_mod_set_fl) == 0) {
+  mod_fl_index_bestfit <- mods_fl_sorted[1]
+  v_mod_fl_index <- mod_fl_index_bestfit - 1
+} else {
+  mod_fl_index_bestfit <- v_mod_set_fl + 1
+  v_mod_fl_index <- v_mod_set_fl
+}
+
+mod_fl_bestfit <- mods_fl[[mod_fl_index_bestfit]]
+
+mod_fl_bestfit
+mods_fl_dAICc
+
+
+# Flowering probability plot ---------------------------------------------------
+df_fl_newdata <- df_fl %>%
+  summarise(
+    x = list(seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)),
+    .groups = "drop") %>%
+  unnest(x) %>%
+  mutate(
+    logsize_t0 = x,
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    predicted = predict(
+      mod_fl_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_fl_line <- ggplot(
+  df_fl,
+  aes(x = logsize_t0, y = flower)) +
+  geom_jitter(
+    height = 0.05, width = 0,
+    alpha = 0.3) +
+  geom_line(
+    data = df_fl_newdata,
+    aes(y = predicted),
+    linewidth = 1) +
+  labs(
+    title = "Flowering probability by size",
+    subtitle = v_ggp_suffix,
+    x = expression("log(diameter)"[t0]),
+    y = "Probability of flowering") +
+  theme_bw()
+
+
+df_fl_bindata <- plot_binned_prop(
+  df_fl, 10, logsize_t0, flower)
+
+df_fl_pred <- df_fl %>%
+  reframe(
+    logsize_t0 = seq(
+      min(logsize_t0),
+      max(logsize_t0),
+      length.out = 100)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3) %>%
+  mutate(
+    flower = predict(
+      mod_fl_bestfit,
+      newdata = .,
+      type = "response"))
+
+fig_fl_bin <- ggplot() +
+  geom_point(
+    data = df_fl_bindata,
+    aes(x = logsize_t0, y = flower)) +
+  geom_errorbar(
+    data = df_fl_bindata,
+    aes(
+      x = logsize_t0,
+      ymin = lwr,
+      ymax = upr),
+    width = 0.1) +
+  geom_line(
+    data = df_fl_pred,
+    aes(x = logsize_t0, y = flower),
+    linewidth = 1.2) +
+  labs(
+    x = expression("log(diameter)"[t0]),
+    y = "") +
+  theme_bw() +
+  ylim(0, 1)
+
+fig_fl <- fig_fl_line + fig_fl_bin + plot_layout()
+fig_fl
+
+
+# Number of scapes conditional on flowering data -------------------------------
+df_fl_cond <- df_fl %>%
+  filter(
+    flower == 1,
+    !is.na(fl_nr),
+    fl_nr > 0,
+    fl_nr %% 1 == 0)
+
+
+# Number of scapes models ------------------------------------------------------
+mod_fl_n_0 <- glm.nb(
+  fl_nr ~ 1,
+  data = df_fl_cond)
+
+mod_fl_n_1 <- glm.nb(
+  fl_nr ~ logsize_t0,
+  data = df_fl_cond)
+
+mod_fl_n_2 <- glm.nb(
+  fl_nr ~ logsize_t0 + logsize_t0_2,
+  data = df_fl_cond)
+
+mod_fl_n_3 <- glm.nb(
+  fl_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_fl_cond)
+
+mods_fl_n <- list(
+  mod_fl_n_0, mod_fl_n_1, mod_fl_n_2, mod_fl_n_3)
+
+mods_fl_n_dAICc <- AICctab(
+  mods_fl_n, weights = TRUE, sort = FALSE)$dAICc
+
+mods_fl_n_sorted <- order(mods_fl_n_dAICc)
+
+if (length(v_mod_set_fl_n) == 0) {
+  mod_fl_n_index_bestfit <- mods_fl_n_sorted[1]
+  v_mod_fl_n_index <- mod_fl_n_index_bestfit - 1
+} else {
+  mod_fl_n_index_bestfit <- v_mod_set_fl_n + 1
+  v_mod_fl_n_index <- v_mod_set_fl_n
+}
+
+mod_fl_n_bestfit <- mods_fl_n[[mod_fl_n_index_bestfit]]
+
+mod_fl_n_bestfit
+mods_fl_n_dAICc
+
+
+# Predictions for flower number -----------------------------------------------
+# Create prediction grid
+df_fl_n_pred <- expand.grid(
+  logsize_t0 = seq(
+    min(df_fl_cond$logsize_t0),
+    max(df_fl_cond$logsize_t0),
+    length.out = 100))
+
+df_fl_n_pred <- df_fl_n_pred %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3)
+
+# Predict
+df_fl_n_pred$fl_nr <- predict(
+  mod_fl_n_bestfit,
+  newdata = df_fl_n_pred,
+  type = "response")
+
+
+# Binned observed data
+df_fl_n_binned <- df_fl_cond %>%
+  mutate(bin = cut(logsize_t0, breaks = 10)) %>%
+  group_by(bin) %>%
+  summarise(
+    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
+    fl_nr = mean(fl_nr, na.rm = TRUE),
+    se = sd(fl_nr, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop") %>%
+  mutate(
+    lwr = fl_nr - 1.96 * se,
+    upr = fl_nr + 1.96 * se)
+
+
+# Flower number plots
+# Plot 1: Raw jitter + prediction
+fig_fl_n_line <- ggplot() +
+  geom_jitter(
+    data = df_fl_cond,
+    aes(x = logsize_t0, y = fl_nr),
+    alpha = 0.25, width = 0.08, height = 0.3) +
+  geom_line(
+    data = df_fl_n_pred,
+    aes(x = logsize_t0, y = fl_nr),
+    linewidth = 0.9) +
+  theme_bw() +
+  labs(
+    title = NULL,
+    x = expression("log(diameter)"[t0]),
+    y = "Number of flowering scapes")
+
+
+# Plot 2: Binned + prediction
+fig_fl_n_bin <- ggplot() +
+  geom_point(
+    data = df_fl_n_binned,
+    aes(x = logsize_t0, y = fl_nr)) +
+  geom_errorbar(
+    data = df_fl_n_binned,
+    aes(x = logsize_t0, ymin = lwr, ymax = upr),
+    width = 0.2) +
+  geom_line(
+    data = df_fl_n_pred,
+    aes(x = logsize_t0, y = fl_nr),
+    linewidth = 0.9) +
+  theme_bw() +
+  labs(
+    title = NULL,
+    x = expression("log(diameter)"[t0]),
+    y = "Number of flowering scapes")
+
+
+# Combine
+fig_fl_n <- fig_fl_n_line + fig_fl_n_bin +
+  plot_annotation(
+    title = "Flower number",
+    subtitle = v_ggp_suffix,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 10, face = "italic")))
+
+fig_fl_n
 
 
 # Exporting parameter estimates -----------------------------------------------
@@ -546,29 +976,29 @@ kernel <- function(pars) {
   h <- (U - L) / n
   b <- L + c(0:n) * h
   y <- 0.5 * (b[1:n] + b[2:(n + 1)])
-
+  
   Fmat <- matrix(0, n, n)
   Fmat[] <- matrix(fy(y, pars, h), n, n)
-
+  
   Smat <- sx(y, pars)
-
+  
   Gmat <- matrix(0, n, n)
   Gmat[] <- t(outer(y, y, gxy, pars)) * h
-
+  
   Tmat <- matrix(0, n, n)
-
+  
   for (i in seq_len(n / 2)) {
     Gmat[1, i] <- Gmat[1, i] + 1 - sum(Gmat[, i])
     Tmat[, i] <- Gmat[, i] * Smat[i]
   }
-
+  
   for (i in ((n / 2) + 1):n) {
     Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])
     Tmat[, i] <- Gmat[, i] * Smat[i]
   }
-
+  
   k_yx <- Fmat + Tmat
-
+  
   list(
     k_yx = k_yx,
     Fmat = Fmat,

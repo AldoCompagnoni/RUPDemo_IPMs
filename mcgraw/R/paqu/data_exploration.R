@@ -318,30 +318,48 @@ df_ipm_variables <- meta_data %>%
 df_ipm_variables
 
 
-# Create working data for simple mean IPM -------------------------------------
+
+# Working data -----------------------------------------------------------------
+
+dormancy_cutoff <- 2
+last_reliable_year <- max(df_og$year, na.rm = TRUE) - dormancy_cutoff
 
 df_work <- df_og %>%
   dplyr::left_join(df_meta, by = "population") %>%
   dplyr::arrange(population, id, year) %>%
   dplyr::mutate(
+    persistence = trimws(persistence),
     size = inf_la,
     recruit = as.integer(persistence == "NS"),
     alive = dplyr::case_when(
       persistence == "DEAD" ~ 0,
       !is.na(persistence) ~ 1,
+      TRUE ~ NA_real_),
+    dormant = dplyr::case_when(
+      persistence == "MIA S" ~ 1,
+      persistence == "DEAD" ~ NA_real_,
+      !is.na(persistence) ~ 0,
       TRUE ~ NA_real_)) %>%
   dplyr::group_by(population, id) %>%
   dplyr::mutate(
     year_t1 = dplyr::lead(year),
     size_t1 = dplyr::lead(size),
     persistence_t1 = dplyr::lead(persistence),
-    survives = dplyr::lead(alive)) %>%
+    survives = dplyr::lead(alive),
+    dormant_t1 = dplyr::lead(dormant)) %>%
   dplyr::ungroup() %>%
   dplyr::mutate(
-    consecutive = year_t1 == year + 1,
-    survives = dplyr::if_else(consecutive, survives, NA_real_),
-    size_t1 = dplyr::if_else(consecutive, size_t1, NA_real_),
-    reliable_survival = consecutive & year_t1 <= 2014,
+    consecutive = year_t1 == year + 1L,
+    reliable_demography = consecutive &
+      year_t1 <= last_reliable_year,
+    survives = dplyr::if_else(
+      reliable_demography, survives, NA_real_),
+    dormant_t0 = dplyr::if_else(
+      year <= last_reliable_year, dormant, NA_real_),
+    dormant_t1 = dplyr::if_else(
+      reliable_demography, dormant_t1, NA_real_),
+    size_t1 = dplyr::if_else(
+      consecutive, size_t1, NA_real_),
     logsize_t0 = log(size),
     logsize_t1 = log(size_t1),
     logsize_t0_2 = logsize_t0^2,
@@ -350,16 +368,15 @@ df_work <- df_og %>%
     size_t0 = size,
     persistence_t0 = persistence) %>%
   dplyr::select(
-    state, population,
-    cluster, id, year, year_t1,
+    state, population, cluster, id, year, year_t1,
     persistence_t0, persistence_t1,
+    dormant_t0, dormant_t1,
     size_t0, size_t1,
     logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
-    survives, recruit, consecutive, reliable_survival)
+    survives, recruit, consecutive, reliable_demography)
 
 
-
-# Save
+# Save ------------------------------------------------------------------------
 
 write.csv(
   df_work,

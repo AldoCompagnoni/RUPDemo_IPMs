@@ -363,7 +363,20 @@ df_work <- df_og %>%
     logsize_t0 = log(size),
     logsize_t1 = log(size_t1),
     logsize_t0_2 = logsize_t0^2,
-    logsize_t0_3 = logsize_t0^3) %>%
+    logsize_t0_3 = logsize_t0^3,
+    f_buds = na_if(trimws(f_buds), ""),
+    flower = case_when(
+      coalesce(seeds > 0, FALSE) |
+        coalesce(tot_frts > 0, FALSE) ~ 1,
+      f_buds == "Y" ~ 1,
+      f_buds == "N" ~ 0,
+      TRUE ~ NA_real_),
+    fruit = case_when(
+      tot_frts > 0 ~ 1,
+      tot_frts == 0 ~ 0,
+      TRUE ~ NA_real_),
+    fruit_nr = tot_frts,
+    seed_nr = seeds) %>%
   dplyr::rename(
     size_t0 = size,
     persistence_t0 = persistence) %>%
@@ -373,7 +386,9 @@ df_work <- df_og %>%
     dormant_t0, dormant_t1,
     size_t0, size_t1,
     logsize_t0, logsize_t1, logsize_t0_2, logsize_t0_3,
-    survives, recruit, consecutive, reliable_demography)
+    survives, recruit, consecutive, reliable_demography,
+    flower, fruit, fruit_nr, seed_nr,
+    f_buds, seeds, red_frts, grn_frts, tot_frts)
 
 
 # Save ------------------------------------------------------------------------

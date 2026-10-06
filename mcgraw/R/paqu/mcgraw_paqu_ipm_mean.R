@@ -57,9 +57,12 @@ v_ggp_suffix <- paste(tools::toTitleCase(v_head), '-', v_species)
 
 # Keep manual model choices empty for AICc selection.
 # Values 0:3 restrict survival/growth to the corresponding polynomial degree.
-v_mod_set_su <- c()
-v_mod_set_gr <- c()
-v_mod_set_do <- c()
+v_mod_set_su   <- c()
+v_mod_set_gr   <- c()
+v_mod_set_do   <- c()
+v_mod_set_fl   <- c()
+v_mod_set_se   <- c()
+v_mod_set_se_n <- c()
 
 
 # Directory -------------------------------------------------------------------
@@ -314,59 +317,7 @@ mod_gr_var <- nls(
     maxiter = 1000, tol = 1e-6, warnOnly = TRUE))
 
 
-# Recruitment -----------------------------------------------------------------
-# Constant mean recruitment is estimated as recruits per established plant.
-# Parent abundance is measured in year t0 and recruits enter in year t1.
-
-df_re_parent <- df %>%
-  filter(
-    !is.na(persistence_t0),
-    persistence_t0 != 'DEAD',
-    size_t0 > 0) %>%
-  group_by(population, year) %>%
-  summarise(
-    n_parents = n_distinct(id),
-    .groups = 'drop') %>%
-  mutate(year_t1 = year + 1L)
-
-# Years in which a population was actually sampled.
-df_re_sampled <- df %>%
-  distinct(population, year) %>%
-  rename(year_t1 = year)
-
-# New seedlings observed in year t1.
-df_re_count <- df %>%
-  filter(recruit == 1) %>%
-  count(population, year, name = 'nr_recruits') %>%
-  rename(year_t1 = year)
-
-# Keep only population-year transitions with sampling at both t0 and t1.
-df_re <- df_re_parent %>%
-  inner_join(
-    df_re_sampled,
-    by = c('population', 'year_t1')) %>%
-  left_join(
-    df_re_count,
-    by = c('population', 'year_t1')) %>%
-  mutate(
-    nr_recruits = replace_na(nr_recruits, 0L))
-
-# Negative-binomial model with exposure offset. The intercept is the constant
-# mean number of recruits produced per established plant per year.
-mod_re <- MASS::glm.nb(
-  nr_recruits ~ 1 + offset(log(n_parents)),
-  data = df_re)
-
-mod_re
-
-df_re$pred_recruits <- predict(
-  mod_re,
-  newdata = df_re,
-  type = 'response')
-
-fecu_mean <- exp(unname(coef(mod_re)[['(Intercept)']]))
-
-# Recruit size distribution at first observation.
+# Recruit size distribution ---------------------------------------------------
 df_re_size <- df %>%
   filter(
     recruit == 1,
@@ -375,7 +326,6 @@ df_re_size <- df %>%
 
 
 # Dormancy entry data ----------------------------------------------------------
-
 df_do <- df %>%
   filter(
     reliable_demography,
@@ -568,37 +518,45 @@ react_sd <- sd(
   na.rm = TRUE)
 
 
-# Flower data ------------------------------------------------------------------
+# Flower data -----------------------------------------------------------------
 df_fl <- df %>%
   filter(
-    state == "active",
     !is.na(flower),
     size_t0 > 0,
-    is.finite(logsize_t0))
+    is.finite(logsize_t0)) %>%
+  dplyr::select(
+    state, population, id, year, size_t0, flower,
+    logsize_t0, logsize_t0_2, logsize_t0_3)
 
 
-# Flower model -----------------------------------------------------------------
+# Flower model ----------------------------------------------------------------
 mod_fl_0 <- glm(
   flower ~ 1,
-  data = df_fl, family = "binomial")
+  data = df_fl,
+  family = "binomial")
 
 mod_fl_1 <- glm(
   flower ~ logsize_t0,
-  data = df_fl, family = "binomial")
+  data = df_fl,
+  family = "binomial")
 
 mod_fl_2 <- glm(
   flower ~ logsize_t0 + logsize_t0_2,
-  data = df_fl, family = "binomial")
+  data = df_fl,
+  family = "binomial")
 
 mod_fl_3 <- glm(
   flower ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
-  data = df_fl, family = "binomial")
+  data = df_fl,
+  family = "binomial")
 
 mods_fl <- list(
   mod_fl_0, mod_fl_1, mod_fl_2, mod_fl_3)
 
 mods_fl_dAICc <- AICctab(
-  mods_fl, weights = TRUE, sort = FALSE)$dAICc
+  mods_fl,
+  weights = TRUE,
+  sort = FALSE)$dAICc
 
 mods_fl_sorted <- order(mods_fl_dAICc)
 
@@ -616,60 +574,41 @@ mod_fl_bestfit
 mods_fl_dAICc
 
 
-# Flowering probability plot ---------------------------------------------------
-df_fl_newdata <- df_fl %>%
-  summarise(
-    x = list(seq(
-      min(logsize_t0),
-      max(logsize_t0),
-      length.out = 100)),
-    .groups = "drop") %>%
-  unnest(x) %>%
+# Flowering probability plot --------------------------------------------------
+df_fl_newdata <- tibble(
+  logsize_t0 = seq(
+    min(df_fl$logsize_t0),
+    max(df_fl$logsize_t0),
+    length.out = 100)) %>%
   mutate(
-    logsize_t0 = x,
     logsize_t0_2 = logsize_t0^2,
-    logsize_t0_3 = logsize_t0^3) %>%
-  mutate(
-    predicted = predict(
-      mod_fl_bestfit,
-      newdata = .,
-      type = "response"))
+    logsize_t0_3 = logsize_t0^3)
+
+df_fl_newdata$flower <- predict(
+  mod_fl_bestfit,
+  newdata = df_fl_newdata,
+  type = "response")
+
+df_fl_bindata <- plot_binned_prop(
+  df_fl, 10, logsize_t0, flower)
 
 fig_fl_line <- ggplot(
   df_fl,
   aes(x = logsize_t0, y = flower)) +
   geom_jitter(
-    height = 0.05, width = 0,
+    height = 0.05,
+    width = 0,
     alpha = 0.3) +
   geom_line(
     data = df_fl_newdata,
-    aes(y = predicted),
+    aes(y = flower),
     linewidth = 1) +
   labs(
     title = "Flowering probability by size",
     subtitle = v_ggp_suffix,
-    x = expression("log(diameter)"[t0]),
+    x = expression("log(leaf area)"[t0]),
     y = "Probability of flowering") +
   theme_bw()
-
-
-df_fl_bindata <- plot_binned_prop(
-  df_fl, 10, logsize_t0, flower)
-
-df_fl_pred <- df_fl %>%
-  reframe(
-    logsize_t0 = seq(
-      min(logsize_t0),
-      max(logsize_t0),
-      length.out = 100)) %>%
-  mutate(
-    logsize_t0_2 = logsize_t0^2,
-    logsize_t0_3 = logsize_t0^3) %>%
-  mutate(
-    flower = predict(
-      mod_fl_bestfit,
-      newdata = .,
-      type = "response"))
 
 fig_fl_bin <- ggplot() +
   geom_point(
@@ -683,11 +622,11 @@ fig_fl_bin <- ggplot() +
       ymax = upr),
     width = 0.1) +
   geom_line(
-    data = df_fl_pred,
+    data = df_fl_newdata,
     aes(x = logsize_t0, y = flower),
     linewidth = 1.2) +
   labs(
-    x = expression("log(diameter)"[t0]),
+    x = expression("log(leaf area)"[t0]),
     y = "") +
   theme_bw() +
   ylim(0, 1)
@@ -696,139 +635,392 @@ fig_fl <- fig_fl_line + fig_fl_bin + plot_layout()
 fig_fl
 
 
-# Number of scapes conditional on flowering data -------------------------------
-df_fl_cond <- df_fl %>%
+# Seed production data --------------------------------------------------------
+# Conditional on flowering.
+# seed_prod = 1 indicates production of at least one seed.
+
+df_se <- df %>%
   filter(
     flower == 1,
-    !is.na(fl_nr),
-    fl_nr > 0,
-    fl_nr %% 1 == 0)
+    !is.na(seed_nr),
+    size_t0 > 0,
+    is.finite(logsize_t0)) %>%
+  mutate(
+    seed_prod = as.integer(seed_nr > 0)) %>%
+  dplyr::select(
+    state, population, id, year, size_t0,
+    flower, seed_prod, seed_nr,
+    logsize_t0, logsize_t0_2, logsize_t0_3)
 
 
-# Number of scapes models ------------------------------------------------------
-mod_fl_n_0 <- glm.nb(
-  fl_nr ~ 1,
-  data = df_fl_cond)
+# Seed production probability model ------------------------------------------
+mod_se_0 <- glm(
+  seed_prod ~ 1,
+  data = df_se,
+  family = "binomial")
 
-mod_fl_n_1 <- glm.nb(
-  fl_nr ~ logsize_t0,
-  data = df_fl_cond)
+mod_se_1 <- glm(
+  seed_prod ~ logsize_t0,
+  data = df_se,
+  family = "binomial")
 
-mod_fl_n_2 <- glm.nb(
-  fl_nr ~ logsize_t0 + logsize_t0_2,
-  data = df_fl_cond)
+mod_se_2 <- glm(
+  seed_prod ~ logsize_t0 + logsize_t0_2,
+  data = df_se,
+  family = "binomial")
 
-mod_fl_n_3 <- glm.nb(
-  fl_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
-  data = df_fl_cond)
+mod_se_3 <- glm(
+  seed_prod ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_se,
+  family = "binomial")
 
-mods_fl_n <- list(
-  mod_fl_n_0, mod_fl_n_1, mod_fl_n_2, mod_fl_n_3)
+mods_se <- list(
+  mod_se_0, mod_se_1, mod_se_2, mod_se_3)
 
-mods_fl_n_dAICc <- AICctab(
-  mods_fl_n, weights = TRUE, sort = FALSE)$dAICc
+mods_se_dAICc <- AICctab(
+  mods_se,
+  weights = TRUE,
+  sort = FALSE)$dAICc
 
-mods_fl_n_sorted <- order(mods_fl_n_dAICc)
+mods_se_sorted <- order(mods_se_dAICc)
 
-if (length(v_mod_set_fl_n) == 0) {
-  mod_fl_n_index_bestfit <- mods_fl_n_sorted[1]
-  v_mod_fl_n_index <- mod_fl_n_index_bestfit - 1
+if (length(v_mod_set_se) == 0) {
+  mod_se_index_bestfit <- mods_se_sorted[1]
+  v_mod_se_index <- mod_se_index_bestfit - 1
 } else {
-  mod_fl_n_index_bestfit <- v_mod_set_fl_n + 1
-  v_mod_fl_n_index <- v_mod_set_fl_n
+  mod_se_index_bestfit <- v_mod_set_se + 1
+  v_mod_se_index <- v_mod_set_se
 }
 
-mod_fl_n_bestfit <- mods_fl_n[[mod_fl_n_index_bestfit]]
+mod_se_bestfit <- mods_se[[mod_se_index_bestfit]]
 
-mod_fl_n_bestfit
-mods_fl_n_dAICc
+mod_se_bestfit
+mods_se_dAICc
 
 
-# Predictions for flower number -----------------------------------------------
-# Create prediction grid
-df_fl_n_pred <- expand.grid(
+# Seed production probability plot -------------------------------------------
+df_se_newdata <- tibble(
   logsize_t0 = seq(
-    min(df_fl_cond$logsize_t0),
-    max(df_fl_cond$logsize_t0),
-    length.out = 100))
-
-df_fl_n_pred <- df_fl_n_pred %>%
+    min(df_se$logsize_t0),
+    max(df_se$logsize_t0),
+    length.out = 100)) %>%
   mutate(
     logsize_t0_2 = logsize_t0^2,
     logsize_t0_3 = logsize_t0^3)
 
-# Predict
-df_fl_n_pred$fl_nr <- predict(
-  mod_fl_n_bestfit,
-  newdata = df_fl_n_pred,
+df_se_newdata$seed_prod <- predict(
+  mod_se_bestfit,
+  newdata = df_se_newdata,
   type = "response")
 
+df_se_bindata <- plot_binned_prop(
+  df_se, 10, logsize_t0, seed_prod)
 
-# Binned observed data
-df_fl_n_binned <- df_fl_cond %>%
-  mutate(bin = cut(logsize_t0, breaks = 10)) %>%
+fig_se_line <- ggplot(
+  df_se,
+  aes(x = logsize_t0, y = seed_prod)) +
+  geom_jitter(
+    height = 0.05,
+    width = 0,
+    alpha = 0.3) +
+  geom_line(
+    data = df_se_newdata,
+    aes(y = seed_prod),
+    linewidth = 1) +
+  labs(
+    title = "Seed production probability by size",
+    subtitle = v_ggp_suffix,
+    x = expression("log(leaf area)"[t0]),
+    y = "Probability of producing seeds") +
+  theme_bw()
+
+fig_se_bin <- ggplot() +
+  geom_point(
+    data = df_se_bindata,
+    aes(x = logsize_t0, y = seed_prod)) +
+  geom_errorbar(
+    data = df_se_bindata,
+    aes(
+      x = logsize_t0,
+      ymin = lwr,
+      ymax = upr),
+    width = 0.1) +
+  geom_line(
+    data = df_se_newdata,
+    aes(x = logsize_t0, y = seed_prod),
+    linewidth = 1.2) +
+  labs(
+    x = expression("log(leaf area)"[t0]),
+    y = "") +
+  theme_bw() +
+  ylim(0, 1)
+
+fig_se <- fig_se_line + fig_se_bin + plot_layout()
+fig_se
+
+
+# Seed number data ------------------------------------------------------------
+# Conditional on flowering and positive seed production.
+
+df_se_n <- df_se %>%
+  filter(
+    seed_prod == 1,
+    seed_nr > 0)
+
+
+# Seed number model -----------------------------------------------------------
+mod_se_n_0 <- MASS::glm.nb(
+  seed_nr ~ 1,
+  data = df_se_n)
+
+mod_se_n_1 <- MASS::glm.nb(
+  seed_nr ~ logsize_t0,
+  data = df_se_n)
+
+mod_se_n_2 <- MASS::glm.nb(
+  seed_nr ~ logsize_t0 + logsize_t0_2,
+  data = df_se_n)
+
+mod_se_n_3 <- MASS::glm.nb(
+  seed_nr ~ logsize_t0 + logsize_t0_2 + logsize_t0_3,
+  data = df_se_n)
+
+mods_se_n <- list(
+  mod_se_n_0,
+  mod_se_n_1,
+  mod_se_n_2,
+  mod_se_n_3)
+
+mods_se_n_dAICc <- AICctab(
+  mods_se_n,
+  weights = TRUE,
+  sort = FALSE)$dAICc
+
+mods_se_n_sorted <- order(mods_se_n_dAICc)
+
+if (length(v_mod_set_se_n) == 0) {
+  mod_se_n_index_bestfit <- mods_se_n_sorted[1]
+  v_mod_se_n_index <- mod_se_n_index_bestfit - 1
+} else {
+  mod_se_n_index_bestfit <- v_mod_set_se_n + 1
+  v_mod_se_n_index <- v_mod_set_se_n
+}
+
+mod_se_n_bestfit <- mods_se_n[[mod_se_n_index_bestfit]]
+
+mod_se_n_bestfit
+mods_se_n_dAICc
+
+
+# Seed number plot ------------------------------------------------------------
+df_se_n_pred <- tibble(
+  logsize_t0 = seq(
+    min(df_se_n$logsize_t0),
+    max(df_se_n$logsize_t0),
+    length.out = 100)) %>%
+  mutate(
+    logsize_t0_2 = logsize_t0^2,
+    logsize_t0_3 = logsize_t0^3)
+
+df_se_n_pred$seed_nr <- predict(
+  mod_se_n_bestfit,
+  newdata = df_se_n_pred,
+  type = "response")
+
+df_se_n_binned <- df_se_n %>%
+  mutate(
+    bin = cut(
+      logsize_t0,
+      breaks = 10)) %>%
   group_by(bin) %>%
   summarise(
-    logsize_t0 = mean(logsize_t0, na.rm = TRUE),
-    fl_nr = mean(fl_nr, na.rm = TRUE),
-    se = sd(fl_nr, na.rm = TRUE) / sqrt(n()),
+    logsize_t0 = mean(
+      logsize_t0,
+      na.rm = TRUE),
+    seed_nr = mean(
+      seed_nr,
+      na.rm = TRUE),
+    se = sd(
+      seed_nr,
+      na.rm = TRUE) / sqrt(n()),
     .groups = "drop") %>%
   mutate(
-    lwr = fl_nr - 1.96 * se,
-    upr = fl_nr + 1.96 * se)
+    lwr = seed_nr - 1.96 * se,
+    upr = seed_nr + 1.96 * se)
 
-
-# Flower number plots
-# Plot 1: Raw jitter + prediction
-fig_fl_n_line <- ggplot() +
+fig_se_n_line <- ggplot() +
   geom_jitter(
-    data = df_fl_cond,
-    aes(x = logsize_t0, y = fl_nr),
-    alpha = 0.25, width = 0.08, height = 0.3) +
+    data = df_se_n,
+    aes(
+      x = logsize_t0,
+      y = seed_nr),
+    alpha = 0.25,
+    width = 0.08,
+    height = 0.3) +
   geom_line(
-    data = df_fl_n_pred,
-    aes(x = logsize_t0, y = fl_nr),
+    data = df_se_n_pred,
+    aes(
+      x = logsize_t0,
+      y = seed_nr),
     linewidth = 0.9) +
-  theme_bw() +
   labs(
-    title = NULL,
-    x = expression("log(diameter)"[t0]),
-    y = "Number of flowering scapes")
+    x = expression("log(leaf area)"[t0]),
+    y = "Number of seeds") +
+  theme_bw()
 
-
-# Plot 2: Binned + prediction
-fig_fl_n_bin <- ggplot() +
+fig_se_n_bin <- ggplot() +
   geom_point(
-    data = df_fl_n_binned,
-    aes(x = logsize_t0, y = fl_nr)) +
+    data = df_se_n_binned,
+    aes(
+      x = logsize_t0,
+      y = seed_nr)) +
   geom_errorbar(
-    data = df_fl_n_binned,
-    aes(x = logsize_t0, ymin = lwr, ymax = upr),
+    data = df_se_n_binned,
+    aes(
+      x = logsize_t0,
+      ymin = lwr,
+      ymax = upr),
     width = 0.2) +
   geom_line(
-    data = df_fl_n_pred,
-    aes(x = logsize_t0, y = fl_nr),
+    data = df_se_n_pred,
+    aes(
+      x = logsize_t0,
+      y = seed_nr),
     linewidth = 0.9) +
-  theme_bw() +
   labs(
-    title = NULL,
-    x = expression("log(diameter)"[t0]),
-    y = "Number of flowering scapes")
+    x = expression("log(leaf area)"[t0]),
+    y = "Number of seeds") +
+  theme_bw()
 
-
-# Combine
-fig_fl_n <- fig_fl_n_line + fig_fl_n_bin +
+fig_se_n <- fig_se_n_line + fig_se_n_bin +
   plot_annotation(
-    title = "Flower number",
-    subtitle = v_ggp_suffix,
-    theme = theme(
-      plot.title = element_text(size = 14, face = "bold"),
-      plot.subtitle = element_text(size = 10, face = "italic")))
+    title = "Seed number conditional on seed production",
+    subtitle = v_ggp_suffix)
 
-fig_fl_n
+fig_se_n
+
+
+# Seed to recruit transition --------------------------------------------------
+# Seeds produced in year t are related to recruits observed in year t + 2.
+
+# Total observed seed production per population and year.
+df_re_seed <- df %>%
+  group_by(
+    population, year) %>%
+  summarise(
+    nr_seeds = sum(
+      seed_nr,
+      na.rm = TRUE),
+    nr_seed_obs = sum(
+      !is.na(seed_nr)),
+    .groups = "drop") %>%
+  filter(
+    nr_seed_obs > 0) %>%
+  mutate(
+    year_t2 = year + 2L)
+
+
+# Number of recruits per sampled population and year.
+df_re_sampled <- df %>%
+  distinct(
+    population, year)
+
+df_re_count <- df %>%
+  filter(
+    recruit == 1) %>%
+  count(
+    population, year,
+    name = "nr_recruits")
+
+df_re_count <- df_re_sampled %>%
+  left_join(
+    df_re_count,
+    by = c(
+      "population",
+      "year")) %>%
+  mutate(
+    nr_recruits = replace_na(
+      nr_recruits,
+      0L))
+
+
+# Match seed production at t to recruits at t + 2.
+df_re <- df_re_seed %>%
+  inner_join(
+    df_re_count,
+    by = c(
+      "population",
+      "year_t2" = "year"))
+
+
+# Seed to recruit model -------------------------------------------------------
+# Seed number is an exposure. The intercept therefore estimates the expected
+# number of recruits produced per observed seed.
+
+df_re_mod <- df_re %>%
+  filter(
+    nr_seeds > 0)
+
+mod_re <- MASS::glm.nb(
+  nr_recruits ~
+    1 +
+    offset(log(nr_seeds)),
+  data = df_re_mod)
+
+mod_re
+
+recr_per_seed <- exp(
+  unname(
+    coef(mod_re)[["(Intercept)"]]))
+
+recr_per_seed
+
+
+# Seed to recruit plot --------------------------------------------------------
+df_re_mod$pred_recruits <- predict(
+  mod_re,
+  newdata = df_re_mod,
+  type = "response")
+
+fig_re <- ggplot(
+  df_re_mod,
+  aes(
+    x = nr_seeds,
+    y = nr_recruits)) +
+  geom_point(
+    alpha = 0.5) +
+  geom_line(
+    aes(
+      y = pred_recruits),
+    linewidth = 1) +
+  labs(
+    title = "Seed to recruit transition",
+    subtitle = v_ggp_suffix,
+    x = expression("Number of seeds"[t]),
+    y = expression("Number of recruits"[t+2])) +
+  theme_bw()
+
+fig_re
+
+
+# Recruit size distribution ---------------------------------------------------
+df_re_size <- df %>%
+  filter(
+    recruit == 1,
+    size_t0 > 0,
+    is.finite(logsize_t0))
+
+recr_sz <- mean(
+  df_re_size$logsize_t0,
+  na.rm = TRUE)
+
+recr_sd <- sd(
+  df_re_size$logsize_t0,
+  na.rm = TRUE)
 
 
 # Exporting parameter estimates -----------------------------------------------
+
 # Growth
 pars_gr <- tibble(
   coefficient = names(coef(mod_gr_bestfit)),
@@ -841,7 +1033,10 @@ pars_gr_var <- tibble(
   coefficient = names(coef(mod_gr_var)),
   value = unname(coef(mod_gr_var)))
 
-pars_gr <- bind_rows(pars_gr, pars_gr_var)
+pars_gr <- bind_rows(
+  pars_gr,
+  pars_gr_var)
+
 
 # Survival
 pars_su <- tibble(
@@ -851,179 +1046,709 @@ pars_su <- tibble(
     coefficient = if_else(
       coefficient == '(Intercept)', 'b0', coefficient))
 
-# Recruitment and mesh limits
+
+# Dormancy entry
+pars_do <- tibble(
+  coefficient = names(coef(mod_do_bestfit)),
+  value = unname(coef(mod_do_bestfit))) %>%
+  mutate(
+    coefficient = if_else(
+      coefficient == '(Intercept)', 'b0', coefficient))
+
+
+# Flowering
+pars_fl <- tibble(
+  coefficient = names(coef(mod_fl_bestfit)),
+  value = unname(coef(mod_fl_bestfit))) %>%
+  mutate(
+    coefficient = if_else(
+      coefficient == '(Intercept)', 'b0', coefficient))
+
+
+# Seed production probability
+pars_se <- tibble(
+  coefficient = names(coef(mod_se_bestfit)),
+  value = unname(coef(mod_se_bestfit))) %>%
+  mutate(
+    coefficient = if_else(
+      coefficient == '(Intercept)', 'b0', coefficient))
+
+
+# Seed number conditional on seed production
+pars_se_n <- tibble(
+  coefficient = names(coef(mod_se_n_bestfit)),
+  value = unname(coef(mod_se_n_bestfit))) %>%
+  mutate(
+    coefficient = if_else(
+      coefficient == '(Intercept)', 'b0', coefficient))
+
+
+# Mesh limits
+mesh_limits <- range(
+  c(
+    df_gr$logsize_t0,
+    df_gr$logsize_t1,
+    df_re_size$logsize_t0,
+    df_ra_size$logsize_reactivate),
+  na.rm = TRUE,
+  finite = TRUE)
+
+
+# Other parameters
 pars_other <- tibble(
   coefficient = c(
-    'recr_sz', 'recr_sd', 'max_siz', 'min_siz', 'fecu_b0'),
+    'recr_sz',
+    'recr_sd',
+    'react_sz',
+    'react_sd',
+    'p_dorm_survival',
+    'p_reactivate',
+    'recr_per_seed',
+    'max_siz',
+    'min_siz'),
   value = c(
-    mean(df_re_size$logsize_t0, na.rm = TRUE),
-    sd(df_re_size$logsize_t0, na.rm = TRUE),
-    max(df_gr$logsize_t0, na.rm = TRUE),
-    min(df_gr$logsize_t0, na.rm = TRUE),
-    fecu_mean))
+    recr_sz,
+    recr_sd,
+    react_sz,
+    react_sd,
+    p_dorm_survival,
+    p_reactivate,
+    recr_per_seed,
+    mesh_limits[2],
+    mesh_limits[1]))
 
+
+# Save parameter estimates ----------------------------------------------------
 write.csv(
   pars_gr,
   file.path(
     dir_data,
-    paste0(v_script_prefix, '_', v_sp_abb, '_grow_pars_mean.csv')),
+    paste0(
+      v_script_prefix, '_', v_sp_abb,
+      '_grow_pars_mean.csv')),
   row.names = FALSE)
 
 write.csv(
   pars_su,
   file.path(
     dir_data,
-    paste0(v_script_prefix, '_', v_sp_abb, '_surv_pars_mean.csv')),
+    paste0(
+      v_script_prefix, '_', v_sp_abb,
+      '_surv_pars_mean.csv')),
+  row.names = FALSE)
+
+write.csv(
+  pars_do,
+  file.path(
+    dir_data,
+    paste0(
+      v_script_prefix, '_', v_sp_abb,
+      '_dorm_pars_mean.csv')),
+  row.names = FALSE)
+
+write.csv(
+  pars_fl,
+  file.path(
+    dir_data,
+    paste0(
+      v_script_prefix, '_', v_sp_abb,
+      '_flower_pars_mean.csv')),
+  row.names = FALSE)
+
+write.csv(
+  pars_se,
+  file.path(
+    dir_data,
+    paste0(
+      v_script_prefix, '_', v_sp_abb,
+      '_seed_prod_pars_mean.csv')),
+  row.names = FALSE)
+
+write.csv(
+  pars_se_n,
+  file.path(
+    dir_data,
+    paste0(
+      v_script_prefix, '_', v_sp_abb,
+      '_seed_num_pars_mean.csv')),
   row.names = FALSE)
 
 write.csv(
   pars_other,
   file.path(
     dir_data,
-    paste0(v_script_prefix, '_', v_sp_abb, '_other_pars_mean.csv')),
+    paste0(
+      v_script_prefix, '_', v_sp_abb,
+      '_other_pars_mean.csv')),
   row.names = FALSE)
 
 
 # Building the IPM from scratch -----------------------------------------------
 extr_value <- function(x, field) {
-  subset(x, coefficient == field)$value
+  subset(
+    x,
+    coefficient == field)$value
 }
 
-pars <- Filter(function(x) length(x) > 0, list(
-  prefix = v_script_prefix,
-  species = v_species,
-  surv_b0 = extr_value(pars_su, 'b0'),
-  surv_b1 = extr_value(pars_su, 'logsize_t0'),
-  surv_b2 = extr_value(pars_su, 'logsize_t0_2'),
-  surv_b3 = extr_value(pars_su, 'logsize_t0_3'),
-  grow_b0 = extr_value(pars_gr, 'b0'),
-  grow_b1 = extr_value(pars_gr, 'logsize_t0'),
-  grow_b2 = extr_value(pars_gr, 'logsize_t0_2'),
-  grow_b3 = extr_value(pars_gr, 'logsize_t0_3'),
-  a = extr_value(pars_gr, 'a'),
-  b = extr_value(pars_gr, 'b'),
-  fecu_b0 = extr_value(pars_other, 'fecu_b0'),
-  recr_sz = extr_value(pars_other, 'recr_sz'),
-  recr_sd = extr_value(pars_other, 'recr_sd'),
-  L = extr_value(pars_other, 'min_siz'),
-  U = extr_value(pars_other, 'max_siz'),
-  mat_siz = 200,
-  mod_gr_index = v_mod_gr_index,
-  mod_su_index = v_mod_su_index))
+pars <- Filter(
+  function(x) length(x) > 0,
+  list(
+    prefix = v_script_prefix,
+    species = v_species,
+    
+    surv_b0 = extr_value(
+      pars_su, 'b0'),
+    surv_b1 = extr_value(
+      pars_su, 'logsize_t0'),
+    surv_b2 = extr_value(
+      pars_su, 'logsize_t0_2'),
+    surv_b3 = extr_value(
+      pars_su, 'logsize_t0_3'),
+    
+    grow_b0 = extr_value(
+      pars_gr, 'b0'),
+    grow_b1 = extr_value(
+      pars_gr, 'logsize_t0'),
+    grow_b2 = extr_value(
+      pars_gr, 'logsize_t0_2'),
+    grow_b3 = extr_value(
+      pars_gr, 'logsize_t0_3'),
+    a = extr_value(
+      pars_gr, 'a'),
+    b = extr_value(
+      pars_gr, 'b'),
+    
+    dorm_b0 = extr_value(
+      pars_do, 'b0'),
+    dorm_b1 = extr_value(
+      pars_do, 'logsize_t0'),
+    dorm_b2 = extr_value(
+      pars_do, 'logsize_t0_2'),
+    dorm_b3 = extr_value(
+      pars_do, 'logsize_t0_3'),
+    
+    flower_b0 = extr_value(
+      pars_fl, 'b0'),
+    flower_b1 = extr_value(
+      pars_fl, 'logsize_t0'),
+    flower_b2 = extr_value(
+      pars_fl, 'logsize_t0_2'),
+    flower_b3 = extr_value(
+      pars_fl, 'logsize_t0_3'),
+    
+    seed_b0 = extr_value(
+      pars_se, 'b0'),
+    seed_b1 = extr_value(
+      pars_se, 'logsize_t0'),
+    seed_b2 = extr_value(
+      pars_se, 'logsize_t0_2'),
+    seed_b3 = extr_value(
+      pars_se, 'logsize_t0_3'),
+    
+    seed_n_b0 = extr_value(
+      pars_se_n, 'b0'),
+    seed_n_b1 = extr_value(
+      pars_se_n, 'logsize_t0'),
+    seed_n_b2 = extr_value(
+      pars_se_n, 'logsize_t0_2'),
+    seed_n_b3 = extr_value(
+      pars_se_n, 'logsize_t0_3'),
+    
+    recr_sz = extr_value(
+      pars_other, 'recr_sz'),
+    recr_sd = extr_value(
+      pars_other, 'recr_sd'),
+    
+    react_sz = extr_value(
+      pars_other, 'react_sz'),
+    react_sd = extr_value(
+      pars_other, 'react_sd'),
+    
+    p_dorm_survival = extr_value(
+      pars_other, 'p_dorm_survival'),
+    p_reactivate = extr_value(
+      pars_other, 'p_reactivate'),
+    
+    recr_per_seed = extr_value(
+      pars_other, 'recr_per_seed'),
+    
+    L = extr_value(
+      pars_other, 'min_siz'),
+    U = extr_value(
+      pars_other, 'max_siz'),
+    
+    mat_siz = 200,
+    
+    mod_gr_index = v_mod_gr_index,
+    mod_su_index = v_mod_su_index,
+    mod_do_index = v_mod_do_index,
+    mod_fl_index = v_mod_fl_index,
+    mod_se_index = v_mod_se_index,
+    mod_se_n_index = v_mod_se_n_index))
 
 write.csv(
   as.data.frame(pars),
   file.path(
     dir_data,
-    paste0(v_script_prefix, '_', v_sp_abb, '_pars.csv')),
+    paste0(
+      v_script_prefix, '_', v_sp_abb,
+      '_pars.csv')),
   row.names = FALSE)
 
 
 # IPM functions ---------------------------------------------------------------
+
 grow_sd <- function(x, pars) {
-  sqrt(pars$a * exp(pars$b * x))
+  sqrt(
+    pars$a *
+      exp(pars$b * x))
 }
+
 
 # Growth from size x to size y.
-gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
-  mean_value <- 0
-  for (i in 0:num_pars) {
-    param_name <- paste0('grow_b', i)
-    if (!is.null(pars[[param_name]])) {
-      mean_value <- mean_value + pars[[param_name]] * x^i}
-  }
-  sd_value <- grow_sd(x, pars)
-  dnorm(y, mean = mean_value, sd = sd_value)
-}
-
-inv_logit <- function(x) {
-  exp(x) / (1 + exp(x))
-}
-
-# Survival of an x-sized individual to t1.
-sx <- function(x, pars, num_pars = v_mod_su_index) {
-  survival_value <- pars$surv_b0
+gxy <- function(
+    x,
+    y,
+    pars,
+    num_pars = v_mod_gr_index) {
+  
+  mean_value <- pars$grow_b0
+  
   if (num_pars >= 1) {
     for (i in seq_len(num_pars)) {
-      param_name <- paste0('surv_b', i)
-      if (!is.null(pars[[param_name]])) {
-        survival_value <- survival_value + pars[[param_name]] * x^i}
+      param_name <- paste0(
+        'grow_b', i)
+      
+      if (!is.null(
+        pars[[param_name]])) {
+        
+        mean_value <-
+          mean_value +
+          pars[[param_name]] *
+          x^i
+      }
     }
   }
-  inv_logit(survival_value)
+  
+  sd_value <- grow_sd(
+    x,
+    pars)
+  
+  dnorm(
+    y,
+    mean = mean_value,
+    sd = sd_value)
 }
 
-# Survival-growth transition.
-pxy <- function(x, y, pars) {
-  sx(x, pars) * gxy(x, y, pars)
+
+inv_logit <- function(x) {
+  plogis(x)
 }
 
-# Constant mean fecundity distributed across recruit sizes.
-fy <- function(y, pars, h) {
-  n_recr <- pars$fecu_b0
-  recr_sd <- max(h / 10, pars$recr_sd, na.rm = TRUE)
-  recr_y <- dnorm(y, pars$recr_sz, recr_sd) * h
-  recr_y <- recr_y / sum(recr_y)
-  n_recr * recr_y
+
+# Survival of an x-sized active individual.
+sx <- function(
+    x,
+    pars,
+    num_pars = v_mod_su_index) {
+  
+  survival_value <- pars$surv_b0
+  
+  if (num_pars >= 1) {
+    for (i in seq_len(num_pars)) {
+      param_name <- paste0(
+        'surv_b', i)
+      
+      if (!is.null(
+        pars[[param_name]])) {
+        
+        survival_value <-
+          survival_value +
+          pars[[param_name]] *
+          x^i
+      }
+    }
+  }
+  
+  inv_logit(
+    survival_value)
+}
+
+
+# Probability that a surviving active individual enters dormancy.
+dx <- function(
+    x,
+    pars,
+    num_pars = v_mod_do_index) {
+  
+  dorm_value <- pars$dorm_b0
+  
+  if (num_pars >= 1) {
+    for (i in seq_len(num_pars)) {
+      param_name <- paste0(
+        'dorm_b', i)
+      
+      if (!is.null(
+        pars[[param_name]])) {
+        
+        dorm_value <-
+          dorm_value +
+          pars[[param_name]] *
+          x^i
+      }
+    }
+  }
+  
+  inv_logit(
+    dorm_value)
+}
+
+
+# Flowering probability.
+flx <- function(
+    x,
+    pars,
+    num_pars = v_mod_fl_index) {
+  
+  flower_value <- pars$flower_b0
+  
+  if (num_pars >= 1) {
+    for (i in seq_len(num_pars)) {
+      param_name <- paste0(
+        'flower_b', i)
+      
+      if (!is.null(
+        pars[[param_name]])) {
+        
+        flower_value <-
+          flower_value +
+          pars[[param_name]] *
+          x^i
+      }
+    }
+  }
+  
+  inv_logit(
+    flower_value)
+}
+
+
+# Probability of positive seed production conditional on flowering.
+sex <- function(
+    x,
+    pars,
+    num_pars = v_mod_se_index) {
+  
+  seed_value <- pars$seed_b0
+  
+  if (num_pars >= 1) {
+    for (i in seq_len(num_pars)) {
+      param_name <- paste0(
+        'seed_b', i)
+      
+      if (!is.null(
+        pars[[param_name]])) {
+        
+        seed_value <-
+          seed_value +
+          pars[[param_name]] *
+          x^i
+      }
+    }
+  }
+  
+  inv_logit(
+    seed_value)
+}
+
+
+# Expected seed number conditional on positive seed production.
+se_nx <- function(
+    x,
+    pars,
+    num_pars = v_mod_se_n_index) {
+  
+  seed_n_value <- pars$seed_n_b0
+  
+  if (num_pars >= 1) {
+    for (i in seq_len(num_pars)) {
+      param_name <- paste0(
+        'seed_n_b', i)
+      
+      if (!is.null(
+        pars[[param_name]])) {
+        
+        seed_n_value <-
+          seed_n_value +
+          pars[[param_name]] *
+          x^i
+      }
+    }
+  }
+  
+  exp(
+    seed_n_value)
+}
+
+
+# Expected number of seeds produced by an x-sized active individual.
+seedx <- function(
+    x,
+    pars) {
+  
+  flx(
+    x,
+    pars) *
+    sex(
+      x,
+      pars) *
+    se_nx(
+      x,
+      pars)
+}
+
+
+# Active survival-growth transition.
+pxy <- function(
+    x,
+    y,
+    pars) {
+  
+  sx(
+    x,
+    pars) *
+    (1 - dx(
+      x,
+      pars)) *
+    gxy(
+      x,
+      y,
+      pars)
 }
 
 
 # Kernel ----------------------------------------------------------------------
+# State order:
+# 1:n     = active size classes
+# n + 1   = dormant individuals
+# n + 2   = seeds
+#
+# One discrete seed state creates the observed two-year delay:
+# active plant t -> seed state t+1 -> recruit t+2.
+
 kernel <- function(pars) {
+  
   n <- pars$mat_siz
   L <- pars$L
   U <- pars$U
+  
   h <- (U - L) / n
+  
   b <- L + c(0:n) * h
-  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
   
-  Fmat <- matrix(0, n, n)
-  Fmat[] <- matrix(fy(y, pars, h), n, n)
+  y <- 0.5 *
+    (b[1:n] +
+       b[2:(n + 1)])
   
-  Smat <- sx(y, pars)
+  i_dorm <- n + 1
+  i_seed <- n + 2
   
-  Gmat <- matrix(0, n, n)
-  Gmat[] <- t(outer(y, y, gxy, pars)) * h
   
-  Tmat <- matrix(0, n, n)
+  # Growth distribution -------------------------------------------------------
+  Gmat <- matrix(
+    0,
+    n,
+    n)
   
-  for (i in seq_len(n / 2)) {
-    Gmat[1, i] <- Gmat[1, i] + 1 - sum(Gmat[, i])
-    Tmat[, i] <- Gmat[, i] * Smat[i]
+  Gmat[] <- t(
+    outer(
+      y,
+      y,
+      gxy,
+      pars)) * h
+  
+  
+  # Eviction correction -------------------------------------------------------
+  for (i in seq_len(
+    n / 2)) {
+    
+    Gmat[1, i] <-
+      Gmat[1, i] +
+      1 -
+      sum(Gmat[, i])
   }
   
-  for (i in ((n / 2) + 1):n) {
-    Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])
-    Tmat[, i] <- Gmat[, i] * Smat[i]
+  for (i in (
+    (n / 2) + 1):n) {
+    
+    Gmat[n, i] <-
+      Gmat[n, i] +
+      1 -
+      sum(Gmat[, i])
   }
   
-  k_yx <- Fmat + Tmat
+  
+  # Active survival and dormancy ---------------------------------------------
+  Smat <- sx(
+    y,
+    pars)
+  
+  Dvec <- dx(
+    y,
+    pars)
+  
+  
+  # Active -> active ----------------------------------------------------------
+  Tmat <- matrix(
+    0,
+    n,
+    n)
+  
+  for (i in seq_len(n)) {
+    
+    Tmat[, i] <-
+      Gmat[, i] *
+      Smat[i] *
+      (1 - Dvec[i])
+  }
+  
+  
+  # Reactivation size distribution -------------------------------------------
+  react_sd_use <- max(
+    h / 10,
+    pars$react_sd,
+    na.rm = TRUE)
+  
+  react_y <- dnorm(
+    y,
+    mean = pars$react_sz,
+    sd = react_sd_use) * h
+  
+  react_y <- react_y /
+    sum(react_y)
+  
+  
+  # Recruit size distribution -------------------------------------------------
+  recr_sd_use <- max(
+    h / 10,
+    pars$recr_sd,
+    na.rm = TRUE)
+  
+  recr_y <- dnorm(
+    y,
+    mean = pars$recr_sz,
+    sd = recr_sd_use) * h
+  
+  recr_y <- recr_y /
+    sum(recr_y)
+  
+  
+  # Full transition matrices --------------------------------------------------
+  Pmat <- matrix(
+    0,
+    n + 2,
+    n + 2)
+  
+  Fmat <- matrix(
+    0,
+    n + 2,
+    n + 2)
+  
+  
+  # Active -> active
+  Pmat[
+    1:n,
+    1:n] <- Tmat
+  
+  
+  # Active -> dormant
+  Pmat[
+    i_dorm,
+    1:n] <-
+    Smat *
+    Dvec
+  
+  
+  # Dormant -> active
+  Pmat[
+    1:n,
+    i_dorm] <-
+    pars$p_dorm_survival *
+    pars$p_reactivate *
+    react_y
+  
+  
+  # Dormant -> dormant
+  Pmat[
+    i_dorm,
+    i_dorm] <-
+    pars$p_dorm_survival *
+    (1 - pars$p_reactivate)
+  
+  
+  # Active -> seed
+  Fmat[
+    i_seed,
+    1:n] <-
+    seedx(
+      y,
+      pars)
+  
+  
+  # Seed -> recruit
+  Fmat[
+    1:n,
+    i_seed] <-
+    pars$recr_per_seed *
+    recr_y
+  
+  
+  # Seeds do not remain in the seed state beyond this delay stage.
+  Fmat[
+    i_seed,
+    i_seed] <- 0
+  
+  
+  # Full kernel
+  k_yx <- Pmat + Fmat
+  
   
   list(
     k_yx = k_yx,
+    Pmat = Pmat,
     Fmat = Fmat,
     Tmat = Tmat,
     Gmat = Gmat,
-    meshpts = y)
+    meshpts = y,
+    dormant_index = i_dorm,
+    seed_index = i_seed)
 }
 
+
 lambda_ipm <- function(i) {
-  Re(eigen(kernel(i)$k_yx)$values[1])
+  Re(
+    eigen(
+      kernel(i)$k_yx)$values[1])
 }
 
 
 # Mean IPM population growth rate ---------------------------------------------
-lam_mean <- lambda_ipm(pars)
+lam_mean <- lambda_ipm(
+  pars)
+
 lam_mean
 
 
 # Observed population growth rate ---------------------------------------------
 # Count living individuals in each sampled population-year.
+
 df_pop_n <- df %>%
   filter(
     !is.na(persistence_t0),
     persistence_t0 != 'DEAD') %>%
-  group_by(population, year) %>%
+  group_by(
+    population,
+    year) %>%
   summarise(
     n = n_distinct(id),
     .groups = 'drop')
@@ -1043,82 +1768,335 @@ pop_counts_t1 <- df_pop_n %>%
 pop_counts <- inner_join(
   pop_counts_t0,
   pop_counts_t1,
-  by = c('population', 'year')) %>%
+  by = c(
+    'population',
+    'year')) %>%
   group_by(year) %>%
   summarise(
     n_t0 = sum(n_t0),
     n_t1 = sum(n_t1),
     .groups = 'drop') %>%
   mutate(
-    obs_pgr = n_t1 / n_t0)
+    obs_pgr =
+      n_t1 /
+      n_t0)
 
-lam_mean_count <- exp(mean(log(pop_counts$obs_pgr), na.rm = TRUE))
-lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
+lam_mean_count <- exp(
+  mean(
+    log(
+      pop_counts$obs_pgr),
+    na.rm = TRUE))
+
+lam_mean_overall <-
+  sum(
+    pop_counts$n_t1) /
+  sum(
+    pop_counts$n_t0)
 
 lam_mean_count
 lam_mean_overall
 
 
 # Building the IPM with ipmr --------------------------------------------------
+# General IPM:
+# size     = continuous active state
+# dormant  = discrete dormant state
+# seed     = discrete delayed seed state
+
 proto_ipm_p <- init_ipm(
-  sim_gen = 'simple',
+  sim_gen = 'general',
   di_dd = 'di',
   det_stoch = 'det') %>%
-  define_kernel(
-    name = 'P',
-    family = 'CC',
-    formula = s * g,
-    s = plogis(
-      surv_b0 +
-        (if (mod_su_index >= 1) surv_b1 * size_1 else 0) +
-        (if (mod_su_index >= 2) surv_b2 * size_1^2 else 0) +
-        (if (mod_su_index >= 3) surv_b3 * size_1^3 else 0)),
-    mu_g = grow_b0 +
-      (if (mod_gr_index >= 1) grow_b1 * size_1 else 0) +
-      (if (mod_gr_index >= 2) grow_b2 * size_1^2 else 0) +
-      (if (mod_gr_index >= 3) grow_b3 * size_1^3 else 0),
-    g = dnorm(size_2, mu_g, grow_sig),
-    grow_sig = sqrt(a * exp(b * size_1)),
-    data_list = pars,
-    states = list(c('size')),
-    evict_cor = TRUE,
-    evict_fun = truncated_distributions(
-      fun = 'norm', target = 'g')) %>%
-  define_kernel(
-    name = 'F',
-    family = 'CC',
-    formula = fecu_b0 * r_d,
-    r_d = dnorm(size_2, recr_sz, recr_sd),
-    data_list = pars,
-    states = list(c('size')),
-    evict_cor = TRUE,
-    evict_fun = truncated_distributions('norm', 'r_d')) %>%
-  define_impl(
-    make_impl_args_list(
-      kernel_names = c('P', 'F'),
-      int_rule = rep('midpoint', 2),
-      state_start = rep('size', 2),
-      state_end = rep('size', 2))) %>%
-  define_domains(
-    size = c(
-      pars$L,
-      pars$U,
-      pars$mat_siz)) %>%
-  define_pop_state(
+  
+  # Active -> active ----------------------------------------------------------
+define_kernel(
+  name = 'P',
+  family = 'CC',
+  formula =
+    s *
+    (1 - p_do) *
+    g *
+    d_size,
+  
+  s = plogis(
+    surv_b0 +
+      (if (mod_su_index >= 1)
+        surv_b1 * size_1 else 0) +
+      (if (mod_su_index >= 2)
+        surv_b2 * size_1^2 else 0) +
+      (if (mod_su_index >= 3)
+        surv_b3 * size_1^3 else 0)),
+  
+  p_do = plogis(
+    dorm_b0 +
+      (if (mod_do_index >= 1)
+        dorm_b1 * size_1 else 0) +
+      (if (mod_do_index >= 2)
+        dorm_b2 * size_1^2 else 0) +
+      (if (mod_do_index >= 3)
+        dorm_b3 * size_1^3 else 0)),
+  
+  mu_g =
+    grow_b0 +
+    (if (mod_gr_index >= 1)
+      grow_b1 * size_1 else 0) +
+    (if (mod_gr_index >= 2)
+      grow_b2 * size_1^2 else 0) +
+    (if (mod_gr_index >= 3)
+      grow_b3 * size_1^3 else 0),
+  
+  g = dnorm(
+    size_2,
+    mu_g,
+    grow_sig),
+  
+  grow_sig = sqrt(
+    a *
+      exp(
+        b * size_1)),
+  
+  data_list = pars,
+  states = list(
+    c('size')),
+  uses_par_sets = FALSE,
+  evict_cor = TRUE,
+  evict_fun = truncated_distributions(
+    fun = 'norm',
+    target = 'g')) %>%
+  
+  
+  # Active -> dormant ---------------------------------------------------------
+define_kernel(
+  name = 'D_enter',
+  family = 'CD',
+  formula =
+    s *
+    p_do *
+    d_size,
+  
+  s = plogis(
+    surv_b0 +
+      (if (mod_su_index >= 1)
+        surv_b1 * size_1 else 0) +
+      (if (mod_su_index >= 2)
+        surv_b2 * size_1^2 else 0) +
+      (if (mod_su_index >= 3)
+        surv_b3 * size_1^3 else 0)),
+  
+  p_do = plogis(
+    dorm_b0 +
+      (if (mod_do_index >= 1)
+        dorm_b1 * size_1 else 0) +
+      (if (mod_do_index >= 2)
+        dorm_b2 * size_1^2 else 0) +
+      (if (mod_do_index >= 3)
+        dorm_b3 * size_1^3 else 0)),
+  
+  data_list = pars,
+  states = list(
+    c(
+      'size',
+      'dormant')),
+  uses_par_sets = FALSE,
+  evict_cor = FALSE) %>%
+  
+  
+  # Dormant -> dormant --------------------------------------------------------
+define_kernel(
+  name = 'D_stay',
+  family = 'DD',
+  formula =
+    p_dorm_survival *
+    (1 - p_reactivate),
+  
+  data_list = pars,
+  states = list(
+    c('dormant')),
+  uses_par_sets = FALSE,
+  evict_cor = FALSE) %>%
+  
+  
+  # Dormant -> active ---------------------------------------------------------
+define_kernel(
+  name = 'D_leave',
+  family = 'DC',
+  formula =
+    p_dorm_survival *
+    p_reactivate *
+    r_d,
+  
+  r_d = dnorm(
+    size_2,
+    react_sz,
+    react_sd),
+  
+  data_list = pars,
+  states = list(
+    c(
+      'size',
+      'dormant')),
+  uses_par_sets = FALSE,
+  evict_cor = TRUE,
+  evict_fun = truncated_distributions(
+    fun = 'norm',
+    target = 'r_d')) %>%
+  
+  
+  # Active -> seed ------------------------------------------------------------
+define_kernel(
+  name = 'F_seed',
+  family = 'CD',
+  formula =
+    p_fl *
+    p_se *
+    n_se *
+    d_size,
+  
+  p_fl = plogis(
+    flower_b0 +
+      (if (mod_fl_index >= 1)
+        flower_b1 * size_1 else 0) +
+      (if (mod_fl_index >= 2)
+        flower_b2 * size_1^2 else 0) +
+      (if (mod_fl_index >= 3)
+        flower_b3 * size_1^3 else 0)),
+  
+  p_se = plogis(
+    seed_b0 +
+      (if (mod_se_index >= 1)
+        seed_b1 * size_1 else 0) +
+      (if (mod_se_index >= 2)
+        seed_b2 * size_1^2 else 0) +
+      (if (mod_se_index >= 3)
+        seed_b3 * size_1^3 else 0)),
+  
+  n_se = exp(
+    seed_n_b0 +
+      (if (mod_se_n_index >= 1)
+        seed_n_b1 * size_1 else 0) +
+      (if (mod_se_n_index >= 2)
+        seed_n_b2 * size_1^2 else 0) +
+      (if (mod_se_n_index >= 3)
+        seed_n_b3 * size_1^3 else 0)),
+  
+  data_list = pars,
+  states = list(
+    c(
+      'size',
+      'seed')),
+  uses_par_sets = FALSE,
+  evict_cor = FALSE) %>%
+  
+  
+  # Seed -> recruit -----------------------------------------------------------
+define_kernel(
+  name = 'R_seed',
+  family = 'DC',
+  formula =
+    recr_per_seed *
+    r_d,
+  
+  r_d = dnorm(
+    size_2,
+    recr_sz,
+    recr_sd),
+  
+  data_list = pars,
+  states = list(
+    c(
+      'size',
+      'seed')),
+  uses_par_sets = FALSE,
+  evict_cor = TRUE,
+  evict_fun = truncated_distributions(
+    fun = 'norm',
+    target = 'r_d')) %>%
+  
+  
+  # Seed -> seed --------------------------------------------------------------
+define_kernel(
+  name = 'S_seed',
+  family = 'DD',
+  formula = 0,
+  
+  states = list(
+    c('seed')),
+  uses_par_sets = FALSE,
+  evict_cor = FALSE) %>%
+  
+  
+  # Kernel implementation -----------------------------------------------------
+define_impl(
+  make_impl_args_list(
+    kernel_names = c(
+      'P',
+      'D_enter',
+      'D_stay',
+      'D_leave',
+      'F_seed',
+      'R_seed',
+      'S_seed'),
+    int_rule = rep(
+      'midpoint',
+      7),
+    state_start = c(
+      'size',
+      'size',
+      'dormant',
+      'dormant',
+      'size',
+      'seed',
+      'seed'),
+    state_end = c(
+      'size',
+      'dormant',
+      'dormant',
+      'size',
+      'seed',
+      'size',
+      'seed'))) %>%
+  
+  
+  # Domains -------------------------------------------------------------------
+define_domains(
+  size = c(
+    pars$L,
+    pars$U,
+    pars$mat_siz)) %>%
+  
+  
+  # Initial population --------------------------------------------------------
+define_pop_state(
+  pop_vectors = list(
     n_size = rep(
       1 / pars$mat_siz,
-      pars$mat_siz))
+      pars$mat_siz),
+    n_dormant = 0,
+    n_seed = 0))
+
 
 ipmr_p <- make_ipm(
   proto_ipm = proto_ipm_p,
   iterations = 200)
 
-lam_mean_ipmr <- lambda(ipmr_p)
 
+# Mean IPM population growth rate ---------------------------------------------
+lam_mean_ipmr <- lambda(
+  ipmr_p)
+
+lam_mean_ipmr
+
+
+# Compare hand-built and ipmr implementations --------------------------------
+lam_mean
+lam_mean_ipmr
+
+
+# Export lambda ---------------------------------------------------------------
 lam_out <- data.frame(
-  coefficient = names(lam_mean_ipmr),
+  coefficient = names(
+    lam_mean_ipmr),
   value = lam_mean_ipmr)
-
 
 lam_out_wide <- as.list(
   pivot_wider(

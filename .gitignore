@@ -6,80 +6,79 @@
 
 /pdbDigitUtils/
 
-/adler_2007_ks/results
-/adler_2007_ks/data
-/adler_2007_ks/docs
+adler_2007_ks/results
+adler_2007_ks/data
+adler_2007_ks/docs
 
-/chu_2013_co/results
-/chu_2013_co/data
-/chu_2013_co/docs
+chu_2013_co/results
+chu_2013_co/data
+chu_2013_co/docs
 
-/zachmann_2016_id/results
-/zachmann_2016_id/data
-/zachmann_2016_id/docs
-/anderson_2016_az/results
+zachmann_2016_id/results
+zachmann_2016_id/data
+zachmann_2016_id/docs
 
-/anderson_2016_az/data
-/anderson_2016_az/docs
-/anderson_2016_mt/results
-/anderson_2016_mt/data
-/anderson_2016_mt/docs
+anderson_2016_az/results
+anderson_2016_az/data
+anderson_2016_az/docs
 
-/christensen_2021_nm/results
-/christensen_2021_nm/data
-/christensen_2021_nm/docs
+anderson_2016_mt/results
+anderson_2016_mt/data
+anderson_2016_mt/docs
 
-/moore_2021_az/results
-/moore_2021_az/data
-/moore_2021_az/docs
-/moore_2021_az/reports/_book/
-/moore_2021_az/reports/_main_files/
-/moore_2021_az/reports/crav/_bookdown_files/
+christensen_2021_nm/results
+christensen_2021_nm/data
+christensen_2021_nm/docs
 
-/archbold/data
-/archbold/results
-/archbold/docs
+moore_2021_az/results
+moore_2021_az/data
+moore_2021_az/docs
+moore_2021_az/reports/_book/
+moore_2021_az/reports/_main_files/
+moore_2021_az/reports/crav/_bookdown_files/
 
-/archbold/reports/crav/_main_files/
-/archbold/reports/crav/_book/
-/archbold/reports/crav/_bookdown_files/
-/archbold/reports/crav/_book_crav.zip
-/archbold/reports/crav/packages.bib/
+archbold/data
+archbold/results
+archbold/docs
 
-/archbold/reports/pole/_main_files/
-/archbold/reports/pole/_book/
-/archbold/reports/pole/_bookdown_files/
-/archbold/reports/pole/_book_pole.zip
-/archbold/reports/pole/packages.bib/
-/archbold/reports/pole/_pole_book_20260812.zip
+archbold/reports/crav/_main_files/
+archbold/reports/crav/_book/
+archbold/reports/crav/_bookdown_files/
+archbold/reports/crav/_book_crav.zip
+archbold/reports/crav/packages.bib/
 
-/archbold/reports/chhi/_main_files/
-/archbold/reports/chhi/_book/
-/archbold/reports/chhi/_bookdown_files/
-/archbold/reports/chhi/_book_chhi.zip
-/archbold/reports/chhi/packages.bib/
+archbold/reports/pole/_main_files/
+archbold/reports/pole/_book/
+archbold/reports/pole/_bookdown_files/
+archbold/reports/pole/_book_pole.zip
+archbold/reports/pole/packages.bib/
+archbold/reports/pole/_pole_book_20260812.zip
 
-/archbold/Prsentation1.pptx
+archbold/reports/chhi/_main_files/
+archbold/reports/chhi/_book/
+archbold/reports/chhi/_bookdown_files/
+archbold/reports/chhi/_book_chhi.zip
+archbold/reports/chhi/packages.bib/
+archbold/Prsentation1.pptx
 .positai
 
-/archbold/reports/erlo/_main_files/
-/archbold/reports/erlo/_book/
-/archbold/reports/erlo/_bookdown_files/
-/archbold/reports/erlo/_book_crav.zip
-/archbold/reports/erlo/packages.bib/
+archbold/reports/erlo/_main_files/
+archbold/reports/erlo/_book/
+archbold/reports/erlo/_bookdown_files/
+archbold/reports/erlo/_book_crav.zip
+archbold/reports/erlo/packages.bib/
 
-/archbold/reports/sood/_main_files/
-/archbold/reports/sood/_book/
-/archbold/reports/sood/_bookdown_files/
-/archbold/reports/sood/_book_crav.zip
-/archbold/reports/sood/packages.bib/
+archbold/reports/sood/_main_files/
+archbold/reports/sood/_book/
+archbold/reports/sood/_bookdown_files/
+archbold/reports/sood/_book_crav.zip
+archbold/reports/sood/packages.bib/
 
-
-/mcgraw/data
-/mcgraw/results/
-/mcgraw/docs/
-/mcgraw/reports/paqu/_main_files/
-/mcgraw/reports/paqu/_book/
-/mcgraw/reports/paqu/_bookdown_files/
-/mcgraw/reports/paqu/_book_crav.zip
-/mcgraw/reports/paqu/packages.bib/
+mcgraw/data
+mcgraw/results/
+mcgraw/docs/
+mcgraw/reports/paqu/_main_files/
+mcgraw/reports/paqu/_book/
+mcgraw/reports/paqu/_bookdown_files/
+mcgraw/reports/paqu/_book_crav.zip
+mcgraw/reports/paqu/packages.bib/

@@ -96,7 +96,7 @@ df <- read.csv(
 required_cols <- c(
   'state', 'population', 'id', 'year', 'year_t1', 'size_t0', 'size_t1',
   'logsize_t0', 'logsize_t1', 'logsize_t0_2', 'logsize_t0_3', 'survives',
-  'recruit', 'consecutive', 'reliable_survival', 'persistence_t0')
+  'recruit', 'consecutive', 'reliable_demography', 'persistence_t0')
 
 missing_cols <- setdiff(required_cols, names(df))
 if (length(missing_cols) > 0) {
@@ -108,7 +108,7 @@ if (length(missing_cols) > 0) {
 # Survival --------------------------------------------------------------------
 df_su <- df %>%
   filter(
-    reliable_survival,
+    reliable_demography,
     !is.na(survives),
     size_t0 > 0,
     is.finite(logsize_t0)) %>%
@@ -357,45 +357,255 @@ df_re <- df_re_parent %>%
   mutate(
     nr_recruits = replace_na(nr_recruits, 0L))
 
-# Negative-binomial model with exposure offset. The intercept is the constant
-# mean number of recruits produced per established plant per year.
-mod_re <- MASS::glm.nb(
-  nr_recruits ~ 1 + offset(log(n_parents)),
-  data = df_re)
 
-mod_re
+fig_re_hist <- ggplot(df_re, aes(x = nr_recruits)) +
+  geom_histogram(binwidth = 1, boundary = -0.5,
+                 fill = "grey60", color = "black") +
+  labs(
+    title = "Distribution of recruitment",
+    subtitle = v_ggp_suffix,
+    x = "Number of recruits",
+    y = "Frequency") +
+  theme_bw()
 
-df_re$pred_recruits <- predict(
-  mod_re,
-  newdata = df_re,
-  type = 'response')
+fig_re_hist
 
-fecu_mean <- exp(unname(coef(mod_re)[['(Intercept)']]))
+# Recruitment probability -----------------------------------------------------
+df_re_prob <- df_re %>%
+  mutate(recruited = as.integer(nr_recruits > 0))
 
-# Recruit size distribution at first observation.
+mod_re_prob <- glm(
+  recruited ~ n_parents,
+  data = df_re_prob, family = binomial)
+
+summary(mod_re_prob)
+
+# Predictions -----------------------------------------------------------------
+df_re_prob_newdata <- tibble(
+  n_parents = seq(
+    min(df_re$n_parents), max(df_re$n_parents), length.out = 200))
+
+pred_re_prob <- predict(
+  mod_re_prob, newdata = df_re_prob_newdata,
+  type = 'link', se.fit = TRUE)
+
+df_re_prob_newdata <- df_re_prob_newdata %>%
+  mutate(
+    predicted = plogis(pred_re_prob$fit),
+    lwr = plogis(pred_re_prob$fit - 1.96 * pred_re_prob$se.fit),
+    upr = plogis(pred_re_prob$fit + 1.96 * pred_re_prob$se.fit))
+
+# Recruitment probability plot ------------------------------------------------
+fig_re_prob <- ggplot(
+  df_re_prob, aes(x = n_parents, y = recruited)) +
+  geom_jitter(height = 0.05, width = 0, alpha = 0.2) +
+  geom_ribbon(
+    data = df_re_prob_newdata,
+    aes(x = n_parents, ymin = lwr, ymax = upr),
+    inherit.aes = FALSE, alpha = 0.2) +
+  geom_line(
+    data = df_re_prob_newdata,
+    aes(x = n_parents, y = predicted),
+    inherit.aes = FALSE, linewidth = 1) +
+  labs(
+    title = 'Recruitment probability',
+    subtitle = v_ggp_suffix,
+    x = expression('Established individuals'[t0]),
+    y = 'Probability of recruitment') +
+  theme_bw()
+
+df_re_prob_bindata <- plot_binned_prop(
+  df_re_prob, 5, n_parents, recruited)
+
+fig_re_prob_bin <- ggplot() +
+  geom_point(
+    data = df_re_prob_bindata,
+    aes(x = n_parents, y = recruited)) +
+  geom_errorbar(
+    data = df_re_prob_bindata,
+    aes(x = n_parents, ymin = lwr, ymax = upr),
+    width = 5) +
+  geom_line(
+    data = df_re_prob_newdata,
+    aes(x = n_parents, y = predicted),
+    linewidth = 1) +
+  labs(
+    title = 'Binned recruitment probability',
+    x = expression('Established individuals'[t0]),
+    y = 'Probability of recruitment') +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme_bw()
+
+fig_re_prob + fig_re_prob_bin + plot_layout(ncol = 2)
+
+# Recruitment models ----------------------------------------------------------
+# Linear model
+mod_re_lm <- lm(
+  nr_recruits ~ n_parents, data = df_re)
+
+# Poisson
+mod_re_pois <- glm(
+  nr_recruits ~ n_parents, data = df_re, family = poisson)
+
+# Negative binomial
+mod_re_nb <- MASS::glm.nb(
+  nr_recruits ~ n_parents, data = df_re)
+
+# COM-Poisson
+mod_re_cmp <- glmmTMB::glmmTMB(
+  nr_recruits ~ n_parents, data = df_re,
+  family = glmmTMB::compois())
+
+good_family <- brms::custom_family(
+  "good", dpars = c("mu", "s"),
+  links = c("logit", "identity"),
+  lb = c(0, NA), ub = c(1, NA), type = "int")
+
+# # Good likelihood and polylogarithm normalization
+# stan_good <- "
+#   real good_logF(real z, real s) {
+#     real lsum = negative_infinity();
+#     real lz = log(z);
+#     for (k in 1:5000) {
+#       real lt = k * lz - s * log(k);
+#       real lr = lz;
+#       if (s < 0) lr -= s * log1p(1.0 / k);
+#       lsum = log_sum_exp(lsum, lt);
+#       if (k > 20 && lr < 0) {
+#         if (lt + lr - log1m_exp(lr) < lsum - 20)
+#           return lsum;
+#       }
+#     }
+#     reject(\"Good normalization did not converge\");
+#     return lsum;
+#   }
+# 
+#   real good_lpmf(int y, real mu, real s) {
+#     return (y + 1) * log(mu) - s * log(y + 1) -
+#            good_logF(mu, s);
+#   }
+# "
+# 
+# mod_re_good <- brms::brm(
+#   brms::bf(nr_recruits ~ n_parents, s ~ 1),
+#   data = df_re,
+#   family = good_family,
+#   stanvars = brms::stanvar(
+#     scode = stan_good, block = "functions"),
+#   prior = c(
+#     brms::prior(normal(0, 0.02), class = "b"),
+#     brms::prior(normal(0, 3), class = "Intercept"),
+#     brms::prior(normal(0, 3), class = "Intercept", dpar = "s")),
+#   chains = 4, cores = 4, iter = 2000, seed = 100)
+
+mods_re <- list(
+  Linear = mod_re_lm,
+  Poisson = mod_re_pois,
+  NegBin = mod_re_nb,
+  COMPoisson = mod_re_cmp)
+  # ,
+  # Good = mod_re_good)
+
+mods_re_AICc <- bbmle::AICctab(
+  mods_re, weights = TRUE, sort = FALSE)
+
+mods_re_dAICc <- mods_re_AICc$dAICc
+
+mod_re_index_bestfit <- which.min(mods_re_dAICc)
+mod_re_bestfit <- mods_re[[mod_re_index_bestfit]]
+
+mod_re <- mod_re_bestfit
+
+mods_re_AICc
+mod_re_bestfit
+
+# Mean recruitment ------------------------------------------------------------
+fecu_mean <- unname(predict(
+  mod_re_lm, # mod_re_bestfit
+  newdata = tibble(n_parents = 1), type = 'response'))
+
+fecu_mean
+
+# Recruitment predictions -----------------------------------------------------
+df_re_newdata <- tibble(
+  n_parents = seq(
+    min(df_re$n_parents), max(df_re$n_parents), length.out = 200))
+
+# Linear model
+df_re_pred_lm <- bind_cols(
+  df_re_newdata,
+  as_tibble(predict(
+    mod_re_lm, newdata = df_re_newdata,
+    interval = 'confidence'))) %>%
+  rename(predicted = fit)
+
+# Count models
+re_pred_ci <- function(mod) {
+  pred <- predict(
+    mod, newdata = df_re_newdata, type = 'link', se.fit = TRUE)
+  
+  df_re_newdata %>%
+    mutate(
+      predicted = exp(pred$fit),
+      lwr = exp(pred$fit - 1.96 * pred$se.fit),
+      upr = exp(pred$fit + 1.96 * pred$se.fit))
+}
+
+df_re_pred_pois <- re_pred_ci(mod_re_pois)
+df_re_pred_nb <- re_pred_ci(mod_re_nb)
+df_re_pred_cmp <- re_pred_ci(mod_re_cmp)
+
+
+# Recruitment plots -----------------------------------------------------------
+plot_re <- function(df_pred, title) {
+  ggplot(df_re, aes(x = n_parents, y = nr_recruits)) +
+    geom_ribbon(
+      data = df_pred,
+      aes(x = n_parents, ymin = lwr, ymax = upr),
+      inherit.aes = FALSE, alpha = 0.2) +
+    geom_point(alpha = 0.6) +
+    geom_line(
+      data = df_pred,
+      aes(x = n_parents, y = predicted),
+      inherit.aes = FALSE, linewidth = 1) +
+    labs(
+      title = title,
+      subtitle = v_ggp_suffix,
+      x = expression('Established individuals'[t0]),
+      y = expression('New seedlings'[t1])) +
+    theme_bw()
+}
+
+# Linear
+fig_re_lm <- plot_re(
+  df_re_pred_lm, 'Linear recruitment')
+
+# Poisson
+fig_re_pois <- plot_re(
+  df_re_pred_pois, 'Poisson recruitment')
+
+# Negative binomial
+fig_re_nb <- plot_re(
+  df_re_pred_nb, 'Negative binomial recruitment')
+
+# COM-Poisson
+fig_re_cmp <- plot_re(
+  df_re_pred_cmp, 'COM-Poisson recruitment')
+
+
+
+# Show plots separately
+fig_re_lm
+fig_re_pois
+fig_re_nb
+fig_re_cmp
+
+# Recruit size distribution ---------------------------------------------------
 df_re_size <- df %>%
   filter(
     recruit == 1,
     size_t0 > 0,
     is.finite(logsize_t0))
-
-
-# Recruitment plot ------------------------------------------------------------
-fig_re <- ggplot(
-  df_re,
-  aes(x = n_parents, y = nr_recruits)) +
-  geom_point(alpha = 0.6) +
-  geom_point(
-    aes(y = pred_recruits),
-    shape = 1) +
-  labs(
-    title = 'Mean recruitment - Observed vs Predicted recruits',
-    subtitle = v_ggp_suffix,
-    x = expression('Established individuals'[t0]),
-    y = expression('New seedlings'[t1])) +
-  theme_bw()
-
-fig_re
 
 
 # Exporting parameter estimates -----------------------------------------------

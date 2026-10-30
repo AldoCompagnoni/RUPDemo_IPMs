@@ -11,7 +11,7 @@ documentclass: book
 # biblio-style: apalike
 # link-citations: yes
 # github-repo: rstudio/bookdown-demo
-description: "This is the summary to the McGraw 2017 - Panax quinquefolius L. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation. "
+description: "This is the summary to the McGraw 2017 - Panax quinquefolius L. It includes its general data structure, a documentation of our exploaratry journey, as well as our adjustments and implementation."
 # rmd_files: ["index.Rmd", "01-intro.Rmd", "02-data.Rmd", "03-investigation.Rmd", "04-models.Rmd", "666-bug.Rmd"]
 ---
 

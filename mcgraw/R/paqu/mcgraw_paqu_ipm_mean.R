@@ -462,6 +462,112 @@ fig_do <- fig_do_line + fig_do_bin + plot_layout()
 fig_do
 
 
+# Dormancy entry vs reactivation size -----------------------------------------
+df_ra_size <- df %>%
+  filter(
+    reliable_demography,
+    dormant_t0 == 1,
+    survives == 1,
+    dormant_t1 == 0,
+    size_t1 > 0) %>%
+  mutate(logsize_reactivate = log(size_t1))
+
+df_do_entry_size <- df %>%
+  filter(
+    reliable_demography,
+    dormant_t0 == 0,
+    dormant_t1 == 1,
+    survives == 1,
+    size_t0 > 0,
+    is.finite(logsize_t0)) %>%
+  transmute(
+    population, id, year_entry = year,
+    logsize_entry = logsize_t0)
+
+df_ra_entry_size <- df_ra_size %>%
+  transmute(
+    population, id, year_ra = year,
+    logsize_reactivate) %>%
+  inner_join(
+    df_do_entry_size, by = c("population", "id"),
+    relationship = "many-to-many") %>%
+  filter(year_entry < year_ra) %>%
+  group_by(population, id, year_ra) %>%
+  slice_max(year_entry, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+mod_ra_size <- lm(
+  logsize_reactivate ~ logsize_entry,
+  data = df_ra_entry_size)
+
+summary(mod_ra_size)
+
+df_ra_entry_size %>%
+  summarise(
+    n = n(),
+    correlation = cor(logsize_entry, logsize_reactivate))
+
+fig_ra_size <- ggplot(
+  df_ra_entry_size,
+  aes(x = logsize_entry, y = logsize_reactivate)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(
+    method = "lm", formula = y ~ x,
+    se = TRUE, linewidth = 1) +
+  geom_abline(
+    intercept = 0, slope = 1,
+    linetype = "dashed") +
+  labs(
+    title = "Dormancy entry vs reactivation size",
+    subtitle = v_ggp_suffix,
+    x = "log(leaf area) before dormancy",
+    y = "log(leaf area) at reactivation") +
+  theme_bw()
+
+df_ra_size_1 <- df_ra_entry_size %>%
+  filter(year_ra - year_entry == 1)
+
+df_ra_size_2 <- df_ra_entry_size %>%
+  filter(year_ra - year_entry >= 2)
+
+fig_ra_size_1 <- ggplot(
+  df_ra_size_1,
+  aes(x = logsize_entry, y = logsize_reactivate)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(
+    method = "lm", formula = y ~ x,
+    se = TRUE, linewidth = 1) +
+  geom_abline(
+    intercept = 0, slope = 1,
+    linetype = "dashed") +
+  labs(
+    title = paste0("1 year dormant (n = ", nrow(df_ra_size_1), ")"),
+    x = "log(leaf area) before dormancy",
+    y = "log(leaf area) at reactivation") +
+  theme_bw()
+
+fig_ra_size_2 <- ggplot(
+  df_ra_size_2,
+  aes(x = logsize_entry, y = logsize_reactivate)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(
+    method = "lm", formula = y ~ x,
+    se = TRUE, linewidth = 1) +
+  geom_abline(
+    intercept = 0, slope = 1,
+    linetype = "dashed") +
+  labs(
+    title = paste0("2+ years dormant (n = ", nrow(df_ra_size_2), ")"),
+    x = "log(leaf area) before dormancy",
+    y = "log(leaf area) at reactivation") +
+  theme_bw()
+
+fig_ra_size_all <- fig_ra_size + fig_ra_size_1 + fig_ra_size_2 +
+  plot_layout(ncol = 3)
+
+fig_ra_size_all
+
+
 # Dormant survival and reactivation  ------------------------------------------
 
 df_ra <- df %>%
@@ -513,9 +619,7 @@ react_sz <- mean(
   df_ra_size$logsize_reactivate,
   na.rm = TRUE)
 
-react_sd <- sd(
-  df_ra_size$logsize_reactivate,
-  na.rm = TRUE)
+react_sd <- sigma(mod_ra_size)
 
 
 # Flower data -----------------------------------------------------------------
@@ -758,6 +862,109 @@ fig_se_bin <- ggplot() +
 fig_se <- fig_se_line + fig_se_bin + plot_layout()
 fig_se
 
+# Seed production probability GAM ---------------------------------------------
+library(mgcv)
+
+df_se_gam <- df_se %>%
+  mutate(year = factor(year))
+
+mod_se_gam <- mgcv::gam(
+  seed_prod ~ s(logsize_t0, k = 6) + s(year, bs = "re"),
+  data = df_se_gam, family = binomial, method = "REML")
+
+summary(mod_se_gam)
+
+df_se_gam_newdata <- tibble(
+  logsize_t0 = seq(
+    min(df_se_gam$logsize_t0), max(df_se_gam$logsize_t0),
+    length.out = 200),
+  year = factor(
+    levels(df_se_gam$year)[1], levels = levels(df_se_gam$year)))
+
+pred_se_gam <- predict(
+  mod_se_gam, newdata = df_se_gam_newdata,
+  type = "link", se.fit = TRUE, unconditional = TRUE,
+  exclude = "s(year)")
+
+df_se_gam_newdata <- df_se_gam_newdata %>%
+  mutate(
+    predicted = plogis(pred_se_gam$fit),
+    lwr = plogis(pred_se_gam$fit - 1.96 * pred_se_gam$se.fit),
+    upr = plogis(pred_se_gam$fit + 1.96 * pred_se_gam$se.fit))
+
+fig_se_gam <- ggplot(
+  df_se_gam, aes(x = logsize_t0, y = seed_prod)) +
+  geom_ribbon(
+    data = df_se_gam_newdata,
+    aes(x = logsize_t0, ymin = lwr, ymax = upr),
+    inherit.aes = FALSE, alpha = 0.2) +
+  geom_jitter(height = 0.025, width = 0, alpha = 0.1) +
+  geom_line(
+    data = df_se_gam_newdata,
+    aes(y = predicted), linewidth = 1) +
+  geom_rug(sides = "b", alpha = 0.05) +
+  labs(
+    title = "Seed production probability by size - GAM",
+    subtitle = v_ggp_suffix,
+    x = expression("log(leaf area)"[t0]),
+    y = "Probability of producing seeds (given flowering)",
+    caption = "Year effect set to zero; ribbon: 95% pointwise interval") +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme_bw()
+
+fig_se_gam
+
+
+# Seed production with upper plateau ------------------------------------------
+mod_se_plateau <- bbmle::mle2(
+  seed_prod ~ dbinom(
+    size = 1,
+    prob = plogis(a) * plogis(b0 + b1 * logsize_t0)),
+  data = df_se,
+  start = list(
+    a = 0,
+    b0 = unname(coef(mod_se_1)[1]),
+    b1 = unname(coef(mod_se_1)[2])))
+
+summary(mod_se_plateau)
+
+# Estimated upper plateau
+plogis(coef(mod_se_plateau)["a"])
+
+df_se_compare <- df_se_newdata %>%
+  mutate(
+    linear = predict(mod_se_1, newdata = ., type = "response"),
+    quadratic = predict(mod_se_2, newdata = ., type = "response"),
+    plateau = plogis(coef(mod_se_plateau)["a"]) *
+      plogis(coef(mod_se_plateau)["b0"] +
+               coef(mod_se_plateau)["b1"] * logsize_t0)) %>%
+  pivot_longer(
+    cols = c(linear, quadratic, plateau),
+    names_to = "model", values_to = "predicted")
+
+fig_se_compare <- ggplot() +
+  geom_point(
+    data = df_se_bindata,
+    aes(x = logsize_t0, y = seed_prod)) +
+  geom_errorbar(
+    data = df_se_bindata,
+    aes(x = logsize_t0, ymin = lwr, ymax = upr),
+    width = 0.1) +
+  geom_line(
+    data = df_se_compare,
+    aes(x = logsize_t0, y = predicted, color = model),
+    linewidth = 1.2) +
+  labs(
+    title = "Seed production probability by size",
+    x = expression("log(leaf area)"[t0]),
+    y = "Probability of producing seeds",
+    color = "Model") +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme_bw()
+
+fig_se_compare
+
+
 
 # Seed number data ------------------------------------------------------------
 # Conditional on flowering and positive seed production.
@@ -901,7 +1108,7 @@ fig_se_n
 
 
 # Seed to recruit transition --------------------------------------------------
-# Seeds produced in year t are related to recruits observed in year t + 2.
+# Seeds produced in year t are related to recruits observed in year t + 1.
 
 # Total observed seed production per population and year.
 df_re_seed <- df %>%
@@ -917,7 +1124,7 @@ df_re_seed <- df %>%
   filter(
     nr_seed_obs > 0) %>%
   mutate(
-    year_t2 = year + 2L)
+    year_t1 = year + 1L)
 
 
 # Number of recruits per sampled population and year.
@@ -944,60 +1151,57 @@ df_re_count <- df_re_sampled %>%
       0L))
 
 
-# Match seed production at t to recruits at t + 2.
+# Match seed production at t to recruits at t + 1.
 df_re <- df_re_seed %>%
   inner_join(
     df_re_count,
     by = c(
       "population",
-      "year_t2" = "year"))
+      "year_t1" = "year"))
 
 
 # Seed to recruit model -------------------------------------------------------
-# Seed number is an exposure. The intercept therefore estimates the expected
-# number of recruits produced per observed seed.
-
 df_re_mod <- df_re %>%
-  filter(
-    nr_seeds > 0)
+  filter(nr_seeds > 0)
 
-mod_re <- MASS::glm.nb(
-  nr_recruits ~
-    1 +
-    offset(log(nr_seeds)),
+mod_re <- lm(
+  nr_recruits ~ nr_seeds,
   data = df_re_mod)
 
-mod_re
+summary(mod_re)
 
-recr_per_seed <- exp(
-  unname(
-    coef(mod_re)[["(Intercept)"]]))
-
-recr_per_seed
+recr_intercept <- unname(coef(mod_re)[["(Intercept)"]])
+recr_per_seed <- unname(coef(mod_re)[["nr_seeds"]])
 
 
 # Seed to recruit plot --------------------------------------------------------
-df_re_mod$pred_recruits <- predict(
-  mod_re,
-  newdata = df_re_mod,
-  type = "response")
+df_re_newdata <- tibble(
+  nr_seeds = seq(
+    min(df_re_mod$nr_seeds),
+    max(df_re_mod$nr_seeds), length.out = 200))
+
+df_re_newdata <- bind_cols(
+  df_re_newdata,
+  as_tibble(predict(
+    mod_re, newdata = df_re_newdata,
+    interval = "confidence", level = 0.95)))
 
 fig_re <- ggplot(
-  df_re_mod,
-  aes(
-    x = nr_seeds,
-    y = nr_recruits)) +
-  geom_point(
-    alpha = 0.5) +
+  df_re_mod, aes(x = nr_seeds, y = nr_recruits)) +
+  geom_point(alpha = 0.5) +
+  geom_ribbon(
+    data = df_re_newdata,
+    aes(x = nr_seeds, ymin = lwr, ymax = upr),
+    inherit.aes = FALSE, alpha = 0.2) +
   geom_line(
-    aes(
-      y = pred_recruits),
-    linewidth = 1) +
+    data = df_re_newdata,
+    aes(x = nr_seeds, y = fit),
+    inherit.aes = FALSE, linewidth = 1) +
   labs(
     title = "Seed to recruit transition",
     subtitle = v_ggp_suffix,
     x = expression("Number of seeds"[t]),
-    y = expression("Number of recruits"[t+2])) +
+    y = expression("Number of recruits"[t+1])) +
   theme_bw()
 
 fig_re
@@ -1101,8 +1305,11 @@ pars_other <- tibble(
     'recr_sd',
     'react_sz',
     'react_sd',
+    'react_b0',
+    'react_b1',
     'p_dorm_survival',
-    'p_reactivate',
+    'p_reactivate_1',
+    'recr_intercept',
     'recr_per_seed',
     'max_siz',
     'min_siz'),
@@ -1111,8 +1318,11 @@ pars_other <- tibble(
     recr_sd,
     react_sz,
     react_sd,
+    unname(coef(mod_ra_size)[['(Intercept)']]),
+    unname(coef(mod_ra_size)[['logsize_entry']]),
     p_dorm_survival,
     p_reactivate,
+    recr_intercept,
     recr_per_seed,
     mesh_limits[2],
     mesh_limits[1]))
@@ -1185,10 +1395,15 @@ write.csv(
 
 # Building the IPM from scratch -----------------------------------------------
 extr_value <- function(x, field) {
-  subset(
-    x,
-    coefficient == field)$value
-}
+  subset(x, coefficient == field)$value}
+
+# Reference active abundance in the recruitment-fitting population-years.
+df_re_n <- df %>%
+  filter(
+    !is.na(persistence_t0), persistence_t0 != 'DEAD', dormant_t0 == 0) %>%
+  group_by(population, year) %>%
+  summarise(n_active = n_distinct(id), .groups = 'drop') %>%
+  semi_join(df_re_mod, by = c('population', 'year'))
 
 pars <- Filter(
   function(x) length(x) > 0,
@@ -1196,87 +1411,53 @@ pars <- Filter(
     prefix = v_script_prefix,
     species = v_species,
     
-    surv_b0 = extr_value(
-      pars_su, 'b0'),
-    surv_b1 = extr_value(
-      pars_su, 'logsize_t0'),
-    surv_b2 = extr_value(
-      pars_su, 'logsize_t0_2'),
-    surv_b3 = extr_value(
-      pars_su, 'logsize_t0_3'),
+    surv_b0 = extr_value(pars_su, 'b0'),
+    surv_b1 = extr_value(pars_su, 'logsize_t0'),
+    surv_b2 = extr_value(pars_su, 'logsize_t0_2'),
+    surv_b3 = extr_value(pars_su, 'logsize_t0_3'),
     
-    grow_b0 = extr_value(
-      pars_gr, 'b0'),
-    grow_b1 = extr_value(
-      pars_gr, 'logsize_t0'),
-    grow_b2 = extr_value(
-      pars_gr, 'logsize_t0_2'),
-    grow_b3 = extr_value(
-      pars_gr, 'logsize_t0_3'),
-    a = extr_value(
-      pars_gr, 'a'),
-    b = extr_value(
-      pars_gr, 'b'),
+    grow_b0 = extr_value(pars_gr, 'b0'),
+    grow_b1 = extr_value(pars_gr, 'logsize_t0'),
+    grow_b2 = extr_value(pars_gr, 'logsize_t0_2'),
+    grow_b3 = extr_value(pars_gr, 'logsize_t0_3'),
+    a = extr_value(pars_gr, 'a'),
+    b = extr_value(pars_gr, 'b'),
     
-    dorm_b0 = extr_value(
-      pars_do, 'b0'),
-    dorm_b1 = extr_value(
-      pars_do, 'logsize_t0'),
-    dorm_b2 = extr_value(
-      pars_do, 'logsize_t0_2'),
-    dorm_b3 = extr_value(
-      pars_do, 'logsize_t0_3'),
+    dorm_b0 = extr_value(pars_do, 'b0'),
+    dorm_b1 = extr_value(pars_do, 'logsize_t0'),
+    dorm_b2 = extr_value(pars_do, 'logsize_t0_2'),
+    dorm_b3 = extr_value(pars_do, 'logsize_t0_3'),
     
-    flower_b0 = extr_value(
-      pars_fl, 'b0'),
-    flower_b1 = extr_value(
-      pars_fl, 'logsize_t0'),
-    flower_b2 = extr_value(
-      pars_fl, 'logsize_t0_2'),
-    flower_b3 = extr_value(
-      pars_fl, 'logsize_t0_3'),
+    flower_b0 = extr_value(pars_fl, 'b0'),
+    flower_b1 = extr_value(pars_fl, 'logsize_t0'),
+    flower_b2 = extr_value(pars_fl, 'logsize_t0_2'),
+    flower_b3 = extr_value(pars_fl, 'logsize_t0_3'),
     
-    seed_b0 = extr_value(
-      pars_se, 'b0'),
-    seed_b1 = extr_value(
-      pars_se, 'logsize_t0'),
-    seed_b2 = extr_value(
-      pars_se, 'logsize_t0_2'),
-    seed_b3 = extr_value(
-      pars_se, 'logsize_t0_3'),
+    seed_b0 = extr_value(pars_se, 'b0'),
+    seed_b1 = extr_value(pars_se, 'logsize_t0'),
+    seed_b2 = extr_value(pars_se, 'logsize_t0_2'),
+    seed_b3 = extr_value(pars_se, 'logsize_t0_3'),
     
-    seed_n_b0 = extr_value(
-      pars_se_n, 'b0'),
-    seed_n_b1 = extr_value(
-      pars_se_n, 'logsize_t0'),
-    seed_n_b2 = extr_value(
-      pars_se_n, 'logsize_t0_2'),
-    seed_n_b3 = extr_value(
-      pars_se_n, 'logsize_t0_3'),
+    seed_n_b0 = extr_value(pars_se_n, 'b0'),
+    seed_n_b1 = extr_value(pars_se_n, 'logsize_t0'),
+    seed_n_b2 = extr_value(pars_se_n, 'logsize_t0_2'),
+    seed_n_b3 = extr_value(pars_se_n, 'logsize_t0_3'),
     
-    recr_sz = extr_value(
-      pars_other, 'recr_sz'),
-    recr_sd = extr_value(
-      pars_other, 'recr_sd'),
+    recr_sz = extr_value(pars_other, 'recr_sz'),
+    recr_sd = extr_value(pars_other, 'recr_sd'),
+    recr_b0 = unname(coef(mod_re)[['(Intercept)']]),
+    recr_per_seed = unname(coef(mod_re)[['nr_seeds']]),
+    recr_n_ref = mean(df_re_n$n_active),
     
-    react_sz = extr_value(
-      pars_other, 'react_sz'),
-    react_sd = extr_value(
-      pars_other, 'react_sd'),
+    react_b0 = extr_value(pars_other, 'react_b0'),
+    react_b1 = extr_value(pars_other, 'react_b1'),
+    react_sd = extr_value(pars_other, 'react_sd'),
     
-    p_dorm_survival = extr_value(
-      pars_other, 'p_dorm_survival'),
-    p_reactivate = extr_value(
-      pars_other, 'p_reactivate'),
+    p_dorm_survival = extr_value(pars_other, 'p_dorm_survival'),
+    p_reactivate_1 = extr_value(pars_other, 'p_reactivate_1'),
     
-    recr_per_seed = extr_value(
-      pars_other, 'recr_per_seed'),
-    
-    L = extr_value(
-      pars_other, 'min_siz'),
-    U = extr_value(
-      pars_other, 'max_siz'),
-    
+    L = extr_value(pars_other, 'min_siz'),
+    U = extr_value(pars_other, 'max_siz'),
     mat_siz = 200,
     
     mod_gr_index = v_mod_gr_index,
@@ -1286,820 +1467,438 @@ pars <- Filter(
     mod_se_index = v_mod_se_index,
     mod_se_n_index = v_mod_se_n_index))
 
-write.csv(
-  as.data.frame(pars),
-  file.path(
-    dir_data,
-    paste0(
-      v_script_prefix, '_', v_sp_abb,
-      '_pars.csv')),
-  row.names = FALSE)
-
 
 # IPM functions ---------------------------------------------------------------
-
 grow_sd <- function(x, pars) {
-  sqrt(
-    pars$a *
-      exp(pars$b * x))
-}
+  sqrt(pars$a * exp(pars$b * x))}
 
 
 # Growth from size x to size y.
-gxy <- function(
-    x,
-    y,
-    pars,
-    num_pars = v_mod_gr_index) {
-  
+gxy <- function(x, y, pars, num_pars = v_mod_gr_index) {
   mean_value <- pars$grow_b0
   
   if (num_pars >= 1) {
     for (i in seq_len(num_pars)) {
-      param_name <- paste0(
-        'grow_b', i)
-      
-      if (!is.null(
-        pars[[param_name]])) {
-        
-        mean_value <-
-          mean_value +
-          pars[[param_name]] *
-          x^i
-      }
-    }
-  }
+      param_name <- paste0('grow_b', i)
+      if (!is.null(pars[[param_name]])) {
+        mean_value <- mean_value + pars[[param_name]] * x^i}}}
   
-  sd_value <- grow_sd(
-    x,
-    pars)
-  
-  dnorm(
-    y,
-    mean = mean_value,
-    sd = sd_value)
-}
+  sd_value <- grow_sd(x, pars)
+  dnorm(y, mean = mean_value, sd = sd_value)}
 
 
 inv_logit <- function(x) {
-  plogis(x)
-}
+  plogis(x)}
 
 
 # Survival of an x-sized active individual.
-sx <- function(
-    x,
-    pars,
-    num_pars = v_mod_su_index) {
-  
+sx <- function(x, pars, num_pars = v_mod_su_index) {
   survival_value <- pars$surv_b0
   
   if (num_pars >= 1) {
     for (i in seq_len(num_pars)) {
-      param_name <- paste0(
-        'surv_b', i)
-      
-      if (!is.null(
-        pars[[param_name]])) {
-        
-        survival_value <-
-          survival_value +
-          pars[[param_name]] *
-          x^i
-      }
-    }
-  }
+      param_name <- paste0('surv_b', i)
+      if (!is.null(pars[[param_name]])) {
+        survival_value <- survival_value + pars[[param_name]] * x^i}}}
   
-  inv_logit(
-    survival_value)
-}
+  inv_logit(survival_value)}
 
 
-# Probability that a surviving active individual enters dormancy.
-dx <- function(
-    x,
-    pars,
-    num_pars = v_mod_do_index) {
-  
+# Dormancy entry conditional on survival.
+dx <- function(x, pars, num_pars = v_mod_do_index) {
   dorm_value <- pars$dorm_b0
   
   if (num_pars >= 1) {
     for (i in seq_len(num_pars)) {
-      param_name <- paste0(
-        'dorm_b', i)
-      
-      if (!is.null(
-        pars[[param_name]])) {
-        
-        dorm_value <-
-          dorm_value +
-          pars[[param_name]] *
-          x^i
-      }
-    }
-  }
+      param_name <- paste0('dorm_b', i)
+      if (!is.null(pars[[param_name]])) {
+        dorm_value <- dorm_value + pars[[param_name]] * x^i}}}
   
-  inv_logit(
-    dorm_value)
-}
+  inv_logit(dorm_value)}
 
 
 # Flowering probability.
-flx <- function(
-    x,
-    pars,
-    num_pars = v_mod_fl_index) {
-  
+flx <- function(x, pars, num_pars = v_mod_fl_index) {
   flower_value <- pars$flower_b0
   
   if (num_pars >= 1) {
     for (i in seq_len(num_pars)) {
-      param_name <- paste0(
-        'flower_b', i)
-      
-      if (!is.null(
-        pars[[param_name]])) {
-        
-        flower_value <-
-          flower_value +
-          pars[[param_name]] *
-          x^i
-      }
-    }
-  }
+      param_name <- paste0('flower_b', i)
+      if (!is.null(pars[[param_name]])) {
+        flower_value <- flower_value + pars[[param_name]] * x^i}}}
   
-  inv_logit(
-    flower_value)
-}
+  inv_logit(flower_value)}
 
 
-# Probability of positive seed production conditional on flowering.
-sex <- function(
-    x,
-    pars,
-    num_pars = v_mod_se_index) {
-  
+# Positive seed production conditional on flowering.
+sex <- function(x, pars, num_pars = v_mod_se_index) {
   seed_value <- pars$seed_b0
   
   if (num_pars >= 1) {
     for (i in seq_len(num_pars)) {
-      param_name <- paste0(
-        'seed_b', i)
-      
-      if (!is.null(
-        pars[[param_name]])) {
-        
-        seed_value <-
-          seed_value +
-          pars[[param_name]] *
-          x^i
-      }
-    }
-  }
+      param_name <- paste0('seed_b', i)
+      if (!is.null(pars[[param_name]])) {
+        seed_value <- seed_value + pars[[param_name]] * x^i}}}
   
-  inv_logit(
-    seed_value)
-}
+  inv_logit(seed_value)}
 
 
-# Expected seed number conditional on positive seed production.
-se_nx <- function(
-    x,
-    pars,
-    num_pars = v_mod_se_n_index) {
-  
+# Seed number conditional on positive seed production.
+se_nx <- function(x, pars, num_pars = v_mod_se_n_index) {
   seed_n_value <- pars$seed_n_b0
   
   if (num_pars >= 1) {
     for (i in seq_len(num_pars)) {
-      param_name <- paste0(
-        'seed_n_b', i)
-      
-      if (!is.null(
-        pars[[param_name]])) {
-        
-        seed_n_value <-
-          seed_n_value +
-          pars[[param_name]] *
-          x^i
-      }
-    }
-  }
+      param_name <- paste0('seed_n_b', i)
+      if (!is.null(pars[[param_name]])) {
+        seed_n_value <- seed_n_value + pars[[param_name]] * x^i}}}
   
-  exp(
-    seed_n_value)
-}
+  exp(seed_n_value)}
 
 
-# Expected number of seeds produced by an x-sized active individual.
-seedx <- function(
-    x,
-    pars) {
-  
-  flx(
-    x,
-    pars) *
-    sex(
-      x,
-      pars) *
-    se_nx(
-      x,
-      pars)
-}
+# Expected seed production of an active individual.
+seedx <- function(x, pars) {
+  flx(x, pars) * sex(x, pars) * se_nx(x, pars)}
 
 
 # Active survival-growth transition.
-pxy <- function(
-    x,
-    y,
-    pars) {
-  
-  sx(
-    x,
-    pars) *
-    (1 - dx(
-      x,
-      pars)) *
-    gxy(
-      x,
-      y,
-      pars)
-}
+pxy <- function(x, y, pars) {
+  sx(x, pars) * (1 - dx(x, pars)) * gxy(x, y, pars)}
 
 
 # Kernel ----------------------------------------------------------------------
-# State order:
-# 1:n     = active size classes
-# n + 1   = dormant individuals
-# n + 2   = seeds
-#
-# One discrete seed state creates the observed two-year delay:
-# active plant t -> seed state t+1 -> recruit t+2.
-
+# Rows = destinations; columns = sources.
+# 1:n = active; (n+1):(2*n) = D1; (2*n+1):(3*n) = D2.
+# Both dormant stages retain size before dormancy.
 kernel <- function(pars) {
-  
   n <- pars$mat_siz
   L <- pars$L
   U <- pars$U
-  
   h <- (U - L) / n
-  
   b <- L + c(0:n) * h
+  y <- 0.5 * (b[1:n] + b[2:(n + 1)])
   
-  y <- 0.5 *
-    (b[1:n] +
-       b[2:(n + 1)])
+  i_dorm1 <- n + seq_len(n)
+  i_dorm2 <- 2 * n + seq_len(n)
   
-  i_dorm <- n + 1
-  i_seed <- n + 2
+  # Growth distribution
+  Gmat <- matrix(0, n, n)
+  Gmat[] <- t(outer(y, y, gxy, pars)) * h
   
+  # Eviction correction
+  for (i in seq_len(n / 2)) {
+    Gmat[1, i] <- Gmat[1, i] + 1 - sum(Gmat[, i])}
   
-  # Growth distribution -------------------------------------------------------
-  Gmat <- matrix(
-    0,
-    n,
-    n)
+  for (i in ((n / 2) + 1):n) {
+    Gmat[n, i] <- Gmat[n, i] + 1 - sum(Gmat[, i])}
   
-  Gmat[] <- t(
-    outer(
-      y,
-      y,
-      gxy,
-      pars)) * h
-  
-  
-  # Eviction correction -------------------------------------------------------
-  for (i in seq_len(
-    n / 2)) {
-    
-    Gmat[1, i] <-
-      Gmat[1, i] +
-      1 -
-      sum(Gmat[, i])
-  }
-  
-  for (i in (
-    (n / 2) + 1):n) {
-    
-    Gmat[n, i] <-
-      Gmat[n, i] +
-      1 -
-      sum(Gmat[, i])
-  }
-  
-  
-  # Active survival and dormancy ---------------------------------------------
-  Smat <- sx(
-    y,
-    pars)
-  
-  Dvec <- dx(
-    y,
-    pars)
-  
-  
-  # Active -> active ----------------------------------------------------------
-  Tmat <- matrix(
-    0,
-    n,
-    n)
+  # Active survival and dormancy entry
+  Smat <- sx(y, pars)
+  Dvec <- dx(y, pars)
+  Tmat <- matrix(0, n, n)
   
   for (i in seq_len(n)) {
-    
-    Tmat[, i] <-
-      Gmat[, i] *
-      Smat[i] *
-      (1 - Dvec[i])
-  }
+    Tmat[, i] <- Gmat[, i] * Smat[i] * (1 - Dvec[i])}
   
+  # Reactivation size conditional on entry size
+  react_sd_use <- max(h / 10, pars$react_sd, na.rm = TRUE)
   
-  # Reactivation size distribution -------------------------------------------
-  react_sd_use <- max(
-    h / 10,
-    pars$react_sd,
-    na.rm = TRUE)
+  Rmat <- vapply(y, function(x) {
+    react_y <- dnorm(
+      y, mean = pars$react_b0 + pars$react_b1 * x,
+      sd = react_sd_use, log = TRUE)
+    react_y <- exp(react_y - max(react_y))
+    react_y / sum(react_y)}, numeric(n))
   
-  react_y <- dnorm(
-    y,
-    mean = pars$react_sz,
-    sd = react_sd_use) * h
+  # Recruit size distribution
+  recr_sd_use <- max(h / 10, pars$recr_sd, na.rm = TRUE)
+  recr_y <- dnorm(y, mean = pars$recr_sz, sd = recr_sd_use) * h
+  recr_y <- recr_y / sum(recr_y)
   
-  react_y <- react_y /
-    sum(react_y)
-  
-  
-  # Recruit size distribution -------------------------------------------------
-  recr_sd_use <- max(
-    h / 10,
-    pars$recr_sd,
-    na.rm = TRUE)
-  
-  recr_y <- dnorm(
-    y,
-    mean = pars$recr_sz,
-    sd = recr_sd_use) * h
-  
-  recr_y <- recr_y /
-    sum(recr_y)
-  
-  
-  # Full transition matrices --------------------------------------------------
-  Pmat <- matrix(
-    0,
-    n + 2,
-    n + 2)
-  
-  Fmat <- matrix(
-    0,
-    n + 2,
-    n + 2)
-  
+  Pmat <- matrix(0, 3 * n, 3 * n)
+  Fmat <- matrix(0, 3 * n, 3 * n)
   
   # Active -> active
-  Pmat[
-    1:n,
-    1:n] <- Tmat
+  Pmat[1:n, 1:n] <- Tmat
   
+  # Active -> D1: retain entry size.
+  Pmat[i_dorm1, 1:n] <- diag(Smat * Dvec, nrow = n, ncol = n)
   
-  # Active -> dormant
-  Pmat[
-    i_dorm,
-    1:n] <-
-    Smat *
-    Dvec
+  # D1 -> active
+  Pmat[1:n, i_dorm1] <-
+    pars$p_dorm_survival * pars$p_reactivate_1 * Rmat
   
+  # D1 -> D2: retain the same entry size.
+  Pmat[i_dorm2, i_dorm1] <- diag(
+    pars$p_dorm_survival * (1 - pars$p_reactivate_1), nrow = n, ncol = n)
   
-  # Dormant -> active
-  Pmat[
-    1:n,
-    i_dorm] <-
-    pars$p_dorm_survival *
-    pars$p_reactivate *
-    react_y
+  # D2 -> active: all surviving plants reactivate.
+  Pmat[1:n, i_dorm2] <- pars$p_dorm_survival * Rmat
   
+  # Population intercept allocated per active plant at reference abundance.
+  Fmat[1:n, 1:n] <- outer(
+    recr_y,
+    pars$recr_b0 / pars$recr_n_ref + pars$recr_per_seed * seedx(y, pars))
   
-  # Dormant -> dormant
-  Pmat[
-    i_dorm,
-    i_dorm] <-
-    pars$p_dorm_survival *
-    (1 - pars$p_reactivate)
-  
-  
-  # Active -> seed
-  Fmat[
-    i_seed,
-    1:n] <-
-    seedx(
-      y,
-      pars)
-  
-  
-  # Seed -> recruit
-  Fmat[
-    1:n,
-    i_seed] <-
-    pars$recr_per_seed *
-    recr_y
-  
-  
-  # Seeds do not remain in the seed state beyond this delay stage.
-  Fmat[
-    i_seed,
-    i_seed] <- 0
-  
-  
-  # Full kernel
   k_yx <- Pmat + Fmat
   
-  
   list(
-    k_yx = k_yx,
-    Pmat = Pmat,
-    Fmat = Fmat,
-    Tmat = Tmat,
-    Gmat = Gmat,
+    k_yx = k_yx, Pmat = Pmat, Fmat = Fmat,
+    Tmat = Tmat, Gmat = Gmat, Rmat = Rmat,
     meshpts = y,
-    dormant_index = i_dorm,
-    seed_index = i_seed)
-}
+    dormant_index = c(i_dorm1, i_dorm2),
+    dormant1_index = i_dorm1,
+    dormant2_index = i_dorm2)}
 
 
 lambda_ipm <- function(i) {
-  Re(
-    eigen(
-      kernel(i)$k_yx)$values[1])
-}
+  Re(eigen(kernel(i)$k_yx)$values[1])}
 
 
 # Mean IPM population growth rate ---------------------------------------------
-lam_mean <- lambda_ipm(
-  pars)
-
+lam_mean <- lambda_ipm(pars)
 lam_mean
 
 
 # Observed population growth rate ---------------------------------------------
 # Count living individuals in each sampled population-year.
-
 df_pop_n <- df %>%
-  filter(
-    !is.na(persistence_t0),
-    persistence_t0 != 'DEAD') %>%
-  group_by(
-    population,
-    year) %>%
-  summarise(
-    n = n_distinct(id),
-    .groups = 'drop')
+  filter(!is.na(persistence_t0), persistence_t0 != 'DEAD') %>%
+  group_by(population, year) %>%
+  summarise(n = n_distinct(id), .groups = 'drop')
 
 pop_counts_t0 <- df_pop_n %>%
-  transmute(
-    population,
-    year = year + 1L,
-    n_t0 = n)
+  transmute(population, year = year + 1L, n_t0 = n)
 
 pop_counts_t1 <- df_pop_n %>%
-  transmute(
-    population,
-    year,
-    n_t1 = n)
+  transmute(population, year, n_t1 = n)
 
 pop_counts <- inner_join(
-  pop_counts_t0,
-  pop_counts_t1,
-  by = c(
-    'population',
-    'year')) %>%
+  pop_counts_t0, pop_counts_t1, by = c('population', 'year')) %>%
   group_by(year) %>%
   summarise(
-    n_t0 = sum(n_t0),
-    n_t1 = sum(n_t1),
-    .groups = 'drop') %>%
-  mutate(
-    obs_pgr =
-      n_t1 /
-      n_t0)
+    n_t0 = sum(n_t0), n_t1 = sum(n_t1), .groups = 'drop') %>%
+  mutate(obs_pgr = n_t1 / n_t0)
 
-lam_mean_count <- exp(
-  mean(
-    log(
-      pop_counts$obs_pgr),
-    na.rm = TRUE))
-
-lam_mean_overall <-
-  sum(
-    pop_counts$n_t1) /
-  sum(
-    pop_counts$n_t0)
+lam_mean_count <- exp(mean(log(pop_counts$obs_pgr), na.rm = TRUE))
+lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
 
 lam_mean_count
 lam_mean_overall
 
 
-# Building the IPM with ipmr --------------------------------------------------
-# General IPM:
-# size     = continuous active state
-# dormant  = discrete dormant state
-# seed     = discrete delayed seed state
+# Observed population growth rate ---------------------------------------------
+# Restrict counts to the reliable demographic period.
+last_reliable_t1 <- max(
+  df$year_t1[df$reliable_demography], na.rm = TRUE)
 
+df_pop_n <- df %>%
+  filter(!is.na(persistence_t0), persistence_t0 != 'DEAD') %>%
+  group_by(population, year) %>%
+  summarise(n = n_distinct(id), .groups = 'drop')
+
+pop_counts_t0 <- df_pop_n %>%
+  transmute(population, year_t1 = year + 1L, n_t0 = n)
+
+pop_counts_t1 <- df_pop_n %>%
+  transmute(population, year_t1 = year, n_t1 = n)
+
+pop_counts <- inner_join(
+  pop_counts_t0, pop_counts_t1, by = c('population', 'year_t1')) %>%
+  filter(year_t1 <= last_reliable_t1) %>%
+  group_by(year_t1) %>%
+  summarise(
+    n_t0 = sum(n_t0), n_t1 = sum(n_t1), .groups = 'drop') %>%
+  mutate(obs_pgr = n_t1 / n_t0)
+
+lam_mean_count <- exp(mean(log(pop_counts$obs_pgr), na.rm = TRUE))
+lam_mean_overall <- sum(pop_counts$n_t1) / sum(pop_counts$n_t0)
+
+lam_mean_count
+lam_mean_overall
+
+
+# Building the IPM with ipmr ---------------------------------------------------
 proto_ipm_p <- init_ipm(
-  sim_gen = 'general',
-  di_dd = 'di',
-  det_stoch = 'det') %>%
+  sim_gen = 'general', di_dd = 'di', det_stoch = 'det') %>%
   
-  # Active -> active ----------------------------------------------------------
-define_kernel(
-  name = 'P',
-  family = 'CC',
-  formula =
-    s *
-    (1 - p_do) *
-    g *
-    d_size,
+  # Active -> active
+  define_kernel(
+    name = 'P',
+    family = 'CC',
+    formula = s * (1 - p_do) * g * d_size,
+    
+    s = plogis(
+      surv_b0 +
+        (if (mod_su_index >= 1) surv_b1 * size_1 else 0) +
+        (if (mod_su_index >= 2) surv_b2 * size_1^2 else 0) +
+        (if (mod_su_index >= 3) surv_b3 * size_1^3 else 0)),
+    
+    p_do = plogis(
+      dorm_b0 +
+        (if (mod_do_index >= 1) dorm_b1 * size_1 else 0) +
+        (if (mod_do_index >= 2) dorm_b2 * size_1^2 else 0) +
+        (if (mod_do_index >= 3) dorm_b3 * size_1^3 else 0)),
+    
+    mu_g = grow_b0 +
+      (if (mod_gr_index >= 1) grow_b1 * size_1 else 0) +
+      (if (mod_gr_index >= 2) grow_b2 * size_1^2 else 0) +
+      (if (mod_gr_index >= 3) grow_b3 * size_1^3 else 0),
+    
+    g = dnorm(size_2, mu_g, grow_sig),
+    grow_sig = sqrt(a * exp(b * size_1)),
+    
+    data_list = pars,
+    states = list(c('size')),
+    uses_par_sets = FALSE,
+    evict_cor = TRUE,
+    evict_fun = truncated_distributions(fun = 'norm', target = 'g')) %>%
   
-  s = plogis(
-    surv_b0 +
-      (if (mod_su_index >= 1)
-        surv_b1 * size_1 else 0) +
-      (if (mod_su_index >= 2)
-        surv_b2 * size_1^2 else 0) +
-      (if (mod_su_index >= 3)
-        surv_b3 * size_1^3 else 0)),
+  # Active -> D1
+  define_kernel(
+    name = 'D_enter',
+    family = 'CC',
+    formula = s * p_do * entry_memory * d_size,
+    
+    entry_memory = as.numeric(size_1 == dorm1_2) / d_size,
+    
+    s = plogis(
+      surv_b0 +
+        (if (mod_su_index >= 1) surv_b1 * size_1 else 0) +
+        (if (mod_su_index >= 2) surv_b2 * size_1^2 else 0) +
+        (if (mod_su_index >= 3) surv_b3 * size_1^3 else 0)),
+    
+    p_do = plogis(
+      dorm_b0 +
+        (if (mod_do_index >= 1) dorm_b1 * size_1 else 0) +
+        (if (mod_do_index >= 2) dorm_b2 * size_1^2 else 0) +
+        (if (mod_do_index >= 3) dorm_b3 * size_1^3 else 0)),
+    
+    data_list = pars,
+    states = list(c('size', 'dorm1')),
+    uses_par_sets = FALSE,
+    evict_cor = FALSE) %>%
   
-  p_do = plogis(
-    dorm_b0 +
-      (if (mod_do_index >= 1)
-        dorm_b1 * size_1 else 0) +
-      (if (mod_do_index >= 2)
-        dorm_b2 * size_1^2 else 0) +
-      (if (mod_do_index >= 3)
-        dorm_b3 * size_1^3 else 0)),
+  # D1 -> D2
+  define_kernel(
+    name = 'D_advance',
+    family = 'CC',
+    formula =
+      p_dorm_survival * (1 - p_reactivate_1) * entry_memory * d_dorm1,
+    
+    entry_memory = as.numeric(dorm1_1 == dorm2_2) / d_dorm1,
+    
+    data_list = pars,
+    states = list(c('dorm1', 'dorm2')),
+    uses_par_sets = FALSE,
+    evict_cor = FALSE) %>%
   
-  mu_g =
-    grow_b0 +
-    (if (mod_gr_index >= 1)
-      grow_b1 * size_1 else 0) +
-    (if (mod_gr_index >= 2)
-      grow_b2 * size_1^2 else 0) +
-    (if (mod_gr_index >= 3)
-      grow_b3 * size_1^3 else 0),
+  # D1 -> active
+  define_kernel(
+    name = 'D_leave1',
+    family = 'CC',
+    formula = p_dorm_survival * p_reactivate_1 * r_d * d_dorm1,
+    
+    react_mu = react_b0 + react_b1 * dorm1_1,
+    react_sig = max(d_size / 10, react_sd, na.rm = TRUE),
+    r_d = dnorm(size_2, react_mu, react_sig),
+    
+    data_list = pars,
+    states = list(c('dorm1', 'size')),
+    uses_par_sets = FALSE,
+    evict_cor = TRUE,
+    evict_fun = truncated_distributions(fun = 'norm', target = 'r_d')) %>%
   
-  g = dnorm(
-    size_2,
-    mu_g,
-    grow_sig),
+  # D2 -> active
+  define_kernel(
+    name = 'D_leave2',
+    family = 'CC',
+    formula = p_dorm_survival * r_d * d_dorm2,
+    
+    react_mu = react_b0 + react_b1 * dorm2_1,
+    react_sig = max(d_size / 10, react_sd, na.rm = TRUE),
+    r_d = dnorm(size_2, react_mu, react_sig),
+    
+    data_list = pars,
+    states = list(c('dorm2', 'size')),
+    uses_par_sets = FALSE,
+    evict_cor = TRUE,
+    evict_fun = truncated_distributions(fun = 'norm', target = 'r_d')) %>%
   
-  grow_sig = sqrt(
-    a *
-      exp(
-        b * size_1)),
+  # Active -> recruits: intercept and seed production both contribute.
+  define_kernel(
+    name = 'F',
+    family = 'CC',
+    formula =
+      (recr_b0 / recr_n_ref + p_fl * p_se * n_se * recr_per_seed) *
+      r_d * d_size,
+    
+    p_fl = plogis(
+      flower_b0 +
+        (if (mod_fl_index >= 1) flower_b1 * size_1 else 0) +
+        (if (mod_fl_index >= 2) flower_b2 * size_1^2 else 0) +
+        (if (mod_fl_index >= 3) flower_b3 * size_1^3 else 0)),
+    
+    p_se = plogis(
+      seed_b0 +
+        (if (mod_se_index >= 1) seed_b1 * size_1 else 0) +
+        (if (mod_se_index >= 2) seed_b2 * size_1^2 else 0) +
+        (if (mod_se_index >= 3) seed_b3 * size_1^3 else 0)),
+    
+    n_se = exp(
+      seed_n_b0 +
+        (if (mod_se_n_index >= 1) seed_n_b1 * size_1 else 0) +
+        (if (mod_se_n_index >= 2) seed_n_b2 * size_1^2 else 0) +
+        (if (mod_se_n_index >= 3) seed_n_b3 * size_1^3 else 0)),
+    
+    recr_sig = max(d_size / 10, recr_sd, na.rm = TRUE),
+    r_d = dnorm(size_2, recr_sz, recr_sig),
+    
+    data_list = pars,
+    states = list(c('size')),
+    uses_par_sets = FALSE,
+    evict_cor = TRUE,
+    evict_fun = truncated_distributions(fun = 'norm', target = 'r_d')) %>%
   
-  data_list = pars,
-  states = list(
-    c('size')),
-  uses_par_sets = FALSE,
-  evict_cor = TRUE,
-  evict_fun = truncated_distributions(
-    fun = 'norm',
-    target = 'g')) %>%
+  # Kernel implementation
+  define_impl(
+    make_impl_args_list(
+      kernel_names = c(
+        'P', 'D_enter', 'D_advance', 'D_leave1', 'D_leave2', 'F'),
+      int_rule = rep('midpoint', 6),
+      state_start = c('size', 'size', 'dorm1', 'dorm1', 'dorm2', 'size'),
+      state_end = c('size', 'dorm1', 'dorm2', 'size', 'size', 'size'))) %>%
   
+  # Domains
+  define_domains(
+    size = c(pars$L, pars$U, pars$mat_siz),
+    dorm1 = c(pars$L, pars$U, pars$mat_siz),
+    dorm2 = c(pars$L, pars$U, pars$mat_siz)) %>%
   
-  # Active -> dormant ---------------------------------------------------------
-define_kernel(
-  name = 'D_enter',
-  family = 'CD',
-  formula =
-    s *
-    p_do *
-    d_size,
-  
-  s = plogis(
-    surv_b0 +
-      (if (mod_su_index >= 1)
-        surv_b1 * size_1 else 0) +
-      (if (mod_su_index >= 2)
-        surv_b2 * size_1^2 else 0) +
-      (if (mod_su_index >= 3)
-        surv_b3 * size_1^3 else 0)),
-  
-  p_do = plogis(
-    dorm_b0 +
-      (if (mod_do_index >= 1)
-        dorm_b1 * size_1 else 0) +
-      (if (mod_do_index >= 2)
-        dorm_b2 * size_1^2 else 0) +
-      (if (mod_do_index >= 3)
-        dorm_b3 * size_1^3 else 0)),
-  
-  data_list = pars,
-  states = list(
-    c(
-      'size',
-      'dormant')),
-  uses_par_sets = FALSE,
-  evict_cor = FALSE) %>%
-  
-  
-  # Dormant -> dormant --------------------------------------------------------
-define_kernel(
-  name = 'D_stay',
-  family = 'DD',
-  formula =
-    p_dorm_survival *
-    (1 - p_reactivate),
-  
-  data_list = pars,
-  states = list(
-    c('dormant')),
-  uses_par_sets = FALSE,
-  evict_cor = FALSE) %>%
-  
-  
-  # Dormant -> active ---------------------------------------------------------
-define_kernel(
-  name = 'D_leave',
-  family = 'DC',
-  formula =
-    p_dorm_survival *
-    p_reactivate *
-    r_d,
-  
-  r_d = dnorm(
-    size_2,
-    react_sz,
-    react_sd),
-  
-  data_list = pars,
-  states = list(
-    c(
-      'size',
-      'dormant')),
-  uses_par_sets = FALSE,
-  evict_cor = TRUE,
-  evict_fun = truncated_distributions(
-    fun = 'norm',
-    target = 'r_d')) %>%
-  
-  
-  # Active -> seed ------------------------------------------------------------
-define_kernel(
-  name = 'F_seed',
-  family = 'CD',
-  formula =
-    p_fl *
-    p_se *
-    n_se *
-    d_size,
-  
-  p_fl = plogis(
-    flower_b0 +
-      (if (mod_fl_index >= 1)
-        flower_b1 * size_1 else 0) +
-      (if (mod_fl_index >= 2)
-        flower_b2 * size_1^2 else 0) +
-      (if (mod_fl_index >= 3)
-        flower_b3 * size_1^3 else 0)),
-  
-  p_se = plogis(
-    seed_b0 +
-      (if (mod_se_index >= 1)
-        seed_b1 * size_1 else 0) +
-      (if (mod_se_index >= 2)
-        seed_b2 * size_1^2 else 0) +
-      (if (mod_se_index >= 3)
-        seed_b3 * size_1^3 else 0)),
-  
-  n_se = exp(
-    seed_n_b0 +
-      (if (mod_se_n_index >= 1)
-        seed_n_b1 * size_1 else 0) +
-      (if (mod_se_n_index >= 2)
-        seed_n_b2 * size_1^2 else 0) +
-      (if (mod_se_n_index >= 3)
-        seed_n_b3 * size_1^3 else 0)),
-  
-  data_list = pars,
-  states = list(
-    c(
-      'size',
-      'seed')),
-  uses_par_sets = FALSE,
-  evict_cor = FALSE) %>%
-  
-  
-  # Seed -> recruit -----------------------------------------------------------
-define_kernel(
-  name = 'R_seed',
-  family = 'DC',
-  formula =
-    recr_per_seed *
-    r_d,
-  
-  r_d = dnorm(
-    size_2,
-    recr_sz,
-    recr_sd),
-  
-  data_list = pars,
-  states = list(
-    c(
-      'size',
-      'seed')),
-  uses_par_sets = FALSE,
-  evict_cor = TRUE,
-  evict_fun = truncated_distributions(
-    fun = 'norm',
-    target = 'r_d')) %>%
-  
-  
-  # Seed -> seed --------------------------------------------------------------
-define_kernel(
-  name = 'S_seed',
-  family = 'DD',
-  formula = 0,
-  
-  states = list(
-    c('seed')),
-  uses_par_sets = FALSE,
-  evict_cor = FALSE) %>%
-  
-  
-  # Kernel implementation -----------------------------------------------------
-define_impl(
-  make_impl_args_list(
-    kernel_names = c(
-      'P',
-      'D_enter',
-      'D_stay',
-      'D_leave',
-      'F_seed',
-      'R_seed',
-      'S_seed'),
-    int_rule = rep(
-      'midpoint',
-      7),
-    state_start = c(
-      'size',
-      'size',
-      'dormant',
-      'dormant',
-      'size',
-      'seed',
-      'seed'),
-    state_end = c(
-      'size',
-      'dormant',
-      'dormant',
-      'size',
-      'seed',
-      'size',
-      'seed'))) %>%
-  
-  
-  # Domains -------------------------------------------------------------------
-define_domains(
-  size = c(
-    pars$L,
-    pars$U,
-    pars$mat_siz)) %>%
-  
-  
-  # Initial population --------------------------------------------------------
-define_pop_state(
-  pop_vectors = list(
-    n_size = rep(
-      1 / pars$mat_siz,
-      pars$mat_siz),
-    n_dormant = 0,
-    n_seed = 0))
+  # Initial population
+  define_pop_state(
+    pop_vectors = list(
+      n_size = rep(1 / pars$mat_siz, pars$mat_siz),
+      n_dorm1 = rep(0, pars$mat_siz),
+      n_dorm2 = rep(0, pars$mat_siz)))
 
 
-ipmr_p <- make_ipm(
-  proto_ipm = proto_ipm_p,
-  iterations = 200)
+ipmr_p <- make_ipm(proto_ipm = proto_ipm_p, iterations = 200)
 
 
 # Mean IPM population growth rate ---------------------------------------------
-lam_mean_ipmr <- lambda(
-  ipmr_p)
-
+lam_mean_ipmr <- lambda(ipmr_p)
 lam_mean_ipmr
 
 
-# Compare hand-built and ipmr implementations --------------------------------
+# Compare hand-built and ipmr implementations ----------------------------------
 lam_mean
 lam_mean_ipmr
 
 
 # Export lambda ---------------------------------------------------------------
 lam_out <- data.frame(
-  coefficient = names(
-    lam_mean_ipmr),
-  value = lam_mean_ipmr)
+  coefficient = names(lam_mean_ipmr), value = lam_mean_ipmr)
 
 lam_out_wide <- as.list(
-  pivot_wider(
-    lam_out,
-    names_from = 'coefficient',
-    values_from = 'value'))
+  pivot_wider(lam_out, names_from = 'coefficient', values_from = 'value'))

@@ -846,6 +846,7 @@ make_re_year_plot <- function(year_i) {
     theme(text = element_text(size = 5), legend.position = 'none')}
 
 re_yrs <- lapply(levels(df_re_mod$recruit_year), make_re_year_plot)
+
 fig_re_years <- wrap_plots(re_yrs) +
   plot_layout(ncol = 4) +
   plot_annotation(

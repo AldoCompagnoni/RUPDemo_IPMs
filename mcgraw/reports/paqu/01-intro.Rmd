@@ -30,6 +30,9 @@ download.file(
 knitr::include_graphics(img_file)
 ```
 
+
+The publication to this dataset is the following: Jennifer L. Chandler & James B. McGraw (2017). Demographic stimulation of the obligate understorey herb, Panax quinquefolius L., in response to natural forest canopy disturbances. Journal of Ecology.
+
 The dataset contains long-term demographic census data for wild American ginseng (*Panax quinquefolius* L.) populations collected between 1998 and 2016. Formal demographic monitoring began in West Virginia in 1998 and expanded to 30 natural populations by 2004. These populations were distributed across seven U.S. states: Indiana, Kentucky, Maryland, New York, Pennsylvania, Virginia, and West Virginia. Populations represented a range of land-use histories and eastern deciduous forest communities, providing a broad spatial and temporal dataset for studying ginseng demography and population viability. The main demographic table contains 210,384 plant-year records and 36 variables.
 
 Each population was censused twice per year. The spring census, generally conducted from late May through June, was designed to capture population status when the greatest number of individuals were visible aboveground. During this census, individual plants were assessed for presence, leaf number, leaflet arrangement, stalk height, leaflet dimensions, reproductive status, browsing, disease, insect damage, and other plant conditions. Leaflet measurements were subsequently used to estimate total leaf area, which the authors considered the most useful continuous measure of plant size. The second census, generally conducted during the first three weeks of August, focused primarily on reproduction. Seed production was estimated from fruits on individual plants, while additional observations were made on browsing, disease, insect damage, harvest, senescence, and other changes occurring during the growing season.
@@ -51,7 +54,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 # Packages
 packages <- c('MASS', 'patchwork', 'skimr', 'ipmr', 'binom', 'bbmle', 'gridExtra', 
-              'lme4', 'janitor', 'readxl', 'GGally', 'tidyverse', 'brms', 'loo')
+              'lme4', 'janitor', 'readxl', 'GGally', 'tidyverse', 'brms', 'loo', 'mgcv')
 lapply(packages, library, character.only = TRUE)
 
 
@@ -61,6 +64,7 @@ v_head <- c('mcgraw')
 v_species <- c('Panax quinquefolius')
 custom_delimiter <- c()
 v_years_re <- c()
+v_states <- c('WV')
 
 v_sp_abb <- tolower(
   gsub(' ', '', paste(

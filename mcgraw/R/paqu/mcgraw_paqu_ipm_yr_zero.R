@@ -9,8 +9,7 @@
 
 # Study organism: Panax quinquefolius L.
 # Link: https://portal.edirepository.org/nis/mapbrowse?packageid=edi.9.4
-# Meta data link:
-# https://portal.edirepository.org/nis/metadataviewer?packageid=edi.9.4
+# Meta data link: https://portal.edirepository.org/nis/metadataviewer?packageid=edi.9.4
 # Citing publication: McGraw et al. 2017. Long Term Research in
 # Environmental Biology: Demographic census data for thirty natural
 # populations of American Ginseng: 1998-2016 ver 4.
@@ -688,9 +687,7 @@ make_ipm_pars <- function(
 
   if (re_year_t1 %in% rownames(mod_re_ranef)) {
     pars$fecu_b0 <- exp(
-      get_coef(
-        mod_re_ranef[re_year_t1, ],
-        '(Intercept)'))
+      mod_re_ranef[re_year_t1, '(Intercept)'])
   }
 
   pars

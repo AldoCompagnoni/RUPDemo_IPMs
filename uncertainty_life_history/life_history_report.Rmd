@@ -1,0 +1,275 @@
+---
+title: "Life-history metrics from integral projection models"
+subtitle: "Pipeline overview and exploratory results"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 5)
+library(ggplot2)
+```
+
+# Aim
+
+This report documents how the mean integral projection models (IPMs) are
+converted into a common set of life-history metrics. The workflow is designed
+to accommodate many species and independent model sources while keeping the
+original demographic analyses separate from the comparative results.
+
+**Only the saved results are read when this report is knitted.** The examples
+of model construction and updating below are shown but not executed. No vital
+rates are refitted, no IPMs are rebuilt, and no life-history metrics are
+recalculated by this report.
+
+# From species data to comparable metrics
+
+The workflow has four stages:
+
+1. Each species' `*_ipm_mean.R` script sources the shared `pipeline/ipm_mean.R`
+   code, fits the vital-rate models, and builds an `ipmr` object.
+2. The `ipmr` object is saved as `*_mean_ipmr.rds` together with its scientific
+   name as an attribute.
+3. `run_lh_pipeline()` takes one or several `.rds` paths, prepares records using
+   the author's `make_ipm_record()` structure, and calculates the life-history
+   metrics for new models.
+4. Two shared outputs are maintained independently of the original species
+   data: `ipm_records.rds` (models and settings) and
+   `life_history_metrics.csv` (results).
+
+```text
+Species-specific mean IPM scripts
+              |
+              v
+    ipmr object + species name
+              |
+              v
+    run_lh_pipeline(paths)
+              |
+       +------+------+
+       |             |
+       v             v
+ ipm_records.rds  life_history_metrics.csv
+ (IPMs + settings) (one row per model)
+```
+
+## Scripts involved
+
+| Script | Role |
+|:--|:--|
+| `1.R` | Initial test of record creation and storage for *Andropogon gerardii*. |
+| `2.R` | Initial test of adding *Artemisia tripartita* while retaining the first record. |
+| `3.R` | Supplies the paths of many saved IPMs to `run_lh_pipeline()`. |
+| `4.R` | Finds and sources mean-IPM scripts inside a selected study directory. |
+| `pipeline/ipm_mean.R` | Shared construction of species-level mean IPMs. |
+| `uncertainty_life_history/life_history_pipeline.R` | Shared record and result update logic. |
+| `uncertainty_life_history/life_history_metrics.R` | Functions defining the demographic metrics. |
+| `uncertainty_life_history/padrino_lh_test.R` | Author's model-record and metric-batch functions. |
+
+The first two scripts are development checks; the intended repeated workflow
+uses the shared pipeline called from a script like `3.R`.
+
+## Building IPMs (shown only)
+
+For a selected study, `4.R` finds the relevant species scripts and sources them:
+
+```{r example-build-ipms, eval=FALSE, echo=TRUE}
+dir_ipm <- "christensen_2021_nm"
+
+ipm_files <- list.files(
+  path = dir_ipm, pattern = "_ipm_mean\\.R$",
+  recursive = TRUE, full.names = TRUE)
+
+for (file in ipm_files) {
+  source(file)
+}
+```
+
+## Registering models and updating results (shown only)
+
+A call like the following, taken from the approach in `3.R`, submits paths
+rather than entering model IDs or species names manually:
+
+```{r example-pipeline, eval=FALSE, echo=TRUE}
+source("uncertainty_life_history/life_history_pipeline.R")
+
+models <- c(
+  "adler_2007_ks/data/ange/adler07_ange_mean_ipmr.rds",
+  "zachmann_2016_id/data/artr/zachmann16_artr_mean_ipmr.rds")
+
+life_history_df <- run_lh_pipeline(models, overwrite = FALSE)
+```
+
+The model ID comes from the `.rds` filename and the species name from the
+`species` attribute. A record stores the made IPM and its configuration,
+including which kernels contribute to persistence (`P`) and reproduction (`F`).
+For the current test set, the models use a one-year time step and an
+exploratory reproductive-maturity threshold of `0.1`.
+
+- `overwrite = FALSE`: retain existing model entries and calculate missing ones.
+- `overwrite = TRUE`: replace the specified model entries and their metrics.
+
+The stored files are:
+
+- `uncertainty_life_history/data/ipm_records.rds`: a named list containing
+  `ipmr` objects and model-specific settings.
+- `uncertainty_life_history/data/life_history_metrics.csv`: a flat table with
+  one row per model and nine demographic metrics.
+
+# Life-history metrics
+
+The calculations follow the uploaded `life_history_metrics.R` functions.
+
+| Output | Meaning |
+|:--|:--|
+| `R0` | Net reproductive rate, calculated using the persistence and fecundity matrices. |
+| `genT` | Generation time using the Bienvenu--Legendre method. |
+| `iter` | Iteroparity: entropy of reproductive contributions across age. |
+| `s_type` | Keyfitz' entropy of survivorship (lower/higher values distinguish survival-curve shapes). |
+| `pgrowth` | Stable-stage-weighted probability of increasing size, conditional on survival. |
+| `rgrowth` | Stable-stage-weighted probability of decreasing size, conditional on survival. |
+| `mean_repr` | Stable-stage-weighted mean sexual reproduction. |
+| `age_matur` | Mean age of first reaching the reproductive-maturity state set, conditional on eventual maturity. |
+| `mature_exp` | Expected remaining life after first reaching reproductive maturity. |
+
+Generation time, age at maturity, and mature life expectancy are expressed in
+years for these annual IPMs. The assumed reproduction process is Poisson, and
+mature states are identified using a reproduction-probability threshold of
+`0.1`. These are **model-based demographic summaries**, not direct
+measurements of individual lifespan or age at first flowering.
+
+# Results from the saved CSV
+
+This section reads the previously generated results; it does not call
+`run_lh_pipeline()` or any metric-calculation function.
+
+```{r load-saved-results}
+life_history_df <- read.csv("data/life_history_metrics.csv")
+metric_cols <- c("R0", "genT", "iter", "s_type", "pgrowth", "rgrowth",
+                 "mean_repr", "age_matur", "mature_exp")
+life_history_df$study <- sub("_[^_]+_mean$", "", life_history_df$ipm_id)
+```
+
+## Coverage
+
+```{r coverage-table}
+name_present <- !is.na(life_history_df$species) &
+  nzchar(life_history_df$species)
+
+coverage <- data.frame(
+  Measure = c("IPM models", "Models with scientific names",
+              "Distinct named species", "Model-source groups",
+              "Models missing a scientific name"),
+  Value = c(nrow(life_history_df), sum(name_present),
+            length(unique(life_history_df$species[name_present])),
+            length(unique(life_history_df$study)), sum(!name_present)))
+
+knitr::kable(coverage, row.names = FALSE)
+```
+
+Different studies may contain models for the same species; model IDs identify
+those entries separately. Models still missing a scientific name are shown
+below (if any):
+
+```{r missing-names}
+missing_names <- life_history_df[!name_present, c("ipm_id", "species")]
+if (nrow(missing_names) > 0) {
+  knitr::kable(missing_names, row.names = FALSE)
+} else {
+  "None."
+}
+```
+
+## Numerical overview
+
+```{r metric-overview}
+metric_summary <- data.frame(
+  Metric = metric_cols,
+  Minimum = vapply(life_history_df[metric_cols], min, numeric(1),
+                   na.rm = TRUE),
+  Median = vapply(life_history_df[metric_cols], median, numeric(1),
+                  na.rm = TRUE),
+  Maximum = vapply(life_history_df[metric_cols], max, numeric(1),
+                   na.rm = TRUE))
+
+knitr::kable(metric_summary, digits = 2, row.names = FALSE,
+             caption = "Range and median of the nine life-history metrics")
+```
+
+
+## Exploratory principal-component analysis
+
+Following the author's testing idea, the saved metrics are transformed with
+`log1p()`, centred, scaled, and analysed by PCA. Metrics with zero variance
+are excluded because they cannot be standardized.
+
+```{r plot-pca, echo=TRUE, fig.cap="PCA of stored life-history metrics."}
+pca_matrix <- log1p(as.matrix(life_history_df[metric_cols]))
+metric_sd <- apply(pca_matrix, 2, sd)
+keep_metrics <- is.finite(metric_sd) & metric_sd > 0
+pca <- prcomp(pca_matrix[, keep_metrics, drop = FALSE],
+              center = TRUE, scale. = TRUE)
+
+scores <- data.frame(pca$x[, 1:2, drop = FALSE],
+                     study = life_history_df$study)
+loadings <- data.frame(pca$rotation[, 1:2, drop = FALSE],
+                       metric = rownames(pca$rotation))
+arrow_scale <- 0.75 * max(abs(as.matrix(scores[, 1:2]))) /
+  max(abs(as.matrix(loadings[, 1:2])))
+loadings$xend <- loadings$PC1 * arrow_scale
+loadings$yend <- loadings$PC2 * arrow_scale
+
+var_exp <- summary(pca)$importance[2, 1:2] * 100
+
+ggplot(scores, aes(x = PC1, y = PC2, colour = study)) +
+  geom_hline(yintercept = 0, colour = "grey80") +
+  geom_vline(xintercept = 0, colour = "grey80") +
+  geom_point(alpha = 0.85, size = 2.4) +
+  geom_segment(data = loadings,
+               aes(x = 0, y = 0, xend = xend, yend = yend),
+               inherit.aes = FALSE, colour = "grey40",
+               arrow = grid::arrow(length = grid::unit(0.15, "cm"))) +
+  geom_text(data = loadings,
+            aes(x = xend, y = yend, label = metric),
+            inherit.aes = FALSE, size = 3, vjust = -0.6) +
+  labs(x = sprintf("PC1 (%.1f%%)", var_exp[1]),
+       y = sprintf("PC2 (%.1f%%)", var_exp[2]),
+       colour = "Model source") +
+  coord_equal() +
+  theme_bw()
+```
+
+The PCA is exploratory. It describes patterns among the **calculated model
+metrics**; it is not a validation of the underlying vital-rate models or an
+independent test of life-history theory.
+
+## Important interpretation note
+
+In the supplied results, `age_matur` is zero for all models. At the current
+threshold, this can occur when states occupied at recruitment already meet
+the model's definition of reproductive maturity. In particular, the simple
+mean-IPM constructions used here can give reproduction that is independent of
+adult size. Thus **zero should not be read as biological maturity at birth**.
+
+Because `age_matur` has zero variance, it is automatically left out of the
+PCA above. The same maturity definition affects `mature_exp`; both metrics
+need biological review before drawing conclusions about maturation or adult
+longevity.
+
+# Full saved results
+
+The interactive table contains one entry per model and retains the values in
+the CSV. It can be sorted or paged without rebuilding any IPM.
+
+```{r full-result-table}
+rmarkdown::paged_table(
+  life_history_df[, c("ipm_id", "species", metric_cols)],
+  options = list(rows.print = 12, cols.print = 11))
+```
+
+---
+

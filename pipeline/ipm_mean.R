@@ -749,7 +749,9 @@ proto_ipm_p <- init_ipm(sim_gen   = 'simple',
     n_size = rep(1 / 200, 200)
   )
 
-ipmr_p <- make_ipm(proto_ipm  = proto_ipm_p, iterations = 200)
+ipmr_p <- make_ipm(proto_ipm = proto_ipm_p, iterations = 200)
+
+attr(ipmr_p, "species") <- v_species
 
 lam_mean_ipmr <- lambda(ipmr_p)
 
@@ -764,4 +766,7 @@ lam_out_wide  <- as.list(pivot_wider(lam_out,
 
 write.csv(lam_out_wide, row.names = F, paste0(
   dir_data, '/', v_script_prefix, '_',v_sp_abb, '_lambda.csv'))
+
+saveRDS(ipmr_p, file.path(dir_data,
+                          paste0(v_script_prefix, "_", v_sp_abb, "_mean_ipmr.rds")))
 
